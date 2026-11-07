@@ -46,3 +46,22 @@ test("A slow phone keeps the map on screen, and the last switch wins", async ({ 
   expect(await layers(page)).toBe(drawn);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
+
+// 5: both looks name the same sources, so a switch asks no tile again.
+test("A switch of light and dark keeps the sources, and another map replaces them", async ({ page }) => {
+  await openViewer(page);
+  await expect.poll(() => layers(page)).toBeGreaterThan(0);
+  const marked = () => page.evaluate(() => Object.values(window.__riki.map.style.sourceCaches).every((each) => each.kept));
+  await page.evaluate(() => { for (const each of Object.values(window.__riki.map.style.sourceCaches)) each.kept = true; });
+
+  const light = page.waitForResponse((answer) => answer.url().includes("theme=light"));
+  await page.locator("#themeToggle").click();
+  await light;
+  await page.waitForTimeout(300);
+  expect(await marked()).toBe(true);
+
+  const other = page.waitForResponse((answer) => answer.url().includes("000000000002/style"));
+  await page.locator("#others .list button", { hasText: "Bratislava" }).click();
+  await other;
+  await expect.poll(marked).toBe(false);
+});
