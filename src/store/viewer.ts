@@ -410,10 +410,32 @@ export async function importMap(file: File) {
   return madeBy(`${ROOT}/new-map`, await file.arrayBuffer());
 }
 
-export async function exportMap() {
+export const exportMap = () => saveFrom(`${ROOT}/maps/${get().mapID}/mapson`);
+
+/** 2997 The phone's servers as Share servers writes them, keys left on the phone. */
+export const exportServers = () => saveFrom(`${ROOT}/servson`);
+
+/** The phone adds the servers it lacks and answers with them all. */
+export async function importServers(file: File) {
   let answer: Response;
   try {
-    answer = await askEditing(`${ROOT}/maps/${get().mapID}/mapson`, "GET");
+    answer = await askEditing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer());
+  } catch {
+    away();
+    return;
+  }
+  if (answer.status === 401) return;
+  if (!answer.ok) {
+    notice(await answer.text());
+    return;
+  }
+  set({ servers: await answer.json() });
+}
+
+async function saveFrom(path: string) {
+  let answer: Response;
+  try {
+    answer = await askEditing(path, "GET");
   } catch {
     away();
     return;
