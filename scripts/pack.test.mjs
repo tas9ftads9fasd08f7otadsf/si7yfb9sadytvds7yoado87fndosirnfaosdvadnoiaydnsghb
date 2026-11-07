@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asked, ships, styleFacts } from "./pack.mjs";
+import { asked, infoPlist, ships, styleFacts } from "./pack.mjs";
 
 describe("what the bundle carries", () => {
   it("takes the page and its assets, not Next's route payloads", () => {
@@ -14,6 +14,13 @@ describe("what the bundle carries", () => {
   it("reads what the page asks for", () => {
     expect(asked(`<script src="/web/app/_next/static/a.js"></script><link href='/web/app/b.css'>`))
       .toEqual(["_next/static/a.js", "b.css"]);
+  });
+
+  it("describes a resource bundle, with no executable", () => {
+    const plist = infoPlist("0.1.7");
+    expect(plist).toContain("<string>BNDL</string>");
+    expect(plist).toContain("<string>0.1.7</string>");
+    expect(plist).not.toContain("CFBundleExecutable");
   });
 
   it("gathers the style facts from every layer's layout and paint", () => {

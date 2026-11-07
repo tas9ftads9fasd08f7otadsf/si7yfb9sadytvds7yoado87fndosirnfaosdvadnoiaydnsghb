@@ -6,8 +6,8 @@ Riki Maps app ships inside itself; nothing here runs on a server.
 ## How it fits together
 
 - `next build` writes a static export to `out/`. The page lives at `/`, its assets under `/web/app/`.
-- `npm run pack` cuts that to `dist/WebEditor.bundle` and adds `web-editor.json`: the version, and
-  what the app's tests hold a served style against.
+- `npm run pack` cuts that to `dist/WebEditor.bundle` and adds `web-editor.json` (the version, and
+  what the app's tests hold a served style against) and the `Info.plist` an App Store upload expects.
 - Every merge to `main` publishes the zip as a GitHub release. The app takes one with its
   `tools/update-web-editor.sh <tag>`, in a pull request of its own, so a build ships only once reviewed.
 - At run time the page reads everything from the phone: `/web/words` for its language, `/web/session`

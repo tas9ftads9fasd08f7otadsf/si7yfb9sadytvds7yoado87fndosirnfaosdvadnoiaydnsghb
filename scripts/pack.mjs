@@ -27,6 +27,21 @@ export function styleFacts(spec, expressionNames) {
   };
 }
 
+/** A resource bundle's plist, with no executable: App Store uploads look inside every bundle. */
+export const infoPlist = (version) => `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key><string>com.rikimaps.rikimaps.web-editor</string>
+  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+  <key>CFBundleName</key><string>WebEditor</string>
+  <key>CFBundlePackageType</key><string>BNDL</string>
+  <key>CFBundleShortVersionString</key><string>${version}</string>
+  <key>CFBundleVersion</key><string>${version}</string>
+</dict>
+</plist>
+`;
+
 async function main() {
   const out = path.join(ROOT, "out");
   const dist = path.join(ROOT, "dist");
@@ -49,6 +64,7 @@ async function main() {
   const manifest = { version: process.env.WEB_EDITOR_VERSION || own.version, commit, drawnTypes: DRAWN_TYPES,
     forkOnly: FORK_ONLY, mapLibre: { version: library.version, ...styleFacts(latest, Object.keys(expressions)) } };
   await writeFile(path.join(bundle, "web-editor.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFile(path.join(bundle, "Info.plist"), infoPlist(manifest.version));
 
   const zip = path.join(dist, "web-editor.zip");
   execFileSync("zip", ["-qrX", zip, "WebEditor.bundle"], { cwd: dist });
