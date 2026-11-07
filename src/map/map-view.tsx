@@ -7,7 +7,7 @@ import { drawable } from "@/lib/drawable";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY, ROOT, readJSON } from "@/lib/phone";
 import { regionOffer } from "@/lib/region";
 import type { Box, RegionList } from "@/lib/types";
-import { drawStyle, isDark, shownMapOf, useViewer } from "@/store/viewer";
+import { drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
 
 const PICK = 6;
@@ -197,10 +197,14 @@ export function createMapView(container: HTMLElement): MapControl {
     moved = setTimeout(askLive, 800);
   });
 
-  function draw() {
+  // Not by setStyle: it clears the map first and stops drawing after a refusal.
+  let lastAsked = 0;
+
+  async function draw() {
     const state = get();
     const shared = shownMapOf(state);
     if (!shared || state.standing !== "admitted") return;
+    const asked = ++lastAsked;
     const box = container.getBoundingClientRect();
     const query = new URLSearchParams({
       theme: isDark() ? "dark" : "light",
@@ -210,14 +214,26 @@ export function createMapView(container: HTMLElement): MapControl {
     });
     if (state.styleID) query.set("styleID", state.styleID);
     if (shared.revision != null) query.set("rev", String(shared.revision));
+    let style: StyleSpecification;
+    try {
+      const answer = await fetch(`${ROOT}/maps/${shared.id}/style?${query.toString()}`, { cache: "no-store" });
+      if (!answer.ok) {
+        if (asked === lastAsked) notice(await answer.text());
+        return;
+      }
+      style = await answer.json();
+    } catch {
+      if (asked === lastAsked) notice(get().words.away);
+      return;
+    }
+    if (asked !== lastAsked) return;
     map.once("style.load", () => {
       void frame();
       void askLive();
       void readRegions();
       offerTerrain();
     });
-    map.setStyle(`${ROOT}/maps/${shared.id}/style?${query.toString()}`,
-      { diff: false, transformStyle: (_previous, next) => drawable(next as StyleSpecification) });
+    map.setStyle(drawable(style), { diff: false });
   }
 
   // A click shows what the feature under it carries, a layer's own first.
