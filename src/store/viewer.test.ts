@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portable } from "@/lib/types";
 import { type MapControl, setMapControl } from "@/map/control";
-import { addPackages, applySession, change, checkKey, loadWords, notice, resetViewer, setLayerShown, tickPackage,
+import { FILE_LIMIT, addFile, addPackages, applySession, change, checkKey, loadWords, notice, resetViewer, setLayerShown, tickPackage,
   useViewer } from "./viewer";
 
 const get = useViewer.getState;
@@ -188,5 +188,38 @@ describe("the rest", () => {
     vi.advanceTimersByTime(1);
     expect(get().notice).toBeNull();
     vi.useRealTimers();
+  });
+});
+
+describe("addFile", () => {
+  beforeEach(() => useViewer.setState({ editToken: "t", mapID: "a", styleID: "s", portable, device }));
+
+  // 2995 the file is the body, named in the address, and the map the phone answers is kept
+  it("posts the file and keeps the map with its new layer", async () => {
+    const added = { ...portable, layers: [{ id: "l", name: "Huts" }] };
+    const fetcher = answering((url) => url.includes("/add-file") ? json(added) : json(device));
+    await addFile(new File(["{\"type\":\"FeatureCollection\"}"], "huts.geojson"));
+    const [url, init] = fetcher.mock.calls[0]!;
+    expect(url).toContain("/maps/a/add-file?file=huts.geojson");
+    expect(init?.method).toBe("POST");
+    expect(new TextDecoder().decode(init?.body as ArrayBuffer)).toContain("FeatureCollection");
+    expect(get().portable).toEqual(added);
+  });
+
+  // 2995 a file the phone could never take is not sent
+  it("says what fits instead of sending a file over the limit", async () => {
+    const fetcher = answering(() => json({}));
+    const big = new File(["x"], "big.geojson");
+    Object.defineProperty(big, "size", { value: FILE_LIMIT + 1 });
+    await addFile(big);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(get().notice).toContain("16 MB");
+  });
+
+  // 2995 the phone's refusal is shown as it said it
+  it("shows what the phone refused", async () => {
+    answering(() => new Response("plan.dxf stays on the phone", { status: 409 }));
+    await addFile(new File(["0"], "plan.dxf"));
+    expect(get().notice).toBe("plan.dxf stays on the phone");
   });
 });
