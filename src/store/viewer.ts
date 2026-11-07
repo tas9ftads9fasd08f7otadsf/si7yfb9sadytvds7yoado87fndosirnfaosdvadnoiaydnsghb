@@ -506,6 +506,27 @@ export async function loadServers() {
   }
 }
 
+/** The kinds a browser may add; an API server needs the phone's own form. */
+export const SERVER_KINDS = ["arcgis", "tilejson", "tiles", "mapproxy"] as const;
+
+/** The phone reads the address first and answers with its servers, the new one among them. */
+export async function addServer(kind: string, address: string, name: string): Promise<boolean> {
+  let answer: Response;
+  try {
+    answer = await askEditing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`);
+  } catch {
+    away();
+    return false;
+  }
+  if (answer.status === 401) return false;
+  if (!answer.ok) {
+    notice(await answer.text());
+    return false;
+  }
+  set({ servers: await answer.json() });
+  return true;
+}
+
 export function tickServerRow(key: string, pick: ServerPick) {
   const serverPicks = new Map(get().serverPicks);
   if (!serverPicks.delete(key)) serverPicks.set(key, pick);

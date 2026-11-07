@@ -44,7 +44,9 @@ export const ENGLISH = {
   tickPackages: "Tick every package this map should draw.", add: "Add", deleteLayer: "Delete layer",
   removeAsk: "Remove {name}?", layerOptions: "Options", export: "Export",
   tileURL: "Tile URL", yourServers: "Your servers", noServers: "No server saved yet.",
-  "TerrainControl.Enable": "3D relief, off", "TerrainControl.Disable": "3D relief, on"
+  "TerrainControl.Enable": "3D relief, off", "TerrainControl.Disable": "3D relief, on",
+  newServer: "New server", serverAddress: "Address", "serverKind.arcgis": "Esri / ArcGIS",
+  "serverKind.tilejson": "TileJSON", "serverKind.tiles": "Tile server", "serverKind.mapproxy": "MapProxy"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;

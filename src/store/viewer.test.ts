@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portable } from "@/lib/types";
 import { type MapControl, setMapControl } from "@/map/control";
-import { addPackages, applySession, change, checkKey, loadWords, notice, resetViewer, setLayerShown, tickPackage,
+import { addPackages, addServer, applySession, change, checkKey, loadWords, notice, resetViewer, setLayerShown, tickPackage,
   useViewer } from "./viewer";
 
 const get = useViewer.getState;
@@ -188,5 +188,28 @@ describe("the rest", () => {
     vi.advanceTimersByTime(1);
     expect(get().notice).toBeNull();
     vi.useRealTimers();
+  });
+});
+
+describe("addServer", () => {
+  beforeEach(() => useViewer.setState({ editToken: "t", mapID: "a", styleID: "s", portable, device }));
+
+  // 2996 kind, address and name go to the phone, and its servers replace the list
+  it("keeps the servers the phone answers with", async () => {
+    const servers = { servers: [{ id: "n", name: "Survey", line: "Esri / ArcGIS", rows: [] }] };
+    const fetcher = answering(() => json(servers));
+    expect(await addServer("arcgis", "https://gis.test/rest/services", "Survey")).toBe(true);
+    const [url, init] = fetcher.mock.calls[0]!;
+    expect(url).toContain("/add-server?kind=arcgis&address=https%3A%2F%2Fgis.test%2Frest%2Fservices&name=Survey");
+    expect(init?.method).toBe("POST");
+    expect(get().servers).toEqual(servers);
+  });
+
+  // 2996 the phone's reading failure is shown, and the list stays as it was
+  it("shows why the phone could not read it", async () => {
+    answering(() => new Response("Server replied 404", { status: 409 }));
+    expect(await addServer("tiles", "https://t.test/{z}/{x}/{y}.png", "")).toBe(false);
+    expect(get().notice).toBe("Server replied 404");
+    expect(get().servers).toBeNull();
   });
 });
