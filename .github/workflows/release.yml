@@ -1,0 +1,37 @@
+name: Release
+
+# Every merge publishes a build; the app takes one by its tag, with tools/update-web-editor.sh.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Publish the bundle
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Pack and publish
+        run: |
+          version="$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')").${GITHUB_RUN_NUMBER}"
+          WEB_EDITOR_VERSION="$version" npm run pack
+          gh release create "v$version" dist/web-editor.zip dist/web-editor.zip.sha256 \
+            --target "$GITHUB_SHA" --title "v$version" --generate-notes
