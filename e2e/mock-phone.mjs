@@ -463,6 +463,26 @@ async function answer(request, response) {
   const parts = route.split("/").filter(Boolean);
   if (parts[0] !== "riki" || parts[1] !== "v1") return send(response, 404, "");
   if (parts[2] === "device" && parts.length === 3) return json(response, catalog());
+  if (parts[2] === "new-map" && parts.length === 3) {
+    // 2978: as `PeerWebNewMap` answers: a name makes a blank map, a body is read as a .mapson.
+    if (method !== "POST") return send(response, 405, "");
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    let name = (url.searchParams.get("name") || "").trim();
+    if (chunks.length) {
+      try {
+        name = JSON.parse(Buffer.concat(chunks).toString()).name;
+      } catch { name = ""; }
+      if (!name) return send(response, 409, "That file is not a Riki Maps map.");
+    }
+    if (!name) return send(response, 400, "");
+    const id = randomUUID().toUpperCase();
+    phone.maps.push({ id, name, symbol: "map", iconTintHex: null, revision: 1, note: "", layers: [],
+      styles: [{ id: randomUUID().toUpperCase(), name: "Style", arrangement: { hidden: [] } }] });
+    return json(response, { id });
+  }
   if (parts[2] === "coverage-places" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");

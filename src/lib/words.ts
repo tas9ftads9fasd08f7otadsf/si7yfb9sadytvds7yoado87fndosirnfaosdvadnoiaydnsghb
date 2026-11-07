@@ -1,6 +1,6 @@
 /** English, until the phone's own words arrive or if they never do. */
 export const ENGLISH = {
-  maps: "Maps", styles: "Styles", layers: "Layers",
+  maps: "Maps", styles: "Styles", layers: "Layers", newMap: "New map", importMap: "Import",
   nothing: "No map here can be shared.", away: "Not serving", app: "Riki Maps", allMaps: "All maps",
   onMapNow: "On map now", edit: "Edit map", done: "Done", cancel: "Cancel", save: "Save", name: "Name",
   note: "Note", otherLanguages: "Other languages", addLanguage: "Add a language", remove: "Remove",
