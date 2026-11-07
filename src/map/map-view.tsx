@@ -199,6 +199,7 @@ export function createMapView(container: HTMLElement): MapControl {
 
   // Not by setStyle: it clears the map first and stops drawing after a refusal.
   let lastAsked = 0;
+  let drawnMapID: string | null = null;
 
   async function draw() {
     const state = get();
@@ -227,13 +228,21 @@ export function createMapView(container: HTMLElement): MapControl {
       return;
     }
     if (asked !== lastAsked) return;
-    map.once("style.load", () => {
+    const settled = () => {
       void frame();
       void askLive();
       void readRegions();
       offerTerrain();
-    });
-    map.setStyle(drawable(style), { diff: false });
+    };
+    // Same sources, so the tiles stay; the app's own properties would fail validation.
+    const isSameMap = drawnMapID === shared.id;
+    drawnMapID = shared.id;
+    map.once("style.load", settled);
+    map.setStyle(drawable(style), { diff: isSameMap, validate: false });
+    if (isSameMap && map.getStyle()) {
+      map.off("style.load", settled);
+      settled();
+    }
   }
 
   // A click shows what the feature under it carries, a layer's own first.
