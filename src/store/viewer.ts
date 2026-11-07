@@ -336,8 +336,8 @@ function keepToken(token: string | null) {
 }
 
 /** A stale token sends the browser back to the password. */
-async function askEditing(path: string, method = "POST") {
-  const answer = await fetch(path, { method, cache: "no-store", headers: { Authorization: `Bearer ${get().editToken}` } });
+async function askEditing(path: string, method = "POST", body?: BodyInit) {
+  const answer = await fetch(path, { method, body, cache: "no-store", headers: { Authorization: `Bearer ${get().editToken}` } });
   if (answer.status === 401) {
     keepToken(null);
     if (get().editing) showEdit(false);
@@ -381,6 +381,33 @@ export async function change(query: Record<string, string>): Promise<boolean> {
   const stands = (portable.styles ?? []).some((style) => style.id === get().styleID);
   pickStyle(stands ? get().styleID : (portable.selectedStyleID ?? null));
   return true;
+}
+
+// MARK: - A new map
+
+async function madeBy(path: string, body?: BodyInit) {
+  let answer: Response;
+  try {
+    answer = await askEditing(path, "POST", body);
+  } catch {
+    away();
+    return false;
+  }
+  if (answer.status === 401) return false;
+  if (!answer.ok) {
+    notice(await answer.text());
+    return false;
+  }
+  const made: { id: string } = await answer.json();
+  await refreshDevice();
+  await pickMap(made.id, null);
+  return true;
+}
+
+export const makeMap = (name: string) => madeBy(`${ROOT}/new-map?${new URLSearchParams({ name })}`);
+
+export async function importMap(file: File) {
+  return madeBy(`${ROOT}/new-map`, await file.arrayBuffer());
 }
 
 export async function exportMap() {

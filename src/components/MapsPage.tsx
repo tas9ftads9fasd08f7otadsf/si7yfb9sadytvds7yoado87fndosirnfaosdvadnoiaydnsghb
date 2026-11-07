@@ -1,10 +1,10 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { checkKey, pickMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
+import { checkKey, importMap, makeMap, pickMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
 import { MarkTile } from "./ui/MarkTile";
 import { Switch } from "./ui/Switch";
 import { Sym } from "./ui/Sym";
@@ -127,6 +127,46 @@ function MapRow({ shared }: { shared: SharedMap }) {
   );
 }
 
+/** Only for a browser allowed to change maps: the phone makes it, and shares it at once. */
+function NewMap() {
+  const words = useViewer((state) => state.words);
+  const canEdit = useViewer((state) => state.editToken != null);
+  const [isNaming, setNaming] = useState(false);
+  const [name, setName] = useState("");
+  const file = useRef<HTMLInputElement>(null);
+  if (!canEdit) return null;
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!name.trim() || !(await makeMap(name))) return;
+    setName("");
+    setNaming(false);
+  };
+  const picked = async (event: ChangeEvent<HTMLInputElement>) => {
+    const chosen = event.target.files?.[0];
+    event.target.value = "";
+    if (chosen) await importMap(chosen);
+  };
+  return (
+    <div id="newMap" className="list">
+      {isNaming ? (
+        <form className="password" onSubmit={submit}>
+          <input id="newMapName" type="text" aria-label={words.name} placeholder={words.name} autoFocus
+            value={name} onChange={(event) => setName(event.target.value)} />
+          <button type="submit" className="action" id="newMapSave">{words.save}</button>
+        </form>
+      ) : (
+        <button type="button" className="row add" id="newMapButton" onClick={() => setNaming(true)}>
+          <Sym name="plus.circle.fill" />{words.newMap}
+        </button>
+      )}
+      <button type="button" className="row add" id="importMap" onClick={() => file.current?.click()}>
+        <Sym name="square.and.arrow.down" />{words.importMap}
+      </button>
+      <input ref={file} id="importFile" type="file" accept=".mapson,application/json" hidden onChange={picked} />
+    </div>
+  );
+}
+
 export function MapsPage() {
   const words = useViewer((state) => state.words);
   const device = useViewer((state) => state.device);
@@ -141,6 +181,7 @@ export function MapsPage() {
       <div id="others">
         {maps.length ? <h2 className="title">{words.allMaps}</h2> : null}
         {maps.length ? <div className="list">{maps.map((each) => <MapRow key={each.id} shared={each} />)}</div> : null}
+        <NewMap />
       </div>
     </>
   );
