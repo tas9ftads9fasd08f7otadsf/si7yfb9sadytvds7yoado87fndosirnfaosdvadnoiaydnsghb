@@ -146,7 +146,7 @@ export interface OptionChoice {
 }
 
 export interface OptionSection {
-  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants";
+  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "slider" | "values";
   title?: string;
   footnote?: string;
   layerScoped?: boolean;
@@ -160,6 +160,9 @@ export interface OptionSection {
   palette?: string[];
   automatic?: string;
   styles?: { id: string; name: string; variant: string }[];
+  /** A slider's least, most and step. */
+  range?: number[];
+  ends?: string[];
 }
 
 export interface LayerOptions {
