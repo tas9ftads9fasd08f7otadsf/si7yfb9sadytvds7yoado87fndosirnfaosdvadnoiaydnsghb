@@ -534,10 +534,10 @@ export function tickServerRow(key: string, pick: ServerPick) {
 }
 
 /** Sends what adds layers; the phone answers with the map, and the adding is over. */
-async function addedBy(path: string): Promise<boolean> {
+async function addedBy(path: string, body?: BodyInit): Promise<boolean> {
   let answer: Response;
   try {
-    answer = await askEditing(path);
+    answer = await askEditing(path, "POST", body);
   } catch {
     away();
     return false;
@@ -558,6 +558,19 @@ export async function addServerLayers() {
   const picks = [...get().serverPicks.values()];
   const query = new URLSearchParams({ picks: JSON.stringify(picks) });
   if (await addedBy(`${ROOT}/maps/${get().mapID}/add-server-layers?${query}`)) set({ serverPicks: new Map() });
+}
+
+/** The phone copies the file in as Add layer does, and draws it from there. */
+/** The most a request to the phone may carry. */
+export const FILE_LIMIT = 16 * 1024 * 1024;
+export const FILE_KINDS = ".geojson,.json,.kml,.kmz,.gpx,.pmtiles,.mbtiles";
+
+export async function addFile(file: File) {
+  if (file.size > FILE_LIMIT) {
+    notice(get().words.fileKinds);
+    return;
+  }
+  await addedBy(`${ROOT}/maps/${get().mapID}/add-file?${new URLSearchParams({ file: file.name })}`, await file.arrayBuffer());
 }
 
 /** The phone says what an address is; a service's layers are ticked first. */

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { PackageRow, ServerRow } from "@/lib/types";
-import { SERVER_KINDS, addPackages, addServer, addServerLayers, addServiceLayers, addTiles, loadPackages, loadServers, tickPackage,
+import { FILE_KINDS, SERVER_KINDS, addFile, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
+  loadPackages, loadServers, tickPackage,
   tickServerRow, tickServiceLayer, useViewer } from "@/store/viewer";
 import { MarkTile } from "../ui/MarkTile";
 import { Sym } from "../ui/Sym";
@@ -33,6 +34,38 @@ function TileAddress() {
       </div></div>
       <button type="button" className="action" id="addTiles" disabled={!address.trim()}
         onClick={() => addTiles(address.trim())}><Sym name="plus" />{words.add}</button>
+    </>
+  );
+}
+
+/** 2995 A file picked here or dropped on the map while Add layer is open. */
+function FileLayer() {
+  const words = useViewer((state) => state.words);
+  useEffect(() => {
+    const over = (event: DragEvent) => event.preventDefault();
+    const drop = (event: DragEvent) => {
+      const file = event.dataTransfer?.files[0];
+      if (!file) return;
+      event.preventDefault();
+      void addFile(file);
+    };
+    window.addEventListener("dragover", over);
+    window.addEventListener("drop", drop);
+    return () => {
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("drop", drop);
+    };
+  }, []);
+  return (
+    <>
+      <h2 className="title">{words.files}</h2>
+      <label className="action" htmlFor="layerFile"><Sym name="folder" />{words.chooseFile}</label>
+      <input type="file" id="layerFile" accept={FILE_KINDS} hidden onChange={(event) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (file) void addFile(file);
+      }} />
+      <div className="foot-note">{words.fileKinds}</div>
     </>
   );
 }
@@ -139,7 +172,7 @@ function Servers() {
   );
 }
 
-/** Add layer: the Riki packages, a tile address, and the phone's saved servers. */
+/** Add layer: the Riki packages, a tile address, a file, and the phone's saved servers. */
 export function AddLayer() {
   const words = useViewer((state) => state.words);
   const packages = useViewer((state) => state.packages);
@@ -160,6 +193,7 @@ export function AddLayer() {
       <button type="button" className="action" id="addPackages" disabled={adding.length === 0}
         onClick={() => addPackages(adding)}><Sym name="plus" />{words.add}</button>
       <TileAddress />
+      <FileLayer />
       {hasRead ? <ServiceLayers /> : null}
       <Servers />
       <NewServer />

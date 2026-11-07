@@ -43,7 +43,9 @@ export const ENGLISH = {
   iconTints: "", addLayer: "Add layer", whichPackages: "Which packages",
   tickPackages: "Tick every package this map should draw.", add: "Add", deleteLayer: "Delete layer",
   removeAsk: "Remove {name}?", layerOptions: "Options", export: "Export",
-  tileURL: "Tile URL", yourServers: "Your servers", noServers: "No server saved yet.",
+  tileURL: "Tile URL", files: "Files", chooseFile: "Choose a file",
+  fileKinds: "GeoJSON, KML, KMZ, GPX, PMTiles or MBTiles up to 16 MB. You can also drop it on the map.",
+  yourServers: "Your servers", noServers: "No server saved yet.",
   "TerrainControl.Enable": "3D relief, off", "TerrainControl.Disable": "3D relief, on",
   newServer: "New server", serverAddress: "Address", "serverKind.arcgis": "Esri / ArcGIS",
   "serverKind.tilejson": "TileJSON", "serverKind.tiles": "Tile server", "serverKind.mapproxy": "MapProxy"

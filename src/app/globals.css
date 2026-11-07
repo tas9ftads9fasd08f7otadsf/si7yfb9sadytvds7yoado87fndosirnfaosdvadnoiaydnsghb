@@ -128,6 +128,7 @@ button.row:disabled { opacity: 0.6; cursor: default; }
   height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--accent);
   font-weight: 600; width: calc(100% - 32px); }
 .action:hover { background: var(--hover); }
+label.action { cursor: pointer; }
 .password { display: grid; gap: 8px; margin: 14px 16px 16px; }
 .password label { font-size: 13px; color: var(--secondary); }
 .password input { font: 600 17px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.2em;

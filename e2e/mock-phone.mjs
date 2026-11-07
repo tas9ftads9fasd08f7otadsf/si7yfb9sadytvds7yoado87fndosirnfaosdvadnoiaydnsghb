@@ -589,6 +589,22 @@ async function answer(request, response) {
     each.revision += 1;
     return json(response, portable(each));
   }
+  if (method === "POST" && parts[4] === "add-file") {
+    // 2995: as `PeerWebAddFile` answers: DXF stays on the phone, an unreadable file is refused.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const file = url.searchParams.get("file") || "";
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString();
+    if (/\.dxf$/i.test(file)) return send(response, 409, "Add a DXF file on the phone: it asks for the drawing's coordinate system.");
+    if (!body.includes("Feature")) return send(response, 409, `${file} could not be read as a map layer.`);
+    const stem = file.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+    each.layers.push({ id: randomUUID().toUpperCase(), name: stem.charAt(0).toUpperCase() + stem.slice(1),
+      kind: "Files on this device", symbol: "folder", isEnabled: true });
+    each.revision += 1;
+    return json(response, portable(each));
+  }
   if (method === "POST" && parts[4] === "add-tiles") {
     // 2964: as `PeerWebAddTiles` answers: checked, then read, then added under its host's name.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
