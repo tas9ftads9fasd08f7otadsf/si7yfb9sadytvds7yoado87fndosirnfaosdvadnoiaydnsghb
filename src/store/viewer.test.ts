@@ -16,7 +16,7 @@ function answering(route: (url: string, init?: RequestInit) => Response) {
 }
 
 const control = () => ({ draw: vi.fn(), stopLive: vi.fn(), resize: vi.fn(), watchPhone: vi.fn(), showPhone: vi.fn(),
-  readRegions: vi.fn(), camera: vi.fn(), remove: vi.fn() }) satisfies MapControl;
+  readRegions: vi.fn(), camera: vi.fn(), snapshot: vi.fn(), remove: vi.fn() }) satisfies MapControl;
 
 beforeEach(() => {
   resetViewer();

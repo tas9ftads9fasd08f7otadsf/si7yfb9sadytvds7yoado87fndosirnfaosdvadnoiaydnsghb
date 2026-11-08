@@ -40,6 +40,8 @@ export const ENGLISH = {
   "search.state": "Search states", "search.city": "Search cities", foundAppleMaps: "Found with Apple Maps.",
   appearance: "Appearance", "theme.auto": "Automatic", "theme.light": "Light", "theme.dark": "Dark",
   styling: "Styling", icon: "Icon", background: "Background", pickColour: "Pick a colour", mapSymbols: "",
+  picture: "Picture", choosePicture: "Choose a picture for this icon", removePicture: "Remove the picture",
+  previewPicture: "Preview picture", takePreview: "Take", retakePreview: "Retake",
   iconTints: "", addLayer: "Add layer", whichPackages: "Which packages",
   tickPackages: "Tick every package this map should draw.", add: "Add", deleteLayer: "Delete layer",
   removeAsk: "Remove {name}?", layerOptions: "Options", export: "Export",

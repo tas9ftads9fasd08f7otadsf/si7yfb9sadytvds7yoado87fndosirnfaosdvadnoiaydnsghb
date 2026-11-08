@@ -64,3 +64,22 @@ test("Edit map sets the map dark, and the map is drawn dark", async ({ page }) =
   expect(style.layers[0].paint["background-color"]).toBe("#1d2a22");
   await expect(looks.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
 });
+
+// 3002: a chosen file becomes the icon's picture; the preview is the map as the browser draws it.
+test("Edit map sets the icon's picture and takes the preview", async ({ page, request }) => {
+  await openEdit(page);
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==",
+    "base64");
+  await page.locator("#iconPictureFile").setInputFiles({ name: "hut.png", mimeType: "image/png", buffer: png });
+  await expect(page.locator("[data-picture=icon]")).toBeVisible();
+  await page.getByRole("button", { name: "Remove the picture" }).click();
+  await expect(page.locator("[data-picture=icon]")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Take", exact: true }).click();
+  await expect(page.locator("[data-picture=preview]")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retake" })).toBeVisible();
+  const kinds = await (await request.get("/__test/pictures")).json();
+  expect(kinds[0]).toBe("icon:" + png.length);
+  expect(kinds[1]).toBe("icon:0");
+  expect(kinds[2]).toMatch(/^preview:[1-9]\d*$/);
+});
