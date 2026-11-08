@@ -576,6 +576,19 @@ async function addedBy(path: string, body?: BodyInit): Promise<boolean> {
   return true;
 }
 
+/** 3002: the icon's picture or the map's preview, read on the phone; none takes it away. */
+export async function setPicture(kind: "icon" | "preview", picture?: Blob | null) {
+  const { mapID } = get();
+  if (!mapID) return;
+  const body = picture ? await picture.arrayBuffer() : new ArrayBuffer(0);
+  if (await addedBy(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, body)) keepPictures(mapID, picturesOf(get().portable));
+}
+
+export async function takePreview() {
+  const shot = await mapControl()?.snapshot();
+  if (shot) await setPicture("preview", shot);
+}
+
 export async function addServerLayers() {
   const picks = [...get().serverPicks.values()];
   const query = new URLSearchParams({ picks: JSON.stringify(picks) });

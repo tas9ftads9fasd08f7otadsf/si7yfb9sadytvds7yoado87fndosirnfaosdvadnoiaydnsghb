@@ -40,7 +40,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false };
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [] };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
@@ -51,7 +51,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false };
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [] };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -338,7 +338,7 @@ function portable(each) {
   return { id: each.id, name: each.name, note: each.note, nameTranslations: each.nameTranslations,
     noteTranslations: each.noteTranslations, symbol: each.symbol, iconTintHex: each.iconTintHex,
     selectedStyleID: each.styles[0].id, styles: each.styles, start: each.start, coverage: each.coverage,
-    appearance: each.appearance,
+    appearance: each.appearance, iconPicture: each.iconPicture, previewPicture: each.previewPicture,
     stack: each.layers.map((layer) => ({ id: layer.id, name: layer.name, symbol: layer.symbol,
       isEnabled: layer.isEnabled, opacity: 1 })) };
 }
@@ -711,6 +711,21 @@ async function answer(request, response) {
     each.revision += 1;
     return json(response, portable(each));
   }
+  if (method === "POST" && parts[4] === "picture") {
+    // 3002: as `PeerWebPicture` answers: the phone reads it into a JPEG; none takes it away.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = Buffer.concat(chunks);
+    const kind = url.searchParams.get("kind");
+    if (!["icon", "preview"].includes(kind)) return send(response, 409, "That picture could not be read");
+    const isPicture = body.length === 0 || body[0] === 0xff || body[0] === 0x89;
+    if (!isPicture) return send(response, 409, "That picture could not be read");
+    each[kind + "Picture"] = body.length ? body.toString("base64") : undefined;
+    phone.pictureKinds.push(kind + ":" + body.length);
+    return json(response, portable(each));
+  }
   if (method === "POST" && parts[4] === "add-file") {
     // 2995: as `PeerWebAddFile` answers: DXF stays on the phone, an unreadable file is refused.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -814,6 +829,7 @@ function testControl(route, query, response) {
     break;
   case "/__test/answers-servers": phone.answersServers = true; break;
   case "/__test/identified": return json(response, phone.identified);
+  case "/__test/pictures": return json(response, phone.pictureKinds);
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);
     phone.regions.downloading = [];

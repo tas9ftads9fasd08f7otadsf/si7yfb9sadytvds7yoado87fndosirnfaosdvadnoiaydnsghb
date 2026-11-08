@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import type { Portable } from "@/lib/types";
 import { listed } from "@/lib/words";
-import { change, shownMapOf, useViewer } from "@/store/viewer";
+import { change, setPicture, shownMapOf, takePreview, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
 import { ground } from "../ui/ground";
@@ -57,6 +57,31 @@ export function Styling({ portable }: { portable: Portable }) {
             <Swatch key={hex} label={hex} isPicked={hex === tint} tint={hex} data={{ "data-hex": hex }}
               onPick={() => change({ iconTint: hex })} />
           ))}
+        </div>
+        <div className="field"><label>{words.picture}</label></div>
+        <div className="field pictured">
+          {portable.iconPicture ? <span className="shown" data-picture="icon"
+            style={{ backgroundImage: `url("data:image/jpeg;base64,${portable.iconPicture}")` }} /> : null}
+          <label className="action">{words.choosePicture}
+            <input type="file" accept="image/*" hidden id="iconPictureFile" onChange={(event) => {
+              const picked = event.target.files?.[0];
+              event.target.value = "";
+              if (picked) void setPicture("icon", picked);
+            }} />
+          </label>
+          {portable.iconPicture
+            ? <button type="button" className="action" onClick={() => void setPicture("icon")}>{words.removePicture}</button>
+            : null}
+        </div>
+        <div className="field"><label>{words.previewPicture}</label></div>
+        <div className="field pictured preview">
+          {portable.previewPicture ? <span className="shown" data-picture="preview"
+            style={{ backgroundImage: `url("data:image/jpeg;base64,${portable.previewPicture}")` }} /> : null}
+          <button type="button" className="action" id="takePreview" onClick={() => void takePreview()}>
+            {portable.previewPicture ? words.retakePreview : words.takePreview}</button>
+          {portable.previewPicture
+            ? <button type="button" className="action" onClick={() => void setPicture("preview")}>{words.remove}</button>
+            : null}
         </div>
       </div>
       <h2 className="title">{words.appearance}</h2>

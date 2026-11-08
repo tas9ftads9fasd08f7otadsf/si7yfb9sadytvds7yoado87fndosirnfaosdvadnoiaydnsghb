@@ -323,6 +323,11 @@ export function createMapView(container: HTMLElement): MapControl {
       if (phone.fix) map.easeTo({ center: [phone.fix.lon, phone.fix.lat], zoom: Math.max(map.getZoom(), 15) });
     },
     readRegions: () => void readRegions(),
+    // Read inside the frame drawn: the canvas keeps no copy after it.
+    snapshot: () => new Promise<Blob | null>((resolve) => {
+      map.once("render", () => map.getCanvas().toBlob(resolve, "image/jpeg", 0.85));
+      map.triggerRepaint();
+    }),
     camera() {
       const centre = map.getCenter();
       return { lat: centre.lat, lng: centre.lng, zoom: map.getZoom() };
