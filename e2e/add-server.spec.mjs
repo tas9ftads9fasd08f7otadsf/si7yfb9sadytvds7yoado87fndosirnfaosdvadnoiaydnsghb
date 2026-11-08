@@ -37,3 +37,20 @@ test("a server that does not answer says why", async ({ page }) => {
   await expect(page.locator("#notice")).toContainText("Server replied 404");
   await expect(page.locator("#serverAddress")).toHaveValue("https://silent.example.org/arcgis/rest/services");
 });
+
+// AP1E: a WMTS or WMS is a server of its own, read from its capabilities.
+test("New server offers WMTS and WMS, and a WMTS lists its layers", async ({ page }) => {
+  await openNewServer(page);
+  const kinds = await page.locator("#serverKind option").allTextContents();
+  expect(kinds).toEqual(["Esri / ArcGIS", "TileJSON", "Tile server", "WMTS", "WMS", "MapProxy"]);
+  await page.locator("#serverKind").selectOption("wmts");
+  await page.locator("#serverAddress").fill("https://wmts.geo.admin.ch/1.0.0/WMTSCapabilities.xml");
+  const asked = page.waitForRequest((request) => request.url().includes("/add-server?"));
+  await page.locator("#addServer").click();
+  expect(new URL((await asked).url()).searchParams.get("kind")).toBe("wmts");
+  const server = page.locator("[data-server]").filter({ hasText: "wmts.geo.admin.ch" });
+  await expect(server).toContainText("WMTS · 1 layer");
+  await server.locator("[data-layer='pixelkarte']").click();
+  await page.locator("#addServerLayers").click();
+  await expect(page.locator("#editBody input[value='National map']")).toHaveCount(1);
+});

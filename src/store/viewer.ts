@@ -529,7 +529,7 @@ export async function loadServers() {
 }
 
 /** The kinds a browser may add; an API server needs the phone's own form. */
-export const SERVER_KINDS = ["arcgis", "tilejson", "tiles", "mapproxy"] as const;
+export const SERVER_KINDS = ["arcgis", "tilejson", "tiles", "wmts", "wms", "mapproxy"] as const;
 
 /** The phone reads the address first and answers with its servers, the new one among them. */
 export async function addServer(kind: string, address: string, name: string): Promise<boolean> {
