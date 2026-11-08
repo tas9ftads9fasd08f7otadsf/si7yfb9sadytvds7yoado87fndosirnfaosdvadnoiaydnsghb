@@ -179,6 +179,38 @@ function lookSections(layer) {
       .map(([id, title]) => ({ id, title, detail: "" })) }];
 }
 
+// 2998: Edit layer's feature styling, as `PeerWebLayerOptions+Features` lists it for a drawn file.
+const FEATURE_SWITCHES = ["distinctColours", "grouping"];
+const FEATURE_KEYS = [...FEATURE_SWITCHES, "lineWidth", "valueShown", "allValuesShown", "valueTint"];
+const DRAWN_VALUES = ["Hiking", "Skiing"];
+
+function featureSections(layer) {
+  const shown = layer.shownValues || DRAWN_VALUES;
+  const every = shown.length === DRAWN_VALUES.length;
+  return [{ kind: "slider", title: "Line width", footnote: "", key: "lineWidth", layerScoped: true,
+    value: String(layer.lineWidthScale || 1), range: [0.5, 5, 0.25], ends: ["Hairline", "Bold"] },
+  { kind: "switch", title: "", footnote: "Tell overlapping features apart", key: "distinctColours",
+    label: "Distinct colours per feature", isOn: layer.distinctColours === true, layerScoped: true },
+  { kind: "values", title: "Colour by Kind", footnote: "", key: "valueShown", layerScoped: true,
+    label: every ? "None" : "All", value: every ? "0" : "1", palette: ["#E5533D", "#2E9E5B"],
+    items: DRAWN_VALUES.map((value) => ({ id: value, title: value, light: layer.valueTints?.[value] || "",
+      dark: layer.valueTints?.[value] || "", isOn: shown.includes(value) })) },
+  { kind: "switch", title: "Grouping", footnote: "A tap gathers every part sharing that name.", key: "grouping",
+    label: "Group features by name", isOn: layer.grouping === true, layerScoped: true }];
+}
+
+function editFeatures(layer, query, key) {
+  const value = query.get(key);
+  if (FEATURE_SWITCHES.includes(key)) layer[key] = value === "1";
+  if (key === "lineWidth") layer.lineWidthScale = Number(value);
+  if (key === "valueTint") layer.valueTints = { ...layer.valueTints, [value]: query.get("ink") || undefined };
+  const shown = new Set(layer.shownValues || DRAWN_VALUES);
+  if (key === "valueShown") { if (query.get("valueOn") === "1") shown.add(value); else shown.delete(value); }
+  if (key === "allValuesShown") { shown.clear(); if (value === "1") DRAWN_VALUES.forEach((one) => shown.add(one)); }
+  const kept = DRAWN_VALUES.filter((one) => shown.has(one));
+  layer.shownValues = kept.length === DRAWN_VALUES.length ? undefined : kept;
+}
+
 function layerOptions(each) {
   const hidden = (style) => style.adjustments?.hiddenSkiKinds || [];
   const anyDraws = (key) => each.styles.some((style) => style.adjustments?.[key] !== true);
@@ -196,7 +228,7 @@ function layerOptions(each) {
       { kind: "switch", title: "Trackside marks", footnote: "In every style of this map.", key: "railMarks",
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
     }
-    return [];
+    return layer.drawn ? featureSections(layer) : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
     .filter((layer) => layer.sections.length) };
@@ -299,7 +331,12 @@ function style(each, query) {
 function edit(each, query, response) {
   const adjust = (change) => each.styles.forEach((style) => { style.adjustments = change({ ...style.adjustments }); });
   const looked = query.has("layer") && LAYER_LOOKS.find((key) => query.has(key));
-  if (looked) {
+  const featured = query.has("layer") && FEATURE_KEYS.find((key) => query.has(key));
+  if (featured) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
+    editFeatures(layer, query, featured);
+  } else if (looked) {
     // 2962: as `PeerWebEdit.LayerLook` writes it onto the layer.
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer) return send(response, 404, "This change does not fit the map");
@@ -677,6 +714,10 @@ function testControl(route, query, response) {
         symbol: "figure.skiing.downhill", isEnabled: true, overlay: "ski" },
       { id: "6F1E2A10-0000-4000-8000-0000000000F2", name: "Railways", kind: "Riki Maps package",
         symbol: "tram", isEnabled: true, overlay: "railways" });
+    break;
+  case "/__test/drawn-file":
+    phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000D1", name: "Trails", kind: "GeoJSON",
+      symbol: "figure.walk", isEnabled: true, drawn: true });
     break;
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);
