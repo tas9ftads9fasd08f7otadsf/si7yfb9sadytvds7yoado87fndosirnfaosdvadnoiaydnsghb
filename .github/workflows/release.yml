@@ -3,7 +3,7 @@ name: Release
 # Every merge publishes a build; the app takes one by its tag, with tools/update-web-editor.sh.
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 permissions:
   contents: read
