@@ -40,7 +40,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [] };
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
@@ -51,7 +51,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [] };
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -663,6 +663,13 @@ async function answer(request, response) {
     return response.end(JSON.stringify({ $schema: "https://skifahrer.github.io/schemas/mapson.json",
       name: each.name, stack: portable(each).stack }));
   }
+  if (method === "GET" && parts[4] === "identify" && parts.length === 5) {
+    // 3001: as `PeerWebIdentify` answers: every feature of the first layer whose server knows one.
+    phone.identified.push(Object.fromEntries(url.searchParams));
+    return json(response, { answers: phone.answersServers ? [
+      { layer: "Geology", properties: { name: "Granite", age: "300 Ma" } },
+      { layer: "Geology", properties: { name: "Gneiss" } }] : [] });
+  }
   if (parts[4] === "layer-options" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -805,6 +812,8 @@ function testControl(route, query, response) {
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-00000000009E", name: "Bedrock", kind: "Esri",
       symbol: "map", isEnabled: true, esri: true });
     break;
+  case "/__test/answers-servers": phone.answersServers = true; break;
+  case "/__test/identified": return json(response, phone.identified);
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);
     phone.regions.downloading = [];
