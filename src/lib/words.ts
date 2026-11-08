@@ -47,7 +47,9 @@ export const ENGLISH = {
   fileKinds: "GeoJSON, KML, KMZ, GPX, PMTiles or MBTiles up to 16 MB. You can also drop it on the map.",
   yourServers: "Your servers", noServers: "No server saved yet.", exportServers: "Export servers",
   importServers: "Import servers",
-  "TerrainControl.Enable": "3D relief, off", "TerrainControl.Disable": "3D relief, on"
+  "TerrainControl.Enable": "3D relief, off", "TerrainControl.Disable": "3D relief, on",
+  newServer: "New server", serverAddress: "Address", "serverKind.arcgis": "Esri / ArcGIS",
+  "serverKind.tilejson": "TileJSON", "serverKind.tiles": "Tile server", "serverKind.mapproxy": "MapProxy"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;

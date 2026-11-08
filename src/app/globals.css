@@ -149,6 +149,10 @@ label.action { cursor: pointer; }
   background: var(--panel); color: inherit; }
 .field input[aria-invalid=true] { border-color: var(--danger); }
 .field .action { margin: 4px 0 0; width: 100%; }
+.field.slider input[type=range] { width: 100%; accent-color: var(--accent); }
+.field.slider .ends { display: flex; justify-content: space-between; color: var(--secondary); font-size: 12px; }
+.row .link { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; padding: 4px; }
+.row.value .swatches { padding: 0; }
 .field input[type=search] { width: 100%; font: inherit; padding: 5px 8px; border-radius: 6px;
   border: 1px solid var(--line); background: var(--panel); color: inherit; }
 .list.places { max-height: 280px; overflow: auto; }

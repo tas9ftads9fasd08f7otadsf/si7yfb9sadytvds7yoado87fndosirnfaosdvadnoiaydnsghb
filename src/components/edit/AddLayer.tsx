@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PackageRow, ServerRow } from "@/lib/types";
-import { FILE_KINDS, addFile, addPackages, exportServers, importServers, addServerLayers, addServiceLayers, addTiles, loadPackages, loadServers, tickPackage,
+import { FILE_KINDS, SERVER_KINDS, addFile, addPackages, addServer, addServerLayers, exportServers, importServers, addServiceLayers, addTiles,
+  loadPackages, loadServers, tickPackage,
   tickServerRow, tickServiceLayer, useViewer } from "@/store/viewer";
 import { MarkTile } from "../ui/MarkTile";
 import { Sym } from "../ui/Sym";
@@ -131,6 +132,39 @@ function ServerFiles() {
   );
 }
 
+/** 2996 A server named by its address; the phone reads it before saving it. */
+function NewServer() {
+  const words = useViewer((state) => state.words);
+  const [kind, setKind] = useState<string>(SERVER_KINDS[0]);
+  const [address, setAddress] = useState("");
+  const [name, setName] = useState("");
+  const [reading, setReading] = useState(false);
+  const submit = async () => {
+    setReading(true);
+    if (await addServer(kind, address.trim(), name.trim())) {
+      setAddress("");
+      setName("");
+    }
+    setReading(false);
+  };
+  return (
+    <>
+      <h2 className="title">{words.newServer}</h2>
+      <div className="card"><div className="field">
+        <select id="serverKind" aria-label={words.newServer} value={kind} onChange={(event) => setKind(event.target.value)}>
+          {SERVER_KINDS.map((each) => <option key={each} value={each}>{words[`serverKind.${each}`]}</option>)}
+        </select>
+        <input type="url" id="serverAddress" autoComplete="off" spellCheck={false} placeholder="https://…"
+          aria-label={words.serverAddress} value={address} onChange={(event) => setAddress(event.target.value)} />
+        <input type="text" id="serverName" autoComplete="off" placeholder={words.name} aria-label={words.name}
+          value={name} onChange={(event) => setName(event.target.value)} />
+      </div></div>
+      <button type="button" className="action" id="addServer" disabled={!address.trim() || reading}
+        onClick={() => void submit()}><Sym name="plus" />{words.newServer}</button>
+    </>
+  );
+}
+
 function Servers() {
   const words = useViewer((state) => state.words);
   const servers = useViewer((state) => state.servers);
@@ -184,6 +218,7 @@ export function AddLayer() {
       <FileLayer />
       {hasRead ? <ServiceLayers /> : null}
       <Servers />
+      <NewServer />
     </>
   );
 }
