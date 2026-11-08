@@ -6,11 +6,12 @@ import { FeatureCard } from "@/components/FeatureCard";
 import { drawable } from "@/lib/drawable";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY, ROOT, readJSON } from "@/lib/phone";
 import { regionOffer } from "@/lib/region";
-import type { Box, RegionList } from "@/lib/types";
+import type { Box, IdentifyListing, RegionList } from "@/lib/types";
 import { drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
 
 const PICK = 6;
+const MOST_ANSWERS = 20;
 const CUSTOM = "riki-custom-";
 
 export function createMapView(container: HTMLElement): MapControl {
@@ -258,18 +259,46 @@ export function createMapView(container: HTMLElement): MapControl {
   }
 
   let shownFeature: maplibregl.Popup | null = null;
+  function showFeatures(found: { properties: Record<string, unknown>; layer: string }[], at: maplibregl.LngLat) {
+    const card = document.createElement("div");
+    const root = createRoot(card);
+    flushSync(() => root.render(found.map((one, index) =>
+      <FeatureCard key={index} properties={one.properties} layer={one.layer} />)));
+    shownFeature = new maplibregl.Popup({ maxWidth: "360px", focusAfterOpen: false, closeButton: true })
+      .setLngLat(at).setDOMContent(card).addTo(map);
+    shownFeature.on("close", () => queueMicrotask(() => root.unmount()));
+    shownFeature.getElement().querySelector(".maplibregl-popup-close-button")?.setAttribute("aria-label", get().words.close);
+  }
+
+  // Empty ground is asked of the layers' servers, through the phone, as its own tap asks them.
+  let asking = 0;
+  async function askServers(at: maplibregl.LngLat) {
+    const { mapID, styleID } = get();
+    if (!mapID) return;
+    const asked = ++asking;
+    const seen = map.getBounds();
+    const canvas = map.getCanvas();
+    const query = new URLSearchParams({ lon: String(at.lng), lat: String(at.lat),
+      box: [seen.getWest(), seen.getSouth(), seen.getEast(), seen.getNorth()].join(","),
+      size: `${canvas.clientWidth},${canvas.clientHeight}` });
+    if (styleID) query.set("style", styleID);
+    let listing: IdentifyListing;
+    try {
+      listing = await readJSON<IdentifyListing>(`${ROOT}/maps/${mapID}/identify?${query}`);
+    } catch {
+      return;
+    }
+    if (asked !== asking || !listing.answers.length) return;
+    showFeatures(listing.answers.slice(0, MOST_ANSWERS), at);
+  }
+
   map.on("click", (event) => {
     const feature = featureAt(event.point);
     shownFeature?.remove();
     shownFeature = null;
-    if (!feature) return;
-    const card = document.createElement("div");
-    const root = createRoot(card);
-    flushSync(() => root.render(<FeatureCard properties={feature.properties ?? {}} layer={layerName(feature)} />));
-    shownFeature = new maplibregl.Popup({ maxWidth: "360px", focusAfterOpen: false, closeButton: true })
-      .setLngLat(event.lngLat).setDOMContent(card).addTo(map);
-    shownFeature.on("close", () => queueMicrotask(() => root.unmount()));
-    shownFeature.getElement().querySelector(".maplibregl-popup-close-button")?.setAttribute("aria-label", get().words.close);
+    asking += 1;
+    if (feature) showFeatures([{ properties: feature.properties ?? {}, layer: layerName(feature) }], event.lngLat);
+    else void askServers(event.lngLat);
   });
 
   // Once a frame at most: a wide style answers a query slower than a mouse moves.
@@ -294,6 +323,11 @@ export function createMapView(container: HTMLElement): MapControl {
       if (phone.fix) map.easeTo({ center: [phone.fix.lon, phone.fix.lat], zoom: Math.max(map.getZoom(), 15) });
     },
     readRegions: () => void readRegions(),
+    // Read inside the frame drawn: the canvas keeps no copy after it.
+    snapshot: () => new Promise<Blob | null>((resolve) => {
+      map.once("render", () => map.getCanvas().toBlob(resolve, "image/jpeg", 0.85));
+      map.triggerRepaint();
+    }),
     camera() {
       const centre = map.getCenter();
       return { lat: centre.lat, lng: centre.lng, zoom: map.getZoom() };

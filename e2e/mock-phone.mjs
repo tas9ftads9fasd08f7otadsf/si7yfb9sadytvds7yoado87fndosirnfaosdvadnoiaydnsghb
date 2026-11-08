@@ -40,7 +40,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [] };
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [] };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
@@ -51,7 +51,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [] };
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [] };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -179,6 +179,79 @@ function lookSections(layer) {
       .map(([id, title]) => ({ id, title, detail: "" })) }];
 }
 
+// 2998: Edit layer's feature styling, as `PeerWebLayerOptions+Features` lists it for a drawn file.
+const FEATURE_SWITCHES = ["distinctColours", "grouping"];
+const FEATURE_KEYS = [...FEATURE_SWITCHES, "lineWidth", "valueShown", "allValuesShown", "valueTint"];
+const DRAWN_VALUES = ["Hiking", "Skiing"];
+
+function featureSections(layer) {
+  const shown = layer.shownValues || DRAWN_VALUES;
+  const every = shown.length === DRAWN_VALUES.length;
+  return [{ kind: "slider", title: "Line width", footnote: "", key: "lineWidth", layerScoped: true,
+    value: String(layer.lineWidthScale || 1), range: [0.5, 5, 0.25], ends: ["Hairline", "Bold"] },
+  { kind: "switch", title: "", footnote: "Tell overlapping features apart", key: "distinctColours",
+    label: "Distinct colours per feature", isOn: layer.distinctColours === true, layerScoped: true },
+  { kind: "values", title: "Colour by Kind", footnote: "", key: "valueShown", layerScoped: true,
+    label: every ? "None" : "All", value: every ? "0" : "1", palette: ["#E5533D", "#2E9E5B"],
+    items: DRAWN_VALUES.map((value) => ({ id: value, title: value, light: layer.valueTints?.[value] || "",
+      dark: layer.valueTints?.[value] || "", isOn: shown.includes(value) })) },
+  { kind: "switch", title: "Grouping", footnote: "A tap gathers every part sharing that name.", key: "grouping",
+    label: "Group features by name", isOn: layer.grouping === true, layerScoped: true }];
+}
+
+function editFeatures(layer, query, key) {
+  const value = query.get(key);
+  if (FEATURE_SWITCHES.includes(key)) layer[key] = value === "1";
+  if (key === "lineWidth") layer.lineWidthScale = Number(value);
+  if (key === "valueTint") layer.valueTints = { ...layer.valueTints, [value]: query.get("ink") || undefined };
+  const shown = new Set(layer.shownValues || DRAWN_VALUES);
+  if (key === "valueShown") { if (query.get("valueOn") === "1") shown.add(value); else shown.delete(value); }
+  if (key === "allValuesShown") { shown.clear(); if (value === "1") DRAWN_VALUES.forEach((one) => shown.add(one)); }
+  const kept = DRAWN_VALUES.filter((one) => shown.has(one));
+  layer.shownValues = kept.length === DRAWN_VALUES.length ? undefined : kept;
+}
+
+// 2999: Edit layer's Connection, as `PeerWebLayerOptions+Network` lists it for a tile layer.
+const NETWORK_KEYS = ["connectionOverride", "offlineDownload", "connection"];
+const GROUPS = [["layerTiles", "Map tiles", "Tiles as you pan"], ["layerRefresh", "Refreshing", "Live answers"]];
+
+function networkSections(layer) {
+  const blocked = layer.blocked || [];
+  const over = layer.overrides === true;
+  return [{ kind: "switch", title: "Connection", footnote: over ? "On this map, these switches override Settings."
+    : "The switches apply to this layer on this map only.", key: "connectionOverride", label: "Override Settings",
+  isOn: over, layerScoped: true },
+  ...[["wifi", "Wi-Fi"], ["cellular", "Mobile data"]].map(([family, title]) => ({ kind: "connection", title,
+    footnote: "", family, layerScoped: true, items: GROUPS.map(([id, name, detail]) => {
+      const locked = family === "cellular" && id === "layerRefresh" && !over;
+      return { id, title: name, light: "", dark: "", isOn: !locked && !blocked.includes(family + "." + id),
+        detail: locked ? "Off in Settings for Mobile data" : detail, isLocked: locked };
+    }) })),
+  { kind: "switch", title: "Offline", footnote: "Check the source's terms first", key: "offlineDownload",
+    label: "Allow offline download", isOn: layer.allowsOffline !== false, layerScoped: true }];
+}
+
+function editNetwork(layer, query, key) {
+  if (key === "connectionOverride") { layer.overrides = query.get(key) === "1"; if (!layer.overrides) layer.blocked = []; }
+  if (key === "offlineDownload") layer.allowsOffline = query.get(key) === "1";
+  if (key === "connection") {
+    const named = query.get("connection") + "." + query.get("group");
+    const blocked = new Set(layer.blocked || []);
+    if (query.get("allowed") === "1") blocked.delete(named); else blocked.add(named);
+    layer.blocked = [...blocked];
+  }
+}
+
+// 3000: Edit layer's Questions, as `PeerWebLayerOptions+Questions` lists them for an Esri layer.
+const QUESTION_KEYS = ["answersFromServer", "identifyRequest"];
+
+function questionSections(layer) {
+  return [{ kind: "switch", title: "Questions", footnote: "Ask the service what is there", key: "answersFromServer",
+    label: "Answer taps from the server", isOn: layer.answersFromServer !== false, layerScoped: true },
+  { kind: "text", title: "Identify request", footnote: "Asked when the map is tapped.", key: "identifyRequest",
+    layerScoped: true, value: layer.identifyRequest || "" }];
+}
+
 // 3003: an API answering two vehicles, as `PeerWebAPI` reads one.
 function apiRead(query) {
   if (!/^https:\/\//.test(query.get("address") || "")) return null;
@@ -206,7 +279,7 @@ function layerOptions(each) {
       { kind: "switch", title: "Trackside marks", footnote: "In every style of this map.", key: "railMarks",
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
     }
-    return [];
+    return layer.drawn ? featureSections(layer) : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
     .filter((layer) => layer.sections.length) };
@@ -275,7 +348,7 @@ function portable(each) {
   return { id: each.id, name: each.name, note: each.note, nameTranslations: each.nameTranslations,
     noteTranslations: each.noteTranslations, symbol: each.symbol, iconTintHex: each.iconTintHex,
     selectedStyleID: each.styles[0].id, styles: each.styles, start: each.start, coverage: each.coverage,
-    appearance: each.appearance,
+    appearance: each.appearance, iconPicture: each.iconPicture, previewPicture: each.previewPicture,
     stack: each.layers.map((layer) => ({ id: layer.id, name: layer.name, symbol: layer.symbol,
       isEnabled: layer.isEnabled, opacity: 1 })) };
 }
@@ -309,7 +382,23 @@ function style(each, query) {
 function edit(each, query, response) {
   const adjust = (change) => each.styles.forEach((style) => { style.adjustments = change({ ...style.adjustments }); });
   const looked = query.has("layer") && LAYER_LOOKS.find((key) => query.has(key));
-  if (looked) {
+  const featured = query.has("layer") && FEATURE_KEYS.find((key) => query.has(key));
+  const asking = query.has("layer") && QUESTION_KEYS.find((key) => query.has(key));
+  const networked = query.has("layer") && NETWORK_KEYS.find((key) => query.has(key));
+  if (featured) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
+    editFeatures(layer, query, featured);
+  } else if (networked) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.net) return send(response, 404, "This change does not fit the map");
+    editNetwork(layer, query, networked);
+  } else if (asking) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.esri) return send(response, 404, "This change does not fit the map");
+    if (asking === "answersFromServer") layer.answersFromServer = query.get(asking) === "1";
+    else layer.identifyRequest = query.get(asking).trim() || undefined;
+  } else if (looked) {
     // 2962: as `PeerWebEdit.LayerLook` writes it onto the layer.
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer) return send(response, 404, "This change does not fit the map");
@@ -514,10 +603,49 @@ async function answer(request, response) {
     if (address.includes("silent")) return send(response, 409, "That WMS did not say what it publishes.");
     return json(response, WMS_READING);
   }
+  if (parts[2] === "servson" && parts.length === 3) {
+    // 2997: as `PeerWebServson` writes them, keys left on the phone.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    return send(response, 200, JSON.stringify({ _schemaVersion: 1, includesCredentials: false,
+      servers: SERVERS.map((server) => ({ name: server.name })) }), "application/json",
+      { "Content-Disposition": 'attachment; filename="Servers.servson"' });
+  }
+  if (parts[2] === "import-servers" && parts.length === 3) {
+    // 2997: only servers the phone lacks join; a file of none is refused.
+    if (method !== "POST") return send(response, 405, "");
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    let servers;
+    try {
+      servers = JSON.parse(Buffer.concat(chunks).toString()).servers;
+    } catch { servers = null; }
+    if (!Array.isArray(servers)) return send(response, 409, "That file holds no Riki Maps servers.");
+    for (const server of servers) {
+      if (SERVERS.some((held) => held.name === server.name)) continue;
+      phone.importedServers.push({ id: randomUUID().toUpperCase(), name: server.name, line: "Tiles", rows: [] });
+    }
+    return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
+  }
+  if (parts[2] === "add-server" && parts.length === 3) {
+    // 2996: as `PeerWebAddServer` answers: read first, then saved and listed with the rest.
+    if (method !== "POST") return send(response, 405, "");
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const address = url.searchParams.get("address") || "";
+    if (address.includes("silent")) return send(response, 409, "Server replied 404");
+    const id = randomUUID().toUpperCase();
+    const name = url.searchParams.get("name") || new URL(address).host;
+    phone.addedServers.push({ id, name, line: "Esri / ArcGIS · 1 service", rows: [
+      { kind: "layer", title: "Geology", subtitle: "Areas", depth: 0, pick: { server: id, layer: "0" } }] });
+    return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
+  }
   if (parts[2] === "servers" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
-    return json(response, { servers: SERVERS });
+    return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
   }
   if (parts[2] === "start-places" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -552,6 +680,13 @@ async function answer(request, response) {
     return response.end(JSON.stringify({ $schema: "https://skifahrer.github.io/schemas/mapson.json",
       name: each.name, stack: portable(each).stack }));
   }
+  if (method === "GET" && parts[4] === "identify" && parts.length === 5) {
+    // 3001: as `PeerWebIdentify` answers: every feature of the first layer whose server knows one.
+    phone.identified.push(Object.fromEntries(url.searchParams));
+    return json(response, { answers: phone.answersServers ? [
+      { layer: "Geology", properties: { name: "Granite", age: "300 Ma" } },
+      { layer: "Geology", properties: { name: "Gneiss" } }] : [] });
+  }
   if (parts[4] === "layer-options" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -584,7 +719,7 @@ async function answer(request, response) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     const picks = JSON.parse(url.searchParams.get("picks") || "[]");
-    const rows = SERVERS.flatMap((server) => server.rows).filter((row) => row.pick);
+    const rows = [...SERVERS, ...phone.addedServers].flatMap((server) => server.rows).filter((row) => row.pick);
     const found = picks.map((pick) => rows.find((row) => JSON.stringify(row.pick) === JSON.stringify(pick)))
       .filter(Boolean);
     if (!found.length) return send(response, 404, "This change does not fit the map");
@@ -602,6 +737,21 @@ async function answer(request, response) {
     each.layers.push({ id: randomUUID().toUpperCase(), name: url.searchParams.get("name") || read.name,
       kind: "API", symbol: "antenna.radiowaves.left.and.right", isEnabled: true });
     each.revision += 1;
+    return json(response, portable(each));
+  }
+  if (method === "POST" && parts[4] === "picture") {
+    // 3002: as `PeerWebPicture` answers: the phone reads it into a JPEG; none takes it away.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = Buffer.concat(chunks);
+    const kind = url.searchParams.get("kind");
+    if (!["icon", "preview"].includes(kind)) return send(response, 409, "That picture could not be read");
+    const isPicture = body.length === 0 || body[0] === 0xff || body[0] === 0x89;
+    if (!isPicture) return send(response, 409, "That picture could not be read");
+    each[kind + "Picture"] = body.length ? body.toString("base64") : undefined;
+    phone.pictureKinds.push(kind + ":" + body.length);
     return json(response, portable(each));
   }
   if (method === "POST" && parts[4] === "add-file") {
@@ -693,6 +843,21 @@ function testControl(route, query, response) {
       { id: "6F1E2A10-0000-4000-8000-0000000000F2", name: "Railways", kind: "Riki Maps package",
         symbol: "tram", isEnabled: true, overlay: "railways" });
     break;
+  case "/__test/drawn-file":
+    phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000D1", name: "Trails", kind: "GeoJSON",
+      symbol: "figure.walk", isEnabled: true, drawn: true });
+    break;
+  case "/__test/network-tiles":
+    phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000C1", name: "Aerial", kind: "Tiles",
+      symbol: "airplane", isEnabled: true, net: true });
+    break;
+  case "/__test/esri-layer":
+    phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-00000000009E", name: "Bedrock", kind: "Esri",
+      symbol: "map", isEnabled: true, esri: true });
+    break;
+  case "/__test/answers-servers": phone.answersServers = true; break;
+  case "/__test/identified": return json(response, phone.identified);
+  case "/__test/pictures": return json(response, phone.pictureKinds);
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);
     phone.regions.downloading = [];

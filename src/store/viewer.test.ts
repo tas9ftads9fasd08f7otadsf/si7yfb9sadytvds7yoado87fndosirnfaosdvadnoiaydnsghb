@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portable } from "@/lib/types";
 import { type MapControl, setMapControl } from "@/map/control";
-import { FILE_LIMIT, addFile, addPackages, applySession, change, checkKey, loadWords, notice, resetViewer, setLayerShown, tickPackage,
+import { FILE_LIMIT, addFile, addPackages, addServer, applySession, importServers, change, checkKey, loadWords, notice, resetViewer,
+  setLayerShown, tickPackage,
   useViewer } from "./viewer";
 
 const get = useViewer.getState;
@@ -16,7 +17,7 @@ function answering(route: (url: string, init?: RequestInit) => Response) {
 }
 
 const control = () => ({ draw: vi.fn(), stopLive: vi.fn(), resize: vi.fn(), watchPhone: vi.fn(), showPhone: vi.fn(),
-  readRegions: vi.fn(), camera: vi.fn(), remove: vi.fn() }) satisfies MapControl;
+  readRegions: vi.fn(), camera: vi.fn(), snapshot: vi.fn(), remove: vi.fn() }) satisfies MapControl;
 
 beforeEach(() => {
   resetViewer();
@@ -191,6 +192,29 @@ describe("the rest", () => {
   });
 });
 
+describe("addServer", () => {
+  beforeEach(() => useViewer.setState({ editToken: "t", mapID: "a", styleID: "s", portable, device }));
+
+  // 2996 kind, address and name go to the phone, and its servers replace the list
+  it("keeps the servers the phone answers with", async () => {
+    const servers = { servers: [{ id: "n", name: "Survey", line: "Esri / ArcGIS", rows: [] }] };
+    const fetcher = answering(() => json(servers));
+    expect(await addServer("arcgis", "https://gis.test/rest/services", "Survey")).toBe(true);
+    const [url, init] = fetcher.mock.calls[0]!;
+    expect(url).toContain("/add-server?kind=arcgis&address=https%3A%2F%2Fgis.test%2Frest%2Fservices&name=Survey");
+    expect(init?.method).toBe("POST");
+    expect(get().servers).toEqual(servers);
+  });
+
+  // 2996 the phone's reading failure is shown, and the list stays as it was
+  it("shows why the phone could not read it", async () => {
+    answering(() => new Response("Server replied 404", { status: 409 }));
+    expect(await addServer("tiles", "https://t.test/{z}/{x}/{y}.png", "")).toBe(false);
+    expect(get().notice).toBe("Server replied 404");
+    expect(get().servers).toBeNull();
+  });
+});
+
 describe("addFile", () => {
   beforeEach(() => useViewer.setState({ editToken: "t", mapID: "a", styleID: "s", portable, device }));
 
@@ -221,5 +245,27 @@ describe("addFile", () => {
     answering(() => new Response("plan.dxf stays on the phone", { status: 409 }));
     await addFile(new File(["0"], "plan.dxf"));
     expect(get().notice).toBe("plan.dxf stays on the phone");
+  });
+});
+
+describe("importServers", () => {
+  beforeEach(() => useViewer.setState({ editToken: "t", mapID: "a", styleID: "s", portable, device }));
+
+  // 2997 the file is the body, and the phone's whole list replaces the page's
+  it("posts the file and keeps the servers the phone answers with", async () => {
+    const servers = { servers: [{ id: "n", name: "Basemap.at", line: "Tiles", rows: [] }] };
+    const fetcher = answering(() => json(servers));
+    await importServers(new File(["{\"servers\":[]}"], "Mine.servson"));
+    const [url, init] = fetcher.mock.calls[0]!;
+    expect(url).toContain("/import-servers");
+    expect(init?.method).toBe("POST");
+    expect(get().servers).toEqual(servers);
+  });
+
+  // 2997 a refusal is said as the phone said it
+  it("shows what the phone refused", async () => {
+    answering(() => new Response("That file holds no Riki Maps servers.", { status: 409 }));
+    await importServers(new File(["{"], "x.servson"));
+    expect(get().notice).toBe("That file holds no Riki Maps servers.");
   });
 });

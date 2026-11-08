@@ -410,10 +410,32 @@ export async function importMap(file: File) {
   return madeBy(`${ROOT}/new-map`, await file.arrayBuffer());
 }
 
-export async function exportMap() {
+export const exportMap = () => saveFrom(`${ROOT}/maps/${get().mapID}/mapson`);
+
+/** 2997 The phone's servers as Share servers writes them, keys left on the phone. */
+export const exportServers = () => saveFrom(`${ROOT}/servson`);
+
+/** The phone adds the servers it lacks and answers with them all. */
+export async function importServers(file: File) {
   let answer: Response;
   try {
-    answer = await askEditing(`${ROOT}/maps/${get().mapID}/mapson`, "GET");
+    answer = await askEditing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer());
+  } catch {
+    away();
+    return;
+  }
+  if (answer.status === 401) return;
+  if (!answer.ok) {
+    notice(await answer.text());
+    return;
+  }
+  set({ servers: await answer.json() });
+}
+
+async function saveFrom(path: string) {
+  let answer: Response;
+  try {
+    answer = await askEditing(path, "GET");
   } catch {
     away();
     return;
@@ -506,6 +528,27 @@ export async function loadServers() {
   }
 }
 
+/** The kinds a browser may add; an API server needs the phone's own form. */
+export const SERVER_KINDS = ["arcgis", "tilejson", "tiles", "mapproxy"] as const;
+
+/** The phone reads the address first and answers with its servers, the new one among them. */
+export async function addServer(kind: string, address: string, name: string): Promise<boolean> {
+  let answer: Response;
+  try {
+    answer = await askEditing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`);
+  } catch {
+    away();
+    return false;
+  }
+  if (answer.status === 401) return false;
+  if (!answer.ok) {
+    notice(await answer.text());
+    return false;
+  }
+  set({ servers: await answer.json() });
+  return true;
+}
+
 export function tickServerRow(key: string, pick: ServerPick) {
   const serverPicks = new Map(get().serverPicks);
   if (!serverPicks.delete(key)) serverPicks.set(key, pick);
@@ -531,6 +574,19 @@ async function addedBy(path: string, body?: BodyInit): Promise<boolean> {
   await refreshDevice();
   pickStyle(get().styleID);
   return true;
+}
+
+/** 3002: the icon's picture or the map's preview, read on the phone; none takes it away. */
+export async function setPicture(kind: "icon" | "preview", picture?: Blob | null) {
+  const { mapID } = get();
+  if (!mapID) return;
+  const body = picture ? await picture.arrayBuffer() : new ArrayBuffer(0);
+  if (await addedBy(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, body)) keepPictures(mapID, picturesOf(get().portable));
+}
+
+export async function takePreview() {
+  const shot = await mapControl()?.snapshot();
+  if (shot) await setPicture("preview", shot);
 }
 
 /** 3003: the phone reads the API and guesses its keys, or reads them as the page picked. */
