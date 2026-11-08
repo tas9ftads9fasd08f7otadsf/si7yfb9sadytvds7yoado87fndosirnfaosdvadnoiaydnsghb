@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { openViewer, phone, reset } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -28,4 +28,21 @@ test("a clicked feature shows what it carries, as text", async ({ page }) => {
 
   await page.mouse.click(box.x + 20, box.y + 20);
   await expect(page.locator(".maplibregl-popup")).toHaveCount(0);
+});
+
+// 3001: empty ground is asked of the layers' servers through the phone, every answer shown.
+test("a click on empty ground shows what the servers answer", async ({ page, request }) => {
+  await phone(request, "answers-servers");
+  await openViewer(page);
+  const box = await page.locator("#map").boundingBox();
+  await page.mouse.click(box.x + box.width / 3, box.y + box.height / 3);
+
+  const cards = page.locator(".maplibregl-popup .feature");
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first().locator("b")).toHaveText("Granite");
+  await expect(cards.first().locator("small")).toHaveText("Geology");
+  const asked = (await phone(request, "identified"))[0];
+  expect(asked.box.split(",")).toHaveLength(4);
+  expect(asked.size).toMatch(/^\d+,\d+$/);
+  expect(Number(asked.lat)).toBeGreaterThan(-90);
 });

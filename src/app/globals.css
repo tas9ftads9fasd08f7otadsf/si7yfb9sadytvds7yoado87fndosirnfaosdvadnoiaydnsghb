@@ -106,6 +106,7 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 .row:hover { background: var(--hover); }
 .row .words { flex: 1; min-width: 0; }
 .row .words small { display: block; color: var(--secondary); font-size: 12px; }
+.row[data-locked] { opacity: 0.45; }
 button.row { width: 100%; border: 0; background: none; text-align: left; }
 button.row.picked { background: var(--fill); }
 button.row.part { padding-left: 28px; }
@@ -145,10 +146,16 @@ label.action { cursor: pointer; }
 .field { padding: 8px 14px; }
 .field label { display: block; font-size: 12px; color: var(--secondary); margin-bottom: 2px; }
 .field textarea { resize: vertical; min-height: 54px; }
+.card.options .field input[type=url] { width: 100%; font: inherit; padding: 5px 8px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--panel); color: inherit; }
 .field select { width: 100%; font: inherit; padding: 5px 4px; border-radius: 6px; border: 1px solid var(--line);
   background: var(--panel); color: inherit; }
 .field input[aria-invalid=true] { border-color: var(--danger); }
 .field .action { margin: 4px 0 0; width: 100%; }
+.field.slider input[type=range] { width: 100%; accent-color: var(--accent); }
+.field.slider .ends { display: flex; justify-content: space-between; color: var(--secondary); font-size: 12px; }
+.row .link { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; padding: 4px; }
+.row.value .swatches { padding: 0; }
 .field.pictured { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .field.pictured .shown { width: 44px; height: 44px; border-radius: 10px; background: center / cover; }
 .field.pictured.preview .shown { width: 100%; height: auto; aspect-ratio: 4 / 3; }
@@ -224,6 +231,7 @@ body.gated #gate { display: flex; }
 .maplibregl-popup-tip { display: none; }
 .maplibregl-popup-close-button { color: var(--secondary); font-size: 18px; padding: 2px 8px; }
 .feature b { display: block; font-size: 15px; padding-right: 22px; }
+.feature + .feature { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
 .feature small { display: block; color: var(--secondary); margin-bottom: 8px; }
 .feature dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px;
   max-height: 260px; overflow: auto; font-size: 12px; }

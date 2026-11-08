@@ -146,12 +146,13 @@ export interface OptionChoice {
 }
 
 export interface OptionSection {
-  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants";
+  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values";
   title?: string;
   footnote?: string;
   layerScoped?: boolean;
   family?: string;
-  items?: { id: string; title: string; light: string; dark: string; isOn: boolean }[];
+  items?: { id: string; title: string; light: string; dark: string; isOn: boolean; detail?: string;
+    isLocked?: boolean }[];
   key?: string;
   label?: string;
   isOn?: boolean;
@@ -160,6 +161,14 @@ export interface OptionSection {
   palette?: string[];
   automatic?: string;
   styles?: { id: string; name: string; variant: string }[];
+  /** A slider's least, most and step. */
+  range?: number[];
+  ends?: string[];
+}
+
+/** What the layers' servers said of a tap on empty ground, top layer's first. */
+export interface IdentifyListing {
+  answers: { layer: string; properties: Record<string, string> }[];
 }
 
 export interface LayerOptions {
