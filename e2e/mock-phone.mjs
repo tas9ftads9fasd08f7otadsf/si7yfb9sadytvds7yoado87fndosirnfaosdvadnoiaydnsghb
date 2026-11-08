@@ -40,7 +40,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [] };
+  tokens: new Set(), placeAsks: [], addedServers: [] };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
@@ -51,7 +51,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [] };
+    tokens: new Set(), placeAsks: [], addedServers: [] };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -497,10 +497,23 @@ async function answer(request, response) {
     if (address.includes("silent")) return send(response, 409, "That WMS did not say what it publishes.");
     return json(response, WMS_READING);
   }
+  if (parts[2] === "add-server" && parts.length === 3) {
+    // 2996: as `PeerWebAddServer` answers: read first, then saved and listed with the rest.
+    if (method !== "POST") return send(response, 405, "");
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const address = url.searchParams.get("address") || "";
+    if (address.includes("silent")) return send(response, 409, "Server replied 404");
+    const id = randomUUID().toUpperCase();
+    const name = url.searchParams.get("name") || new URL(address).host;
+    phone.addedServers.push({ id, name, line: "Esri / ArcGIS · 1 service", rows: [
+      { kind: "layer", title: "Geology", subtitle: "Areas", depth: 0, pick: { server: id, layer: "0" } }] });
+    return json(response, { servers: [...SERVERS, ...phone.addedServers] });
+  }
   if (parts[2] === "servers" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
-    return json(response, { servers: SERVERS });
+    return json(response, { servers: [...SERVERS, ...phone.addedServers] });
   }
   if (parts[2] === "start-places" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -567,7 +580,7 @@ async function answer(request, response) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     const picks = JSON.parse(url.searchParams.get("picks") || "[]");
-    const rows = SERVERS.flatMap((server) => server.rows).filter((row) => row.pick);
+    const rows = [...SERVERS, ...phone.addedServers].flatMap((server) => server.rows).filter((row) => row.pick);
     const found = picks.map((pick) => rows.find((row) => JSON.stringify(row.pick) === JSON.stringify(pick)))
       .filter(Boolean);
     if (!found.length) return send(response, 404, "This change does not fit the map");
