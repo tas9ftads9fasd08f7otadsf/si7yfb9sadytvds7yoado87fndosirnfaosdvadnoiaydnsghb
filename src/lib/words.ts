@@ -21,6 +21,7 @@ export const ENGLISH = {
   downloadRegion: "Download {region}", downloadingRegion: "Downloading {region}",
   regionNotOnPhone: "{region} is not downloaded on the phone",
   phoneHere: "Show where the phone is",
+  phoneNotShared: "Turn on “Share this phone's location” in the phone's Nearby sharing settings.",
   minimumVersion: "Minimum version", minimumApp: "App", minimumBrowser: "Browser viewer", anyVersion: "Any version",
   minimumNote: "The oldest app that can show this map.",
   versionShape: "Write up to three numbers joined by dots, like 0.18.0.",
