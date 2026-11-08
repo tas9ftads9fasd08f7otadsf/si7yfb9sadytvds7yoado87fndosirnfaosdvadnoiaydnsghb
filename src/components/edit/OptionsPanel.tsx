@@ -61,6 +61,14 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
       </div>
     );
   }
+  if (section.kind === "text") {
+    return (
+      <div className="field">
+        <CommitField type="url" value={section.value ?? ""} aria-label={section.title || key} spellCheck={false}
+          autoCapitalize="off" onCommit={(text) => setDrawn(scoped({ [key]: text }))} />
+      </div>
+    );
+  }
   if (section.kind === "colour") {
     return <ColourSwatches section={section} pick={(hex) => setDrawn(scoped({ [key]: hex }))} />;
   }
