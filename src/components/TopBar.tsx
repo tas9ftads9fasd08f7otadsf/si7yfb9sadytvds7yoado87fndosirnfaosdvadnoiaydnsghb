@@ -1,6 +1,5 @@
 "use client";
 
-import { mapControl } from "@/map/control";
 import { THEMES, nextTheme, pickStyle, shownMapOf, toggleSide, useViewer } from "@/store/viewer";
 import { Sym } from "./ui/Sym";
 
@@ -12,7 +11,6 @@ export function TopBar() {
   const styleID = useViewer((state) => state.styleID);
   const viewers = useViewer((state) => state.viewers);
   const sideShown = useViewer((state) => state.sideShown);
-  const sharesLocation = useViewer((state) => state.sharesLocation);
   const theme = useViewer((state) => state.theme);
   const sideLabel = `${sideShown ? words.hide : words.show} · ${words.maps} ( [ )`;
   const viewing = `${words.viewing}: ${viewers ?? ""}`;
@@ -35,10 +33,6 @@ export function TopBar() {
         style={{ display: viewers == null ? "none" : "inline-flex" }}>
         <Sym name="desktopcomputer" /><span id="viewerCount">{viewers}</span>
       </span>
-      <button id="phoneButton" className="tool" type="button" title={words.phoneHere} aria-label={words.phoneHere}
-        style={{ display: sharesLocation ? "inline-flex" : "none" }} onClick={() => mapControl()?.showPhone()}>
-        <Sym name="location.fill" />
-      </button>
       <button id="themeToggle" className="tool" type="button" title={themeLabel} aria-label={themeLabel}
         onClick={nextTheme}><Sym name={THEMES[theme]} /></button>
     </header>

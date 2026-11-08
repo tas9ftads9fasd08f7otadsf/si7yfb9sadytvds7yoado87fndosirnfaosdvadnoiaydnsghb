@@ -15,8 +15,12 @@ test("a phone sharing its location is a dot on the map, and its button goes ther
   await expect.poll(() => page.evaluate(() => __riki.map.getZoom())).toBeGreaterThanOrEqual(15);
 });
 
-test("a phone that does not share its location shows no dot and no button", async ({ page }) => {
+// 18 (AH6z): the button stays among the map's controls and says how to turn sharing on.
+test("a phone that does not share its location shows no dot, and its button says where to share", async ({ page }) => {
   await openViewer(page);
-  await expect(page.locator("#phoneButton")).toBeHidden();
   await expect(page.locator(".phone-dot")).toHaveCount(0);
+  const button = page.locator(".maplibregl-ctrl-top-right #phoneButton");
+  await expect(button).toBeVisible();
+  await button.click();
+  await expect(page.getByText("Share this phone's location")).toBeVisible();
 });

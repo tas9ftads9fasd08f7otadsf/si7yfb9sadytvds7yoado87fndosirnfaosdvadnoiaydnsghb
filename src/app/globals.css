@@ -54,7 +54,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 #viewers { display: none; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px;
   background: var(--fill); font-weight: 600; font-variant-numeric: tabular-nums; }
 #viewers .sym { font-size: 15px; }
-#phoneButton { display: none; }
 .phone-dot { width: 18px; height: 18px; border-radius: 50%; background: #0a84ff; border: 3px solid #ffffff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 1px 4px rgba(0, 0, 0, 0.35); }
 

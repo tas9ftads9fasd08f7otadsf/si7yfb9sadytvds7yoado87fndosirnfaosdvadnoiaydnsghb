@@ -30,6 +30,22 @@ export function createMapView(container: HTMLElement): MapControl {
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
   map.addControl(new maplibregl.FullscreenControl(), "top-right");
+  // Among the map's own controls, where a browser's location button is looked for.
+  const phoneButton = document.createElement("button");
+  phoneButton.id = "phoneButton";
+  phoneButton.type = "button";
+  phoneButton.className = "maplibregl-ctrl-geolocate";
+  phoneButton.title = words.phoneHere;
+  phoneButton.setAttribute("aria-label", words.phoneHere);
+  phoneButton.innerHTML = '<span class="maplibregl-ctrl-icon" aria-hidden="true"></span>';
+  phoneButton.addEventListener("click", () => {
+    if (!get().sharesLocation) notice(get().words.phoneNotShared);
+    else showPhone();
+  });
+  const phoneGroup = document.createElement("div");
+  phoneGroup.className = "maplibregl-ctrl maplibregl-ctrl-group";
+  phoneGroup.append(phoneButton);
+  map.addControl({ onAdd: () => phoneGroup, onRemove: () => phoneGroup.remove() }, "top-right");
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 140 }), "bottom-left");
 
   // The zoom on the map, where the app shows it.
@@ -92,6 +108,10 @@ export function createMapView(container: HTMLElement): MapControl {
       phone.marker.getElement().setAttribute("aria-label", get().device?.name ?? "");
     } catch { /* no place yet, asked again */ }
     phone.timer = setTimeout(askPhone, PHONE_EVERY);
+  }
+
+  function showPhone() {
+    if (phone.fix) map.easeTo({ center: [phone.fix.lon, phone.fix.lat], zoom: Math.max(map.getZoom(), 15) });
   }
 
   function watchPhone(isShared: boolean) {
@@ -319,9 +339,7 @@ export function createMapView(container: HTMLElement): MapControl {
     resize: () => map.resize(),
     stopLive: () => clearTimeout(liveTimer),
     watchPhone,
-    showPhone() {
-      if (phone.fix) map.easeTo({ center: [phone.fix.lon, phone.fix.lat], zoom: Math.max(map.getZoom(), 15) });
-    },
+    showPhone,
     readRegions: () => void readRegions(),
     // Read inside the frame drawn: the canvas keeps no copy after it.
     snapshot: () => new Promise<Blob | null>((resolve) => {
