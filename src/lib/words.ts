@@ -39,6 +39,8 @@ export const ENGLISH = {
   excludedRow: "Excluded", includedRow: "Included", opensDownloaded: "The map opens once these are downloaded.",
   "search.state": "Search states", "search.city": "Search cities", foundAppleMaps: "Found with Apple Maps.",
   appearance: "Appearance", "theme.auto": "Automatic", "theme.light": "Light", "theme.dark": "Dark",
+  apiLayers: "API layers", apiAddress: "Address", apiRead: "Read", itemsPath: "Where the items are", bothIn: "Both in",
+  coordinates: "Coordinates",
   styling: "Styling", icon: "Icon", background: "Background", pickColour: "Pick a colour", mapSymbols: "",
   picture: "Picture", choosePicture: "Choose a picture for this icon", removePicture: "Remove the picture",
   previewPicture: "Preview picture", takePreview: "Take", retakePreview: "Retake",

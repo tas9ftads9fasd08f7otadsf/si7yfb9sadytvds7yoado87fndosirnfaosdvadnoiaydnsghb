@@ -4,7 +4,7 @@ import { EDIT_CHECK, HEARTBEAT_EVERY, ROOT, SESSION, THEME_KEY, TOKEN_KEY, readJ
   from "@/lib/phone";
 import { BY_NAME, startQuery } from "@/lib/places";
 import type { RegionOffer } from "@/lib/region";
-import type { Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
+import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, WORDS_PATH, type Words, readPhoneWords } from "@/lib/words";
@@ -587,6 +587,30 @@ export async function setPicture(kind: "icon" | "preview", picture?: Blob | null
 export async function takePreview() {
   const shot = await mapControl()?.snapshot();
   if (shot) await setPicture("preview", shot);
+}
+
+/** 3003: the phone reads the API and guesses its keys, or reads them as the page picked. */
+export async function readAPI(address: string, reading?: APIReading | null): Promise<APIRead | null> {
+  const query = new URLSearchParams({ address });
+  if (reading) query.set("reading", JSON.stringify(reading));
+  let read: Response;
+  try {
+    read = await askEditing(`${ROOT}/read-api?${query}`, "GET");
+  } catch {
+    away();
+    return null;
+  }
+  if (read.status === 401) return null;
+  if (!read.ok) {
+    notice(await read.text());
+    return null;
+  }
+  return read.json();
+}
+
+export async function addAPI(address: string, reading: APIReading, name: string) {
+  const query = new URLSearchParams({ address, reading: JSON.stringify(reading), name });
+  return addedBy(`${ROOT}/maps/${get().mapID}/add-api?${query}`);
 }
 
 export async function addServerLayers() {

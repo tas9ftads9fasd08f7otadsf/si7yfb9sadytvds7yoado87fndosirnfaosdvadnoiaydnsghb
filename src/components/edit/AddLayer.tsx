@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { PackageRow, ServerRow } from "@/lib/types";
-import { FILE_KINDS, SERVER_KINDS, addFile, addPackages, addServer, addServerLayers, exportServers, importServers, addServiceLayers, addTiles,
-  loadPackages, loadServers, tickPackage,
-  tickServerRow, tickServiceLayer, useViewer } from "@/store/viewer";
+import type { APIRead, APIReading, PackageRow, ServerRow } from "@/lib/types";
+import { FILE_KINDS, SERVER_KINDS, addAPI, addFile, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
+  exportServers, importServers, loadPackages, loadServers, readAPI, tickPackage, tickServerRow, tickServiceLayer,
+  useViewer } from "@/store/viewer";
 import { MarkTile } from "../ui/MarkTile";
 import { Sym } from "../ui/Sym";
 
@@ -34,6 +34,68 @@ function TileAddress() {
       </div></div>
       <button type="button" className="action" id="addTiles" disabled={!address.trim()}
         onClick={() => addTiles(address.trim())}><Sym name="plus" />{words.add}</button>
+    </>
+  );
+}
+
+function KeyPicker({ id, label, value, keys, onPick, offersNone = false }: { id: string; label: string;
+  value: string; keys: string[]; onPick: (key: string) => void; offersNone?: boolean }) {
+  return (
+    <div className="field"><label htmlFor={id}>{label}</label>
+      <select id={id} value={value} onChange={(event) => onPick(event.target.value)}>
+        {offersNone || !keys.includes(value) ? <option value="">—</option> : null}
+        {keys.map((key) => <option key={key} value={key}>{key || "·"}</option>)}
+      </select>
+    </div>
+  );
+}
+
+/** 3003: an API read on the phone, its keys guessed there and picked here. */
+function APILayer() {
+  const words = useViewer((state) => state.words);
+  const [address, setAddress] = useState("");
+  const [read, setRead] = useState<APIRead | null>(null);
+  const ask = async (reading?: APIReading | null) => setRead(await readAPI(address.trim(), reading));
+  const reading = read?.reading;
+  const pick = (change: Partial<APIReading>) => {
+    if (reading) void ask({ ...reading, ...change });
+  };
+  const keys = read?.keys ?? [];
+  return (
+    <>
+      <h2 className="title">{words.apiLayers}</h2>
+      <div className="card" id="apiCard">
+        <div className="field">
+          <input type="url" id="apiAddress" autoComplete="off" spellCheck={false} placeholder="https://…"
+            aria-label={words.apiAddress} value={address} onChange={(event) => {
+              setAddress(event.target.value);
+              setRead(null);
+            }} />
+        </div>
+        {read && reading ? (
+          <>
+            <KeyPicker id="apiItemsPath" label={words.itemsPath} value={reading.itemsPath} keys={read.paths}
+              onPick={(itemsPath) => pick({ itemsPath, latitudeKey: "", longitudeKey: "", positionKey: "" })} />
+            {reading.spelling === "position"
+              ? <KeyPicker id="apiPosition" label={words.bothIn} value={reading.positionKey} keys={keys}
+                onPick={(positionKey) => pick({ positionKey })} />
+              : <>
+                <KeyPicker id="apiLatitude" label={words.latitude} value={reading.latitudeKey} keys={keys}
+                  onPick={(latitudeKey) => pick({ latitudeKey })} />
+                <KeyPicker id="apiLongitude" label={words.longitude} value={reading.longitudeKey} keys={keys}
+                  onPick={(longitudeKey) => pick({ longitudeKey })} />
+              </>}
+            <KeyPicker id="apiName" label={words.name} value={reading.nameKey ?? ""} keys={keys} offersNone
+              onPick={(nameKey) => pick({ nameKey: nameKey || null })} />
+            <div className="foot-note" id="apiSaid">{read.said}</div>
+          </>
+        ) : null}
+      </div>
+      {read && reading
+        ? <button type="button" className="action" id="addAPI" disabled={!read.points}
+          onClick={() => void addAPI(address.trim(), reading, read.name)}><Sym name="plus" />{words.add}</button>
+        : <button type="button" className="action" id="readAPI" disabled={!address.trim()}
+          onClick={() => void ask()}>{words.apiRead}</button>}
     </>
   );
 }
@@ -216,6 +278,7 @@ export function AddLayer() {
         onClick={() => addPackages(adding)}><Sym name="plus" />{words.add}</button>
       <TileAddress />
       <FileLayer />
+      <APILayer />
       {hasRead ? <ServiceLayers /> : null}
       <Servers />
       <NewServer />

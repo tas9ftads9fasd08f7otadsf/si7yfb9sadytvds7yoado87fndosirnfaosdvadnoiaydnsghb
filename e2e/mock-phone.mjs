@@ -252,6 +252,16 @@ function questionSections(layer) {
     layerScoped: true, value: layer.identifyRequest || "" }];
 }
 
+// 3003: an API answering two vehicles, as `PeerWebAPI` reads one.
+function apiRead(query) {
+  if (!/^https:\/\//.test(query.get("address") || "")) return null;
+  const reading = query.has("reading") ? JSON.parse(query.get("reading"))
+    : { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "", nameKey: "line" };
+  const keys = reading.itemsPath === "vehicles" ? ["lat", "lon", "line"] : [];
+  const points = keys.includes(reading.latitudeKey) && keys.includes(reading.longitudeKey) ? 2 : 0;
+  return { reading, paths: ["vehicles", "stops"], keys, points, name: "buses.example", said: `Answered · ${points} points` };
+}
+
 function layerOptions(each) {
   const hidden = (style) => style.adjustments?.hiddenSkiKinds || [];
   const anyDraws = (key) => each.styles.some((style) => style.adjustments?.[key] !== true);
@@ -577,6 +587,13 @@ async function answer(request, response) {
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     return json(response, COVERAGE_PLACES);
   }
+  if (parts[2] === "read-api" && parts.length === 3) {
+    // 3003: as `PeerWebAPI.read` answers: the vehicles list guessed, or read as the page picked.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const read = apiRead(url.searchParams);
+    return read ? json(response, read) : send(response, 409, "That is not an address this app can ask.");
+  }
   if (parts[2] === "read-address" && parts.length === 3) {
     // 2967: as `PeerWebServices.reading`: an Esri WMS façade lists its layers; the rest is added as it is.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -708,6 +725,17 @@ async function answer(request, response) {
     if (!found.length) return send(response, 404, "This change does not fit the map");
     each.layers.push(...found.map((row) => ({ id: randomUUID().toUpperCase(), name: row.title,
       kind: "From a server", symbol: "server.rack", isEnabled: true })));
+    each.revision += 1;
+    return json(response, portable(each));
+  }
+  if (method === "POST" && parts[4] === "add-api") {
+    // 3003: as `PeerWebAPI.edit`: nothing is added that would draw no point.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const read = apiRead(url.searchParams);
+    if (!read?.points) return send(response, 409, "None of those items had a coordinate this app could read.");
+    each.layers.push({ id: randomUUID().toUpperCase(), name: url.searchParams.get("name") || read.name,
+      kind: "API", symbol: "antenna.radiowaves.left.and.right", isEnabled: true });
     each.revision += 1;
     return json(response, portable(each));
   }

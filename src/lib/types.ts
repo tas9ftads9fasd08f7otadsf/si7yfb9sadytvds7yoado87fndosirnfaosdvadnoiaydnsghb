@@ -171,6 +171,27 @@ export interface IdentifyListing {
   answers: { layer: string; properties: Record<string, string> }[];
 }
 
+/** The keys Add layer's API page reads; the rest of the phone's reading travels as it is. */
+export interface APIReading {
+  itemsPath: string;
+  spelling: string;
+  latitudeKey: string;
+  longitudeKey: string;
+  positionKey: string;
+  nameKey?: string | null;
+  [other: string]: unknown;
+}
+
+/** 3003: what the phone read of an API, and the reading it would add. */
+export interface APIRead {
+  reading: APIReading | null;
+  paths: string[];
+  keys: string[];
+  points: number;
+  name: string;
+  said: string;
+}
+
 export interface LayerOptions {
   layers: { id: string; sections: OptionSection[] }[];
 }
