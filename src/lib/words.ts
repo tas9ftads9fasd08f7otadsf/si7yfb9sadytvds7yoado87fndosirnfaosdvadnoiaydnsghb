@@ -53,7 +53,8 @@ export const ENGLISH = {
   importServers: "Import servers",
   "TerrainControl.Enable": "3D relief, off", "TerrainControl.Disable": "3D relief, on",
   newServer: "New server", serverAddress: "Address", "serverKind.arcgis": "Esri / ArcGIS",
-  "serverKind.tilejson": "TileJSON", "serverKind.tiles": "Tile server", "serverKind.mapproxy": "MapProxy"
+  "serverKind.tilejson": "TileJSON", "serverKind.tiles": "Tile server",
+  "serverKind.wmts": "WMTS", "serverKind.wms": "WMS", "serverKind.mapproxy": "MapProxy"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;

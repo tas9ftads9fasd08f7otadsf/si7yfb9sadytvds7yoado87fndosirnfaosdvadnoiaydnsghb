@@ -344,6 +344,10 @@ function startPlaces(kind, wanted) {
     box: { minLon: 20.2, minLat: 49.0, maxLon: 20.4, maxLat: 49.1 } }, title: "Poprad", detail: "Slovakia" }];
 }
 
+// As `PeerWebAddServer.kinds`; an API needs the phone's own form.
+const SERVER_KIND_LINES = { arcgis: "Esri / ArcGIS · 1 service", tilejson: "TileJSON · 1 layer",
+  tiles: "Tile server · 1 layer", wmts: "WMTS · 1 layer", wms: "WMS · 1 layer", mapproxy: "MapProxy · 1 layer" };
+
 function portable(each) {
   return { id: each.id, name: each.name, note: each.note, nameTranslations: each.nameTranslations,
     noteTranslations: each.noteTranslations, symbol: each.symbol, iconTintHex: each.iconTintHex,
@@ -654,10 +658,14 @@ async function answer(request, response) {
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     const address = url.searchParams.get("address") || "";
     if (address.includes("silent")) return send(response, 409, "Server replied 404");
+    const kind = url.searchParams.get("kind");
+    if (!SERVER_KIND_LINES[kind]) return send(response, 400, "");
     const id = randomUUID().toUpperCase();
     const name = url.searchParams.get("name") || new URL(address).host;
-    phone.addedServers.push({ id, name, line: "Esri / ArcGIS · 1 service", rows: [
-      { kind: "layer", title: "Geology", subtitle: "Areas", depth: 0, pick: { server: id, layer: "0" } }] });
+    const ogc = kind === "wmts" || kind === "wms";
+    phone.addedServers.push({ id, name, line: SERVER_KIND_LINES[kind], rows: [
+      { kind: "layer", title: ogc ? "National map" : "Geology", subtitle: ogc ? kind.toUpperCase() : "Areas", depth: 0,
+        pick: { server: id, layer: ogc ? "pixelkarte" : "0" } }] });
     return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
   }
   if (parts[2] === "servers" && parts.length === 3) {
