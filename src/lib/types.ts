@@ -162,6 +162,11 @@ export interface OptionSection {
   styles?: { id: string; name: string; variant: string }[];
 }
 
+/** What the layers' servers said of a tap on empty ground, top layer's first. */
+export interface IdentifyListing {
+  answers: { layer: string; properties: Record<string, string> }[];
+}
+
 export interface LayerOptions {
   layers: { id: string; sections: OptionSection[] }[];
 }

@@ -219,6 +219,7 @@ body.gated #gate { display: flex; }
 .maplibregl-popup-tip { display: none; }
 .maplibregl-popup-close-button { color: var(--secondary); font-size: 18px; padding: 2px 8px; }
 .feature b { display: block; font-size: 15px; padding-right: 22px; }
+.feature + .feature { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
 .feature small { display: block; color: var(--secondary); margin-bottom: 8px; }
 .feature dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px;
   max-height: 260px; overflow: auto; font-size: 12px; }
