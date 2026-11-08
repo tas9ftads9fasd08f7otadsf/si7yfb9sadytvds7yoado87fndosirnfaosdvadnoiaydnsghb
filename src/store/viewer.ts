@@ -410,10 +410,32 @@ export async function importMap(file: File) {
   return madeBy(`${ROOT}/new-map`, await file.arrayBuffer());
 }
 
-export async function exportMap() {
+export const exportMap = () => saveFrom(`${ROOT}/maps/${get().mapID}/mapson`);
+
+/** 2997 The phone's servers as Share servers writes them, keys left on the phone. */
+export const exportServers = () => saveFrom(`${ROOT}/servson`);
+
+/** The phone adds the servers it lacks and answers with them all. */
+export async function importServers(file: File) {
   let answer: Response;
   try {
-    answer = await askEditing(`${ROOT}/maps/${get().mapID}/mapson`, "GET");
+    answer = await askEditing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer());
+  } catch {
+    away();
+    return;
+  }
+  if (answer.status === 401) return;
+  if (!answer.ok) {
+    notice(await answer.text());
+    return;
+  }
+  set({ servers: await answer.json() });
+}
+
+async function saveFrom(path: string) {
+  let answer: Response;
+  try {
+    answer = await askEditing(path, "GET");
   } catch {
     away();
     return;
@@ -504,6 +526,27 @@ export async function loadServers() {
   } finally {
     busy.servers = false;
   }
+}
+
+/** The kinds a browser may add; an API server needs the phone's own form. */
+export const SERVER_KINDS = ["arcgis", "tilejson", "tiles", "mapproxy"] as const;
+
+/** The phone reads the address first and answers with its servers, the new one among them. */
+export async function addServer(kind: string, address: string, name: string): Promise<boolean> {
+  let answer: Response;
+  try {
+    answer = await askEditing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`);
+  } catch {
+    away();
+    return false;
+  }
+  if (answer.status === 401) return false;
+  if (!answer.ok) {
+    notice(await answer.text());
+    return false;
+  }
+  set({ servers: await answer.json() });
+  return true;
 }
 
 export function tickServerRow(key: string, pick: ServerPick) {
