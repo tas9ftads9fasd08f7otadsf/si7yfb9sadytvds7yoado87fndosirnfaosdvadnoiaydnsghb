@@ -106,6 +106,7 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 .row:hover { background: var(--hover); }
 .row .words { flex: 1; min-width: 0; }
 .row .words small { display: block; color: var(--secondary); font-size: 12px; }
+.row[data-locked] { opacity: 0.45; }
 button.row { width: 100%; border: 0; background: none; text-align: left; }
 button.row.picked { background: var(--fill); }
 button.row.part { padding-left: 28px; }

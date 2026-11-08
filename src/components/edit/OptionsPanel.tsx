@@ -86,6 +86,15 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
       </div>
     ));
   }
+  if (section.kind === "connection") {
+    return (section.items ?? []).map((item) => (
+      <div className="row" key={item.id} data-locked={item.isLocked ? "" : undefined}>
+        <span className="words">{item.title}<small>{item.detail}</small></span>
+        <Switch isOn={item.isOn} label={item.title} isLocked={item.isLocked} onChange={(isOn) =>
+          setDrawn(scoped({ connection: section.family ?? "", group: item.id, allowed: isOn ? "1" : "0" }))} />
+      </div>
+    ));
+  }
   if (section.kind === "switch") {
     return (
       <div className="row"><span className="words">{section.label}</span>

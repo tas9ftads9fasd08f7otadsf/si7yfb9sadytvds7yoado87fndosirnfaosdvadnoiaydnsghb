@@ -146,12 +146,13 @@ export interface OptionChoice {
 }
 
 export interface OptionSection {
-  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "slider" | "values";
+  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "connection" | "slider" | "values";
   title?: string;
   footnote?: string;
   layerScoped?: boolean;
   family?: string;
-  items?: { id: string; title: string; light: string; dark: string; isOn: boolean }[];
+  items?: { id: string; title: string; light: string; dark: string; isOn: boolean; detail?: string;
+    isLocked?: boolean }[];
   key?: string;
   label?: string;
   isOn?: boolean;

@@ -211,6 +211,37 @@ function editFeatures(layer, query, key) {
   layer.shownValues = kept.length === DRAWN_VALUES.length ? undefined : kept;
 }
 
+// 2999: Edit layer's Connection, as `PeerWebLayerOptions+Network` lists it for a tile layer.
+const NETWORK_KEYS = ["connectionOverride", "offlineDownload", "connection"];
+const GROUPS = [["layerTiles", "Map tiles", "Tiles as you pan"], ["layerRefresh", "Refreshing", "Live answers"]];
+
+function networkSections(layer) {
+  const blocked = layer.blocked || [];
+  const over = layer.overrides === true;
+  return [{ kind: "switch", title: "Connection", footnote: over ? "On this map, these switches override Settings."
+    : "The switches apply to this layer on this map only.", key: "connectionOverride", label: "Override Settings",
+  isOn: over, layerScoped: true },
+  ...[["wifi", "Wi-Fi"], ["cellular", "Mobile data"]].map(([family, title]) => ({ kind: "connection", title,
+    footnote: "", family, layerScoped: true, items: GROUPS.map(([id, name, detail]) => {
+      const locked = family === "cellular" && id === "layerRefresh" && !over;
+      return { id, title: name, light: "", dark: "", isOn: !locked && !blocked.includes(family + "." + id),
+        detail: locked ? "Off in Settings for Mobile data" : detail, isLocked: locked };
+    }) })),
+  { kind: "switch", title: "Offline", footnote: "Check the source's terms first", key: "offlineDownload",
+    label: "Allow offline download", isOn: layer.allowsOffline !== false, layerScoped: true }];
+}
+
+function editNetwork(layer, query, key) {
+  if (key === "connectionOverride") { layer.overrides = query.get(key) === "1"; if (!layer.overrides) layer.blocked = []; }
+  if (key === "offlineDownload") layer.allowsOffline = query.get(key) === "1";
+  if (key === "connection") {
+    const named = query.get("connection") + "." + query.get("group");
+    const blocked = new Set(layer.blocked || []);
+    if (query.get("allowed") === "1") blocked.delete(named); else blocked.add(named);
+    layer.blocked = [...blocked];
+  }
+}
+
 function layerOptions(each) {
   const hidden = (style) => style.adjustments?.hiddenSkiKinds || [];
   const anyDraws = (key) => each.styles.some((style) => style.adjustments?.[key] !== true);
@@ -228,7 +259,7 @@ function layerOptions(each) {
       { kind: "switch", title: "Trackside marks", footnote: "In every style of this map.", key: "railMarks",
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
     }
-    return layer.drawn ? featureSections(layer) : [];
+    return layer.drawn ? featureSections(layer) : layer.net ? networkSections(layer) : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
     .filter((layer) => layer.sections.length) };
@@ -332,10 +363,15 @@ function edit(each, query, response) {
   const adjust = (change) => each.styles.forEach((style) => { style.adjustments = change({ ...style.adjustments }); });
   const looked = query.has("layer") && LAYER_LOOKS.find((key) => query.has(key));
   const featured = query.has("layer") && FEATURE_KEYS.find((key) => query.has(key));
+  const networked = query.has("layer") && NETWORK_KEYS.find((key) => query.has(key));
   if (featured) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
     editFeatures(layer, query, featured);
+  } else if (networked) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.net) return send(response, 404, "This change does not fit the map");
+    editNetwork(layer, query, networked);
   } else if (looked) {
     // 2962: as `PeerWebEdit.LayerLook` writes it onto the layer.
     const layer = each.layers.find((one) => one.id === query.get("layer"));
@@ -744,6 +780,10 @@ function testControl(route, query, response) {
   case "/__test/drawn-file":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000D1", name: "Trails", kind: "GeoJSON",
       symbol: "figure.walk", isEnabled: true, drawn: true });
+    break;
+  case "/__test/network-tiles":
+    phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000C1", name: "Aerial", kind: "Tiles",
+      symbol: "airplane", isEnabled: true, net: true });
     break;
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);
