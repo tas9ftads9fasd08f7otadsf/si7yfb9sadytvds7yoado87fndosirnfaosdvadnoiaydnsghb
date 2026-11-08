@@ -350,7 +350,7 @@ function portable(each) {
     selectedStyleID: each.styles[0].id, styles: each.styles, start: each.start, coverage: each.coverage,
     appearance: each.appearance, iconPicture: each.iconPicture, previewPicture: each.previewPicture,
     stack: each.layers.map((layer) => ({ id: layer.id, name: layer.name, symbol: layer.symbol,
-      isEnabled: layer.isEnabled, opacity: 1 })) };
+      isEnabled: layer.isEnabled, opacity: layer.opacity ?? 1 })) };
 }
 
 function style(each, query) {
@@ -407,6 +407,24 @@ function edit(each, query, response) {
     if (looked === "tint") layer.tintHex = value ? value.toUpperCase() : undefined;
     if (looked === "routeIcons") layer.hidesRouteIcons = value === "1" ? undefined : true;
     if (looked === "labelLanguage") layer.labelLanguage = value || undefined;
+  } else if (query.has("layer") && (query.has("name") || query.has("opacity"))) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer) return send(response, 404, "This change does not fit the map");
+    if (query.has("name")) layer.name = query.get("name");
+    else layer.opacity = Math.min(1, Math.max(0, Number(query.get("opacity"))));
+  } else if (query.has("order")) {
+    const asked = query.get("order").split(",");
+    const placed = asked.map((id) => each.layers.find((one) => one.id === id));
+    if (placed.includes(undefined) || new Set(asked).size !== each.layers.length) {
+      return send(response, 409, "These are not the map's layers");
+    }
+    each.layers = placed;
+  } else if (query.has("removeStyle")) {
+    if (!each.styles.some((one) => one.id === query.get("removeStyle"))) {
+      return send(response, 404, "This change does not fit the map");
+    }
+    if (each.styles.length < 2) return send(response, 409, "A map keeps one style");
+    each.styles = each.styles.filter((one) => one.id !== query.get("removeStyle"));
   } else if (query.has("kindFamily")) {
     // 2960: as `MapDefinition.show` writes it, into every style.
     if (query.get("kindFamily") !== "ski" || !SKI_KINDS.some(([id]) => id === query.get("kind"))) {
