@@ -40,7 +40,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [] };
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [] };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
@@ -51,7 +51,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [] };
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [] };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -534,6 +534,32 @@ async function answer(request, response) {
     if (address.includes("silent")) return send(response, 409, "That WMS did not say what it publishes.");
     return json(response, WMS_READING);
   }
+  if (parts[2] === "servson" && parts.length === 3) {
+    // 2997: as `PeerWebServson` writes them, keys left on the phone.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    return send(response, 200, JSON.stringify({ _schemaVersion: 1, includesCredentials: false,
+      servers: SERVERS.map((server) => ({ name: server.name })) }), "application/json",
+      { "Content-Disposition": 'attachment; filename="Servers.servson"' });
+  }
+  if (parts[2] === "import-servers" && parts.length === 3) {
+    // 2997: only servers the phone lacks join; a file of none is refused.
+    if (method !== "POST") return send(response, 405, "");
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    let servers;
+    try {
+      servers = JSON.parse(Buffer.concat(chunks).toString()).servers;
+    } catch { servers = null; }
+    if (!Array.isArray(servers)) return send(response, 409, "That file holds no Riki Maps servers.");
+    for (const server of servers) {
+      if (SERVERS.some((held) => held.name === server.name)) continue;
+      phone.importedServers.push({ id: randomUUID().toUpperCase(), name: server.name, line: "Tiles", rows: [] });
+    }
+    return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
+  }
   if (parts[2] === "add-server" && parts.length === 3) {
     // 2996: as `PeerWebAddServer` answers: read first, then saved and listed with the rest.
     if (method !== "POST") return send(response, 405, "");
@@ -545,12 +571,12 @@ async function answer(request, response) {
     const name = url.searchParams.get("name") || new URL(address).host;
     phone.addedServers.push({ id, name, line: "Esri / ArcGIS · 1 service", rows: [
       { kind: "layer", title: "Geology", subtitle: "Areas", depth: 0, pick: { server: id, layer: "0" } }] });
-    return json(response, { servers: [...SERVERS, ...phone.addedServers] });
+    return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
   }
   if (parts[2] === "servers" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
-    return json(response, { servers: [...SERVERS, ...phone.addedServers] });
+    return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
   }
   if (parts[2] === "start-places" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");

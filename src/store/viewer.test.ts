@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portable } from "@/lib/types";
 import { type MapControl, setMapControl } from "@/map/control";
-import { FILE_LIMIT, addFile, addPackages, addServer, applySession, change, checkKey, loadWords, notice, resetViewer,
+import { FILE_LIMIT, addFile, addPackages, addServer, applySession, importServers, change, checkKey, loadWords, notice, resetViewer,
   setLayerShown, tickPackage,
   useViewer } from "./viewer";
 
@@ -245,5 +245,27 @@ describe("addFile", () => {
     answering(() => new Response("plan.dxf stays on the phone", { status: 409 }));
     await addFile(new File(["0"], "plan.dxf"));
     expect(get().notice).toBe("plan.dxf stays on the phone");
+  });
+});
+
+describe("importServers", () => {
+  beforeEach(() => useViewer.setState({ editToken: "t", mapID: "a", styleID: "s", portable, device }));
+
+  // 2997 the file is the body, and the phone's whole list replaces the page's
+  it("posts the file and keeps the servers the phone answers with", async () => {
+    const servers = { servers: [{ id: "n", name: "Basemap.at", line: "Tiles", rows: [] }] };
+    const fetcher = answering(() => json(servers));
+    await importServers(new File(["{\"servers\":[]}"], "Mine.servson"));
+    const [url, init] = fetcher.mock.calls[0]!;
+    expect(url).toContain("/import-servers");
+    expect(init?.method).toBe("POST");
+    expect(get().servers).toEqual(servers);
+  });
+
+  // 2997 a refusal is said as the phone said it
+  it("shows what the phone refused", async () => {
+    answering(() => new Response("That file holds no Riki Maps servers.", { status: 409 }));
+    await importServers(new File(["{"], "x.servson"));
+    expect(get().notice).toBe("That file holds no Riki Maps servers.");
   });
 });

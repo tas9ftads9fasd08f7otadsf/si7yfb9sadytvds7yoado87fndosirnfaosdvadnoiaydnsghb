@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PackageRow, ServerRow } from "@/lib/types";
-import { FILE_KINDS, SERVER_KINDS, addFile, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
+import { FILE_KINDS, SERVER_KINDS, addFile, addPackages, addServer, addServerLayers, exportServers, importServers, addServiceLayers, addTiles,
   loadPackages, loadServers, tickPackage,
   tickServerRow, tickServiceLayer, useViewer } from "@/store/viewer";
 import { MarkTile } from "../ui/MarkTile";
@@ -111,6 +111,27 @@ function ServerLine({ row }: { row: ServerRow }) {
   );
 }
 
+/** 2997 The servers as a .servson file, out to the browser or in from it. */
+function ServerFiles() {
+  const words = useViewer((state) => state.words);
+  const file = useRef<HTMLInputElement>(null);
+  return (
+    <div className="list">
+      <button type="button" className="row add" id="exportServers" onClick={() => void exportServers()}>
+        <Sym name="square.and.arrow.up" />{words.exportServers}
+      </button>
+      <button type="button" className="row add" id="importServers" onClick={() => file.current?.click()}>
+        <Sym name="square.and.arrow.down" />{words.importServers}
+      </button>
+      <input type="file" id="serversFile" accept=".servson" hidden ref={file} onChange={(event) => {
+        const chosen = event.target.files?.[0];
+        event.target.value = "";
+        if (chosen) void importServers(chosen);
+      }} />
+    </div>
+  );
+}
+
 /** 2996 A server named by its address; the phone reads it before saving it. */
 function NewServer() {
   const words = useViewer((state) => state.words);
@@ -168,6 +189,7 @@ function Servers() {
           </button>
         </>
       )}
+      <ServerFiles />
     </>
   );
 }
