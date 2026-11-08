@@ -146,6 +146,8 @@ label.action { cursor: pointer; }
 .field { padding: 8px 14px; }
 .field label { display: block; font-size: 12px; color: var(--secondary); margin-bottom: 2px; }
 .field textarea { resize: vertical; min-height: 54px; }
+.card.options .field input[type=url] { width: 100%; font: inherit; padding: 5px 8px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--panel); color: inherit; }
 .field select { width: 100%; font: inherit; padding: 5px 4px; border-radius: 6px; border: 1px solid var(--line);
   background: var(--panel); color: inherit; }
 .field input[aria-invalid=true] { border-color: var(--danger); }

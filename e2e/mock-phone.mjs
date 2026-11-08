@@ -242,6 +242,16 @@ function editNetwork(layer, query, key) {
   }
 }
 
+// 3000: Edit layer's Questions, as `PeerWebLayerOptions+Questions` lists them for an Esri layer.
+const QUESTION_KEYS = ["answersFromServer", "identifyRequest"];
+
+function questionSections(layer) {
+  return [{ kind: "switch", title: "Questions", footnote: "Ask the service what is there", key: "answersFromServer",
+    label: "Answer taps from the server", isOn: layer.answersFromServer !== false, layerScoped: true },
+  { kind: "text", title: "Identify request", footnote: "Asked when the map is tapped.", key: "identifyRequest",
+    layerScoped: true, value: layer.identifyRequest || "" }];
+}
+
 function layerOptions(each) {
   const hidden = (style) => style.adjustments?.hiddenSkiKinds || [];
   const anyDraws = (key) => each.styles.some((style) => style.adjustments?.[key] !== true);
@@ -259,7 +269,7 @@ function layerOptions(each) {
       { kind: "switch", title: "Trackside marks", footnote: "In every style of this map.", key: "railMarks",
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
     }
-    return layer.drawn ? featureSections(layer) : layer.net ? networkSections(layer) : [];
+    return layer.drawn ? featureSections(layer) : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
     .filter((layer) => layer.sections.length) };
@@ -363,6 +373,7 @@ function edit(each, query, response) {
   const adjust = (change) => each.styles.forEach((style) => { style.adjustments = change({ ...style.adjustments }); });
   const looked = query.has("layer") && LAYER_LOOKS.find((key) => query.has(key));
   const featured = query.has("layer") && FEATURE_KEYS.find((key) => query.has(key));
+  const asking = query.has("layer") && QUESTION_KEYS.find((key) => query.has(key));
   const networked = query.has("layer") && NETWORK_KEYS.find((key) => query.has(key));
   if (featured) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
@@ -372,6 +383,11 @@ function edit(each, query, response) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer?.net) return send(response, 404, "This change does not fit the map");
     editNetwork(layer, query, networked);
+  } else if (asking) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.esri) return send(response, 404, "This change does not fit the map");
+    if (asking === "answersFromServer") layer.answersFromServer = query.get(asking) === "1";
+    else layer.identifyRequest = query.get(asking).trim() || undefined;
   } else if (looked) {
     // 2962: as `PeerWebEdit.LayerLook` writes it onto the layer.
     const layer = each.layers.find((one) => one.id === query.get("layer"));
@@ -784,6 +800,10 @@ function testControl(route, query, response) {
   case "/__test/network-tiles":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000C1", name: "Aerial", kind: "Tiles",
       symbol: "airplane", isEnabled: true, net: true });
+    break;
+  case "/__test/esri-layer":
+    phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-00000000009E", name: "Bedrock", kind: "Esri",
+      symbol: "map", isEnabled: true, esri: true });
     break;
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);

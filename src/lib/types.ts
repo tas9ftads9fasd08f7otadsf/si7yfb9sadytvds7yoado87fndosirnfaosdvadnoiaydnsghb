@@ -146,7 +146,7 @@ export interface OptionChoice {
 }
 
 export interface OptionSection {
-  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "connection" | "slider" | "values";
+  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values";
   title?: string;
   footnote?: string;
   layerScoped?: boolean;
