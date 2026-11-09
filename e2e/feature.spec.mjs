@@ -4,8 +4,10 @@ import { openViewer, phone, reset } from "./phone.mjs";
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 // TestFlight AFKF: a feature in the browser could be seen, never asked about.
+// 22 the hero shows before the style loads, and adding a source then throws
 test("a clicked feature shows what it carries, as text", async ({ page }) => {
   await openViewer(page);
+  await expect.poll(() => page.evaluate(() => __riki.map.isStyleLoaded())).toBe(true);
   await page.evaluate(() => {
     __riki.map.addSource("riki-custom-6f1e2a10-0000-4000-8000-0000000000a2", { type: "geojson", data: {
       type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point",
