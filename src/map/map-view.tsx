@@ -3,6 +3,7 @@ import { Protocol } from "pmtiles";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { FeatureCard } from "@/components/FeatureCard";
+import { leftOpening, OPENING } from "@/lib/camera";
 import { drawable } from "@/lib/drawable";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY, ROOT, readJSON } from "@/lib/phone";
 import { regionOffer } from "@/lib/region";
@@ -23,7 +24,7 @@ export function createMapView(container: HTMLElement): MapControl {
   let framed = location.hash.includes("at=");
   const map = new maplibregl.Map({
     container, style: { version: 8, sources: {}, layers: [] },
-    center: [19.5, 48.5], zoom: 6, hash: "at", validateStyle: false, attributionControl: { compact: true },
+    center: OPENING.center, zoom: OPENING.zoom, hash: "at", validateStyle: false, attributionControl: { compact: true },
     maxPitch: 85,
     locale: { "TerrainControl.Enable": words["TerrainControl.Enable"],
       "TerrainControl.Disable": words["TerrainControl.Disable"] }
@@ -185,7 +186,7 @@ export function createMapView(container: HTMLElement): MapControl {
         if (header.maxLon > header.minLon) boxes.push([header.minLon, header.minLat, header.maxLon, header.maxLat]);
       } catch { /* an archive that does not answer frames nothing */ }
     }
-    if (boxes.length === 0) return;
+    if (boxes.length === 0 || leftOpening(map.getCenter(), map.getZoom())) return;
     const box = boxes.reduce((all, one) => [Math.min(all[0]!, one[0]!), Math.min(all[1]!, one[1]!),
       Math.max(all[2]!, one[2]!), Math.max(all[3]!, one[3]!)]) as Box;
     map.fitBounds([[box[0], box[1]], [box[2], box[3]]], { padding: 40, animate: false });

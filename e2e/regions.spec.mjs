@@ -31,6 +31,16 @@ test("a browser that cannot edit is told the region is not on the phone, with no
   await expect(page.locator("#regionDownload")).toHaveCount(0);
 });
 
+// 24: a move made while the first map loaded was undone by its framing, so no region was offered.
+test("a move made while the first map loads is kept, and its region offered", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForFunction(() => window.__riki?.map);
+  await page.evaluate(prešov);
+  await page.locator("#current .hero").waitFor();
+  await expect(page.locator("#regionOffer")).toHaveText("Prešovský kraj is not downloaded on the phone");
+  expect(await page.evaluate(() => __riki.map.getCenter().lng)).toBeCloseTo(21.5);
+});
+
 test("over a region the phone has, nothing is offered", async ({ page }) => {
   await openViewer(page, "/?edit=7q4-k29");
   await page.evaluate(() => __riki.map.jumpTo({ center: [20.1, 49.2], zoom: 11 }));
