@@ -40,7 +40,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [] };
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
@@ -51,7 +51,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [] };
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -706,6 +706,16 @@ async function answer(request, response) {
     return response.end(JSON.stringify({ $schema: "https://skifahrer.github.io/schemas/mapson.json",
       name: each.name, stack: portable(each).stack }));
   }
+  if (method === "GET" && parts[4] === "details" && parts.length === 5) {
+    // 21: as `PeerWebDetails` answers: the layer's layout filled from the feature, or nothing.
+    const values = JSON.parse(url.searchParams.get("values") || "{}");
+    phone.detailsAsked.push({ layer: url.searchParams.get("layer"), values });
+    if (!phone.laysOutDetails) { response.writeHead(204); return response.end(); }
+    return json(response, { title: `Hut ${values.Nazov}`, keys: ["Nazov", "Elevation"], sections: [
+      { title: "About", blocks: [{ kind: "rows", rows: [{ title: "Height", value: `${values.Elevation} m` }] },
+        { kind: "text", title: "Note", text: "Closed in winter", warning: true }] },
+      { title: "Source", blocks: [{ kind: "allTags" }] }] });
+  }
   if (method === "GET" && parts[4] === "identify" && parts.length === 5) {
     // 3001: as `PeerWebIdentify` answers: every feature of the first layer whose server knows one.
     phone.identified.push(Object.fromEntries(url.searchParams));
@@ -883,6 +893,8 @@ function testControl(route, query, response) {
     break;
   case "/__test/answers-servers": phone.answersServers = true; break;
   case "/__test/identified": return json(response, phone.identified);
+  case "/__test/lays-out-details": phone.laysOutDetails = true; break;
+  case "/__test/details-asked": return json(response, phone.detailsAsked);
   case "/__test/pictures": return json(response, phone.pictureKinds);
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);

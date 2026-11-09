@@ -4,9 +4,9 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { FeatureCard } from "@/components/FeatureCard";
 import { drawable } from "@/lib/drawable";
-import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY, ROOT, readJSON } from "@/lib/phone";
+import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY, ROOT, readJSON, readJSONIfAny } from "@/lib/phone";
 import { regionOffer } from "@/lib/region";
-import type { Box, IdentifyListing, RegionList } from "@/lib/types";
+import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
 import { drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
 
@@ -279,11 +279,12 @@ export function createMapView(container: HTMLElement): MapControl {
   }
 
   let shownFeature: maplibregl.Popup | null = null;
-  function showFeatures(found: { properties: Record<string, unknown>; layer: string }[], at: maplibregl.LngLat) {
+  type Shown = { properties: Record<string, unknown>; layer: string; details?: DetailsSheet | null };
+  function showFeatures(found: Shown[], at: maplibregl.LngLat) {
     const card = document.createElement("div");
     const root = createRoot(card);
     flushSync(() => root.render(found.map((one, index) =>
-      <FeatureCard key={index} properties={one.properties} layer={one.layer} />)));
+      <FeatureCard key={index} properties={one.properties} layer={one.layer} details={one.details} />)));
     shownFeature = new maplibregl.Popup({ maxWidth: "360px", focusAfterOpen: false, closeButton: true })
       .setLngLat(at).setDOMContent(card).addTo(map);
     shownFeature.on("close", () => queueMicrotask(() => root.unmount()));
@@ -312,13 +313,35 @@ export function createMapView(container: HTMLElement): MapControl {
     showFeatures(listing.answers.slice(0, MOST_ANSWERS), at);
   }
 
+  // 21: the plain card at once, then the layer's own layout once the phone has filled it.
+  async function askLayout(feature: MapGeoJSONFeature, shown: Shown, at: maplibregl.LngLat) {
+    const { mapID } = get();
+    const layer = feature.source.startsWith(CUSTOM) ? feature.source.slice(CUSTOM.length) : null;
+    if (!mapID || !layer) return;
+    const asked = asking;
+    const values = Object.fromEntries(Object.entries(shown.properties).map(([key, value]) => [key, String(value)]));
+    let details: DetailsSheet | null;
+    try {
+      const query = new URLSearchParams({ layer, values: JSON.stringify(values) });
+      details = await readJSONIfAny<DetailsSheet>(`${ROOT}/maps/${mapID}/details?${query}`);
+    } catch {
+      return;
+    }
+    if (asked !== asking || !details) return;
+    shownFeature?.remove();
+    showFeatures([{ ...shown, details }], at);
+  }
+
   map.on("click", (event) => {
     const feature = featureAt(event.point);
     shownFeature?.remove();
     shownFeature = null;
     asking += 1;
-    if (feature) showFeatures([{ properties: feature.properties ?? {}, layer: layerName(feature) }], event.lngLat);
-    else void askServers(event.lngLat);
+    if (feature) {
+      const shown = { properties: feature.properties ?? {}, layer: layerName(feature) };
+      showFeatures([shown], event.lngLat);
+      void askLayout(feature, shown, event.lngLat);
+    } else void askServers(event.lngLat);
   });
 
   // Once a frame at most: a wide style answers a query slower than a mouse moves.

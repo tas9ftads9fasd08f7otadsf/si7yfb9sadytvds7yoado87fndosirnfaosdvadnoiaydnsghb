@@ -166,9 +166,26 @@ export interface OptionSection {
   ends?: string[];
 }
 
+/** 21: a layer's Details layout, filled and worded by the phone. */
+export interface DetailsSheet {
+  title?: string | null;
+  sections: { title?: string | null; blocks: DetailsBlock[] }[];
+  /** What the layout read, which the card's tag list leaves out. */
+  keys: string[];
+}
+
+/** `rows`, `text` or `allTags`; a kind this page does not know is skipped. */
+export interface DetailsBlock {
+  kind: string;
+  rows?: { title: string; value: string }[] | null;
+  title?: string | null;
+  text?: string | null;
+  warning?: boolean | null;
+}
+
 /** What the layers' servers said of a tap on empty ground, top layer's first. */
 export interface IdentifyListing {
-  answers: { layer: string; properties: Record<string, string> }[];
+  answers: { layer: string; properties: Record<string, string>; details?: DetailsSheet | null }[];
 }
 
 /** The keys Add layer's API page reads; the rest of the phone's reading travels as it is. */
