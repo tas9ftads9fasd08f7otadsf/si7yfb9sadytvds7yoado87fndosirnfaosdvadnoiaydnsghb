@@ -9,7 +9,7 @@ test.beforeEach(async ({ request }) => {
 });
 
 async function openFeatures(page) {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   const row = page.locator("#editBody .row", { has: page.locator("input[value='Trails']") });
   await row.getByRole("button", { name: "Options" }).click();

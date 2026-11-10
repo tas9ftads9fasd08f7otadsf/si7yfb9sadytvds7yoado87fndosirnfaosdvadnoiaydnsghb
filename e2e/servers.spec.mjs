@@ -4,7 +4,7 @@ import { openViewer, reset } from "./phone.mjs";
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 async function openServers(page) {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await page.locator("#addLayer").click();
   await expect(page.locator("[data-server]")).toHaveCount(2);

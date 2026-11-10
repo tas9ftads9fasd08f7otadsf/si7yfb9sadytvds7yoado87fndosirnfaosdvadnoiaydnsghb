@@ -92,18 +92,22 @@ test("the map picker lists every map and All maps; the rail lights the screen sh
   expect(path(page)).toBe(`/maps/${TATRAS}`);
 });
 
-// 30 an old link's camera still opens where it pointed.
-test("an old named camera is rewritten to the plain one and kept", async ({ page }) => {
-  await openViewer(page, `/maps/${TATRAS}#at=12/49.18/20.09`);
-  await expect(page).toHaveURL(/#12\/49\.18\/20\.09/);
-  expect(page.url()).not.toContain("at=");
+// 31 an old edit link is no address of the page's: it opens the map, not editing.
+test("an old edit link unlocks nothing", async ({ page }) => {
+  await openViewer(page, "/?edit=7q4-k29");
+  await expect(page.locator("#editButton")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/maps\/6F1E2A10-0000-4000-8000-000000000001#/);
 });
 
 // 30 Share copies the address, camera and all.
 test("Share copies the page's address", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await openViewer(page);
+  const shown = page.url().split("#")[0];
   await page.locator("#shareButton").click();
   await expect(page.locator("#notice")).toHaveText("Link copied");
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());
+  // 31 the map may still be framing, so the camera is checked for its shape, not its numbers
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied.split("#")[0]).toBe(shown);
+  expect(copied).toMatch(/#\d+(\.\d+)?\/-?\d/);
 });

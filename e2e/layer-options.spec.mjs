@@ -7,7 +7,7 @@ test.beforeEach(async ({ request }) => {
 });
 
 async function openOptions(page, layerName) {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   const row = page.locator("#editBody .row", { has: page.locator(`input[value='${layerName}']`) });
   await row.getByRole("button", { name: "Options" }).click();
@@ -19,7 +19,7 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
 
 // 2960: only a layer with Edit layer panels offers them; plain ones have no button.
 test("only the layers with panels offer Options", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await expect(page.getByRole("button", { name: "Options" })).toHaveCount(2);
 });

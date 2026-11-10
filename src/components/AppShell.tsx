@@ -53,7 +53,7 @@ export function AppShell() {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName);
-      if (event.key === "Escape" && useViewer.getState().editing) showEdit(false);
+      if (event.key === "Escape" && !event.defaultPrevented && useViewer.getState().editing) showEdit(false);
       if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === "[") toggleSide();
     };

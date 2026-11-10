@@ -7,7 +7,7 @@ const huts = JSON.stringify({ type: "FeatureCollection", features: [{ type: "Fea
   geometry: { type: "Point", coordinates: [17.1, 48.15] } }] });
 
 async function openAddLayer(page) {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await page.locator("#addLayer").click();
   await expect(page.locator("#layerFile")).toBeAttached();

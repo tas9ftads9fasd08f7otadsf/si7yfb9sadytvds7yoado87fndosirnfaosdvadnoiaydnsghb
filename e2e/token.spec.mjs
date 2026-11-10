@@ -28,9 +28,9 @@ test("a typed password is traded for a token, and edits carry it as a bearer", a
 
 // 2944: the editing address's key leaves the address bar once traded; the tab keeps the token.
 test("the editing address is traded and dropped, and a reload still edits", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await expect(page.locator("#editButton")).toBeVisible();
-  await expect(page).not.toHaveURL(/edit=/);
+  await expect(page).not.toHaveURL(/7Q4K29|7q4-k29/);
   await page.reload();
   await page.locator("#current .hero").waitFor();
   await expect(page.locator("#editButton")).toBeVisible();
@@ -40,7 +40,7 @@ test("the editing address is traded and dropped, and a reload still edits", asyn
 // 2944: a new key on the phone revokes every token; the browser is asked for the password.
 // 2957: revoked once Edit map has read its coverage, so the edit is what is refused.
 test("a token the phone no longer honours sends the browser back to the password", async ({ page, request }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await expect(page.locator("#coverageLine")).toBeVisible();
   await phone(request, "new-key");
@@ -56,7 +56,7 @@ test("a token the phone no longer honours sends the browser back to the password
 
 // 2957: Edit map reads the coverage with the token, so a revoked one is caught on opening.
 test("opening Edit map with a token the phone no longer honours asks for the password", async ({ page, request }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await expect(page.locator("#editButton")).toBeVisible();
   await phone(request, "new-key");
   await page.locator("#editButton").click();

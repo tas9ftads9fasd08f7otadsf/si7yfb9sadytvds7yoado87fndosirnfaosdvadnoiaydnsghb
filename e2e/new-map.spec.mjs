@@ -7,7 +7,7 @@ const named = (page, name) => page.locator("#current .hero", { hasText: name });
 
 // 2978: the phone makes it and shares it, and the page opens it.
 test("New map makes a blank map and opens it", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#newMapButton").click();
   await page.locator("#newMapName").fill("Low Tatras");
   await page.locator("#newMapSave").click();
@@ -16,14 +16,14 @@ test("New map makes a blank map and opens it", async ({ page }) => {
 });
 
 test("Import makes a map from a .mapson", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#importFile").setInputFiles({ name: "Fatra.mapson", mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify({ name: "Malá Fatra" })) });
   await expect(named(page, "Malá Fatra")).toBeVisible();
 });
 
 test("A file that is no map is refused in the phone's words", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#importFile").setInputFiles({ name: "Fatra.mapson", mimeType: "application/json",
     buffer: Buffer.from("not json") });
   await expect(page.locator("#notice")).toHaveText("That file is not a Riki Maps map.");

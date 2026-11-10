@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Route, keptMapLink, mapOf, pathOf, plainCamera, readRoute } from "./route";
+import { type Route, mapOf, pathOf, readRoute } from "./route";
 
 // 30 every screen of the redesign's address table, read and written back.
 const TABLE: [string, Route][] = [
@@ -78,22 +78,10 @@ describe("readRoute and pathOf", () => {
   });
 });
 
-// 30 links kept from before the plain camera still open where they pointed.
-describe("plainCamera", () => {
-  it("rewrites the named camera once", () => {
-    expect(plainCamera("#at=14/48.1583/17.1063")).toBe("#14/48.1583/17.1063");
-    expect(plainCamera("#14/48.1583/17.1063")).toBeNull();
-    expect(plainCamera("")).toBeNull();
-  });
-});
-
-// 30 a bookmark of a map from before it had a path still opens that map and style.
-describe("keptMapLink", () => {
-  it("reads the old query on the page's own address only", () => {
-    expect(keptMapLink("/", "?map=M1&style=S2")).toEqual({ screen: "map", map: "M1", style: "S2" });
-    expect(keptMapLink("/", "?map=M1")).toEqual({ screen: "map", map: "M1" });
-    expect(keptMapLink("/", "?style=S2")).toBeNull();
-    expect(keptMapLink("/maps/M2", "?map=M1")).toBeNull();
-    expect(keptMapLink("/", "")).toBeNull();
+// 31 only the redesign's addresses are read; an old query is ignored.
+describe("old addresses", () => {
+  it("reads the page's own address with an old query as home", () => {
+    expect(readRoute("/?map=M1&style=S2")).toEqual({ screen: "home" });
+    expect(readRoute("/?edit=7Q4K29")).toEqual({ screen: "home" });
   });
 });

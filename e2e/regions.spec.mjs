@@ -9,7 +9,7 @@ const prešov = () => __riki.map.jumpTo({ center: [21.5, 49.0], zoom: 10 });
 test("over a region the phone lacks, an editing browser downloads it and draws it once it lands",
   async ({ page, request }) => {
     test.setTimeout(60000);
-    await openViewer(page, "/?edit=7q4-k29");
+    await openViewer(page, "/e/7q4-k29");
     await page.evaluate(prešov);
     const offer = page.locator("#regionOffer");
     await expect(page.locator("#regionDownload")).toHaveText("Download Prešovský kraj");
@@ -42,7 +42,7 @@ test("a move made while the first map loads is kept, and its region offered", as
 });
 
 test("over a region the phone has, nothing is offered", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.evaluate(() => __riki.map.jumpTo({ center: [20.1, 49.2], zoom: 11 }));
   await expect(page.locator("#regionOffer")).toBeHidden();
 });

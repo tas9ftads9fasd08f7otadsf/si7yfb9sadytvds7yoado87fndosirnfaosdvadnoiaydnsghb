@@ -4,7 +4,7 @@ import { openViewer, reset } from "./phone.mjs";
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 async function openEdit(page) {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
 }

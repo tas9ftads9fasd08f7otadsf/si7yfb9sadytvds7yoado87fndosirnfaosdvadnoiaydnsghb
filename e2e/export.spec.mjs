@@ -5,7 +5,7 @@ test.beforeEach(async ({ request }) => { await reset(request); });
 
 // 2961: the phone writes the file; the browser saves it under the phone's name for it.
 test("Edit map saves the map as a .mapson file", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   const saved = page.waitForEvent("download");
   await page.locator("#exportMap").click();

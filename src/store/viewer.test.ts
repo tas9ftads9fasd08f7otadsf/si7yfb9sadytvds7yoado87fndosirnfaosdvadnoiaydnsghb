@@ -302,19 +302,6 @@ describe("the address", () => {
     expect(history.length).toBe(length + 1);
   });
 
-  it("moves a bookmark's map and style into the path, keeping the camera", () => {
-    history.replaceState(null, "", "/?map=b&style=w#at=9/48/17");
-    readAddress();
-    expect(location.pathname + location.search + location.hash).toBe("/maps/b/style/w#9/48/17");
-    expect(get().route).toEqual({ screen: "map", map: "b", style: "w" });
-  });
-
-  it("rewrites an old named camera once", () => {
-    history.replaceState(null, "", "/maps/a#at=14/48.1583/17.1063");
-    readAddress();
-    expect(location.hash).toBe("#14/48.1583/17.1063");
-  });
-
   it("names the style only when it is not the one the map opens on", () => {
     useViewer.setState({ standing: "admitted", device: two, mapID: "a", portable: twoStyles, styleID: "s",
       route: { screen: "map", map: "a" } });

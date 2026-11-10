@@ -13,7 +13,7 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
 
 // 3000: the server's answers are one switch; the identify request is sent once typed.
 test("an Esri layer's Questions are set from its Options", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   const row = page.locator("#editBody .row", { has: page.locator("input[value='Bedrock']") });
   await row.getByRole("button", { name: "Options" }).click();

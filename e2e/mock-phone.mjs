@@ -625,11 +625,10 @@ async function answer(request, response) {
     return json(response, { standing: guest.standing, viewers: viewers(), device: phone.name, edits: true },
       headers);
   }
-  // 30 the edit link and an old `/?edit=` go to the page's unlock address, as `editRedirect` does.
-  const linked = route.startsWith("/e/") ? route.slice(3)
-    : (route === "/" || route === "/index.html") ? url.searchParams.get("edit") : null;
-  if (method === "GET" && linked && typed(decodeURIComponent(linked))) {
-    response.writeHead(302, { Location: "/unlock/" + typed(decodeURIComponent(linked)), "Cache-Control": "no-store" });
+  // 31 the edit link goes to the page's unlock address, as `editRedirect` does.
+  const linked = route.startsWith("/e/") ? typed(decodeURIComponent(route.slice(3))) : "";
+  if (method === "GET" && linked) {
+    response.writeHead(302, { Location: "/unlock/" + linked, "Cache-Control": "no-store" });
     return response.end();
   }
   if (method === "GET" && isPage(route)) return send(response, 200, await buildFile("index.html"), TYPES[".html"]);
