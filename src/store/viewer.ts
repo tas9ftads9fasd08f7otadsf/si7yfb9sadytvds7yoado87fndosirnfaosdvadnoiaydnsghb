@@ -11,6 +11,8 @@ import { ENGLISH, WORDS_PATH, type Words, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
 
 export type Theme = "auto" | "light" | "dark";
+export type ServerPart = "layers" | "general" | "sharing";
+export const SERVER_PARTS: ServerPart[] = ["layers", "general", "sharing"];
 export const THEMES: Record<Theme, string> = { auto: "circle.lefthalf.filled", light: "sun.max", dark: "moon" };
 
 export interface ViewerState {
@@ -48,6 +50,8 @@ export interface ViewerState {
   packageTicks: Set<string>;
   addingPackages: boolean;
   servers: ServerList | null;
+  serverID: string | null;
+  serverPart: ServerPart;
   serverPicks: Map<string, ServerPick>;
   serviceRead: ServiceRead | null;
   layerOptions: LayerOptions | null;
@@ -60,7 +64,8 @@ const firstState = (): ViewerState => ({
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, regionOffer: null,
   zoomText: "", pointerText: "", addedLanguages: new Set(), startKind: null, startFound: null, coverage: null,
   coverageShown: false, coverageSide: "include", coverageOpen: new Map(), coverageQuery: "", coveragePlaces: null,
-  packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverPicks: new Map(),
+  packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
+  serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set()
 });
 
@@ -414,6 +419,17 @@ export const exportMap = () => saveFrom(`${ROOT}/maps/${get().mapID}/mapson`);
 
 /** 2997 The phone's servers as Share servers writes them, keys left on the phone. */
 export const exportServers = () => saveFrom(`${ROOT}/servson`);
+
+/** 27 One server alone, as its page's Sharing part exports it on the phone. */
+export const exportServer = (id: string) => saveFrom(`${ROOT}/servson?${new URLSearchParams({ server: id })}`);
+
+/** 27 A server's page opens on Layers, as the phone's does. */
+export function openServer(id: string | null) {
+  set({ serverID: id, serverPart: "layers" });
+  if (id) showSide(true);
+}
+
+export const showServerPart = (serverPart: ServerPart) => set({ serverPart });
 
 /** The phone adds the servers it lacks and answers with them all. */
 export async function importServers(file: File) {

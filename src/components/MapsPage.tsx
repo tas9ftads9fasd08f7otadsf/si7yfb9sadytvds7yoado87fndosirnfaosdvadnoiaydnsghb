@@ -5,6 +5,7 @@ import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
 import { checkKey, importMap, makeMap, pickMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
+import { ServerCards } from "./Servers";
 import { MarkTile } from "./ui/MarkTile";
 import { Switch } from "./ui/Switch";
 import { Sym } from "./ui/Sym";
@@ -182,6 +183,7 @@ export function MapsPage() {
         {maps.length ? <h2 className="title">{words.allMaps}</h2> : null}
         {maps.length ? <div className="list">{maps.map((each) => <MapRow key={each.id} shared={each} />)}</div> : null}
         <NewMap />
+        <ServerCards />
       </div>
     </>
   );
