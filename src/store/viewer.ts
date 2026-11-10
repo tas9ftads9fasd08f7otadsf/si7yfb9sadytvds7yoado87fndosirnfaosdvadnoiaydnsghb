@@ -495,6 +495,12 @@ export async function setDrawn(query: Record<string, string>) {
   if (await change(query)) set({ layerOptions: null });
 }
 
+/** A refused layout change reads the layout again: the phone's may have moved on. */
+export async function setLayout(query: Record<string, string>) {
+  await change(query);
+  set({ layerOptions: null });
+}
+
 // MARK: - Add layer
 
 export const toggleAddingPackages = () => set({ addingPackages: !get().addingPackages });

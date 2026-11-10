@@ -262,6 +262,41 @@ function apiRead(query) {
   return { reading, paths: ["vehicles", "stops"], keys, points, name: "buses.example", said: `Answered · ${points} points` };
 }
 
+// 3105: a layer's Details layout as `PeerWebLayerOptions+Details` lists it, and its edits.
+const LAYOUT_WORDS = { addContent: "Add content", addSection: "Add section", removeSection: "Remove section",
+  sectionTitle: "Title", fromTheApp: "From the app", name: "Name", value: "Value", label: "Label", link: "Link",
+  heading: "Title", plain: "Plain", box: "Box", warning: "Warning", full: "This layout holds 10 content blocks" };
+
+function detailsSections(layer) {
+  const used = layer.layout.flatMap((section) => section.blocks).filter((block) => block.counts).length;
+  return [{ kind: "details", title: "Details", footnote: "What a tapped point's sheet shows.", layerScoped: true,
+    layout: { sections: layer.layout.map((section, index) => ({ ...section, name: section.title || `Section ${index + 1}` })),
+      used, limit: 10, parts: [], keys: ["line", "note"], offers: [{ id: "text", title: "Text" }],
+      words: { ...LAYOUT_WORDS, used: `${used} of 10 content blocks used` } } }];
+}
+
+function editLayout(layer, query) {
+  const sections = layer.layout;
+  const number = (key) => Number(query.get(key));
+  const held = () => sections[number("section")]?.blocks[number("block")];
+  const op = query.get("details");
+  if (["remove", "move", "edit"].includes(op) && held()?.handle !== query.get("was")) return false;
+  if (op === "add") {
+    sections[number("section")].blocks.splice(number("place"), 0, { handle: `n${Date.now()}`,
+      kind: query.get("kind"), name: "Text", value: query.get("value"), style: "box", counts: true });
+  } else if (op === "remove") {
+    sections[number("section")].blocks.splice(number("block"), 1);
+  } else if (op === "move") {
+    const [block] = sections[number("section")].blocks.splice(number("block"), 1);
+    sections[number("toSection")].blocks.splice(number("toPlace"), 0, block);
+  } else if (op === "addSection") {
+    sections.push({ title: null, blocks: [] });
+  } else if (op === "sectionTitle") {
+    sections[number("section")].title = query.get("title") || null;
+  }
+  return true;
+}
+
 function layerOptions(each) {
   const hidden = (style) => style.adjustments?.hiddenSkiKinds || [];
   const anyDraws = (key) => each.styles.some((style) => style.adjustments?.[key] !== true);
@@ -279,6 +314,7 @@ function layerOptions(each) {
       { kind: "switch", title: "Trackside marks", footnote: "In every style of this map.", key: "railMarks",
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
     }
+    if (layer.layout) return detailsSections(layer);
     return layer.drawn ? featureSections(layer) : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
@@ -401,7 +437,13 @@ function edit(each, query, response) {
   const featured = query.has("layer") && FEATURE_KEYS.find((key) => query.has(key));
   const asking = query.has("layer") && QUESTION_KEYS.find((key) => query.has(key));
   const networked = query.has("layer") && NETWORK_KEYS.find((key) => query.has(key));
-  if (featured) {
+  if (query.has("layer") && query.has("details")) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.layout) return send(response, 409, "This change does not fit the map");
+    if (!editLayout(layer, query)) {
+      return send(response, 409, "The layout changed on the phone; it is shown again as it is now");
+    }
+  } else if (featured) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
     editFeatures(layer, query, featured);
@@ -914,6 +956,12 @@ function testControl(route, query, response) {
   case "/__test/esri-layer":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-00000000009E", name: "Bedrock", kind: "Esri",
       symbol: "map", isEnabled: true, esri: true });
+    break;
+  case "/__test/laid-out-layer":
+    phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000A5", name: "Trams", kind: "API",
+      symbol: "tram", isEnabled: true, layout: [{ title: null, blocks: [
+        { handle: "r1", kind: "rows", name: "Info rows", counts: true },
+        { handle: "t1", kind: "text", name: "Text", value: "{note}", style: "box", counts: true }] }] });
     break;
   case "/__test/answers-servers": phone.answersServers = true; break;
   case "/__test/identified": return json(response, phone.identified);

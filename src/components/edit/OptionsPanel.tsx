@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import type { OptionSection } from "@/lib/types";
 import { setDrawn, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
+import { DetailsLayoutPanel } from "./DetailsLayoutPanel";
 import { Switch } from "../ui/Switch";
 import { Sym } from "../ui/Sym";
 import { ground } from "../ui/ground";
@@ -116,6 +117,7 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
     return <Slider section={section} send={(value) => setDrawn(scoped({ [key]: value }))} />;
   }
   if (section.kind === "values") return <Values section={section} scoped={scoped} />;
+  if (section.kind === "details") return section.layout ? <DetailsLayoutPanel layout={section.layout} scoped={scoped} /> : null;
   if (section.kind === "text") {
     return (
       <div className="field">
