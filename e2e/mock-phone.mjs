@@ -604,6 +604,10 @@ async function buildFile(name) {
   return readFile(file).catch(() => null);
 }
 
+// 30 every screen's address is the page, as `PeerWebViewer.isPage` answers it.
+const PAGE_SEGMENTS = ["maps", "data", "servers", "settings", "new", "unlock"];
+const isPage = (route) => route === "/" || route === "/index.html" || PAGE_SEGMENTS.includes(route.split("/")[1]);
+
 async function answer(request, response) {
   const url = new URL(request.url, "http://localhost");
   const route = url.pathname;
@@ -621,9 +625,14 @@ async function answer(request, response) {
     return json(response, { standing: guest.standing, viewers: viewers(), device: phone.name, edits: true },
       headers);
   }
-  if (method === "GET" && (route === "/" || route === "/index.html")) {
-    return send(response, 200, await buildFile("index.html"), TYPES[".html"]);
+  // 30 the edit link and an old `/?edit=` go to the page's unlock address, as `editRedirect` does.
+  const linked = route.startsWith("/e/") ? route.slice(3)
+    : (route === "/" || route === "/index.html") ? url.searchParams.get("edit") : null;
+  if (method === "GET" && linked && typed(decodeURIComponent(linked))) {
+    response.writeHead(302, { Location: "/unlock/" + typed(decodeURIComponent(linked)), "Cache-Control": "no-store" });
+    return response.end();
   }
+  if (method === "GET" && isPage(route)) return send(response, 200, await buildFile("index.html"), TYPES[".html"]);
   if (route === "/favicon.ico") return send(response, 204, "");
   if (route.startsWith("/web/symbols/")) return send(response, 200, PIXEL, "image/png");
   if (route === "/web/edit-check") {

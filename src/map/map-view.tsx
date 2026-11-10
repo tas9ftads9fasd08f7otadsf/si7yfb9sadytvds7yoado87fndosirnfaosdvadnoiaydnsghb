@@ -21,10 +21,11 @@ export function createMapView(container: HTMLElement): MapControl {
   const protocol = new Protocol();
   maplibregl.addProtocol("pmtiles", protocol.tilev4);
 
-  let framed = location.hash.includes("at=");
+  // A camera in the address was put there by someone; framing the map would undo it.
+  let framed = /^#\d/.test(location.hash);
   const map = new maplibregl.Map({
     container, style: { version: 8, sources: {}, layers: [] },
-    center: OPENING.center, zoom: OPENING.zoom, hash: "at", validateStyle: false, attributionControl: { compact: true },
+    center: OPENING.center, zoom: OPENING.zoom, hash: true, validateStyle: false, attributionControl: { compact: true },
     maxPitch: 85,
     locale: { "TerrainControl.Enable": words["TerrainControl.Enable"],
       "TerrainControl.Disable": words["TerrainControl.Disable"] }

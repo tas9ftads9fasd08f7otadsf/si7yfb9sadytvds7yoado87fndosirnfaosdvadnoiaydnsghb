@@ -2,15 +2,17 @@
 
 import { useEffect, useRef } from "react";
 import { type MapControl, setMapControl } from "@/map/control";
-import { drawStyle, loadWords, restoreKept, showEdit, startSession, toggleSide, useViewer } from "@/store/viewer";
+import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
+  from "@/store/viewer";
+import { NavRail } from "./NavRail";
 import { Gate, Notice, RegionOffer, SmallScreen, StatusBar } from "./Overlays";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
 
 const SMALL_SCREEN = "(max-width: 899px), (max-height: 499px)";
 
-/** The whole page: the map is made once the phone's words are in. */
-export function Viewer() {
+/** The whole page: the top bar, the rail, the screen the address names; the map is made once. */
+export function AppShell() {
   const mapBox = useRef<HTMLDivElement>(null);
   const standing = useViewer((state) => state.standing);
   const sideShown = useViewer((state) => state.sideShown);
@@ -26,6 +28,8 @@ export function Viewer() {
     };
     small.addEventListener("change", smallChanged);
     dark.addEventListener("change", darkChanged);
+    window.addEventListener("popstate", readAddress);
+    readAddress();
     restoreKept();
     void (async () => {
       await loadWords();
@@ -39,6 +43,7 @@ export function Viewer() {
       isGone = true;
       small.removeEventListener("change", smallChanged);
       dark.removeEventListener("change", darkChanged);
+      window.removeEventListener("popstate", readAddress);
       setMapControl(null);
       made?.remove();
     };
@@ -68,6 +73,7 @@ export function Viewer() {
   return (
     <>
       <TopBar />
+      <NavRail />
       <SideBar />
       <div id="map" ref={mapBox} />
       <RegionOffer />

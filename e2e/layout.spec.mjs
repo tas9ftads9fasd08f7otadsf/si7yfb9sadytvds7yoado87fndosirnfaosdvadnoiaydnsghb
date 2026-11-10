@@ -56,10 +56,12 @@ test("the style is picked in the header or in the side bar, and the map follows"
   await select.selectOption({ label: "Winter" });
   expect(new URL((await asked).url()).searchParams.get("hide")).toBe("6F1E2A10-0000-4000-8000-0000000000A2");
   await expect(page.locator(".chips button.picked")).toHaveText("Winter");
-  await expect(page).toHaveURL(/style=6F1E2A10-0000-4000-8000-0000000000B2/);
+  // 30 a style other than the one the map opens on is in the address's path.
+  await expect(page).toHaveURL(/\/maps\/[^/]+\/style\/6F1E2A10-0000-4000-8000-0000000000B2#/);
 
   await page.locator(".chips button", { hasText: "Summer" }).click();
   await expect(select).toHaveValue("6F1E2A10-0000-4000-8000-0000000000B1");
+  await expect(page).not.toHaveURL(/\/style\//);
 });
 
 // 2916: the switches are an editing browser's.
@@ -88,15 +90,18 @@ test("another map is opened from the side bar's list", async ({ page }) => {
   await expect(page.locator("#mapName")).toHaveText("Bratislava");
   await expect(page.locator("#styleLabel")).toBeHidden();
   await expect(page.locator("#current .hero b")).toHaveText("Bratislava");
-  await expect(page).toHaveURL(/map=6F1E2A10-0000-4000-8000-000000000002/);
+  // 30 the map's own address
+  await expect(page).toHaveURL(/\/maps\/6F1E2A10-0000-4000-8000-000000000002#/);
 });
 
-test("the side bar folds away with its button or the [ key, and the map takes the room", async ({ page }) => {
+// 30 the rail's Map item folds it now, and the address stays.
+test("the side bar folds away with the rail's Map item or the [ key, and the map takes the room", async ({ page }) => {
   await openViewer(page);
   const wide = (await page.locator("#map").boundingBox()).width;
-  await page.locator("#sideToggle").click();
+  const address = page.url();
+  await page.locator("#railMap").click();
   await expect(page.locator("body")).toHaveClass(/side-hidden/);
-  await expect(page.locator("#sideToggle")).toHaveAttribute("aria-expanded", "false");
+  expect(page.url().split("#")[0]).toBe(address.split("#")[0]);
   await expect.poll(async () => (await page.locator("#map").boundingBox()).width).toBeGreaterThan(wide + 300);
   await page.locator("#map canvas").click();
   await page.keyboard.press("[");
@@ -124,7 +129,8 @@ test("the header's switch turns the page light, dark or back to the computer's, 
   const toggle = page.locator("#themeToggle");
   const background = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   await expect(toggle).toHaveAttribute("aria-label", "Appearance: Automatic");
-  expect(await background()).toBe("rgb(245, 245, 247)");
+  // 30 the design's grounds
+  expect(await background()).toBe("rgb(242, 242, 247)");
 
   let asked = page.waitForRequest((request) => request.url().includes("/style?"));
   await toggle.click();
@@ -136,7 +142,7 @@ test("the header's switch turns the page light, dark or back to the computer's, 
   await expect(root).toHaveAttribute("data-theme", "dark");
   await expect(toggle).toHaveAttribute("aria-label", "Appearance: Dark");
   expect(new URL((await asked).url()).searchParams.get("theme")).toBe("dark");
-  expect(await background()).toBe("rgb(22, 22, 24)");
+  expect(await background()).toBe("rgb(0, 0, 0)");
 
   await page.reload();
   await page.locator("#current .hero").waitFor();
@@ -146,7 +152,7 @@ test("the header's switch turns the page light, dark or back to the computer's, 
   await expect(root).not.toHaveAttribute("data-theme", /.*/);
   await expect(toggle).toHaveAttribute("aria-label", "Appearance: Automatic");
   await page.emulateMedia({ colorScheme: "dark" });
-  expect(await background()).toBe("rgb(22, 22, 24)");
+  expect(await background()).toBe("rgb(0, 0, 0)");
 });
 
 // 2800: the owner's ask, the zoom shown on the map as the app shows it.

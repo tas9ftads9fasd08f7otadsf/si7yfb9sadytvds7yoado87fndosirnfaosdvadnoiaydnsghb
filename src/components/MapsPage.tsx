@@ -4,7 +4,7 @@ import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { checkKey, importMap, makeMap, pickMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
+import { checkKey, importMap, makeMap, openMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
 import { ServerCards } from "./Servers";
 import { MarkTile } from "./ui/MarkTile";
 import { Switch } from "./ui/Switch";
@@ -121,7 +121,7 @@ function MapRow({ shared }: { shared: SharedMap }) {
   const layerCount = useLayerCount();
   return (
     <button type="button" className={isShown ? "row picked" : "row"} aria-current={isShown ? "true" : undefined}
-      onClick={() => pickMap(shared.id, null)}>
+      onClick={() => openMap(shared.id)}>
       <MapMark shared={shared} />
       <span className="words">{shared.name}<small>{layerCount(shared.layers.length)}</small></span>
     </button>

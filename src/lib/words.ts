@@ -58,7 +58,8 @@ export const ENGLISH = {
   "serverKind.tilejson": "TileJSON", "serverKind.tiles": "Tile server",
   "serverKind.wmts": "WMTS", "serverKind.wms": "WMS", "serverKind.mapproxy": "MapProxy",
   servers: "Servers", view: "View", general: "General", sharing: "Sharing", address: "Address", kind: "Kind",
-  whatItSupports: "What it supports", whatServerHas: "What the server has"
+  whatItSupports: "What it supports", whatServerHas: "What the server has",
+  map: "Map", share: "Share", linkCopied: "Link copied"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;

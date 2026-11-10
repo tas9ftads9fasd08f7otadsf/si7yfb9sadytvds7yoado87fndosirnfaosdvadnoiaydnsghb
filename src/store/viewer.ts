@@ -3,6 +3,7 @@ import { edited } from "@/lib/coverage";
 import { EDIT_CHECK, HEARTBEAT_EVERY, ROOT, SESSION, THEME_KEY, TOKEN_KEY, readJSON, savedName, typedKey }
   from "@/lib/phone";
 import { BY_NAME, startQuery } from "@/lib/places";
+import { type Route, type ServerPart, mapOf, pathOf, plainCamera, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
@@ -11,11 +12,11 @@ import { ENGLISH, WORDS_PATH, type Words, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
 
 export type Theme = "auto" | "light" | "dark";
-export type ServerPart = "layers" | "general" | "sharing";
-export const SERVER_PARTS: ServerPart[] = ["layers", "general", "sharing"];
+export { SERVER_PARTS, type ServerPart } from "@/lib/route";
 export const THEMES: Record<Theme, string> = { auto: "circle.lefthalf.filled", light: "sun.max", dark: "moon" };
 
 export interface ViewerState {
+  route: Route;
   words: Words;
   standing: Standing | null;
   edits: boolean;
@@ -59,7 +60,7 @@ export interface ViewerState {
 }
 
 const firstState = (): ViewerState => ({
-  words: ENGLISH, standing: null, edits: false, viewers: null, gateDevice: "", editToken: null, device: null,
+  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, gateDevice: "", editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, regionOffer: null,
   zoomText: "", pointerText: "", addedLanguages: new Set(), startKind: null, startFound: null, coverage: null,
@@ -112,7 +113,8 @@ export async function loadWords() {
 }
 
 export function restoreKept() {
-  busy.addressKey = new URLSearchParams(location.search).get("edit");
+  const { route } = get();
+  busy.addressKey = route.screen === "unlock" ? route.key : null;
   try {
     set({ editToken: sessionStorage.getItem(TOKEN_KEY) });
   } catch { /* asked again */ }
@@ -194,12 +196,72 @@ export function startSession(isSmall: boolean) {
 
 // MARK: - Reading the phone
 
+// MARK: - The address
+
+const LAST_MAP_KEY = "riki-map";
+
+/** Moves to a screen: a new entry in the browser's history, or the one shown replaced. */
+export function go(route: Route, { replace = false } = {}) {
+  const address = pathOf(route) + location.hash;
+  if (address !== location.pathname + location.hash) {
+    // Next's router follows these and keeps its own state in the entry.
+    if (replace) history.replaceState(null, "", address);
+    else history.pushState(null, "", address);
+  }
+  followRoute(route);
+}
+
+/** The address the page opened at or was walked back to; an old camera is rewritten first. */
+export function readAddress() {
+  const camera = plainCamera(location.hash);
+  if (camera) history.replaceState(history.state, "", location.pathname + location.search + camera);
+  followRoute(readRoute(location.pathname));
+}
+
+function followRoute(route: Route) {
+  set({ route, editing: route.screen === "edit",
+    serverID: route.screen === "servers" ? route.server ?? null : null,
+    serverPart: route.screen === "servers" ? route.part ?? "layers" : "layers" });
+  const { device, mapID, styleID } = get();
+  if (!device) return;
+  const wanted = mapOf(route);
+  const style = "style" in route ? route.style : undefined;
+  if (wanted && wanted !== mapID && device.maps.some((each) => each.id === wanted)) void pickMap(wanted, style ?? null);
+  else if (wanted === mapID && style && style !== styleID) pickStyle(style);
+  else remember();
+}
+
+const defaultStyleOf = (portable: Portable | null) => portable?.selectedStyleID || portable?.styles?.[0]?.id;
+
+/** The address follows the map and style on screen; the style only when it is not the one a map opens on. */
 function remember() {
-  const { mapID, styleID } = get();
-  const query = new URLSearchParams();
-  if (mapID) query.set("map", mapID);
-  if (styleID) query.set("style", styleID);
-  history.replaceState(null, "", `?${query.toString()}${location.hash}`);
+  const { route, mapID, styleID, portable, device } = get();
+  if (!mapID) {
+    if (route.screen === "home" && device?.maps.length === 0) go({ screen: "maps" }, { replace: true });
+    return;
+  }
+  try {
+    localStorage.setItem(LAST_MAP_KEY, mapID);
+  } catch { /* the first map next time */ }
+  const style = styleID && styleID !== defaultStyleOf(portable) ? styleID : undefined;
+  if (route.screen === "home" && !route.modal) {
+    go(style ? { screen: "map", map: mapID, style } : { screen: "map", map: mapID }, { replace: true });
+  } else if (route.screen === "map" && (route.map !== mapID || route.style !== style)) {
+    const moved = { ...route, map: mapID };
+    if (style) moved.style = style;
+    else delete moved.style;
+    go(moved, { replace: true });
+  } else if ("map" in route && route.map !== mapID) {
+    go({ ...route, map: mapID }, { replace: true });
+  }
+}
+
+function lastMap(): string | null {
+  try {
+    return localStorage.getItem(LAST_MAP_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export async function readDevice() {
@@ -213,11 +275,13 @@ export async function readDevice() {
     return;
   }
   set({ device });
-  const { words, mapID, styleID } = get();
+  const { words, mapID, styleID, route } = get();
   document.title = `${device.name} · ${words.app}`;
-  const asked = new URLSearchParams(location.search);
-  const first = device.maps.find((each) => each.id === (mapID || asked.get("map"))) ?? device.maps[0];
-  if (first) await pickMap(first.id, styleID || asked.get("style"));
+  const named = (id: string | null | undefined) => device.maps.find((each) => each.id === id);
+  const first = named(mapID || mapOf(route)) ?? named(lastMap()) ?? device.maps[0];
+  const style = "style" in route ? route.style : undefined;
+  if (first) await pickMap(first.id, styleID || style || null);
+  else remember();
   void readPictures();
   mapControl()?.watchPhone(device.sharesLocation === true);
   set({ sharesLocation: device.sharesLocation === true });
@@ -295,12 +359,16 @@ export function showSide(sideShown: boolean) {
 
 export const toggleSide = () => showSide(!get().sideShown);
 
+/** Edit map opens on its first tab; Done goes back to the map it edits. */
 export function showEdit(editing: boolean) {
-  set({ editing });
+  const { mapID, route } = get();
   if (editing) {
+    if (mapID) go({ screen: "edit", map: mapID, tab: "layers" });
     showSide(true);
     return;
   }
+  if (route.screen === "edit") go({ screen: "map", map: route.map });
+  else set({ editing: false });
   const page = document.getElementById("editPage");
   if (page?.contains(document.activeElement)) {
     // A field left focused off screen drags the side bar after it.
@@ -329,7 +397,11 @@ export async function checkKey(typed: string) {
     const { words } = get();
     notice(answer.status === 429 ? words.tooManyTries : words.wrongPassword);
   }
-  remember();
+  // The key leaves the address, and the history, once the phone has answered it.
+  if (get().route.screen === "unlock") {
+    busy.addressKey = null;
+    go({ screen: "home" }, { replace: true });
+  }
 }
 
 function keepToken(token: string | null) {
@@ -425,11 +497,40 @@ export const exportServer = (id: string) => saveFrom(`${ROOT}/servson?${new URLS
 
 /** 27 A server's page opens on Layers, as the phone's does. */
 export function openServer(id: string | null) {
-  set({ serverID: id, serverPart: "layers" });
-  if (id) showSide(true);
+  const { mapID } = get();
+  if (id) {
+    go({ screen: "servers", server: id, part: "layers" });
+    showSide(true);
+  } else {
+    go(mapID ? { screen: "map", map: mapID } : { screen: "maps" });
+  }
 }
 
-export const showServerPart = (serverPart: ServerPart) => set({ serverPart });
+export function showServerPart(part: ServerPart) {
+  const { route } = get();
+  if (route.screen === "servers" && route.server) go({ ...route, part });
+  else set({ serverPart: part });
+}
+
+/** The address, camera and all, copied for whoever it is sent to. */
+export async function shareAddress() {
+  const address = location.href;
+  try {
+    await navigator.clipboard.writeText(address);
+  } catch {
+    // A phone's plain address is no secure context, so there is no clipboard API.
+    const field = document.createElement("textarea");
+    field.value = address;
+    document.body.append(field);
+    field.select();
+    document.execCommand("copy");
+    field.remove();
+  }
+  notice(get().words.linkCopied);
+}
+
+/** The map a click in a list opens; the address names it. */
+export const openMap = (id: string) => go({ screen: "map", map: id });
 
 /** The phone adds the servers it lacks and answers with them all. */
 export async function importServers(file: File) {
