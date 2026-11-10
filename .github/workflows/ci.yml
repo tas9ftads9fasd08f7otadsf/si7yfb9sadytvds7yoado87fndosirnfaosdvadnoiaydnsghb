@@ -7,8 +7,9 @@ on:
 permissions:
   contents: read
 
+# A pull request's new push replaces its last run; each merge's release runs to the end.
 concurrency:
-  group: ci-${{ github.head_ref || github.ref_name }}-${{ github.workflow }}
+  group: ci-${{ github.head_ref || github.sha }}-${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:

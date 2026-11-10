@@ -26,3 +26,12 @@ describe("the release workflow", () => {
     for (const permission of asked(read("ci.yml"))) expect(granted).toContain(permission);
   });
 });
+
+// 35 a merge's release was cancelled by the next merge: one group per branch held them both
+describe("CI's concurrency", () => {
+  it("groups a pull request by its branch and anything else by its commit", () => {
+    const group = /concurrency:\s*\n\s*group:\s*(.+)/.exec(read("ci.yml"))?.[1] ?? "";
+    expect(group).toContain("github.head_ref || github.sha");
+    expect(group).not.toContain("ref_name");
+  });
+});
