@@ -383,6 +383,16 @@ function style(each, query) {
         : { id: "riki-" + layer.id.toLowerCase(), type: "background", paint: { "background-opacity": 0 } })] };
 }
 
+function setShown(each, query, layers, isOn) {
+  const style = each.styles.find((one) => one.id === query.get("styleID")) || each.styles[0];
+  const hidden = new Set(style.arrangement?.hidden || []);
+  layers.forEach((layer) => {
+    layer.isEnabled = isOn;
+    if (isOn) hidden.delete(layer.id); else hidden.add(layer.id);
+  });
+  style.arrangement = { ...style.arrangement, hidden: [...hidden] };
+}
+
 function edit(each, query, response) {
   const adjust = (change) => each.styles.forEach((style) => { style.adjustments = change({ ...style.adjustments }); });
   const looked = query.has("layer") && LAYER_LOOKS.find((key) => query.has(key));
@@ -416,6 +426,13 @@ function edit(each, query, response) {
     if (!layer) return send(response, 404, "This change does not fit the map");
     if (query.has("name")) layer.name = query.get("name");
     else layer.opacity = Math.min(1, Math.max(0, Number(query.get("opacity"))));
+  } else if (query.has("layer") && query.has("shown")) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer) return send(response, 404, "This change does not fit the map");
+    setShown(each, query, [layer], query.get("shown") === "1");
+  } else if (query.has("shownAll")) {
+    // 3083: as `MapDefinition.setListedLayers` writes it, into the browser's style.
+    setShown(each, query, each.layers, query.get("shownAll") === "1");
   } else if (query.has("order")) {
     const asked = query.get("order").split(",");
     const placed = asked.map((id) => each.layers.find((one) => one.id === id));

@@ -6,6 +6,7 @@ export const ENGLISH = {
   note: "Note", otherLanguages: "Other languages", addLanguage: "Add a language", remove: "Remove",
   languages: "", opacity: "Opacity", rename: "Rename", newStyle: "New style", delete: "Delete",
   moveUp: "Move up", moveDown: "Move down", show: "Show", hide: "Hide", north: "N",
+  allLayersOn: "All on", allLayersOff: "All off",
   locate: "Locate, pointing north", layerCap: "A style draws up to 12 layers. Switch one off first.",
   close: "Close", viewing: "Browsers viewing", waiting: "Waiting to be let in",
   waitingText: "The phone sharing these maps has been asked to let this browser in.",

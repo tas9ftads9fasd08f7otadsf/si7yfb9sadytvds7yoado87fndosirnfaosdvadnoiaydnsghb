@@ -63,15 +63,23 @@ function LayerRow({ layer, listed, isBase, movable }: RowProps) {
 export function Layers({ portable }: { portable: Portable }) {
   const words = useViewer((state) => state.words);
   const adding = useViewer((state) => state.addingPackages);
+  const hidden = useViewer((state) => state.hidden);
   const styleName = useViewer((state) => state.portable?.styles?.find((each) => each.id === state.styleID)?.name);
   const sharedLayers = useViewer((state) => shownMapOf(state)?.layers) ?? [];
   const ground = groundID(portable.id);
   const stack = portable.stack ?? [];
   const byID = new Map(stack.map((layer) => [layer.id.toUpperCase(), layer]));
   const movable = sharedLayers.map((layer) => layer.id).filter((id) => id.toUpperCase() !== ground);
+  // 3083: the list's own switch, as the app's header has; the phone keeps it to its layer cap.
+  const switchable = stack.filter((layer) => layer.id.toUpperCase() !== ground);
+  const allOn = switchable.length > 0 && switchable.every((layer) => !hidden.has(layer.id));
   return (
     <>
-      <h2 className="title">{words.layers + (styleName ? ` · ${styleName}` : "")}</h2>
+      <div className="title-row">
+        <h2 className="title">{words.layers + (styleName ? ` · ${styleName}` : "")}</h2>
+        <button type="button" className="text-button" id="allLayers" disabled={switchable.length === 0}
+          onClick={() => change({ shownAll: allOn ? "0" : "1" })}>{allOn ? words.allLayersOff : words.allLayersOn}</button>
+      </div>
       <div className="list">
         {sharedLayers.map((listed) => {
           const layer = byID.get(listed.id.toUpperCase());
