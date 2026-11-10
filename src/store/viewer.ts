@@ -3,7 +3,7 @@ import { edited } from "@/lib/coverage";
 import { EDIT_CHECK, HEARTBEAT_EVERY, ROOT, SESSION, THEME_KEY, TOKEN_KEY, readJSON, savedName, typedKey }
   from "@/lib/phone";
 import { BY_NAME, startQuery } from "@/lib/places";
-import { type Route, type ServerPart, mapOf, pathOf, plainCamera, readRoute } from "@/lib/route";
+import { type Route, type ServerPart, keptMapLink, mapOf, pathOf, plainCamera, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
@@ -213,9 +213,12 @@ export function go(route: Route, { replace = false } = {}) {
 
 /** The address the page opened at or was walked back to; an old camera is rewritten first. */
 export function readAddress() {
-  const camera = plainCamera(location.hash);
-  if (camera) history.replaceState(history.state, "", location.pathname + location.search + camera);
-  followRoute(readRoute(location.pathname));
+  const camera = plainCamera(location.hash) ?? location.hash;
+  const kept = keptMapLink(location.pathname, location.search);
+  if (kept || camera !== location.hash) {
+    history.replaceState(history.state, "", (kept ? pathOf(kept) : location.pathname + location.search) + camera);
+  }
+  followRoute(kept ?? readRoute(location.pathname));
 }
 
 function followRoute(route: Route) {
@@ -240,9 +243,6 @@ function remember() {
     if (route.screen === "home" && device?.maps.length === 0) go({ screen: "maps" }, { replace: true });
     return;
   }
-  try {
-    localStorage.setItem(LAST_MAP_KEY, mapID);
-  } catch { /* the first map next time */ }
   const style = styleID && styleID !== defaultStyleOf(portable) ? styleID : undefined;
   if (route.screen === "home" && !route.modal) {
     go(style ? { screen: "map", map: mapID, style } : { screen: "map", map: mapID }, { replace: true });
@@ -311,6 +311,9 @@ async function readPictures() {
 
 export async function pickMap(id: string, styleID: string | null) {
   busy.layerOptions = null;
+  try {
+    localStorage.setItem(LAST_MAP_KEY, id);
+  } catch { /* the first map next time */ }
   set({ mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
     coverageOpen: new Map(), packages: null, addingPackages: false, serverPicks: new Map(), serviceRead: null,
     layerOptions: null, optionsOpen: new Set() });

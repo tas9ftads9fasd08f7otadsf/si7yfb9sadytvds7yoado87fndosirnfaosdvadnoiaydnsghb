@@ -302,6 +302,13 @@ describe("the address", () => {
     expect(history.length).toBe(length + 1);
   });
 
+  it("moves a bookmark's map and style into the path, keeping the camera", () => {
+    history.replaceState(null, "", "/?map=b&style=w#at=9/48/17");
+    readAddress();
+    expect(location.pathname + location.search + location.hash).toBe("/maps/b/style/w#9/48/17");
+    expect(get().route).toEqual({ screen: "map", map: "b", style: "w" });
+  });
+
   it("rewrites an old named camera once", () => {
     history.replaceState(null, "", "/maps/a#at=14/48.1583/17.1063");
     readAddress();
@@ -322,7 +329,8 @@ describe("the address", () => {
     useViewer.setState({ standing: "admitted", device: two, mapID: "b", portable: twoStyles, styleID: "s" });
     go({ screen: "home" });
     expect(location.pathname).toBe("/maps/b");
-    expect(localStorage.getItem("riki-map")).toBe("b");
+    go({ screen: "map", map: "a" });
+    expect(localStorage.getItem("riki-map")).toBe("a");
   });
 
   it("sends home to the maps when the phone shares none", () => {

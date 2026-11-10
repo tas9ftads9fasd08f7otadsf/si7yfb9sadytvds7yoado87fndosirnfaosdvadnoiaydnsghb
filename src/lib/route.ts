@@ -144,3 +144,13 @@ export function pathOf(route: Route): string {
 export function plainCamera(hash: string): string | null {
   return hash.startsWith("#at=") ? "#" + hash.slice(4) : null;
 }
+
+/** A bookmark's `/?map=<map>&style=<style>`, the map's address before it had a path. */
+export function keptMapLink(path: string, query: string): Route | null {
+  if (path !== "/" && path !== "/index.html") return null;
+  const asked = new URLSearchParams(query);
+  const map = asked.get("map");
+  if (!map) return null;
+  const style = asked.get("style");
+  return style ? { screen: "map", map, style } : { screen: "map", map };
+}

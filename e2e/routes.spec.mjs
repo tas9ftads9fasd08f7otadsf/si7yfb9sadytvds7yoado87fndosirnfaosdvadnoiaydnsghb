@@ -24,7 +24,7 @@ test("home opens the first map, then the one shown last", async ({ page }) => {
   await openViewer(page);
   await expect(page).toHaveURL(new RegExp(`/maps/${TATRAS}#`));
   await page.locator("#others .row", { hasText: "Bratislava" }).click();
-  await expect(page.locator("#mapName")).toHaveText("Bratislava");
+  await expect(page).toHaveURL(new RegExp(`/maps/${BRATISLAVA}#`));
   await openViewer(page, "/");
   await expect(page).toHaveURL(new RegExp(`/maps/${BRATISLAVA}#`));
 });
