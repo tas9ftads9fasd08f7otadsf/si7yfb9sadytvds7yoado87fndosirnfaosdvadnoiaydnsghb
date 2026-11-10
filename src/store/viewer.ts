@@ -78,13 +78,14 @@ const set = useViewer.setState;
 // Guards and timers no screen shows.
 const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof setTimeout> | undefined,
   notice: undefined as ReturnType<typeof setTimeout> | undefined, layerOptions: null as string | null,
-  packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null };
+  packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
+  coverageEdits: Promise.resolve() };
 
 export function resetViewer() {
   clearTimeout(busy.heartbeat);
   clearTimeout(busy.notice);
   Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, servers: false, coverage: null,
-    addressKey: null });
+    addressKey: null, coverageEdits: Promise.resolve() });
   set(firstState(), true);
 }
 
@@ -821,10 +822,15 @@ export const setCoverageQuery = (coverageQuery: string) => set({ coverageQuery }
 export const setCoverageOpen = (id: string, isOpen: boolean) =>
   set({ coverageOpen: new Map(get().coverageOpen).set(id, isOpen) });
 
-export async function editCoverage(changeSide: (places: CoverageSide) => void) {
-  const { coverage, coverageSide } = get();
-  const made: Coverage = edited(coverage?.coverage ?? {}, coverageSide, changeSide);
-  if (await change({ coverage: JSON.stringify(made) })) await loadCoverage();
+/** Queued, so a quick second pick is built on the first one's answer. */
+export function editCoverage(changeSide: (places: CoverageSide) => void): Promise<void> {
+  const side = get().coverageSide;
+  const edit = busy.coverageEdits.then(async () => {
+    const made: Coverage = edited(get().coverage?.coverage ?? {}, side, changeSide);
+    if (await change({ coverage: JSON.stringify(made) })) await loadCoverage();
+  });
+  busy.coverageEdits = edit.catch(() => {});
+  return edit;
 }
 
 // MARK: - Opens at
