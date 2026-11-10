@@ -14,6 +14,14 @@ export async function readJSON<T>(path: string): Promise<T> {
   return answer.json() as Promise<T>;
 }
 
+/** 21: null where the phone has nothing to say (204). */
+export async function readJSONIfAny<T>(path: string): Promise<T | null> {
+  const answer = await fetch(path, { cache: "no-store" });
+  if (answer.status === 204) return null;
+  if (!answer.ok) throw new Error(await answer.text());
+  return answer.json() as Promise<T>;
+}
+
 export const symbolURL = (name?: string | null) => `url("/web/symbols/${encodeURIComponent(name || "map")}")`;
 
 /** A password, typed with any case or gaps, as the phone reads it. */

@@ -46,3 +46,33 @@ test("a click on empty ground shows what the servers answer", async ({ page, req
   expect(asked.size).toMatch(/^\d+,\d+$/);
   expect(Number(asked.lat)).toBeGreaterThan(-90);
 });
+
+// 21: a layer with a Details layout shows its sections, filled by the phone from the feature.
+test("a clicked feature wears its layer's layout", async ({ page, request }) => {
+  await phone(request, "lays-out-details");
+  await openViewer(page);
+  await expect.poll(() => page.evaluate(() => __riki.map.isStyleLoaded())).toBe(true);
+  await page.evaluate(() => {
+    __riki.map.addSource("riki-custom-6f1e2a10-0000-4000-8000-0000000000a2", { type: "geojson", data: {
+      type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point",
+        coordinates: __riki.map.getCenter().toArray() },
+      properties: { Nazov: "Chata pod Rysmi", Elevation: "2250", Beds: "40" } }] } });
+    __riki.map.addLayer({ id: "huts", type: "circle", source: "riki-custom-6f1e2a10-0000-4000-8000-0000000000a2",
+      paint: { "circle-radius": 12 } });
+  });
+  const box = await page.locator("#map").boundingBox();
+  await expect.poll(() => page.evaluate(() => __riki.map.queryRenderedFeatures({ layers: ["huts"] }).length))
+    .toBeGreaterThan(0);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  const card = page.locator(".maplibregl-popup .feature");
+  await expect(card.locator("b")).toHaveText("Hut Chata pod Rysmi");
+  await expect(card.locator("h4")).toHaveText(["About", "Source"]);
+  await expect(card.locator("dd", { hasText: "2250 m" })).toHaveCount(1);
+  await expect(card.locator(".feature-note.warning")).toContainText("Closed in winter");
+  await expect(card.locator("dt", { hasText: "Beds" })).toHaveCount(1);
+  await expect(card.locator("dt", { hasText: "Elevation" })).toHaveCount(0);
+  const asked = (await phone(request, "details-asked"))[0];
+  expect(asked.layer).toBe("6f1e2a10-0000-4000-8000-0000000000a2");
+  expect(asked.values.Beds).toBe("40");
+});
