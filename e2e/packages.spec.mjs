@@ -4,7 +4,7 @@ import { openViewer, reset } from "./phone.mjs";
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 async function openPackages(page) {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await page.locator("#addLayer").click();
   await expect(page.locator("#packages")).toBeVisible();
@@ -49,7 +49,7 @@ test("the parts sit on one level, and a drawn package stays off", async ({ page 
 
 // 2959: as Edit layer asks; dismissed, nothing is sent.
 test("a layer is deleted once the question is answered", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   const huts = page.locator("#editBody .row", { has: page.locator("input[value=Huts]") });
   let asked = 0;

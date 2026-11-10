@@ -5,7 +5,7 @@ test.beforeEach(async ({ request }) => { await reset(request); });
 
 // 27 TestFlight AApG, AL9n: View on a server's card opens its page in parts, as on the phone.
 test("a server's View opens its page on Layers, then General and Sharing", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   const card = page.locator("[data-server-card='0D5E1F00-0000-4000-8000-000000000002']");
   await expect(card).toContainText("ZBGIS");
   await card.getByRole("button", { name: "View ZBGIS" }).click();

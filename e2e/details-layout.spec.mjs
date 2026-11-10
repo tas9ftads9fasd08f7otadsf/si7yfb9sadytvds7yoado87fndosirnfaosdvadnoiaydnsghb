@@ -12,7 +12,7 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
   .then((request) => Object.fromEntries(new URL(request.url()).searchParams));
 
 async function openLayout(page) {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   const row = page.locator("#editBody .row", { has: page.locator("input[value='Trams']") });
   await row.getByRole("button", { name: "Options" }).click();

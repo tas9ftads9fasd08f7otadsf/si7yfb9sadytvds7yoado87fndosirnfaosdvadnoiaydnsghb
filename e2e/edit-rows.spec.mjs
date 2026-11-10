@@ -8,7 +8,7 @@ const HUTS = "6F1E2A10-0000-4000-8000-0000000000A2";
 const WINTER = "6F1E2A10-0000-4000-8000-0000000000B2";
 
 async function openEdit(page) {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
 }

@@ -11,7 +11,7 @@ function PickerRow({ shared, onPicked }: { shared: SharedMap; onPicked: () => vo
   const isShown = useViewer((state) => state.mapID === shared.id);
   const icon = useViewer((state) => state.pictures.get(shared.id)?.icon);
   return (
-    <Link to={{ screen: "map", map: shared.id }} className="row" current={isShown}
+    <Link to={{ screen: "map", map: shared.id }} className="row" role="menuitem" current={isShown}
       onFollow={() => { onPicked(); openMap(shared.id); }}>
       <MarkTile symbol={shared.symbol} tint={shared.iconTintHex} picture={icon} small />
       <span className="words">{shared.name}</span>
@@ -29,16 +29,20 @@ function MapPicker() {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!isOpen) return;
-    const away = (event: Event) => {
-      if (event instanceof KeyboardEvent ? event.key === "Escape" : !box.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
+    const outside = (event: PointerEvent) => {
+      if (!box.current?.contains(event.target as Node)) setOpen(false);
     };
-    document.addEventListener("pointerdown", away);
-    document.addEventListener("keydown", away);
+    // Caught first and marked, so Escape closes the menu and not Edit map under it.
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape, true);
     return () => {
-      document.removeEventListener("pointerdown", away);
-      document.removeEventListener("keydown", away);
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape, true);
     };
   }, [isOpen]);
   const close = () => setOpen(false);
@@ -54,7 +58,7 @@ function MapPicker() {
         <div className="menu" id="mapMenu" role="menu" aria-label={words.maps}>
           {maps.map((each) => <PickerRow key={each.id} shared={each} onPicked={close} />)}
           <div className="foot">
-            <Link to={{ screen: "maps" }} id="allMaps" className="row"
+            <Link to={{ screen: "maps" }} id="allMaps" className="row" role="menuitem"
               onFollow={() => { close(); go({ screen: "maps" }); showSide(true); }}>
               <span className="words">{words.allMaps}</span>
             </Link>

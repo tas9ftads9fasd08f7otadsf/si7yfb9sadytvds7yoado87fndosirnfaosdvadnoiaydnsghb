@@ -47,7 +47,7 @@ test("the pointer's place is written in the status line", async ({ page }) => {
 
 // 2945: the side bar's chips are an editing browser's.
 test("the style is picked in the header or in the side bar, and the map follows", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   const select = page.locator("#styleSelect");
   await expect(page.locator("#styleLabel")).toBeVisible();
   await expect(select.locator("option")).toHaveText(["Summer", "Winter"]);
@@ -66,7 +66,7 @@ test("the style is picked in the header or in the side bar, and the map follows"
 
 // 2916: the switches are an editing browser's.
 test("a layer switched off in the side bar is left out of the style", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await expect(page.locator("#layerList .row")).toHaveCount(2);
   const asked = page.waitForRequest((request) => request.url().includes("/style?")
     && request.url().includes("hide=6F1E2A10-0000-4000-8000-0000000000A1"));
@@ -109,7 +109,7 @@ test("the side bar folds away with the rail's Map item or the [ key, and the map
 });
 
 test("a page opened from the editing address edits the map in the side bar", async ({ page }) => {
-  await openViewer(page, "/?edit=7q4-k29");
+  await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
   const name = page.getByRole("textbox", { name: "Name", exact: true });
