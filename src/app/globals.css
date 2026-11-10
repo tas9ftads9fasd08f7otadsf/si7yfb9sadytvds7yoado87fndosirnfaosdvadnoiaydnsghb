@@ -162,6 +162,14 @@ label.action { cursor: pointer; }
 .field.slider .ends { display: flex; justify-content: space-between; color: var(--secondary); font-size: 12px; }
 .row .link { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; padding: 4px; }
 .row.value .swatches { padding: 0; }
+.details-layout input, .details-layout textarea, .details-layout select { font: inherit; padding: 5px 8px;
+  border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; min-width: 0; }
+.layout-section { border-top: 1px solid var(--line); padding: 4px 0; }
+.layout-section > .row input { flex: 1; }
+.layout-block .row button { border: 0; background: none; color: var(--accent); padding: 4px; }
+.layout-block .row button:disabled { color: var(--secondary); opacity: 0.4; }
+.block-fields, .add-content { display: flex; flex-direction: column; gap: 6px; padding: 2px 14px 8px; }
+.add-content button { align-self: flex-start; }
 .field.pictured { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .field.pictured .shown { width: 44px; height: 44px; border-radius: 10px; background: center / cover; }
 .field.pictured.preview .shown { width: 100%; height: auto; aspect-ratio: 4 / 3; }

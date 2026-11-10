@@ -146,7 +146,8 @@ export interface OptionChoice {
 }
 
 export interface OptionSection {
-  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values";
+  kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values"
+    | "details";
   title?: string;
   footnote?: string;
   layerScoped?: boolean;
@@ -164,6 +165,30 @@ export interface OptionSection {
   /** A slider's least, most and step. */
   range?: number[];
   ends?: string[];
+  layout?: DetailsLayout;
+}
+
+/** 29: a layer's Details layout as the phone lists it, each block named by its handle. */
+export interface DetailsLayout {
+  sections: { title?: string | null; name: string; blocks: LayoutBlock[] }[];
+  used: number;
+  limit: number;
+  /** The app's parts not placed yet, which go in one place each. */
+  parts: LayoutBlock[];
+  keys: string[];
+  offers: OptionChoice[];
+  words: Record<string, string>;
+}
+
+export interface LayoutBlock {
+  handle: string;
+  kind: string;
+  name: string;
+  part?: string;
+  value?: string;
+  heading?: string;
+  style?: string;
+  counts: boolean;
 }
 
 /** 21: a layer's Details layout, filled and worded by the phone. */
