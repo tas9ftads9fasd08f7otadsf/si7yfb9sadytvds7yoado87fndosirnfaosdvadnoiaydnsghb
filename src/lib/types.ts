@@ -225,11 +225,22 @@ export interface ServerRow {
   pick: ServerPick;
 }
 
+export interface ServerFact {
+  name: string;
+  value: string;
+}
+
 export interface Server {
   id: string;
   name: string;
   line: string;
   rows: ServerRow[];
+  /** 27: what the phone's server page shows under General; an older phone sends none. */
+  address?: string;
+  kind?: string;
+  symbol?: string;
+  iconTintHex?: string | null;
+  facts?: ServerFact[];
 }
 
 export interface ServerList {

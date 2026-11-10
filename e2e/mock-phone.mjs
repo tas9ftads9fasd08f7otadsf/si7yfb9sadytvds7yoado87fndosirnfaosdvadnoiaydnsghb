@@ -289,9 +289,11 @@ function layerOptions(each) {
 const OSM = "0D5E1F00-0000-4000-8000-000000000001";
 const ZBGIS = "0D5E1F00-0000-4000-8000-000000000002";
 const SERVERS = [
-  { id: OSM, name: "OpenTopoMap", line: "Tiles", rows: [
+  { id: OSM, name: "OpenTopoMap", line: "Tiles", address: "https://tile.opentopomap.org/{z}/{x}/{y}.png",
+    kind: "Tile server", symbol: "mountain.2", rows: [
     { kind: "layer", title: "OpenTopoMap", subtitle: "Raster", depth: 0, pick: { server: OSM, layer: "" } }] },
-  { id: ZBGIS, name: "ZBGIS", line: "Esri / ArcGIS · 3 services", rows: [
+  { id: ZBGIS, name: "ZBGIS", line: "Esri / ArcGIS · 3 services", address: "https://zbgis.test/arcgis/rest/services",
+    kind: "Esri / ArcGIS", facts: [{ name: "Version", value: "11.1" }], rows: [
     { kind: "heading", title: "Base", depth: 0 },
     { kind: "heading", title: "Parcels", subtitle: "MapServer", depth: 1 },
     { kind: "layer", title: "Parcels C", subtitle: "Areas", depth: 2,
@@ -646,9 +648,14 @@ async function answer(request, response) {
     // 2997: as `PeerWebServson` writes them, keys left on the phone.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    // 27: a server's page asks for that server alone
+    const one = url.searchParams.get("server");
+    const servers = one ? SERVERS.filter((server) => server.id === one) : SERVERS;
+    if (one && !servers.length) return send(response, 404, "");
+    const name = one ? servers[0].name : "Servers";
     return send(response, 200, JSON.stringify({ _schemaVersion: 1, includesCredentials: false,
-      servers: SERVERS.map((server) => ({ name: server.name })) }), "application/json",
-      { "Content-Disposition": 'attachment; filename="Servers.servson"' });
+      servers: servers.map((server) => ({ name: server.name })) }), "application/json",
+      { "Content-Disposition": `attachment; filename="${name}.servson"` });
   }
   if (parts[2] === "import-servers" && parts.length === 3) {
     // 2997: only servers the phone lacks join; a file of none is refused.

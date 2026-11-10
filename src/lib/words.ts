@@ -56,7 +56,9 @@ export const ENGLISH = {
   "TerrainControl.Enable": "3D relief, off", "TerrainControl.Disable": "3D relief, on",
   newServer: "New server", serverAddress: "Address", "serverKind.arcgis": "Esri / ArcGIS",
   "serverKind.tilejson": "TileJSON", "serverKind.tiles": "Tile server",
-  "serverKind.wmts": "WMTS", "serverKind.wms": "WMS", "serverKind.mapproxy": "MapProxy"
+  "serverKind.wmts": "WMTS", "serverKind.wms": "WMS", "serverKind.mapproxy": "MapProxy",
+  servers: "Servers", view: "View", general: "General", sharing: "Sharing", address: "Address", kind: "Kind",
+  whatItSupports: "What it supports", whatServerHas: "What the server has"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;
