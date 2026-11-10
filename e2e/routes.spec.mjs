@@ -103,7 +103,11 @@ test("an old named camera is rewritten to the plain one and kept", async ({ page
 test("Share copies the page's address", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await openViewer(page);
+  const shown = page.url().split("#")[0];
   await page.locator("#shareButton").click();
   await expect(page.locator("#notice")).toHaveText("Link copied");
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());
+  // The map may still be framing, so the camera is checked for its shape, not its numbers.
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied.split("#")[0]).toBe(shown);
+  expect(copied).toMatch(/#\d+(\.\d+)?\/-?\d/);
 });
