@@ -11,6 +11,10 @@ permissions:
 jobs:
   check:
     uses: ./.github/workflows/ci.yml
+    # A called workflow gets no more than this; CI's change check reads pull requests.
+    permissions:
+      contents: read
+      pull-requests: read
 
   release:
     name: Publish the bundle
