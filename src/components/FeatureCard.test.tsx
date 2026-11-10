@@ -34,4 +34,19 @@ describe("FeatureCard", () => {
     expect(screen.getByText("operator")).toBeTruthy();
     expect(screen.queryByText("speed")).toBeNull();
   });
+
+  // 28
+  it("draws a button's link and a picture, but only from a web address", () => {
+    const { container } = render(
+      <FeatureCard properties={{ name: "Hut" }} layer="Huts" details={{ keys: [], sections: [{ blocks: [
+        { kind: "link", title: "Timetable", text: "https://mapa.example/trip/4" },
+        { kind: "link", title: "Run", text: "javascript:alert(1)" },
+        { kind: "image", text: "https://img.example/hut.jpg" },
+        { kind: "image", text: "data:image/png;base64,AAAA" }] }] }} />);
+    expect(screen.getByText("Timetable").getAttribute("href")).toBe("https://mapa.example/trip/4");
+    expect(screen.queryByText("Run")).toBeNull();
+    const pictures = container.querySelectorAll<HTMLElement>(".feature-image");
+    expect(pictures.length).toBe(1);
+    expect(pictures[0]?.style.backgroundImage).toContain("https://img.example/hut.jpg");
+  });
 });

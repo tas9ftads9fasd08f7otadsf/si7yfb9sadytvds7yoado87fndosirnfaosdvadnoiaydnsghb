@@ -15,6 +15,17 @@ function Rows({ rows }: { rows: [string, string][] }) {
   );
 }
 
+/** 28: a link or picture opens only on the web, whatever the data wrote. */
+export function webAddress(text?: string | null): string | null {
+  if (!text) return null;
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function Block({ block, tags }: { block: DetailsBlock; tags: [string, string][] }) {
   switch (block.kind) {
     case "rows":
@@ -26,6 +37,15 @@ function Block({ block, tags }: { block: DetailsBlock; tags: [string, string][] 
           {block.text}
         </p>
       );
+    case "link": {
+      const href = webAddress(block.text);
+      return href ? <a className="feature-link" href={href} target="_blank" rel="noopener noreferrer">{block.title || href}</a> : null;
+    }
+    case "image": {
+      const src = webAddress(block.text);
+      return src ? <div className="feature-image" role="img" aria-label={block.title ?? ""}
+        style={{ backgroundImage: `url(${JSON.stringify(src)})` }} /> : null;
+    }
     case "allTags":
       return <Rows rows={tags} />;
     default:

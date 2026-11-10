@@ -247,3 +247,5 @@ body.gated #gate { display: flex; }
 .feature-note { margin: 4px 0; padding: 8px 10px; border-radius: 10px; background: var(--fill); overflow-wrap: anywhere; }
 .feature-note small { display: block; color: var(--secondary); }
 .feature-note.warning { background: color-mix(in srgb, orange 18%, transparent); }
+.feature-link { display: inline-block; margin: 4px 0; padding: 6px 12px; border-radius: 999px; background: var(--fill); color: var(--accent); text-decoration: none; }
+.feature-image { aspect-ratio: 4 / 3; margin: 6px 0; border-radius: 10px; background: var(--fill) center / cover no-repeat; }

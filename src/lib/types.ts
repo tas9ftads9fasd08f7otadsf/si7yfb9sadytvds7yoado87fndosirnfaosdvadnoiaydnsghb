@@ -174,7 +174,7 @@ export interface DetailsSheet {
   keys: string[];
 }
 
-/** `rows`, `text` or `allTags`; a kind this page does not know is skipped. */
+/** `rows`, `text`, `link`, `image` or `allTags`; a kind this page does not know is skipped. */
 export interface DetailsBlock {
   kind: string;
   rows?: { title: string; value: string }[] | null;
