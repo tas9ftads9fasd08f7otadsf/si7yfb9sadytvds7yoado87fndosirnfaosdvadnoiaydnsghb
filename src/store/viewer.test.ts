@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portable } from "@/lib/types";
 import { type MapControl, setMapControl } from "@/map/control";
-import { FILE_LIMIT, addFile, addPackages, addServer, applySession, importServers, change, checkKey, go, loadWords,
+import { FILE_LIMIT, addFile, editCoverage, addPackages, addServer, applySession, importServers, change, checkKey, go, loadWords,
   notice, readAddress, resetViewer, restoreKept, setLayerShown, showEdit, tickPackage, useViewer } from "./viewer";
 
 const get = useViewer.getState;
@@ -353,5 +353,29 @@ describe("the address", () => {
     await checkKey("AAAAAA");
     expect(location.pathname).toBe("/");
     expect(get().notice).toBe(get().words.wrongPassword);
+  });
+});
+
+// 33 a second pick made before the first one's coverage came back dropped the first
+describe("editCoverage", () => {
+  it("builds a quick second pick on the first one's answer", async () => {
+    useViewer.setState({ editToken: "t", mapID: "a", styleID: "s", portable, device, coveragePlaces: { continents: [] } as never,
+      coverage: { line: "", warnings: [], coverage: {} } });
+    let held: Record<string, unknown> = {};
+    const sent: Record<string, unknown>[] = [];
+    answering((url) => {
+      if (url.includes("/edit?")) {
+        held = JSON.parse(new URL(url, "http://phone").searchParams.get("coverage")!);
+        sent.push(held);
+        return json(portable);
+      }
+      if (url.includes("/coverage")) return json({ line: "", warnings: [], coverage: held });
+      return json(device);
+    });
+    const first = editCoverage((places) => { places.continents = ["europe"]; });
+    const second = editCoverage((places) => { places.mountains = true; });
+    await Promise.all([first, second]);
+    expect(sent).toEqual([{ continents: ["europe"] }, { continents: ["europe"], mountains: true }]);
+    expect(get().coverage?.coverage).toEqual({ continents: ["europe"], mountains: true });
   });
 });
