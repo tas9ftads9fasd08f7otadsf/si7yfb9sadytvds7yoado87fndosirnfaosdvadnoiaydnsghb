@@ -25,7 +25,7 @@ function Coordinates({ start }: { start: Start }) {
       startLongitude: lon !== "" && Math.abs(Number(lon)) <= 180,
       startZoom: zoom === "" || Number.isFinite(Number(zoom)) };
     setWrong({ startLatitude: !fits.startLatitude, startLongitude: !fits.startLongitude, startZoom: !fits.startZoom });
-    if (Object.values(fits).every(Boolean)) void change({ start: "coordinates", lat, lon, zoom });
+    if (Object.values(fits).every(Boolean)) void change({ kind: "startAt", lat, lon, zoom });
   };
   const fields = [["startLatitude", words.latitude], ["startLongitude", words.longitude], ["startZoom", words.zoomWord]] as const;
   return (

@@ -85,3 +85,22 @@ describe("old addresses", () => {
     expect(readRoute("/?edit=7Q4K29")).toEqual({ screen: "home" });
   });
 });
+
+// 36 the site is served under any path; every address carries it, and reading drops it
+describe("a base path", () => {
+  it.each(TABLE)("%s under /editor both ways", (path, route) => {
+    const based = path === "/" ? "/editor/" : "/editor" + path;
+    expect(pathOf(route, "/editor")).toBe(based);
+    expect(readRoute(based, "/editor")).toEqual(route);
+  });
+
+  it("reads the base itself as home, and a path outside it as home", () => {
+    expect(readRoute("/editor", "/editor")).toEqual({ screen: "home" });
+    expect(readRoute("/editorial/maps", "/editor")).toEqual({ screen: "home" });
+  });
+
+  it("adds nothing for the phone, which serves the page at its root", () => {
+    expect(pathOf({ screen: "maps" })).toBe("/maps");
+    expect(readRoute("/maps")).toEqual({ screen: "maps" });
+  });
+});

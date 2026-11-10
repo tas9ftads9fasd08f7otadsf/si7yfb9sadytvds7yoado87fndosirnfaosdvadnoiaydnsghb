@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { featureRows, featureTitle } from "./feature";
 import { groundID } from "./ground";
-import { savedName, typedKey } from "./phone";
+import { typedKey } from "./page";
 import { ENGLISH, filledIn, listed, readPhoneWords } from "./words";
 
 describe("features", () => {
@@ -23,14 +23,9 @@ describe("the map's ground", () => {
   });
 });
 
-describe("what is typed and saved", () => {
+describe("what is typed", () => {
   it("reads a password with any case or gaps", () => {
     expect(typedKey("7q4-k 29")).toBe("7Q4K29");
-  });
-  it("prefers the UTF-8 file name", () => {
-    expect(savedName(`attachment; filename="a.mapson"; filename*=UTF-8''Pre%C5%A1ov.mapson`)).toBe("Prešov.mapson");
-    expect(savedName(`attachment; filename="a.mapson"`)).toBe("a.mapson");
-    expect(savedName("")).toBe("Map.mapson");
   });
 });
 

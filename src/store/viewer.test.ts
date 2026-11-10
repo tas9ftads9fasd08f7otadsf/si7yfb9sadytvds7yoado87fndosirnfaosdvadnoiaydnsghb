@@ -31,13 +31,13 @@ describe("change", () => {
   it("does nothing without a token", async () => {
     useViewer.setState({ editToken: null });
     const fetcher = answering(() => json({}));
-    expect(await change({ name: "x" })).toBe(false);
+    expect(await change({ kind: "name", name: "x" })).toBe(false);
     expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("sends the style and the bearer token, and keeps the map the phone answers", async () => {
     const fetcher = answering((url) => url.includes("/edit") ? json({ ...portable, name: "New" }) : json(device));
-    expect(await change({ name: "New" })).toBe(true);
+    expect(await change({ kind: "name", name: "New" })).toBe(true);
     const [url, init] = fetcher.mock.calls[0]!;
     expect(url).toBe("/riki/v1/maps/a/edit?name=New&styleID=s");
     expect(init?.headers).toEqual({ Authorization: "Bearer t" });
@@ -47,20 +47,20 @@ describe("change", () => {
   it("falls back to the phone's selected style when the shown one is gone", async () => {
     useViewer.setState({ styleID: "gone" });
     answering((url) => url.includes("/edit") ? json(portable) : json(device));
-    await change({ removeStyle: "gone" });
+    await change({ kind: "removeStyle", style: "gone" });
     expect(get().styleID).toBe("s");
   });
 
   it("puts the fields back and says why on a refusal", async () => {
     answering(() => new Response("A name cannot be blank", { status: 400 }));
-    expect(await change({ name: "" })).toBe(false);
+    expect(await change({ kind: "name", name: "" })).toBe(false);
     expect(get().notice).toBe("A name cannot be blank");
     expect(get().editEpoch).toBe(1);
   });
 
   it("turns the phone's layer limit into its own sentence", async () => {
     answering(() => new Response("Too many layers", { status: 409 }));
-    await change({ layer: "l", shown: "1" });
+    await change({ kind: "layerShown", layer: "l", shown: true });
     expect(get().notice).toBe(get().words.layerCap);
   });
 
@@ -68,7 +68,7 @@ describe("change", () => {
     useViewer.setState({ editing: true });
     sessionStorage.setItem("riki-edit-token", "t");
     answering(() => new Response("", { status: 401 }));
-    expect(await change({ name: "x" })).toBe(false);
+    expect(await change({ kind: "name", name: "x" })).toBe(false);
     expect(get().editToken).toBeNull();
     expect(get().editing).toBe(false);
     expect(get().notice).toBe(get().words.passwordAgain);
@@ -77,7 +77,7 @@ describe("change", () => {
 
   it("says the phone is away when it cannot be reached", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
-    expect(await change({ name: "x" })).toBe(false);
+    expect(await change({ kind: "name", name: "x" })).toBe(false);
     expect(get().notice).toBe(get().words.away);
   });
 });

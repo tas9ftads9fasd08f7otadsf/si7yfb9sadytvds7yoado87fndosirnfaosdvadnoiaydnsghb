@@ -5,7 +5,8 @@ import { createRoot } from "react-dom/client";
 import { FeatureCard } from "@/components/FeatureCard";
 import { leftOpening, OPENING } from "@/lib/camera";
 import { drawable } from "@/lib/drawable";
-import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY, ROOT, readJSON, readJSONIfAny } from "@/lib/phone";
+import { backend } from "@backend";
+import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY } from "@/lib/page";
 import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
 import { drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
@@ -63,11 +64,10 @@ export function createMapView(container: HTMLElement): MapControl {
     let image: ImageBitmap | null = null;
     let options = {};
     try {
-      const answer = await fetch(`/web/icons/${encodeURIComponent(name)}`);
-      if (answer.ok) {
-        image = await createImageBitmap(await answer.blob());
-        options = { sdf: answer.headers.get("X-Riki-SDF") === "1",
-          pixelRatio: Number(answer.headers.get("X-Riki-Pixel-Ratio")) || 1 };
+      const icon = await backend.icon(name);
+      if (icon) {
+        image = await createImageBitmap(icon.image);
+        options = { sdf: icon.sdf, pixelRatio: icon.pixelRatio };
       }
     } catch { /* drawn blank, its label kept */ }
     if (map.hasImage(name)) return;
@@ -98,7 +98,7 @@ export function createMapView(container: HTMLElement): MapControl {
 
   async function askPhone() {
     try {
-      phone.fix = await readJSON<{ lat: number; lon: number }>(`${ROOT}/location`);
+      phone.fix = await backend.phoneLocation();
       if (!phone.marker) {
         const dot = document.createElement("div");
         dot.className = "phone-dot";
@@ -160,7 +160,7 @@ export function createMapView(container: HTMLElement): MapControl {
     const { mapID } = get();
     let known: RegionList | null = null;
     try {
-      known = await readJSON<RegionList>(`${ROOT}/maps/${mapID}/regions`);
+      if (mapID) known = await backend.regions(mapID);
     } catch { /* an older phone, or none to offer */ }
     if (mapID !== get().mapID) return;
     const landed = regions.mapID === mapID
@@ -208,7 +208,7 @@ export function createMapView(container: HTMLElement): MapControl {
       const source = map.getSource(CUSTOM + layer.id.toLowerCase());
       if (!(source instanceof maplibregl.GeoJSONSource)) continue;
       try {
-        source.setData(await readJSON(`${ROOT}/maps/${shared.id}/live/${layer.id}?bbox=${bbox}`));
+        source.setData(await backend.live(shared.id, layer.id, bbox) as GeoJSON.GeoJSON);
       } catch { /* the layer keeps what it last drew */ }
     }
     liveTimer = setTimeout(askLive, LIVE_EVERY);
@@ -230,22 +230,16 @@ export function createMapView(container: HTMLElement): MapControl {
     if (!shared || state.standing !== "admitted") return;
     const asked = ++lastAsked;
     const box = container.getBoundingClientRect();
-    const query = new URLSearchParams({
-      theme: isDark() ? "dark" : "light",
-      tiles: Math.max(0.25, (box.width * box.height) / (512 * 512)).toFixed(2),
-      hide: [...state.hidden].sort().join(","),
-      atlas: "1"
-    });
-    if (state.styleID) query.set("styleID", state.styleID);
-    if (shared.revision != null) query.set("rev", String(shared.revision));
     let style: StyleSpecification;
     try {
-      const answer = await fetch(`${ROOT}/maps/${shared.id}/style?${query.toString()}`, { cache: "no-store" });
+      const answer = await backend.style({ mapID: shared.id, styleID: state.styleID, hidden: [...state.hidden],
+        theme: isDark() ? "dark" : "light", tiles: Math.max(0.25, (box.width * box.height) / (512 * 512)).toFixed(2),
+        revision: shared.revision });
       if (!answer.ok) {
-        if (asked === lastAsked) notice(await answer.text());
+        if (asked === lastAsked) notice(answer.said);
         return;
       }
-      style = await answer.json();
+      style = answer.value as StyleSpecification;
     } catch {
       if (asked === lastAsked) notice(get().words.away);
       return;
@@ -301,13 +295,11 @@ export function createMapView(container: HTMLElement): MapControl {
     const asked = ++asking;
     const seen = map.getBounds();
     const canvas = map.getCanvas();
-    const query = new URLSearchParams({ lon: String(at.lng), lat: String(at.lat),
-      box: [seen.getWest(), seen.getSouth(), seen.getEast(), seen.getNorth()].join(","),
-      size: `${canvas.clientWidth},${canvas.clientHeight}` });
-    if (styleID) query.set("style", styleID);
     let listing: IdentifyListing;
     try {
-      listing = await readJSON<IdentifyListing>(`${ROOT}/maps/${mapID}/identify?${query}`);
+      listing = await backend.identify(mapID, { lon: at.lng, lat: at.lat,
+        box: [seen.getWest(), seen.getSouth(), seen.getEast(), seen.getNorth()],
+        size: [canvas.clientWidth, canvas.clientHeight], styleID });
     } catch {
       return;
     }
@@ -324,8 +316,7 @@ export function createMapView(container: HTMLElement): MapControl {
     const values = Object.fromEntries(Object.entries(shown.properties).map(([key, value]) => [key, String(value)]));
     let details: DetailsSheet | null;
     try {
-      const query = new URLSearchParams({ layer, values: JSON.stringify(values) });
-      details = await readJSONIfAny<DetailsSheet>(`${ROOT}/maps/${mapID}/details?${query}`);
+      details = await backend.details(mapID, layer, values);
     } catch {
       return;
     }

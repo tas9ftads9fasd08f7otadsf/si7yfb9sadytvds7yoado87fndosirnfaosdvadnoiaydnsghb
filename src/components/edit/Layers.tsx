@@ -28,7 +28,7 @@ function LayerRow({ layer, listed, isBase, movable }: RowProps) {
     const order = movable.slice();
     order.splice(place, 1);
     order.splice(place + by, 0, listed.id);
-    void change({ order: order.join(",") });
+    void change({ kind: "order", layers: order });
   };
   return (
     <>
@@ -36,10 +36,10 @@ function LayerRow({ layer, listed, isBase, movable }: RowProps) {
         <MarkTile symbol={layer.symbol} tint={layer.tintHex} small />
         <div className="words">
           <CommitField type="text" value={layer.name} aria-label={words.rename}
-            onCommit={(name) => change({ layer: layer.id, name })} />
+            onCommit={(name) => change({ kind: "layerName", layer: layer.id, name })} />
           <small>{listed.kind}</small>
           {isBase ? null : <CommitField type="range" min="0" max="1" step="0.05" value={String(layer.opacity ?? 1)}
-            aria-label={words.opacity} title={words.opacity} onCommit={(opacity) => change({ layer: layer.id, opacity })} />}
+            aria-label={words.opacity} title={words.opacity} onCommit={(opacity) => change({ kind: "layerOpacity", layer: layer.id, opacity })} />}
         </div>
         {sections ? (
           <button type="button" className="icon-button" aria-label={words.layerOptions} title={words.layerOptions}
@@ -51,7 +51,7 @@ function LayerRow({ layer, listed, isBase, movable }: RowProps) {
           disabled={place <= 0} onClick={() => move(-1)}><Sym name="chevron.up" /></button>
         <button type="button" className="icon-button" aria-label={words.moveDown} title={words.moveDown}
           disabled={place < 0 || place >= movable.length - 1} onClick={() => move(1)}><Sym name="chevron.down" /></button>
-        <Switch isOn={!isHidden} label={layer.name} onChange={(isOn) => change({ layer: layer.id, shown: isOn ? "1" : "0" })} />
+        <Switch isOn={!isHidden} label={layer.name} onChange={(isOn) => change({ kind: "layerShown", layer: layer.id, shown: isOn })} />
         <button type="button" className="icon-button danger" aria-label={words.deleteLayer} title={words.deleteLayer}
           onClick={() => removeLayer(layer)}><Sym name="trash" /></button>
       </div>
@@ -78,7 +78,7 @@ export function Layers({ portable }: { portable: Portable }) {
       <div className="title-row">
         <h2 className="title">{words.layers + (styleName ? ` · ${styleName}` : "")}</h2>
         <button type="button" className="text-button" id="allLayers" disabled={switchable.length === 0}
-          onClick={() => change({ shownAll: allOn ? "0" : "1" })}>{allOn ? words.allLayersOff : words.allLayersOn}</button>
+          onClick={() => change({ kind: "layersShown", shown: !allOn })}>{allOn ? words.allLayersOff : words.allLayersOn}</button>
       </div>
       <div className="list">
         {sharedLayers.map((listed) => {
