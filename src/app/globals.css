@@ -1,26 +1,59 @@
-/* A page for a computer's screen: a header, a side bar, the map, a status line. */
+/* A page for a computer's screen: a top bar, a rail, the screen beside it, a status line. */
+/* 30 the design's palette; the names before it point at it until their screens move. */
 :root {
-  --page: #f5f5f7; --panel: #ffffff; --label: #1d1d1f; --secondary: rgba(60, 60, 67, 0.68);
-  --tertiary: rgba(60, 60, 67, 0.32); --fill: rgba(118, 118, 128, 0.12); --hover: rgba(118, 118, 128, 0.09);
-  --line: rgba(60, 60, 67, 0.16); --accent: #1f6feb; --on-accent: #ffffff; --positive: #34c759;
-  --danger: #d03a32; --shadow: rgba(0, 0, 0, 0.14); --scrim: rgba(245, 245, 247, 0.72);
-  --side: 360px; --top: 52px; --status: 28px; --radius: 10px; color-scheme: light;
+  --ground: #f2f2f7; --card: #ffffff; --text: #000000; --sub: rgba(60, 60, 67, 0.6); --sep: rgba(60, 60, 67, 0.18);
+  --inset: rgba(118, 118, 128, 0.12); --link: #007aff; --accent: #007aff; --danger: #ff3b30;
+  --switch-on: #34c759; --switch-off: rgba(120, 120, 128, 0.16); --tint: 12%;
+  --c-water: #4a90e2; --c-red: #ff3b30; --c-orange: #ff9500; --c-yellow: #ffcc00; --c-green: #34c759;
+  --c-mint: #00c7be; --c-teal: #30b0c7; --c-indigo: #5856d6; --c-purple: #af52de; --c-gray: #8e8e93;
+  --tertiary: rgba(60, 60, 67, 0.3); --hover: rgba(118, 118, 128, 0.09); --on-accent: #ffffff;
+  --shadow: rgba(0, 0, 0, 0.12); --scrim: rgba(242, 242, 247, 0.72); --glass: rgba(255, 255, 255, 0.72);
+  color-scheme: light;
+  --page: var(--ground); --panel: var(--card); --label: var(--text); --secondary: var(--sub);
+  --line: var(--sep); --fill: var(--inset); --positive: var(--switch-on);
+  --cs-water: color-mix(in srgb, var(--c-water) var(--tint), transparent);
+  --cr-water: color-mix(in srgb, var(--c-water) 32%, transparent);
+  --cs-red: color-mix(in srgb, var(--c-red) var(--tint), transparent);
+  --cr-red: color-mix(in srgb, var(--c-red) 32%, transparent);
+  --cs-orange: color-mix(in srgb, var(--c-orange) var(--tint), transparent);
+  --cr-orange: color-mix(in srgb, var(--c-orange) 32%, transparent);
+  --cs-yellow: color-mix(in srgb, var(--c-yellow) var(--tint), transparent);
+  --cr-yellow: color-mix(in srgb, var(--c-yellow) 32%, transparent);
+  --cs-green: color-mix(in srgb, var(--c-green) var(--tint), transparent);
+  --cr-green: color-mix(in srgb, var(--c-green) 32%, transparent);
+  --cs-mint: color-mix(in srgb, var(--c-mint) var(--tint), transparent);
+  --cr-mint: color-mix(in srgb, var(--c-mint) 32%, transparent);
+  --cs-teal: color-mix(in srgb, var(--c-teal) var(--tint), transparent);
+  --cr-teal: color-mix(in srgb, var(--c-teal) 32%, transparent);
+  --cs-indigo: color-mix(in srgb, var(--c-indigo) var(--tint), transparent);
+  --cr-indigo: color-mix(in srgb, var(--c-indigo) 32%, transparent);
+  --cs-purple: color-mix(in srgb, var(--c-purple) var(--tint), transparent);
+  --cr-purple: color-mix(in srgb, var(--c-purple) 32%, transparent);
+  --cs-gray: color-mix(in srgb, var(--c-gray) var(--tint), transparent);
+  --cr-gray: color-mix(in srgb, var(--c-gray) 32%, transparent);
+  --side: 360px; --top: 64px; --rail: 84px; --status: 28px; --radius: 10px;
 }
-/* 2800: the header's switch picks light or dark; left on Automatic, the computer does. */
+/* 2800: the theme switch picks light or dark; left on Automatic, the computer does. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --page: #161618; --panel: #1f1f22; --label: #f5f5f7; --secondary: rgba(235, 235, 245, 0.62);
-    --tertiary: rgba(235, 235, 245, 0.3); --fill: rgba(118, 118, 128, 0.26); --hover: rgba(118, 118, 128, 0.18);
-    --line: rgba(84, 84, 88, 0.62); --accent: #5aa0ff; --on-accent: #000000; --positive: #30d158;
-    --danger: #ff6b60; --shadow: rgba(0, 0, 0, 0.5); --scrim: rgba(22, 22, 24, 0.74);
+    --ground: #000000; --card: #1c1c1e; --text: #ffffff; --sub: rgba(235, 235, 245, 0.6); --sep: rgba(84, 84, 88, 0.6);
+    --inset: rgba(118, 118, 128, 0.24); --link: #0a84ff; --accent: #0a84ff; --danger: #ff453a;
+    --switch-on: #30d158; --switch-off: rgba(120, 120, 128, 0.32); --tint: 17%;
+    --c-water: #64a6f0; --c-red: #ff453a; --c-orange: #ff9f0a; --c-yellow: #ffd60a; --c-green: #30d158;
+    --c-mint: #63e6e2; --c-teal: #40c8e0; --c-indigo: #5e5ce6; --c-purple: #bf5af2; --c-gray: #98989d;
+    --tertiary: rgba(235, 235, 245, 0.3); --hover: rgba(118, 118, 128, 0.18); --on-accent: #ffffff;
+    --shadow: rgba(0, 0, 0, 0.5); --scrim: rgba(0, 0, 0, 0.6); --glass: rgba(44, 44, 46, 0.72);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --page: #161618; --panel: #1f1f22; --label: #f5f5f7; --secondary: rgba(235, 235, 245, 0.62);
-  --tertiary: rgba(235, 235, 245, 0.3); --fill: rgba(118, 118, 128, 0.26); --hover: rgba(118, 118, 128, 0.18);
-  --line: rgba(84, 84, 88, 0.62); --accent: #5aa0ff; --on-accent: #000000; --positive: #30d158;
-  --danger: #ff6b60; --shadow: rgba(0, 0, 0, 0.5); --scrim: rgba(22, 22, 24, 0.74);
+  --ground: #000000; --card: #1c1c1e; --text: #ffffff; --sub: rgba(235, 235, 245, 0.6); --sep: rgba(84, 84, 88, 0.6);
+  --inset: rgba(118, 118, 128, 0.24); --link: #0a84ff; --accent: #0a84ff; --danger: #ff453a;
+  --switch-on: #30d158; --switch-off: rgba(120, 120, 128, 0.32); --tint: 17%;
+  --c-water: #64a6f0; --c-red: #ff453a; --c-orange: #ff9f0a; --c-yellow: #ffd60a; --c-green: #30d158;
+  --c-mint: #63e6e2; --c-teal: #40c8e0; --c-indigo: #5e5ce6; --c-purple: #bf5af2; --c-gray: #98989d;
+  --tertiary: rgba(235, 235, 245, 0.3); --hover: rgba(118, 118, 128, 0.18); --on-accent: #ffffff;
+  --shadow: rgba(0, 0, 0, 0.5); --scrim: rgba(0, 0, 0, 0.6); --glass: rgba(44, 44, 46, 0.72);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -35,35 +68,66 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   -webkit-mask: var(--sym) center / contain no-repeat; mask: var(--sym) center / contain no-repeat; }
 .muted { color: var(--secondary); }
 
-/* The header: the phone, the map on screen, its style, and who else is looking. */
-#top { position: absolute; top: 0; left: 0; right: 0; height: var(--top); z-index: 3; display: flex;
-  align-items: center; gap: 12px; padding: 0 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
-#brand { display: flex; align-items: center; gap: 8px; min-width: 0; width: calc(var(--side) - 60px); }
-#brand .sym { font-size: 20px; color: var(--accent); }
-#brand b { font-size: 15px; white-space: nowrap; }
-#device { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tool { border: 0; background: none; border-radius: 7px; height: 32px; min-width: 32px; padding: 0 8px;
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--label); }
+/* 30 the top bar: the app, the map picker, Share and the phone; the rail of screens under it. */
+#top { position: absolute; top: 0; left: 0; right: 0; height: var(--top); z-index: 4; display: flex;
+  align-items: center; gap: 12px; padding: 0 16px; background: var(--card); border-bottom: 1px solid var(--sep); }
+#brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#brand .tile { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; background: var(--cs-yellow); box-shadow: inset 0 0 0 1px var(--cr-yellow); }
+#brand .tile .sym { font-size: 19px; color: var(--accent); }
+#brand b { font-size: 17px; font-weight: 700; white-space: nowrap; }
+.tool { border: 0; background: none; border-radius: 999px; height: 36px; min-width: 36px; padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--text); }
 .tool:hover { background: var(--hover); }
 .tool .sym { font-size: 17px; }
-#mapName { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tool.round { background: var(--inset); padding: 0; width: 40px; height: 40px; }
+.tool.tinted { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
+  font-weight: 600; padding: 0 14px; height: 40px; }
+#mapPicker { position: relative; }
+#mapPickerButton { height: 40px; padding: 0 12px 0 4px; border-radius: 12px; background: var(--inset); gap: 8px; }
+#mapPickerButton .mark { width: 32px; height: 32px; border-radius: 9px; }
+#mapName { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 240px; }
+#mapPickerButton > .sym { font-size: 12px; color: var(--sub); }
+.menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; min-width: 280px; max-height: 60vh;
+  overflow: auto; padding: 6px; border-radius: 14px; background: var(--card); border: 1px solid var(--sep);
+  box-shadow: 0 12px 36px var(--shadow); }
+.menu .row { width: 100%; border: 0; background: none; text-align: left; border-radius: 10px; }
+.menu .row[aria-current=true] { background: var(--inset); }
+.menu .foot { border-top: 1px solid var(--sep); margin-top: 6px; padding-top: 6px; }
+.menu .foot .row { color: var(--link); font-weight: 600; }
 #top .spacer { flex: 1; }
-#styleLabel { display: none; align-items: center; gap: 8px; color: var(--secondary); }
-#styleSelect { height: 32px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel);
+#device { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; font-weight: 600;
+  height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 999px;
+  background: var(--inset); }
+#device .sym { font-size: 16px; color: var(--sub); }
+#styleLabel { display: none; align-items: center; gap: 8px; color: var(--sub); }
+#styleSelect { height: 36px; border-radius: 10px; border: 1px solid var(--sep); background: var(--card);
   padding: 0 28px 0 10px; min-width: 160px; max-width: 280px; }
 #viewers { display: none; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px;
-  background: var(--fill); font-weight: 600; font-variant-numeric: tabular-nums; }
+  background: var(--inset); font-weight: 600; font-variant-numeric: tabular-nums; }
 #viewers .sym { font-size: 15px; }
+#rail { position: absolute; top: var(--top); bottom: var(--status); left: 0; width: var(--rail); z-index: 3;
+  display: flex; flex-direction: column; gap: 4px; padding: 12px 8px; background: var(--card);
+  border-right: 1px solid var(--sep); }
+#rail a, #rail button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  height: 60px; border: 0; border-radius: 14px; background: none; color: var(--text); font-size: 11px;
+  font-weight: 500; text-decoration: none; }
+#rail a:hover, #rail button:hover { background: var(--hover); }
+#rail a[aria-current=page] { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
+  font-weight: 600; }
+#rail .sym { font-size: 21px; }
+#rail .foot { margin-top: auto; height: 48px; }
 .phone-dot { width: 18px; height: 18px; border-radius: 50%; background: #0a84ff; border: 3px solid #ffffff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 1px 4px rgba(0, 0, 0, 0.35); }
 
 /* The side bar: the map on screen and its layers, the other maps, Edit map. */
-#side { position: absolute; top: var(--top); bottom: var(--status); left: 0; width: var(--side); z-index: 2;
+#side { position: absolute; top: var(--top); bottom: var(--status); left: var(--rail); width: var(--side); z-index: 2;
   background: var(--panel); border-right: 1px solid var(--line); overflow: hidden; transition: transform 0.2s; }
-body.side-hidden #side { transform: translateX(-100%); }
-#map { position: absolute; top: var(--top); bottom: var(--status); left: var(--side); right: 0;
+body.side-hidden #side { transform: translateX(-100%); visibility: hidden; transition: transform 0.2s, visibility 0s 0.2s; }
+#map { position: absolute; top: var(--top); bottom: var(--status); left: calc(var(--rail) + var(--side)); right: 0;
   transition: left 0.2s; }
-body.side-hidden #map { left: 0; }
+body.side-hidden #map { left: var(--rail); }
 .page { position: absolute; inset: 0; overflow-y: auto; padding-bottom: 24px; transition: transform 0.2s, opacity 0.2s; }
 .page.behind { transform: translateX(-20%); opacity: 0; pointer-events: none; }
 .page.ahead { transform: translateX(100%); pointer-events: none; }
@@ -200,9 +264,9 @@ label.action { cursor: pointer; }
 #status { position: absolute; left: 0; right: 0; bottom: 0; height: var(--status); z-index: 3; display: flex;
   align-items: center; gap: 18px; padding: 0 14px; background: var(--panel); border-top: 1px solid var(--line);
   font-size: 12px; color: var(--secondary); font-variant-numeric: tabular-nums; }
-#regionOffer { position: absolute; left: var(--side); right: 0; bottom: calc(var(--status) + 28px); z-index: 2;
+#regionOffer { position: absolute; left: calc(var(--rail) + var(--side)); right: 0; bottom: calc(var(--status) + 28px); z-index: 2;
   display: none; justify-content: center; pointer-events: none; transition: left 0.2s; }
-body.side-hidden #regionOffer { left: 0; }
+body.side-hidden #regionOffer { left: var(--rail); }
 #regionOffer > * { pointer-events: auto; display: inline-flex; align-items: center; gap: 8px; height: 36px;
   padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-weight: 600;
   box-shadow: 0 2px 10px var(--shadow); }
@@ -237,7 +301,7 @@ body.gated #gate { display: flex; }
 /* Item 1994: a phone's or a small window's size is not supported; the app is the way there. */
 @media (max-width: 899px), (max-height: 499px) {
   #small { display: flex; z-index: 30; }
-  #top, #side, #map, #status { visibility: hidden; }
+  #top, #rail, #side, #map, #status { visibility: hidden; }
 }
 /* TestFlight AFKF: what a clicked feature carries, in the map's own popup. */
 .maplibregl-popup-content { background: var(--panel); color: var(--label); border-radius: var(--radius);

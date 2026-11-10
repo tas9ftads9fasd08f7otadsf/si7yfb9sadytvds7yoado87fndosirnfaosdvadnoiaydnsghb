@@ -14,7 +14,9 @@ test("a map says the oldest app and viewer it needs", async ({ page }) => {
 
 // 2798: a map asking for no version shows no lines.
 test("a map asking for no version says nothing of versions", async ({ page }) => {
+  // 30 a bookmark's old query still opens its map, at the map's address
   await openViewer(page, "/?map=6F1E2A10-0000-4000-8000-000000000002");
+  await expect(page).toHaveURL(/\/maps\/6F1E2A10-0000-4000-8000-000000000002#/);
   await expect(page.locator("#current .hero b")).toHaveText("Bratislava");
   await expect(page.locator("#mapVersions")).toHaveCount(0);
 });

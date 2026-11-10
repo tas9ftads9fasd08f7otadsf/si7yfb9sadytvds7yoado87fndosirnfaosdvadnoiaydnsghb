@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portable } from "@/lib/types";
 import { type MapControl, setMapControl } from "@/map/control";
-import { FILE_LIMIT, addFile, addPackages, addServer, applySession, importServers, change, checkKey, loadWords, notice, resetViewer,
-  setLayerShown, tickPackage,
-  useViewer } from "./viewer";
+import { FILE_LIMIT, addFile, addPackages, addServer, applySession, importServers, change, checkKey, go, loadWords,
+  notice, readAddress, resetViewer, restoreKept, setLayerShown, showEdit, tickPackage, useViewer } from "./viewer";
 
 const get = useViewer.getState;
 const portable: Portable = { id: "a", name: "Tatras", styles: [{ id: "s", name: "Summer" }], selectedStyleID: "s" };
@@ -267,5 +266,105 @@ describe("importServers", () => {
     answering(() => new Response("That file holds no Riki Maps servers.", { status: 409 }));
     await importServers(new File(["{"], "x.servson"));
     expect(get().notice).toBe("That file holds no Riki Maps servers.");
+  });
+});
+
+// 30 the address names the screen; the store follows it and keeps it in step.
+describe("the address", () => {
+  const twoStyles: Portable = { id: "a", name: "Tatras", selectedStyleID: "s",
+    styles: [{ id: "s", name: "Summer" }, { id: "w", name: "Winter" }] };
+  const two = { name: "iPad", maps: [{ id: "a", name: "Tatras", layers: [] }, { id: "b", name: "Bratislava", layers: [] }] };
+
+  beforeEach(() => {
+    history.replaceState(null, "", "/");
+    localStorage.clear();
+  });
+
+  it("reads the screen from the path, and the edit and server screens from it", () => {
+    history.replaceState(null, "", "/servers/S1/general");
+    readAddress();
+    expect(get().route).toEqual({ screen: "servers", server: "S1", part: "general" });
+    expect(get().serverID).toBe("S1");
+    expect(get().serverPart).toBe("general");
+    go({ screen: "edit", map: "a", tab: "layers" });
+    expect(location.pathname).toBe("/maps/a/edit/layers");
+    expect(get().editing).toBe(true);
+    expect(get().serverID).toBeNull();
+  });
+
+  it("pushes a screen and replaces when asked, keeping the camera", () => {
+    history.replaceState(null, "", "/maps#6/48.5/19.5");
+    const length = history.length;
+    go({ screen: "data", tab: "layers" });
+    expect(location.pathname + location.hash).toBe("/data/layers#6/48.5/19.5");
+    expect(history.length).toBe(length + 1);
+    go({ screen: "settings" }, { replace: true });
+    expect(history.length).toBe(length + 1);
+  });
+
+  it("moves a bookmark's map and style into the path, keeping the camera", () => {
+    history.replaceState(null, "", "/?map=b&style=w#at=9/48/17");
+    readAddress();
+    expect(location.pathname + location.search + location.hash).toBe("/maps/b/style/w#9/48/17");
+    expect(get().route).toEqual({ screen: "map", map: "b", style: "w" });
+  });
+
+  it("rewrites an old named camera once", () => {
+    history.replaceState(null, "", "/maps/a#at=14/48.1583/17.1063");
+    readAddress();
+    expect(location.hash).toBe("#14/48.1583/17.1063");
+  });
+
+  it("names the style only when it is not the one the map opens on", () => {
+    useViewer.setState({ standing: "admitted", device: two, mapID: "a", portable: twoStyles, styleID: "s",
+      route: { screen: "map", map: "a" } });
+    go({ screen: "map", map: "a", style: "w" });
+    expect(get().styleID).toBe("w");
+    expect(location.pathname).toBe("/maps/a/style/w");
+    go({ screen: "map", map: "a", style: "s" });
+    expect(location.pathname).toBe("/maps/a");
+  });
+
+  it("puts home on the map shown and remembers it for next time", () => {
+    useViewer.setState({ standing: "admitted", device: two, mapID: "b", portable: twoStyles, styleID: "s" });
+    go({ screen: "home" });
+    expect(location.pathname).toBe("/maps/b");
+    go({ screen: "map", map: "a" });
+    expect(localStorage.getItem("riki-map")).toBe("a");
+  });
+
+  it("sends home to the maps when the phone shares none", () => {
+    useViewer.setState({ standing: "admitted", device: { name: "iPad", maps: [] } });
+    go({ screen: "home" });
+    expect(location.pathname).toBe("/maps");
+  });
+
+  it("opens Edit map at its address and Done goes back to the map", () => {
+    useViewer.setState({ mapID: "a", route: { screen: "map", map: "a" } });
+    showEdit(true);
+    expect(location.pathname).toBe("/maps/a/edit/layers");
+    showEdit(false);
+    expect(location.pathname).toBe("/maps/a");
+    expect(get().editing).toBe(false);
+  });
+
+  it("takes the key from the unlock address and drops it once the phone answers", async () => {
+    history.replaceState(null, "", "/unlock/7Q4K29");
+    readAddress();
+    restoreKept();
+    answering(() => json({ token: "t" }));
+    await checkKey("7Q4K29");
+    expect(get().editToken).toBe("t");
+    expect(location.pathname).toBe("/");
+    expect(get().route).toEqual({ screen: "home" });
+  });
+
+  it("drops the key from the address even when the phone refuses it", async () => {
+    history.replaceState(null, "", "/unlock/AAAAAA");
+    readAddress();
+    answering(() => new Response("", { status: 403 }));
+    await checkKey("AAAAAA");
+    expect(location.pathname).toBe("/");
+    expect(get().notice).toBe(get().words.wrongPassword);
   });
 });

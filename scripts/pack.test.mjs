@@ -11,6 +11,12 @@ describe("what the bundle carries", () => {
     expect(ships("404.html")).toBe(false);
   });
 
+  // 30 the catch-all page still builds one index.html; its own payload stays behind.
+  it("takes one page for every address", () => {
+    expect(ships("__next.$oc$slug.__PAGE__.txt")).toBe(false);
+    expect(ships("maps/index.html")).toBe(false);
+  });
+
   it("reads what the page asks for", () => {
     expect(asked(`<script src="/web/app/_next/static/a.js"></script><link href='/web/app/b.css'>`))
       .toEqual(["_next/static/a.js", "b.css"]);
