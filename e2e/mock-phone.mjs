@@ -262,7 +262,7 @@ function apiRead(query) {
   return { reading, paths: ["vehicles", "stops"], keys, points, name: "buses.example", said: `Answered · ${points} points` };
 }
 
-// 3105: a layer's Details layout as `PeerWebLayerOptions+Details` lists it, and its edits.
+// 29: a layer's Details layout as `PeerWebLayerOptions+Details` lists it, and its edits.
 const LAYOUT_WORDS = { addContent: "Add content", addSection: "Add section", removeSection: "Remove section",
   sectionTitle: "Title", fromTheApp: "From the app", name: "Name", value: "Value", label: "Label", link: "Link",
   heading: "Title", plain: "Plain", box: "Box", warning: "Warning", full: "This layout holds 10 content blocks" };

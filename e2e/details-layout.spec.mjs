@@ -19,7 +19,7 @@ async function openLayout(page) {
   return page.locator(`[data-options='${layer}']`);
 }
 
-// 3105: a block moves by its place and handle, and the panel reads the phone's layout back.
+// 29: a block moves by its place and handle, and the panel reads the phone's layout back.
 test("a block of the Details layout is moved and removed", async ({ page }) => {
   const panel = await openLayout(page);
   const blocks = panel.locator(".layout-block");
@@ -36,7 +36,7 @@ test("a block of the Details layout is moved and removed", async ({ page }) => {
   await expect(blocks).toHaveCount(1);
 });
 
-// 3105: a text block is added at the foot of its section, reading one of the layer's keys.
+// 29: a text block is added at the foot of its section, reading one of the layer's keys.
 test("a text block is added to the Details layout", async ({ page }) => {
   const panel = await openLayout(page);
   await panel.getByRole("combobox", { name: "Add content" }).selectOption("text");

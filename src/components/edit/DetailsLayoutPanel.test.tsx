@@ -38,7 +38,7 @@ describe("DetailsLayoutPanel", () => {
   beforeEach(resetViewer);
   afterEach(() => vi.unstubAllGlobals());
 
-  // 3105: a block is moved by its place and its handle, so a stale page is refused.
+  // 29: a block is moved by its place and its handle, so a stale page is refused.
   it("moves the last block of a section into the next one", () => {
     const query = asked();
     show();
@@ -50,13 +50,13 @@ describe("DetailsLayoutPanel", () => {
     expect([sent.get("toSection"), sent.get("toPlace")]).toEqual(["1", "0"]);
   });
 
-  // 3105: the first block of the first section has nowhere to go up to.
+  // 29: the first block of the first section has nowhere to go up to.
   it("offers no move up for the very first block", () => {
     show();
     expect((screen.getByRole("button", { name: "Move up Info rows" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  // 3105
+  // 29
   it("removes a block by its handle", () => {
     const query = asked();
     show();
@@ -64,7 +64,7 @@ describe("DetailsLayoutPanel", () => {
     expect([query().get("details"), query().get("section"), query().get("was")]).toEqual(["remove", "1", "a1"]);
   });
 
-  // 3105: a new block goes at the foot of its section, with the fields its kind needs.
+  // 29: a new block goes at the foot of its section, with the fields its kind needs.
   it("adds a text block at the foot of the section", () => {
     const query = asked();
     show();
@@ -80,7 +80,7 @@ describe("DetailsLayoutPanel", () => {
     expect([sent.get("section"), sent.get("place")]).toEqual(["0", "2"]);
   });
 
-  // 3105: a full layout offers only the app's parts, which do not count.
+  // 29: a full layout offers only the app's parts, which do not count.
   it("offers only the app's parts once the layout is full", () => {
     show(layout(10));
     const [first] = screen.getAllByRole("combobox", { name: "Add content" });
