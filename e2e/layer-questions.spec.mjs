@@ -20,8 +20,11 @@ test("an Esri layer's Questions are set from its Options", async ({ page }) => {
   const panel = page.locator(`[data-options='${layer}']`);
 
   let asked = sent(page);
+  // 34 the change reads the options again; a field typed in before they land is drawn anew
+  const reread = page.waitForResponse((answer) => answer.url().includes("/layer-options"));
   await panel.getByRole("switch", { name: "Answer taps from the server" }).click({ force: true });
   expect(await asked).toMatchObject({ layer, answersFromServer: "0" });
+  await reread;
   await expect(panel.getByRole("switch", { name: "Answer taps from the server" })).not.toBeChecked();
 
   asked = sent(page);
