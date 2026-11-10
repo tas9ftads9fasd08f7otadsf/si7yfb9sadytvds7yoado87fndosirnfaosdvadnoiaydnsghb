@@ -76,6 +76,29 @@ test("a layer moves down and back up, and the ends cannot move further", async (
   await expect.poll(names).toEqual(["Trails", "Huts"]);
 });
 
+// 3083 TestFlight AJNX
+test("the list's own switch turns every layer off, then on again", async ({ page }) => {
+  await openEdit(page);
+  const all = page.locator("#allLayers");
+  await expect(all).toHaveText("All off");
+  let asked = sent(page);
+  let landed = answered(page);
+  await all.click();
+  expect((await asked).shownAll).toBe("0");
+  await landed;
+  await expect(all).toHaveText("All on");
+  await expect(layerRow(page, "Trails").getByRole("switch")).not.toBeChecked();
+  await expect(layerRow(page, "Huts").getByRole("switch")).not.toBeChecked();
+
+  asked = sent(page);
+  landed = answered(page);
+  await all.click();
+  expect((await asked).shownAll).toBe("1");
+  await landed;
+  await expect(all).toHaveText("All off");
+  await expect(layerRow(page, "Huts").getByRole("switch")).toBeChecked();
+});
+
 test("a style is added, renamed and deleted", async ({ page }) => {
   await openEdit(page);
   const styleNames = page.locator("#editBody .list").first().getByRole("textbox", { name: "Rename" });
