@@ -6,6 +6,8 @@ import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { PAGE_SEGMENTS } from "../src/lib/segments.ts";
+
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BUILD = path.join(HERE, "..", "out");
@@ -605,7 +607,6 @@ async function buildFile(name) {
 }
 
 // 30 every screen's address is the page, as `PeerWebViewer.isPage` answers it.
-const PAGE_SEGMENTS = ["maps", "data", "servers", "settings", "new", "unlock"];
 const isPage = (route) => route === "/" || route === "/index.html" || PAGE_SEGMENTS.includes(route.split("/")[1]);
 
 async function answer(request, response) {

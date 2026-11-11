@@ -16,7 +16,8 @@ export default defineConfig({
     trace: "retain-on-failure",
     launchOptions: { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] }
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } }],
+  // One project per target; the site's join as it is built (web-icloud.md §8).
+  projects: [{ name: "phone", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } }],
   webServer: process.env.BASE_URL ? undefined : {
     command: "node e2e/mock-phone.mjs",
     env: { PORT: String(PORT) },

@@ -1,3 +1,5 @@
+import { BASE } from "@base";
+
 /** Every screen's address, made of path segments; the camera stays in the fragment. */
 export type EditTab = "layers" | "general" | "styling" | "sharing" | "offline";
 export type DataTab = "layers" | "servers" | "regions";
@@ -9,8 +11,7 @@ export const DATA_TABS: DataTab[] = ["layers", "servers", "regions"];
 export const SERVER_PARTS: ServerPart[] = ["layers", "general", "sharing"];
 export const ADD_SOURCES: AddSource[] = ["tile", "server", "builtin", "file"];
 
-/** The first segments the phone answers with the page. */
-export const PAGE_SEGMENTS = ["maps", "data", "servers", "settings", "new", "unlock"];
+export { PAGE_SEGMENTS } from "./segments";
 
 export type Screen =
   | { screen: "home" }
@@ -91,8 +92,9 @@ function readSegments(segments: string[]): Route {
 }
 
 /** A path as the address bar holds it; an unknown or broken one is home. */
-export function readRoute(path: string): Route {
-  const bare = path.split(/[?#]/)[0] ?? "";
+export function readRoute(path: string, base = BASE): Route {
+  let bare = path.split(/[?#]/)[0] ?? "";
+  if (base && (bare === base || bare.startsWith(base + "/"))) bare = bare.slice(base.length);
   try {
     return readSegments(bare.split("/").filter(Boolean).map((each) => decodeURIComponent(each)));
   } catch {
@@ -132,10 +134,11 @@ function screenPath(route: Screen): string {
 }
 
 /** The address of a route; a modal's names the screen under it where it can. */
-export function pathOf(route: Route): string {
+export function pathOf(route: Route, base = BASE): string {
   const { modal } = route;
-  if (modal?.kind === "new") return "/new";
   const map = mapOf(route);
-  if (modal?.kind === "add" && map) return join("maps", map, "layers", "new", modal.source);
-  return screenPath(route);
+  let path = screenPath(route);
+  if (modal?.kind === "new") path = "/new";
+  else if (modal?.kind === "add" && map) path = join("maps", map, "layers", "new", modal.source);
+  return base && path === "/" ? base + "/" : base + path;
 }

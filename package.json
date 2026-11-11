@@ -13,11 +13,12 @@
     "build": "next build",
     "pack": "node scripts/pack.mjs",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build && npm run test:e2e && npm run pack"
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build && npm run test:e2e && npm run pack",
+    "build:web": "RIKI_TARGET=web next build"
   },
   "dependencies": {
     "maplibre-gl": "4.7.1",

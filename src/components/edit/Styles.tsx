@@ -20,13 +20,13 @@ export function Styles({ portable }: { portable: Portable }) {
             </button>
             <div className="words">
               <CommitField type="text" value={style.name} aria-label={words.rename}
-                onCommit={(name) => change({ style: style.id, name })} />
+                onCommit={(name) => change({ kind: "styleName", style: style.id, name })} />
             </div>
             <button type="button" className="icon-button danger" aria-label={words.delete} title={words.delete}
-              disabled={styles.length < 2} onClick={() => change({ removeStyle: style.id })}><Sym name="trash" /></button>
+              disabled={styles.length < 2} onClick={() => change({ kind: "removeStyle", style: style.id })}><Sym name="trash" /></button>
           </div>
         ))}
-        <button type="button" className="row add" onClick={() => change({ addStyle: `${words.newStyle} ${styles.length + 1}` })}>
+        <button type="button" className="row add" onClick={() => change({ kind: "addStyle", name: `${words.newStyle} ${styles.length + 1}` })}>
           <Sym name="plus.circle.fill" />{words.newStyle}
         </button>
       </div>

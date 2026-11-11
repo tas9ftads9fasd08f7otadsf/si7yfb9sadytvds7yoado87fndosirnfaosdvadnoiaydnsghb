@@ -23,7 +23,7 @@ export function MinimumVersion() {
       return;
     }
     if (made.app === app && made.browser === browser) return;
-    void change({ minimumApp: made.app, minimumBrowser: made.browser });
+    void change({ kind: "minimumVersion", app: made.app, browser: made.browser });
   };
   const shared = { type: "text", placeholder: words.anyVersion, inputMode: "decimal", autoComplete: "off",
     spellCheck: false, maxLength: 20 } as const;

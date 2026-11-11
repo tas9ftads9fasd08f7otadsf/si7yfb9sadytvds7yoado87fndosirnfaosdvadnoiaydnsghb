@@ -5,6 +5,9 @@ Riki Maps app ships inside itself; nothing here runs on a server.
 
 ## How it fits together
 
+- One source builds two targets (rikimaps' `.planning/web-icloud.md`): the phone's page, the
+  default, and the iCloud site, `RIKI_TARGET=web`. The store and screens ask `@backend`, which
+  `next.config.ts` points at `src/targets/<target>/`; the other target is never bundled.
 - `next build` writes a static export to `out/`. The page lives at `/`, its assets under `/web/app/`.
 - `npm run pack` cuts that to `dist/WebEditor.bundle` and adds `web-editor.json` (the version, and
   what the app's tests hold a served style against) and the `Info.plist` an App Store upload expects.
@@ -28,7 +31,7 @@ PHONE_URL=http://192.168.1.20:8765 npm run dev   # against a real phone
 |---|---|
 | `npm run lint` / `typecheck` | ESLint, TypeScript |
 | `npm test` | Vitest: logic, the store, components |
-| `npm run build` | The static export |
+| `npm run build` | The phone's static export; `npm run build:web` the site's |
 | `npm run test:e2e` | Playwright against the build and `e2e/mock-phone.mjs`; build first |
 | `npm run pack` | The bundle and zip in `dist/` |
 | `npm run check` | All of it, as CI runs it |
@@ -40,7 +43,9 @@ against a real phone.
 
 - `src/app`: the root layout, the one page, the stylesheet.
 - `src/components`: the page in React; `edit/` is Edit map, `ui/` the small shared parts.
-- `src/store/viewer.ts`: all state and every call to the phone.
+- `src/store/viewer.ts`: all state; it asks `@backend`, never `fetch`.
+- `src/backend/types.ts`: the `Backend` every target answers; `src/lib/edit.ts`, the edits it takes.
+- `src/targets/phone`: today's calls to the phone. `src/targets/web`: the site's, built in step 3.
 - `src/map`: MapLibre, loaded on the client after the phone's words.
 - `src/lib`: logic with no framework in it.
 - `e2e`: browser specs and the stand-in phone, which must answer as the app's `PeerRouter` does.

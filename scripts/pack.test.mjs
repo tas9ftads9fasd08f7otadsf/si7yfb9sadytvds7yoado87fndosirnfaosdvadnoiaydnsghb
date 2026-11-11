@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asked, infoPlist, ships, styleFacts } from "./pack.mjs";
+import { asked, infoPlist, phoneLeaks, ships, styleFacts } from "./pack.mjs";
 
 describe("what the bundle carries", () => {
   it("takes the page and its assets, not Next's route payloads", () => {
@@ -15,6 +15,16 @@ describe("what the bundle carries", () => {
   it("takes one page for every address", () => {
     expect(ships("__next.$oc$slug.__PAGE__.txt")).toBe(false);
     expect(ships("maps/index.html")).toBe(false);
+  });
+
+  // 36 the app's bundle holds nothing of the site
+  it("finds the site's parts in what the app would ship", () => {
+    expect(phoneLeaks([{ name: "index.html", text: "<script src=\"/web/app/a.js\">" },
+      { name: "_next/static/a.js", text: "fetch(\"/riki/v1/device\")" }])).toEqual([]);
+    expect(phoneLeaks([{ name: "server/index.php", text: null }, { name: "riki-core.wasm", text: null },
+      { name: "_next/static/b.js", text: "CloudKit.configure({})" },
+      { name: "index.html", text: "<link href=\"/__riki_base__/a.css\">" }]))
+      .toEqual(["server/index.php", "riki-core.wasm", "_next/static/b.js", "index.html"]);
   });
 
   it("reads what the page asks for", () => {

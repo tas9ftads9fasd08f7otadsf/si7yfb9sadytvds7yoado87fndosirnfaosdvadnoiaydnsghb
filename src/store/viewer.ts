@@ -1,14 +1,16 @@
 import { create } from "zustand";
 import { edited } from "@/lib/coverage";
-import { EDIT_CHECK, HEARTBEAT_EVERY, ROOT, SESSION, THEME_KEY, TOKEN_KEY, readJSON, savedName, typedKey }
-  from "@/lib/phone";
-import { BY_NAME, startQuery } from "@/lib/places";
+import { backend } from "@backend";
+import type { Answer, Saved } from "@/backend/types";
+import type { Edit } from "@/lib/edit";
+import { HEARTBEAT_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
+import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
-import { ENGLISH, WORDS_PATH, type Words, readPhoneWords } from "@/lib/words";
+import { ENGLISH, type Words, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
 
 export type Theme = "auto" | "light" | "dark";
@@ -105,7 +107,7 @@ const away = () => notice(get().words.away);
 /** The phone's words; English from a phone or a file that has none. */
 export async function loadWords() {
   try {
-    const said = readPhoneWords(await readJSON(WORDS_PATH));
+    const said = readPhoneWords(await backend.words());
     if (said) {
       set({ words: said.words as Words });
       document.documentElement.lang = said.language;
@@ -155,10 +157,8 @@ export function nextTheme() {
 async function heartbeat() {
   clearTimeout(busy.heartbeat);
   try {
-    const answer = await fetch(SESSION, { cache: "no-store" });
-    // A phone from before guests lets every browser in.
-    if (answer.status === 404) applySession({ standing: "admitted", viewers: null });
-    else if (answer.ok) applySession(await answer.json());
+    const answer = await backend.session();
+    if (answer.ok) applySession(answer.value);
   } catch {
     away();
   }
@@ -167,8 +167,8 @@ async function heartbeat() {
 
 export async function askToJoin() {
   try {
-    const answer = await fetch(`${SESSION}/ask`, { method: "POST", cache: "no-store" });
-    if (answer.ok) applySession(await answer.json());
+    const answer = await backend.askToJoin();
+    if (answer.ok) applySession(answer.value);
   } catch {
     away();
   }
@@ -263,7 +263,7 @@ function lastMap(): string | null {
 export async function readDevice() {
   let device: Device;
   try {
-    device = await readJSON<Device>(`${ROOT}/device`);
+    device = await backend.maps();
   } catch {
     if (get().standing !== "admitted") return;
     away();
@@ -298,7 +298,7 @@ async function readPictures() {
   for (const shared of get().device?.maps ?? []) {
     if (get().pictures.has(shared.id)) continue;
     try {
-      keepPictures(shared.id, picturesOf(await readJSON<Portable>(`${ROOT}/maps/${shared.id}`)));
+      keepPictures(shared.id, picturesOf(await backend.map(shared.id)));
     } catch {
       keepPictures(shared.id, {});
     }
@@ -315,7 +315,7 @@ export async function pickMap(id: string, styleID: string | null) {
     layerOptions: null, optionsOpen: new Set() });
   let portable: Portable | null = null;
   try {
-    portable = await readJSON<Portable>(`${ROOT}/maps/${id}`);
+    portable = await backend.map(id);
     keepPictures(id, picturesOf(portable));
   } catch { /* drawn with nothing to edit */ }
   set({ portable });
@@ -382,15 +382,15 @@ export function showEdit(editing: boolean) {
 export async function checkKey(typed: string) {
   const key = typedKey(typed);
   if (!key) return;
-  let answer: Response;
+  let answer: Answer<{ token: string }>;
   try {
-    answer = await fetch(EDIT_CHECK, { method: "POST", cache: "no-store", headers: { "X-Riki-Edit": key } });
+    answer = await backend.unlock(key);
   } catch {
     away();
     return;
   }
   if (answer.ok) {
-    keepToken((await answer.json()).token);
+    keepToken(answer.value.token);
   } else {
     keepToken(null);
     const { words } = get();
@@ -411,46 +411,57 @@ function keepToken(token: string | null) {
   } catch { /* kept for this page only */ }
 }
 
-/** A stale token sends the browser back to the password. */
-async function askEditing(path: string, method = "POST", body?: BodyInit) {
-  const answer = await fetch(path, { method, body, cache: "no-store", headers: { Authorization: `Bearer ${get().editToken}` } });
-  if (answer.status === 401) {
+backend.useToken(() => get().editToken);
+
+/**
+ * Asks something that needs the edit password: null when the phone can't be reached or the
+ * token went stale, which sends the browser back to the password.
+ */
+async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = {}): Promise<Answer<T> | null> {
+  let answer: Answer<T>;
+  try {
+    answer = await asking();
+  } catch {
+    if (!quiet) away();
+    return null;
+  }
+  if (!answer.ok && answer.status === 401) {
     keepToken(null);
     if (get().editing) showEdit(false);
     notice(get().words.passwordAgain);
+    return null;
   }
   return answer;
+}
+
+/** The value, or null once the phone's words for a refusal are shown. */
+function told<T>(answer: Answer<T> | null): T | null {
+  if (!answer) return null;
+  if (answer.ok) return answer.value;
+  notice(answer.said);
+  return null;
 }
 
 // MARK: - Edit map
 
 async function refreshDevice() {
   try {
-    set({ device: await readJSON<Device>(`${ROOT}/device`) });
+    set({ device: await backend.maps() });
   } catch { /* names wait */ }
 }
 
 /** Sends one change; the phone answers with the map as it now stands. */
-export async function change(query: Record<string, string>): Promise<boolean> {
+export async function change(edit: Edit): Promise<boolean> {
   const { editToken, styleID, mapID } = get();
-  if (!editToken) return false;
-  const asked = new URLSearchParams(query);
-  if (styleID) asked.set("styleID", styleID);
-  let answer: Response;
-  try {
-    answer = await askEditing(`${ROOT}/maps/${mapID}/edit?${asked.toString()}`);
-  } catch {
-    away();
-    return false;
-  }
-  if (answer.status === 401) return false;
+  if (!editToken || !mapID) return false;
+  const answer = await editing(() => backend.change(mapID, styleID, edit));
+  if (!answer) return false;
   if (!answer.ok) {
-    const said = await answer.text();
-    notice(answer.status === 409 && /layers/i.test(said) ? get().words.layerCap : said);
+    notice(answer.status === 409 && /layers/i.test(answer.said) ? get().words.layerCap : answer.said);
     set({ editEpoch: get().editEpoch + 1 });
     return false;
   }
-  const portable: Portable = await answer.json();
+  const portable = answer.value;
   set({ portable });
   if (mapID) keepPictures(mapID, picturesOf(portable));
   await refreshDevice();
@@ -461,38 +472,25 @@ export async function change(query: Record<string, string>): Promise<boolean> {
 
 // MARK: - A new map
 
-async function madeBy(path: string, body?: BodyInit) {
-  let answer: Response;
-  try {
-    answer = await askEditing(path, "POST", body);
-  } catch {
-    away();
-    return false;
-  }
-  if (answer.status === 401) return false;
-  if (!answer.ok) {
-    notice(await answer.text());
-    return false;
-  }
-  const made: { id: string } = await answer.json();
+async function madeBy(asking: () => Promise<Answer<{ id: string }>>) {
+  const made = told(await editing(asking));
+  if (!made) return false;
   await refreshDevice();
   await pickMap(made.id, null);
   return true;
 }
 
-export const makeMap = (name: string) => madeBy(`${ROOT}/new-map?${new URLSearchParams({ name })}`);
+export const makeMap = (name: string) => madeBy(() => backend.newMap(name));
 
-export async function importMap(file: File) {
-  return madeBy(`${ROOT}/new-map`, await file.arrayBuffer());
-}
+export const importMap = (file: File) => madeBy(() => backend.importMap(file));
 
-export const exportMap = () => saveFrom(`${ROOT}/maps/${get().mapID}/mapson`);
+export const exportMap = () => saveFrom(() => backend.exportMap(get().mapID ?? ""));
 
 /** 2997 The phone's servers as Share servers writes them, keys left on the phone. */
-export const exportServers = () => saveFrom(`${ROOT}/servson`);
+export const exportServers = () => saveFrom(() => backend.exportServers());
 
 /** 27 One server alone, as its page's Sharing part exports it on the phone. */
-export const exportServer = (id: string) => saveFrom(`${ROOT}/servson?${new URLSearchParams({ server: id })}`);
+export const exportServer = (id: string) => saveFrom(() => backend.exportServers(id));
 
 /** 27 A server's page opens on Layers, as the phone's does. */
 export function openServer(id: string | null) {
@@ -533,33 +531,17 @@ export const openMap = (id: string) => go({ screen: "map", map: id });
 
 /** The phone adds the servers it lacks and answers with them all. */
 export async function importServers(file: File) {
-  let answer: Response;
-  try {
-    answer = await askEditing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer());
-  } catch {
-    away();
-    return;
-  }
-  if (answer.status === 401) return;
-  if (!answer.ok) {
-    notice(await answer.text());
-    return;
-  }
-  set({ servers: await answer.json() });
+  const servers = told(await editing(() => backend.importServers(file)));
+  if (servers) set({ servers });
 }
 
-async function saveFrom(path: string) {
-  let answer: Response;
-  try {
-    answer = await askEditing(path, "GET");
-  } catch {
-    away();
-    return;
-  }
-  if (!answer.ok) return;
+async function saveFrom(asking: () => Promise<Answer<Saved>>) {
+  const answer = await editing(asking);
+  if (!answer?.ok) return;
+  const { blob, name } = answer.value;
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(await answer.blob());
-  link.download = savedName(answer.headers.get("Content-Disposition") ?? "");
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
   document.body.append(link);
   link.click();
   link.remove();
@@ -567,7 +549,7 @@ async function saveFrom(path: string) {
 }
 
 export function removeLayer(layer: StackLayer) {
-  if (confirm(get().words.removeAsk.replace("{name}", layer.name))) void change({ removeLayer: layer.id });
+  if (confirm(get().words.removeAsk.replace("{name}", layer.name))) void change({ kind: "removeLayer", layer: layer.id });
 }
 
 // MARK: - A layer's options
@@ -576,12 +558,10 @@ export async function loadLayerOptions() {
   const { mapID } = get();
   if (!mapID || busy.layerOptions === mapID) return;
   busy.layerOptions = mapID;
-  try {
-    const answer = await askEditing(`${ROOT}/maps/${mapID}/layer-options`, "GET");
-    if (answer.ok && get().mapID === mapID) set({ layerOptions: await answer.json() });
-  } catch { /* offered once it answers */ } finally {
-    busy.layerOptions = null;
-  }
+  // Offered once it answers.
+  const answer = await editing(() => backend.layerOptions(mapID), { quiet: true });
+  if (answer?.ok && get().mapID === mapID) set({ layerOptions: answer.value });
+  busy.layerOptions = null;
 }
 
 export function toggleOptions(id: string) {
@@ -591,13 +571,13 @@ export function toggleOptions(id: string) {
 }
 
 /** Every choice goes into each style, so the phone's list is read again. */
-export async function setDrawn(query: Record<string, string>) {
-  if (await change(query)) set({ layerOptions: null });
+export async function setDrawn(fields: Record<string, string>) {
+  if (await change({ kind: "layerOptions", fields })) set({ layerOptions: null });
 }
 
 /** A refused layout change reads the layout again: the phone's may have moved on. */
-export async function setLayout(query: Record<string, string>) {
-  await change(query);
+export async function setLayout(fields: Record<string, string>) {
+  await change({ kind: "layerDetails", fields });
   set({ layerOptions: null });
 }
 
@@ -609,16 +589,10 @@ export async function loadPackages() {
   const { mapID } = get();
   if (!mapID || busy.packages === mapID) return;
   busy.packages = mapID;
-  try {
-    const answer = await askEditing(`${ROOT}/maps/${mapID}/packages`, "GET");
-    if (!answer.ok || get().mapID !== mapID) return;
-    const packages: Packages = await answer.json();
-    set({ packages, packageTicks: new Set(packages.ticked) });
-  } catch {
-    away();
-  } finally {
-    busy.packages = null;
-  }
+  const answer = await editing(() => backend.packages(mapID));
+  busy.packages = null;
+  if (!answer?.ok || get().mapID !== mapID) return;
+  set({ packages: answer.value, packageTicks: new Set(answer.value.ticked) });
 }
 
 /** The base map draws its parts, so ticking one unticks the other. */
@@ -634,20 +608,15 @@ export function tickPackage(row: PackageRow) {
 
 export async function addPackages(overlays: string[]) {
   set({ addingPackages: false, packages: null });
-  if (!await change({ addPackages: overlays.join(",") })) set({ addingPackages: true });
+  if (!await change({ kind: "addPackages", overlays })) set({ addingPackages: true });
 }
 
 export async function loadServers() {
   if (busy.servers) return;
   busy.servers = true;
-  try {
-    const answer = await askEditing(`${ROOT}/servers`, "GET");
-    if (answer.ok) set({ servers: await answer.json() });
-  } catch {
-    away();
-  } finally {
-    busy.servers = false;
-  }
+  const answer = await editing(() => backend.servers());
+  busy.servers = false;
+  if (answer?.ok) set({ servers: answer.value });
 }
 
 /** The kinds a browser may add; an API server needs the phone's own form. */
@@ -655,19 +624,9 @@ export const SERVER_KINDS = ["arcgis", "tilejson", "tiles", "wmts", "wms", "mapp
 
 /** The phone reads the address first and answers with its servers, the new one among them. */
 export async function addServer(kind: string, address: string, name: string): Promise<boolean> {
-  let answer: Response;
-  try {
-    answer = await askEditing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`);
-  } catch {
-    away();
-    return false;
-  }
-  if (answer.status === 401) return false;
-  if (!answer.ok) {
-    notice(await answer.text());
-    return false;
-  }
-  set({ servers: await answer.json() });
+  const servers = told(await editing(() => backend.addServer(kind, address, name)));
+  if (!servers) return false;
+  set({ servers });
   return true;
 }
 
@@ -678,20 +637,11 @@ export function tickServerRow(key: string, pick: ServerPick) {
 }
 
 /** Sends what adds layers; the phone answers with the map, and the adding is over. */
-async function addedBy(path: string, body?: BodyInit): Promise<boolean> {
-  let answer: Response;
-  try {
-    answer = await askEditing(path, "POST", body);
-  } catch {
-    away();
-    return false;
-  }
-  if (answer.status === 401) return false;
-  if (!answer.ok) {
-    notice(await answer.text());
-    return false;
-  }
-  const portable: Portable = await answer.json();
+async function addedBy(asking: (mapID: string) => Promise<Answer<Portable>>): Promise<boolean> {
+  const { mapID } = get();
+  if (!mapID) return false;
+  const portable = told(await editing(() => asking(mapID)));
+  if (!portable) return false;
   set({ portable, addingPackages: false, packages: null, serviceRead: null, layerOptions: null });
   await refreshDevice();
   pickStyle(get().styleID);
@@ -703,7 +653,7 @@ export async function setPicture(kind: "icon" | "preview", picture?: Blob | null
   const { mapID } = get();
   if (!mapID) return;
   const body = picture ? await picture.arrayBuffer() : new ArrayBuffer(0);
-  if (await addedBy(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, body)) keepPictures(mapID, picturesOf(get().portable));
+  if (await addedBy((id) => backend.setPicture(id, kind, body))) keepPictures(mapID, picturesOf(get().portable));
 }
 
 export async function takePreview() {
@@ -713,32 +663,15 @@ export async function takePreview() {
 
 /** 3003: the phone reads the API and guesses its keys, or reads them as the page picked. */
 export async function readAPI(address: string, reading?: APIReading | null): Promise<APIRead | null> {
-  const query = new URLSearchParams({ address });
-  if (reading) query.set("reading", JSON.stringify(reading));
-  let read: Response;
-  try {
-    read = await askEditing(`${ROOT}/read-api?${query}`, "GET");
-  } catch {
-    away();
-    return null;
-  }
-  if (read.status === 401) return null;
-  if (!read.ok) {
-    notice(await read.text());
-    return null;
-  }
-  return read.json();
+  return told(await editing(() => backend.readAPI(address, reading)));
 }
 
-export async function addAPI(address: string, reading: APIReading, name: string) {
-  const query = new URLSearchParams({ address, reading: JSON.stringify(reading), name });
-  return addedBy(`${ROOT}/maps/${get().mapID}/add-api?${query}`);
-}
+export const addAPI = (address: string, reading: APIReading, name: string) =>
+  addedBy((mapID) => backend.addAPI(mapID, address, reading, name));
 
 export async function addServerLayers() {
   const picks = [...get().serverPicks.values()];
-  const query = new URLSearchParams({ picks: JSON.stringify(picks) });
-  if (await addedBy(`${ROOT}/maps/${get().mapID}/add-server-layers?${query}`)) set({ serverPicks: new Map() });
+  if (await addedBy((mapID) => backend.addServerLayers(mapID, picks))) set({ serverPicks: new Map() });
 }
 
 /** The phone copies the file in as Add layer does, and draws it from there. */
@@ -751,29 +684,18 @@ export async function addFile(file: File) {
     notice(get().words.fileKinds);
     return;
   }
-  await addedBy(`${ROOT}/maps/${get().mapID}/add-file?${new URLSearchParams({ file: file.name })}`, await file.arrayBuffer());
+  await addedBy((mapID) => backend.addFile(mapID, file));
 }
 
 /** The phone says what an address is; a service's layers are ticked first. */
 export async function addTiles(template: string) {
-  let read: Response;
-  try {
-    read = await askEditing(`${ROOT}/read-address?${new URLSearchParams({ address: template })}`, "GET");
-  } catch {
-    away();
-    return;
-  }
-  if (read.status === 401) return;
-  if (!read.ok) {
-    notice(await read.text());
-    return;
-  }
-  const reading = await read.json();
+  const reading = told(await editing(() => backend.readAddress(template)));
+  if (!reading) return;
   if (reading.kind === "layers") {
-    set({ serviceRead: { address: template, reading, ticks: new Set() } });
+    set({ serviceRead: { address: template, reading: reading as ServiceRead["reading"], ticks: new Set() } });
     return;
   }
-  await addedBy(`${ROOT}/maps/${get().mapID}/add-tiles?${new URLSearchParams({ template })}`);
+  await addedBy((mapID) => backend.addTiles(mapID, template));
 }
 
 export function tickServiceLayer(id: string) {
@@ -785,10 +707,9 @@ export function tickServiceLayer(id: string) {
 }
 
 export async function addServiceLayers() {
-  const { serviceRead, mapID } = get();
+  const { serviceRead } = get();
   if (!serviceRead) return;
-  const query = new URLSearchParams({ address: serviceRead.address, picks: JSON.stringify([...serviceRead.ticks]) });
-  await addedBy(`${ROOT}/maps/${mapID}/add-service-layers?${query}`);
+  await addedBy((mapID) => backend.addServiceLayers(mapID, serviceRead.address, [...serviceRead.ticks]));
 }
 
 // MARK: - Coverage
@@ -797,18 +718,13 @@ export async function loadCoverage() {
   const { mapID, coveragePlaces } = get();
   if (!mapID || busy.coverage === mapID) return;
   busy.coverage = mapID;
-  try {
-    const [summary, places] = await Promise.all([
-      askEditing(`${ROOT}/maps/${mapID}/coverage`, "GET"),
-      coveragePlaces ? null : askEditing(`${ROOT}/coverage-places`, "GET")]);
-    if (!summary.ok || (places && !places.ok) || mapID !== get().mapID) return;
-    if (places) set({ coveragePlaces: await places.json() });
-    set({ coverage: await summary.json() });
-  } catch {
-    away();
-  } finally {
-    busy.coverage = null;
-  }
+  const [summary, places] = await Promise.all([
+    editing(() => backend.coverage(mapID)),
+    coveragePlaces ? null : editing(() => backend.coveragePlaces())]);
+  busy.coverage = null;
+  if (!summary?.ok || (!coveragePlaces && !places?.ok) || mapID !== get().mapID) return;
+  if (places?.ok) set({ coveragePlaces: places.value });
+  set({ coverage: summary.value });
 }
 
 export const toggleCoverageShown = () => set({ coverageShown: !get().coverageShown });
@@ -822,7 +738,7 @@ export function editCoverage(changeSide: (places: CoverageSide) => void): Promis
   const side = get().coverageSide;
   const edit = busy.coverageEdits.then(async () => {
     const made: Coverage = edited(get().coverage?.coverage ?? {}, side, changeSide);
-    if (await change({ coverage: JSON.stringify(made) })) await loadCoverage();
+    if (await change({ kind: "coverage", coverage: made })) await loadCoverage();
   });
   busy.coverageEdits = edit.catch(() => {});
   return edit;
@@ -834,29 +750,23 @@ export function pickStartKind(picked: string) {
   const startKind = BY_NAME.includes(picked) ? picked : null;
   set({ startKind, startFound: null });
   if (picked === "coordinates") takeMapCentre();
-  else if (!startKind) void change({ start: picked });
+  else if (!startKind) void change({ kind: "start", start: { kind: picked } });
 }
 
 export async function lookForPlaces(kind: string, query: string) {
-  const asked = new URLSearchParams({ kind });
-  if (query) asked.set("q", query);
-  try {
-    const answer = await askEditing(`${ROOT}/start-places?${asked.toString()}`, "GET");
-    if (answer.ok) set({ startFound: await answer.json() });
-  } catch {
-    away();
-  }
+  const answer = await editing(() => backend.startPlaces(kind, query));
+  if (answer?.ok) set({ startFound: answer.value });
 }
 
 export async function pickPlace(start: Start) {
-  if (await change(startQuery(start))) set({ startKind: null });
+  if (await change({ kind: "start", start })) set({ startKind: null });
 }
 
 /** As the phone's page does, the map's own camera now: the browser's view. */
 export function takeMapCentre() {
   const camera = mapControl()?.camera();
   if (!camera) return;
-  void change({ start: "coordinates", lat: camera.lat.toFixed(5), lon: camera.lng.toFixed(5),
+  void change({ kind: "startAt", lat: camera.lat.toFixed(5), lon: camera.lng.toFixed(5),
     zoom: (Math.round(camera.zoom * 10) / 10).toString() });
 }
 
@@ -870,24 +780,16 @@ export async function removeLanguage(code: string, name?: string, note?: string)
   const addedLanguages = new Set(get().addedLanguages);
   addedLanguages.delete(code);
   set({ addedLanguages });
-  if (name) await change({ language: code, name: "" });
-  if (note) await change({ language: code, note: "" });
+  if (name) await change({ kind: "nameIn", language: code, name: "" });
+  if (note) await change({ kind: "noteIn", language: code, note: "" });
 }
 
 // MARK: - Regions the phone lacks
 
 export async function downloadRegion(region: Region) {
-  let answer: Response;
-  try {
-    answer = await askEditing(`${ROOT}/maps/${get().mapID}/download?region=${encodeURIComponent(region.id)}`);
-  } catch {
-    away();
-    return;
-  }
-  if (answer.status === 401) return;
-  if (!answer.ok) {
-    notice(await answer.text());
-    return;
-  }
-  mapControl()?.readRegions();
+  const { mapID } = get();
+  if (!mapID) return;
+  const answer = await editing(() => backend.downloadRegion(mapID, region.id));
+  if (answer?.ok) mapControl()?.readRegions();
+  else if (answer) notice(answer.said);
 }

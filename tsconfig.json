@@ -26,6 +26,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@backend": [
+        "./src/targets/phone/backend.ts"
+      ],
+      "@base": [
+        "./src/targets/phone/base.ts"
       ]
     }
   },

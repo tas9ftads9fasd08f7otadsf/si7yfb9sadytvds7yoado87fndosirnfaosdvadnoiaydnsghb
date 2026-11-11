@@ -35,10 +35,10 @@ export function Languages({ portable }: { portable: Portable }) {
             </div>
             <div className="field"><label>{words.name}</label>
               <CommitField type="text" value={names[code] ?? ""} aria-label={`${words.name} · ${said}`} maxLength={200}
-                onCommit={(name) => change({ language: code, name })} /></div>
+                onCommit={(name) => change({ kind: "nameIn", language: code, name })} /></div>
             <div className="field"><label>{words.note}</label>
               <CommitField multiline rows={2} value={notes[code] ?? ""} aria-label={`${words.note} · ${said}`}
-                maxLength={2000} onCommit={(note) => change({ language: code, note })} /></div>
+                maxLength={2000} onCommit={(note) => change({ kind: "noteIn", language: code, note })} /></div>
           </div>
         );
       })}

@@ -43,19 +43,19 @@ export function Styling({ portable }: { portable: Portable }) {
         <div className="swatches" role="group" id="mapSymbols" aria-label={words.icon}>
           {symbols.map((name) => (
             <Swatch key={name} label={name} isPicked={name === symbol && !portable.iconPicture} tint={tint}
-              data={{ "data-symbol": name }} onPick={() => change({ symbol: name })}><Sym name={name} /></Swatch>
+              data={{ "data-symbol": name }} onPick={() => change({ kind: "symbol", symbol: name })}><Sym name={name} /></Swatch>
           ))}
         </div>
         <div className="field"><label>{words.background}</label></div>
         <div className="swatches" role="group" id="iconTints" aria-label={words.background}>
           <CommitField type="color" value={(tint ?? "#8E8E93").toLowerCase()} aria-label={words.pickColour}
-            title={words.pickColour} onCommit={(hex) => change({ iconTint: hex.toUpperCase() })} />
-          <Swatch label={words["theme.auto"]} isPicked={!tint} onPick={() => change({ iconTint: "" })}>
+            title={words.pickColour} onCommit={(hex) => change({ kind: "iconTint", tint: hex.toUpperCase() })} />
+          <Swatch label={words["theme.auto"]} isPicked={!tint} onPick={() => change({ kind: "iconTint", tint: "" })}>
             <Sym name="wand.and.stars" />
           </Swatch>
           {tints.map((hex) => (
             <Swatch key={hex} label={hex} isPicked={hex === tint} tint={hex} data={{ "data-hex": hex }}
-              onPick={() => change({ iconTint: hex })} />
+              onPick={() => change({ kind: "iconTint", tint: hex })} />
           ))}
         </div>
         <div className="field"><label>{words.picture}</label></div>
@@ -88,7 +88,7 @@ export function Styling({ portable }: { portable: Portable }) {
       <div className="chips" role="group" id="mapAppearance" aria-label={words.appearance}>
         {Object.entries(APPEARANCES).map(([each, word]) => (
           <button key={each} type="button" className={each === appearance ? "picked" : undefined}
-            aria-pressed={each === appearance} onClick={each === appearance ? undefined : () => change({ appearance: each })}>
+            aria-pressed={each === appearance} onClick={each === appearance ? undefined : () => change({ kind: "appearance", appearance: each })}>
             {words[`theme.${word}`]}
           </button>
         ))}

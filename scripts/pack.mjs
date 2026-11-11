@@ -6,11 +6,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expressions, latest } from "@maplibre/maplibre-gl-style-spec";
 import { DRAWN_TYPES, FORK_ONLY } from "../src/lib/drawable.ts";
+import { PAGE_SEGMENTS } from "../src/lib/segments.ts";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /** The page and its assets; Next's route payloads serve navigation it never does. */
 export const ships = (file) => file === "index.html" || file.startsWith("_next/static/") || file.startsWith("licenses/");
+
+/** What of the site would ship inside the app: its server, its core, CloudKit or its base. */
+export function phoneLeaks(files) {
+  return files.filter(({ name, text }) => /\.(php|wasm)$/.test(name)
+    || /cloudkit|__riki_base__/i.test(text ?? "")).map(({ name }) => name);
+}
 
 /** Every file the page asks for by its prefix. */
 export function asked(html) {
@@ -57,12 +64,16 @@ async function main() {
 
   const missing = asked(await readFile(path.join(out, "index.html"), "utf8")).filter((file) => !files.includes(file));
   if (missing.length) throw new Error(`The page asks for files the bundle lacks: ${missing.join(", ")}`);
+  const read = await Promise.all(files.map(async (name) =>
+    ({ name, text: /\.(html|js|css|json|txt)$/.test(name) ? await readFile(path.join(out, name), "utf8") : null })));
+  const leaked = phoneLeaks(read);
+  if (leaked.length) throw new Error(`The site's parts would ship in the app: ${leaked.join(", ")}`);
 
   const own = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8"));
   const library = JSON.parse(await readFile(path.join(ROOT, "node_modules/maplibre-gl/package.json"), "utf8"));
   const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
   const manifest = { version: process.env.WEB_EDITOR_VERSION || own.version, commit, drawnTypes: DRAWN_TYPES,
-    forkOnly: FORK_ONLY, mapLibre: { version: library.version, ...styleFacts(latest, Object.keys(expressions)) } };
+    forkOnly: FORK_ONLY, pageSegments: PAGE_SEGMENTS, mapLibre: { version: library.version, ...styleFacts(latest, Object.keys(expressions)) } };
   await writeFile(path.join(bundle, "web-editor.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   await writeFile(path.join(bundle, "Info.plist"), infoPlist(manifest.version));
 

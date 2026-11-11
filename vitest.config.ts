@@ -4,7 +4,12 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
-  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+  // The store and screens are tested once, against the phone target.
+  resolve: { alias: {
+    "@backend": fileURLToPath(new URL("./src/targets/phone/backend.ts", import.meta.url)),
+    "@base": fileURLToPath(new URL("./src/targets/phone/base.ts", import.meta.url)),
+    "@": fileURLToPath(new URL("./src", import.meta.url))
+  } },
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],

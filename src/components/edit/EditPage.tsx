@@ -39,10 +39,10 @@ function EditFields() {
       <div className="card" style={{ marginTop: 8 }}>
         <div className="field"><label>{words.name}</label>
           <CommitField type="text" value={portable.name} aria-label={words.name} maxLength={200}
-            onCommit={(name) => change({ name })} /></div>
+            onCommit={(name) => change({ kind: "name", name })} /></div>
         <div className="field"><label>{words.note}</label>
           <CommitField multiline rows={3} value={portable.note ?? ""} aria-label={words.note} maxLength={2000}
-            onCommit={(note) => change({ note })} /></div>
+            onCommit={(note) => change({ kind: "note", note })} /></div>
       </div>
       <Languages portable={portable} />
       <Styling portable={portable} />
