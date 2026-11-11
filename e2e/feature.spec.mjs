@@ -3,20 +3,25 @@ import { openViewer, phone, reset } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
+// 39 the page may still be drawing its style, which refuses a source or drops one added just before
+const showHuts = (page, properties) => expect.poll(() => page.evaluate((properties) => {
+  const map = __riki.map;
+  const source = "riki-custom-6f1e2a10-0000-4000-8000-0000000000a2";
+  try {
+    if (!map.getSource(source)) map.addSource(source, { type: "geojson", data: { type: "FeatureCollection",
+      features: [{ type: "Feature", geometry: { type: "Point", coordinates: map.getCenter().toArray() }, properties }] } });
+    if (!map.getLayer("huts")) map.addLayer({ id: "huts", type: "circle", source, paint: { "circle-radius": 12 } });
+  } catch {
+    return 0;
+  }
+  return map.queryRenderedFeatures({ layers: ["huts"] }).length;
+}, properties)).toBeGreaterThan(0);
+
 // TestFlight AFKF: a feature in the browser could be seen, never asked about.
 test("a clicked feature shows what it carries, as text", async ({ page }) => {
   await openViewer(page);
-  await page.evaluate(() => {
-    __riki.map.addSource("riki-custom-6f1e2a10-0000-4000-8000-0000000000a2", { type: "geojson", data: {
-      type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point",
-        coordinates: __riki.map.getCenter().toArray() },
-      properties: { Nazov: "Chata pod Rysmi", Elevation: "2250", Note: "<b>open</b>", riki_stack: 0 } }] } });
-    __riki.map.addLayer({ id: "huts", type: "circle", source: "riki-custom-6f1e2a10-0000-4000-8000-0000000000a2",
-      paint: { "circle-radius": 12 } });
-  });
+  await showHuts(page, { Nazov: "Chata pod Rysmi", Elevation: "2250", Note: "<b>open</b>", riki_stack: 0 });
   const box = await page.locator("#map").boundingBox();
-  await expect.poll(() => page.evaluate(() => __riki.map.queryRenderedFeatures({ layers: ["huts"] }).length))
-    .toBeGreaterThan(0);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
   const card = page.locator(".maplibregl-popup .feature");
@@ -51,18 +56,8 @@ test("a click on empty ground shows what the servers answer", async ({ page, req
 test("a clicked feature wears its layer's layout", async ({ page, request }) => {
   await phone(request, "lays-out-details");
   await openViewer(page);
-  await expect.poll(() => page.evaluate(() => __riki.map.isStyleLoaded())).toBe(true);
-  await page.evaluate(() => {
-    __riki.map.addSource("riki-custom-6f1e2a10-0000-4000-8000-0000000000a2", { type: "geojson", data: {
-      type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point",
-        coordinates: __riki.map.getCenter().toArray() },
-      properties: { Nazov: "Chata pod Rysmi", Elevation: "2250", Beds: "40" } }] } });
-    __riki.map.addLayer({ id: "huts", type: "circle", source: "riki-custom-6f1e2a10-0000-4000-8000-0000000000a2",
-      paint: { "circle-radius": 12 } });
-  });
+  await showHuts(page, { Nazov: "Chata pod Rysmi", Elevation: "2250", Beds: "40" });
   const box = await page.locator("#map").boundingBox();
-  await expect.poll(() => page.evaluate(() => __riki.map.queryRenderedFeatures({ layers: ["huts"] }).length))
-    .toBeGreaterThan(0);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
   const card = page.locator(".maplibregl-popup .feature");
