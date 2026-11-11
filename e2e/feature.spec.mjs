@@ -4,9 +4,15 @@ import { openViewer, phone, reset } from "./phone.mjs";
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 // TestFlight AFKF: a feature in the browser could be seen, never asked about.
+// 39 the side bar shows before the style loads, and adding a source then throws
 test("a clicked feature shows what it carries, as text", async ({ page }) => {
   await openViewer(page);
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
+    // 39 checked and added in one task: a style drawn between the two would refuse the source
+    await new Promise((loaded) => {
+      const check = () => (__riki.map.isStyleLoaded() ? loaded() : __riki.map.once("styledata", check));
+      check();
+    });
     __riki.map.addSource("riki-custom-6f1e2a10-0000-4000-8000-0000000000a2", { type: "geojson", data: {
       type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point",
         coordinates: __riki.map.getCenter().toArray() },
@@ -51,8 +57,12 @@ test("a click on empty ground shows what the servers answer", async ({ page, req
 test("a clicked feature wears its layer's layout", async ({ page, request }) => {
   await phone(request, "lays-out-details");
   await openViewer(page);
-  await expect.poll(() => page.evaluate(() => __riki.map.isStyleLoaded())).toBe(true);
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
+    // 39 checked and added in one task: a style drawn between the two would refuse the source
+    await new Promise((loaded) => {
+      const check = () => (__riki.map.isStyleLoaded() ? loaded() : __riki.map.once("styledata", check));
+      check();
+    });
     __riki.map.addSource("riki-custom-6f1e2a10-0000-4000-8000-0000000000a2", { type: "geojson", data: {
       type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point",
         coordinates: __riki.map.getCenter().toArray() },
