@@ -1,0 +1,18 @@
+{
+  "name": "rikimaps/mapeditor-site",
+  "description": "The one PHP file that serves the iCloud site, and its tests",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "php": ">=8.1"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "classmap": ["Site.php"]
+  },
+  "scripts": {
+    "test": "phpunit"
+  }
+}

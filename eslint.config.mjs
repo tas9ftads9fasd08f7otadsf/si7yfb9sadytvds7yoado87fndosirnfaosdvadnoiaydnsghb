@@ -11,7 +11,7 @@ const config = [
   { files: ["src/**"], ignores: ["src/targets/**"], rules: reaching("@/targets/*", "**/targets/*") },
   { files: ["src/targets/phone/**"], rules: reaching("@/targets/web/*", "**/web/*") },
   { files: ["src/targets/web/**"], rules: reaching("@/targets/phone/*", "**/phone/*") },
-  { ignores: [".next/**", "out/**", "dist/**", "next-env.d.ts", "playwright-report/**", "test-results/**"] }
+  { ignores: [".next/**", "out/**", "dist/**", "server/vendor/**", "next-env.d.ts", "playwright-report/**", "test-results/**"] }
 ];
 
 export default config;

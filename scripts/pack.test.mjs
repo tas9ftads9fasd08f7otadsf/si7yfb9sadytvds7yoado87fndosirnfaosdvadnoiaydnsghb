@@ -45,3 +45,17 @@ describe("what the bundle carries", () => {
     expect(facts).toEqual({ properties: ["fill-color", "line-cap"], operators: ["!in", "get"], terrainKeys: ["source"] });
   });
 });
+
+// 37 the site's zip holds nothing of the phone's page
+describe("what the site's zip carries", () => {
+  it("finds the phone's parts in what the site would ship", async () => {
+    const { siteLeaks, SERVER_FILES } = await import("./pack-web.mjs");
+    expect(siteLeaks([{ name: "out/index.html", text: "<script src=\"/__riki_base__/_next/a.js\">" },
+      { name: "out/_next/static/a.js", text: "CloudKit.configure({})" }])).toEqual([]);
+    expect(siteLeaks([{ name: "out/_next/static/a.js", text: "fetch(\"/riki/v1/device\")" },
+      { name: "out/index.html", text: "<script src=\"/web/app/_next/a.js\">" },
+      { name: "WebEditor.bundle/Info.plist", text: null }]))
+      .toEqual(["out/_next/static/a.js", "out/index.html", "WebEditor.bundle/Info.plist"]);
+    expect(SERVER_FILES).not.toContain("config.php");
+  });
+});
