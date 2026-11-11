@@ -58,17 +58,28 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # The site's server: PHPUnit, with the runner's own PHP and Composer.
+      - run: composer install --working-dir=server --no-interaction --no-progress
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm run test:php
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm run pack
+      - run: npm run build:web
+      - run: npm run pack:web
+      - run: npm run test:e2e:web
       - uses: actions/upload-artifact@v4
         with:
           name: web-editor
           path: dist/web-editor.zip*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-site
+          path: dist/web-site.zip*
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}

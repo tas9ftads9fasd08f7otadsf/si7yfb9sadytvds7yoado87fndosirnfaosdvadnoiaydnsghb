@@ -17,8 +17,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build && npm run test:e2e && npm run pack",
-    "build:web": "RIKI_TARGET=web next build"
+    "check": "npm run lint && npm run typecheck && npm run test && npm run test:php && npm run build && npm run test:e2e && npm run pack && npm run build:web && npm run pack:web && npm run test:e2e:web",
+    "build:web": "RIKI_TARGET=web next build",
+    "pack:web": "node scripts/pack-web.mjs",
+    "test:php": "cd server && vendor/bin/phpunit",
+    "test:e2e:web": "RIKI_TARGET=web playwright test"
   },
   "dependencies": {
     "maplibre-gl": "4.7.1",

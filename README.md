@@ -39,6 +39,16 @@ PHONE_URL=http://192.168.1.20:8765 npm run dev   # against a real phone
 `BASE_URL=http://192.168.1.20:8765/ npx playwright test` runs the specs that need no `/__test` side
 against a real phone.
 
+## The site
+
+`npm run build:web && npm run pack:web` writes `dist/web-site.zip`: the site's build under `out/`,
+`index.php` and `Site.php`, `config.example.php` and `site.json`. Unpack it anywhere a web server
+runs PHP 8.1 or later, at a domain's root or under a path, and send every request to `index.php`
+(nginx: `try_files $uri /index.php`; or `php -S host:port index.php`). Copy `config.example.php` to
+`config.php` with the CloudKit container, API token and environment. The server only serves files:
+`composer install --working-dir=server` and `npm run test:php` run its PHPUnit tests, and
+`npm run test:e2e:web` runs the browser specs against the zip at `/` and under `/editor/`.
+
 ## Layout
 
 - `src/app`: the root layout, the one page, the stylesheet.
@@ -46,6 +56,7 @@ against a real phone.
 - `src/store/viewer.ts`: all state; it asks `@backend`, never `fetch`.
 - `src/backend/types.ts`: the `Backend` every target answers; `src/lib/edit.ts`, the edits it takes.
 - `src/targets/phone`: today's calls to the phone. `src/targets/web`: the site's, built in step 3.
+- `server`: the site's `index.php`, `Site.php` and their PHPUnit tests.
 - `src/map`: MapLibre, loaded on the client after the phone's words.
 - `src/lib`: logic with no framework in it.
 - `e2e`: browser specs and the stand-in phone, which must answer as the app's `PeerRouter` does.
