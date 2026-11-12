@@ -14,15 +14,23 @@ describe("TopBar", () => {
     useViewer.setState({ device, mapID: "a", route: { screen: "map", map: "a" } });
   });
 
-  // 31 the map picker: every map as a link, the shown one current, All maps at its foot
-  it("lists every map and All maps, the shown one current", () => {
+  // 44 the map picker: the other maps as links, the shown one left out, All maps at its foot
+  it("lists the other maps and All maps, not the one on screen", () => {
     render(<TopBar />);
     expect(screen.getByText("Riki's iPad")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Maps" }));
     const items = screen.getAllByRole("menuitem");
-    expect(items.map((each) => each.textContent)).toEqual(["High Tatras", "Bratislava", "All maps"]);
-    expect(items.map((each) => each.getAttribute("href"))).toEqual(["/maps/a", "/maps/b", "/maps"]);
-    expect(items[0]!.getAttribute("aria-current")).toBe("page");
+    expect(items.map((each) => each.textContent)).toEqual(["Bratislava", "All maps"]);
+    expect(items.map((each) => each.getAttribute("href"))).toEqual(["/maps/b", "/maps"]);
+    expect(screen.getByRole("button", { name: "Maps" }).textContent).toBe("High Tatras");
+  });
+
+  // 44 a phone sharing one map still offers All maps
+  it("offers All maps alone when no other map is shared", () => {
+    useViewer.setState({ device: { ...device, maps: device.maps.slice(0, 1) } });
+    render(<TopBar />);
+    fireEvent.click(screen.getByRole("button", { name: "Maps" }));
+    expect(screen.getAllByRole("menuitem").map((each) => each.textContent)).toEqual(["All maps"]);
   });
 
   // 31 picking a map moves to its address and closes the menu
