@@ -3,7 +3,7 @@ import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
 import type { Answer, Saved } from "@/backend/types";
 import type { Edit } from "@/lib/edit";
-import { HEARTBEAT_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
+import { DIRECT_KEY, HEARTBEAT_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
@@ -22,6 +22,10 @@ export interface ViewerState {
   words: Words;
   standing: Standing | null;
   edits: boolean;
+  /** The phone lets a browser load tiles from their source. */
+  directAllowed: boolean;
+  /** This browser's choice to do so, kept between visits. */
+  tilesDirect: boolean;
   viewers: number | null;
   /** Whether the phone answered last time it was asked; null until it has been. */
   connected: boolean | null;
@@ -64,7 +68,7 @@ export interface ViewerState {
 }
 
 const firstState = (): ViewerState => ({
-  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "",
+  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, directAllowed: false, tilesDirect: false, viewers: null, connected: null, gateDevice: "",
   editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, regionOffer: null,
@@ -131,7 +135,24 @@ export function restoreKept() {
     const kept = localStorage.getItem(THEME_KEY);
     if (kept === "auto" || kept === "light" || kept === "dark") set({ theme: kept });
   } catch { /* no storage: Automatic */ }
+  try {
+    set({ tilesDirect: localStorage.getItem(DIRECT_KEY) === "1" });
+  } catch { /* no storage: through the phone */ }
   applyTheme();
+}
+
+// MARK: - Where tiles come from
+
+/** Tiles straight from their source only while the phone allows it and this browser chose it. */
+export const loadsDirect = (state: ViewerState) => state.directAllowed && state.tilesDirect;
+
+export function setTilesDirect(tilesDirect: boolean) {
+  if (get().tilesDirect === tilesDirect) return;
+  set({ tilesDirect });
+  try {
+    localStorage.setItem(DIRECT_KEY, tilesDirect ? "1" : "0");
+  } catch { /* kept for this visit only */ }
+  if (get().directAllowed) mapControl()?.draw();
 }
 
 // MARK: - Light or dark
@@ -183,12 +204,16 @@ export async function askToJoin() {
 
 export function applySession(answer: SessionAnswer) {
   const was = get().standing;
+  const drewDirect = loadsDirect(get());
   const edits = answer.edits === true;
   set({ standing: answer.standing, edits, viewers: typeof answer.viewers === "number" ? answer.viewers : null });
   if (!edits && get().editToken) keepToken(null);
   if (answer.device) set({ gateDevice: answer.device });
+  set({ directAllowed: answer.direct === true });
   if (answer.standing !== "admitted") {
     mapControl()?.stopLive();
+  } else if (was === "admitted" && drewDirect !== loadsDirect(get())) {
+    mapControl()?.draw();
   } else if (was !== "admitted") {
     void readDevice();
     if (busy.addressKey) void checkKey(busy.addressKey);

@@ -5,6 +5,8 @@ export const ENGLISH = {
   onMapNow: "On map now", edit: "Edit map", done: "Done", cancel: "Cancel", save: "Save", name: "Name",
   note: "Note", otherLanguages: "Other languages", addLanguage: "Add a language", remove: "Remove",
   languages: "", opacity: "Opacity", rename: "Rename", newStyle: "New style", delete: "Delete",
+  tilesVia: "Load tiles", viaPhone: "Through the phone", viaSource: "From their source",
+  viaSourceNote: "Layers that need the phone's keys still come through it.",
   moveUp: "Move up", moveDown: "Move down", show: "Show", hide: "Hide", north: "N",
   allLayersOn: "All on", allLayersOff: "All off",
   locate: "Locate, pointing north", layerCap: "A style draws up to 12 layers. Switch one off first.",

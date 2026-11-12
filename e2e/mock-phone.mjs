@@ -411,6 +411,12 @@ function style(each, query) {
       paint: { "color-relief-color": ["interpolate", ["linear"], ["elevation"], 0, "#000", 1000, "#fff"] } }] : [];
   // 2941: house numbers lifted onto their roofs, as `StyleBuilder` writes them where buildings rise.
   sources.numbers = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  // 3176: as `PeerStyleRewriter` points a tile layer: its own address for a browser loading directly, else the relay.
+  const direct = phone.direct === true && query.get("direct") === "1";
+  for (const layer of shown.filter((each) => each.net)) {
+    sources["riki-net-" + layer.id.toLowerCase()] = { type: "raster", tileSize: 256,
+      tiles: [direct ? "https://tiles.test/{z}/{x}/{y}.png" : "/riki/v1/relay/mock/{z}/{x}/{y}.png"] };
+  }
   if (relief.length) sources.dem = { type: "raster-dem", tiles: ["/__test/none/{z}/{x}/{y}.png"], bounds: [-179.9, -89, -179.8, -88.9] };
   return { version: 8, name: each.name, sources,
     layers: [{ id: "ground", type: "background", paint: { "background-color": colours[theme] || "#ddd" } },
@@ -420,7 +426,10 @@ function style(each, query) {
       ...shown.map((layer) => layer.isLive
         ? { id: "riki-custom-layer-" + layer.id.toLowerCase(), type: "circle",
           source: "riki-custom-" + layer.id.toLowerCase(), paint: { "circle-radius": 8 } }
-        : { id: "riki-" + layer.id.toLowerCase(), type: "background", paint: { "background-opacity": 0 } })] };
+        : layer.net
+          ? { id: "riki-" + layer.id.toLowerCase(), type: "raster", source: "riki-net-" + layer.id.toLowerCase(),
+            layout: {}, paint: {} }
+          : { id: "riki-" + layer.id.toLowerCase(), type: "background", paint: { "background-opacity": 0 } })] };
 }
 
 function setShown(each, query, layers, isOn) {
@@ -623,7 +632,8 @@ async function answer(request, response) {
     const { guest, isNew } = arrive(request);
     if (asking && guest.standing === "removed") guest.standing = "waiting";
     const headers = isNew ? { "Set-Cookie": COOKIE + "=" + guest.id + "; Path=/; HttpOnly; SameSite=Strict" } : {};
-    return json(response, { standing: guest.standing, viewers: viewers(), device: phone.name, edits: true },
+    return json(response, { standing: guest.standing, viewers: viewers(), device: phone.name, edits: true,
+      direct: phone.direct === true },
       headers);
   }
   // 31 the edit link goes to the page's unlock address, as `editRedirect` does.
@@ -635,6 +645,7 @@ async function answer(request, response) {
   if (method === "GET" && isPage(route)) return send(response, 200, await buildFile("index.html"), TYPES[".html"]);
   if (route === "/favicon.ico") return send(response, 204, "");
   if (route.startsWith("/web/symbols/")) return send(response, 200, PIXEL, "image/png");
+  if (route.startsWith("/riki/v1/relay/mock/")) return send(response, 200, PIXEL, "image/png");
   if (route === "/web/edit-check") {
     if (method !== "POST") return send(response, 405, "");
     if (!opensEditing(request)) return send(response, 403, "This browser may not change maps");
@@ -931,6 +942,7 @@ function testControl(route, query, response) {
   switch (route) {
   case "/__test/reset": reset(); break;
   case "/__test/asks-first": phone.asksFirst = query.get("on") === "1"; break;
+  case "/__test/direct": phone.direct = query.get("on") === "1"; break;
   case "/__test/admit": {
     const guest = phone.guests.get(id);
     if (guest) { guest.standing = "admitted"; phone.removedAddresses.delete(guest.address); }
