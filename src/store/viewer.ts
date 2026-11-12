@@ -3,7 +3,7 @@ import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
 import type { Answer, Saved } from "@/backend/types";
 import type { Edit } from "@/lib/edit";
-import { HEARTBEAT_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
+import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
@@ -103,9 +103,23 @@ export function notice(text: string | null) {
   if (text) busy.notice = setTimeout(() => notice(null), 4000);
 }
 
-function away() {
-  set({ connected: false });
-  notice(get().words.away);
+/** The phone could not be reached: the page says so until a beat is answered again. */
+export const away = () => setConnected(false);
+
+function setConnected(connected: boolean) {
+  const was = get().connected;
+  set({ connected });
+  if (connected && was === false) {
+    notice(get().words.connectedAgain);
+    void catchUp();
+  }
+}
+
+/** What changed on the phone while it was out of reach, drawn without a reload. */
+async function catchUp() {
+  if (get().standing !== "admitted" || !get().device) return;
+  await refreshDevice();
+  mapControl()?.draw();
 }
 
 // MARK: - Starting up
@@ -164,12 +178,12 @@ async function heartbeat() {
   clearTimeout(busy.heartbeat);
   try {
     const answer = await backend.session();
-    set({ connected: answer.ok });
+    setConnected(answer.ok);
     if (answer.ok) applySession(answer.value);
   } catch {
     away();
   }
-  busy.heartbeat = setTimeout(heartbeat, HEARTBEAT_EVERY);
+  busy.heartbeat = setTimeout(heartbeat, get().connected === false ? RETRY_EVERY : HEARTBEAT_EVERY);
 }
 
 export async function askToJoin() {

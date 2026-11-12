@@ -22,6 +22,18 @@ export function Notice() {
   return <div id="notice" role="status" className={text ? "shown" : undefined}>{text ?? ""}</div>;
 }
 
+/** Stays while the phone does not answer; the page keeps asking, so nothing is reloaded. */
+export function Offline() {
+  const words = useViewer((state) => state.words);
+  const connected = useViewer((state) => state.connected);
+  if (connected !== false) return null;
+  return (
+    <div id="offline" role="alert">
+      <div className="spinner" /><b>{words.notConnected}</b><span>{words.reconnecting}</span>
+    </div>
+  );
+}
+
 export function RegionOffer() {
   const words = useViewer((state) => state.words);
   const offer = useViewer((state) => state.regionOffer);

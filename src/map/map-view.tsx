@@ -9,7 +9,7 @@ import { backend } from "@backend";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY } from "@/lib/page";
 import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
-import { drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
+import { away, drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
 
 const PICK = 6;
@@ -241,7 +241,7 @@ export function createMapView(container: HTMLElement): MapControl {
       }
       style = answer.value as StyleSpecification;
     } catch {
-      if (asked === lastAsked) notice(get().words.away);
+      if (asked === lastAsked) away();
       return;
     }
     if (asked !== lastAsked) return;

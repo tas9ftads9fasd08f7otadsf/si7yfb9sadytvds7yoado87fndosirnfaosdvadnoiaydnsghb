@@ -285,6 +285,12 @@ body.side-hidden #regionOffer { left: var(--rail); }
   opacity: 0; pointer-events: none; transition: transform 0.2s, opacity 0.2s; border-radius: 8px; padding: 8px 14px;
   background: var(--panel); border: 1px solid var(--line); box-shadow: 0 6px 22px var(--shadow); max-width: 520px; }
 #notice.shown { transform: translate(-50%, 0); opacity: 1; }
+#offline { position: absolute; z-index: 10; top: calc(var(--top) + 12px); left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; border-radius: 8px; padding: 8px 14px; background: var(--panel);
+  border: 1px solid var(--danger); box-shadow: 0 6px 22px var(--shadow); white-space: nowrap; }
+#offline b { color: var(--danger); }
+#offline span { color: var(--sub); }
+#offline .spinner { width: 16px; height: 16px; border-width: 2px; margin: 0; }
 
 /* Item 1994: until the phone lets this browser in, nothing it shares is drawn. */
 #gate, #small { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
