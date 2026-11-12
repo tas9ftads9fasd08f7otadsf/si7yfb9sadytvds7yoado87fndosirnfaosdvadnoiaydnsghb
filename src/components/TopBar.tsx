@@ -1,71 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { SharedMap } from "@/lib/types";
-import { go, openMap, pickStyle, shareAddress, showSide, shownMapOf, useViewer } from "@/store/viewer";
-import { Link } from "./ui/Link";
+import { pickStyle, shareAddress, shownMapOf, useViewer } from "@/store/viewer";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
 import { Traffic } from "./Traffic";
 
-function PickerRow({ shared, onPicked }: { shared: SharedMap; onPicked: () => void }) {
-  const icon = useViewer((state) => state.pictures.get(shared.id)?.icon);
-  return (
-    <Link to={{ screen: "map", map: shared.id }} className="row" role="menuitem"
-      onFollow={() => { onPicked(); openMap(shared.id); }}>
-      <MarkTile symbol={shared.symbol} tint={shared.iconTintHex} picture={icon} small />
-      <span className="words">{shared.name}</span>
-    </Link>
-  );
-}
-
-/** The map on screen, drawn as the style switcher is; its menu lists the others, and All maps at its foot. */
-function MapPicker() {
-  const words = useViewer((state) => state.words);
+/** 47 The map on screen, named; the style switcher is the header's only drop-down. */
+function ShownMap() {
   const shown = useViewer(shownMapOf);
-  const maps = useViewer((state) => state.device?.maps) ?? [];
-  const others = maps.filter((each) => each.id !== shown?.id);
   const icon = useViewer((state) => (shown ? state.pictures.get(shown.id)?.icon : null));
-  const [isOpen, setOpen] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!isOpen) return;
-    const outside = (event: PointerEvent) => {
-      if (!box.current?.contains(event.target as Node)) setOpen(false);
-    };
-    // Caught first and marked, so Escape closes the menu and not Edit map under it.
-    const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setOpen(false);
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", escape, true);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", escape, true);
-    };
-  }, [isOpen]);
-  const close = () => setOpen(false);
   return (
-    <div id="mapPicker" ref={box}>
-      <button id="mapPickerButton" className="tool" type="button" aria-haspopup="menu" aria-expanded={isOpen}
-        aria-label={words.maps} hidden={!shown} onClick={() => setOpen(!isOpen)}>
-        <MarkTile symbol={shown?.symbol} tint={shown?.iconTintHex} picture={icon} />
-        <span id="mapName">{shown?.name ?? ""}</span>
-        <Sym name="chevron.down" />
-      </button>
-      {isOpen ? (
-        <div className="menu" id="mapMenu" role="menu" aria-label={words.maps}>
-          {others.map((each) => <PickerRow key={each.id} shared={each} onPicked={close} />)}
-          <div className="foot">
-            <Link to={{ screen: "maps" }} id="allMaps" className="row" role="menuitem"
-              onFollow={() => { close(); go({ screen: "maps" }); showSide(true); }}>
-              <span className="words">{words.allMaps}</span>
-            </Link>
-          </div>
-        </div>
-      ) : null}
+    <div id="mapPicker" hidden={!shown}>
+      <MarkTile symbol={shown?.symbol} tint={shown?.iconTintHex} picture={icon} />
+      <span id="mapName">{shown?.name ?? ""}</span>
     </div>
   );
 }
@@ -82,7 +29,7 @@ export function TopBar() {
   return (
     <header id="top">
       <div id="brand"><span className="tile"><Sym name="map" /></span><b id="appName">{words.app}</b></div>
-      <MapPicker />
+      <ShownMap />
       <span className="spacer" />
       <label id="styleLabel" style={{ display: (styles?.length ?? 0) > 1 ? "flex" : "none" }}>
         <span id="styleWord">{words.styles}</span>

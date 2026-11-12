@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { openViewer, reset, showAllMaps } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -13,8 +13,8 @@ test("the header shows the download speed from the phone and from other sources"
   await openViewer(page);
   await expect(page.locator("#traffic")).toBeVisible();
   await expect(page.locator("#traffic")).toHaveAttribute("aria-label", /^From the phone: [\d.]+ [KM]B\/s · From other sources: 0 KB\/s$/);
-  await page.locator("#mapPickerButton").click();
-  await page.locator("#mapMenu .row", { hasText: "Bratislava" }).click();
+  await showAllMaps(page);
+  await page.locator("#others .row", { hasText: "Bratislava" }).click();
   await expect.poll(() => speedOf(page.locator("#trafficPhone")), { timeout: 8000 }).toBeGreaterThan(0);
   await expect(page.locator("#trafficOther")).toHaveText("0 KB/s");
   // Quiet again once the window has passed.

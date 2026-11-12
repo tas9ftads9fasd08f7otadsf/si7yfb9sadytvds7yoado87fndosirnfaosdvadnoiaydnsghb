@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { reset } from "./phone.mjs";
+import { reset, showAllMaps } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -57,8 +57,8 @@ test("the map's card pulses while another map is being read", async ({ page }) =
   await page.locator("#current .hero").waitFor();
   await expect(page.locator("#current .hero")).not.toHaveClass(/pending/);
   const letGo = await held(page, "**/riki/v1/maps/6F1E2A10-0000-4000-8000-000000000002");
-  await page.locator("#mapPickerButton").click();
-  await page.locator("#mapMenu .row", { hasText: "Bratislava" }).click();
+  await showAllMaps(page);
+  await page.locator("#others .row", { hasText: "Bratislava" }).click();
   const hero = page.locator("#current .hero");
   await expect(hero).toHaveClass(/pending/);
   await expect(hero).toHaveCSS("animation-name", "pulse");
