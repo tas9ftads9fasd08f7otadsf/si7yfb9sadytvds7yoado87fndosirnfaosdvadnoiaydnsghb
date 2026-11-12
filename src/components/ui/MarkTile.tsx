@@ -6,9 +6,12 @@ interface Props {
   tint?: string | null;
   small?: boolean;
   picture?: string | null;
+  /** Its picture is still being read. */
+  pending?: boolean;
 }
 
-export function MarkTile({ symbol, tint, small, picture }: Props) {
+export function MarkTile({ symbol, tint, small, picture, pending }: Props) {
   const style = { ...ground(tint), ...(picture ? { backgroundImage: `url("${picture}")` } : {}) };
-  return <span className={small ? "mark small" : "mark"} style={style}>{picture ? null : <Sym name={symbol} />}</span>;
+  const name = `mark${small ? " small" : ""}${pending ? " pending" : ""}`;
+  return <span className={name} style={style}>{picture ? null : <Sym name={symbol} />}</span>;
 }

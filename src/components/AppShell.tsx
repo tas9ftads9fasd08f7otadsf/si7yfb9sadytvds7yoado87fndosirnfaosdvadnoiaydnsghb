@@ -6,6 +6,7 @@ import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession,
   from "@/store/viewer";
 import { NavRail } from "./NavRail";
 import { Gate, Notice, RegionOffer, SmallScreen, StatusBar } from "./Overlays";
+import { Boot, LoadingBar } from "./Overlays";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
 
@@ -76,11 +77,13 @@ export function AppShell() {
       <NavRail />
       <SideBar />
       <div id="map" ref={mapBox} />
+      <LoadingBar />
       <RegionOffer />
       <StatusBar />
       <Notice />
       <Gate />
       <SmallScreen />
+      <Boot />
     </>
   );
 }
