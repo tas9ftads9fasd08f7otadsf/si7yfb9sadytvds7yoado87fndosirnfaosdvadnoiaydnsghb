@@ -9,7 +9,7 @@ import { backend } from "@backend";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY } from "@/lib/page";
 import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
-import { drawStyle, isDark, loadsDirect, notice, shownMapOf, useViewer } from "@/store/viewer";
+import { drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
 
 const PICK = 6;
@@ -234,7 +234,7 @@ export function createMapView(container: HTMLElement): MapControl {
     try {
       const answer = await backend.style({ mapID: shared.id, styleID: state.styleID, hidden: [...state.hidden],
         theme: isDark() ? "dark" : "light", tiles: Math.max(0.25, (box.width * box.height) / (512 * 512)).toFixed(2),
-        revision: shared.revision, direct: loadsDirect(state) });
+        revision: shared.revision, direct: state.directAllowed && state.tilesDirect });
       if (!answer.ok) {
         if (asked === lastAsked) notice(answer.said);
         return;

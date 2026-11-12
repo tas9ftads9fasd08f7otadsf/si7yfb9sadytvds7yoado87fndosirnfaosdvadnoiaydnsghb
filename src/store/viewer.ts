@@ -1,9 +1,10 @@
 import { create } from "zustand";
 import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
+import { DIRECT_KEY } from "@/lib/page";
 import type { Answer, Saved } from "@/backend/types";
 import type { Edit } from "@/lib/edit";
-import { DIRECT_KEY, HEARTBEAT_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
+import { HEARTBEAT_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
@@ -68,7 +69,7 @@ export interface ViewerState {
 }
 
 const firstState = (): ViewerState => ({
-  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, directAllowed: false, tilesDirect: false, viewers: null, connected: null, gateDevice: "",
+  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "",
   editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, regionOffer: null,
@@ -76,7 +77,7 @@ const firstState = (): ViewerState => ({
   coverageShown: false, coverageSide: "include", coverageOpen: new Map(), coverageQuery: "", coveragePlaces: null,
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),
-  serviceRead: null, layerOptions: null, optionsOpen: new Set()
+  serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false
 });
 
 export const useViewer = create<ViewerState>(firstState);
