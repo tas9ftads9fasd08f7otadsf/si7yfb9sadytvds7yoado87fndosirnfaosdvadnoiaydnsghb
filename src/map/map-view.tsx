@@ -5,12 +5,12 @@ import { createRoot } from "react-dom/client";
 import { FeatureCard } from "@/components/FeatureCard";
 import { leftOpening, OPENING } from "@/lib/camera";
 import { drawable } from "@/lib/drawable";
+import { watchTraffic, workerCounter } from "@/lib/traffic";
 import { backend } from "@backend";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY } from "@/lib/page";
 import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
 import { drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
-import { watchTraffic, workerCounter } from "@/lib/traffic";
 import type { MapControl } from "./control";
 
 const PICK = 6;
