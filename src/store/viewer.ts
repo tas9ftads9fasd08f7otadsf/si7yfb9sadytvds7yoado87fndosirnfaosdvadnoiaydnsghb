@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
+import { DIRECT_KEY } from "@/lib/page";
 import type { Answer, Saved } from "@/backend/types";
 import type { Edit } from "@/lib/edit";
 import { HEARTBEAT_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
@@ -22,6 +23,10 @@ export interface ViewerState {
   words: Words;
   standing: Standing | null;
   edits: boolean;
+  /** The phone lets a browser load tiles from their source. */
+  directAllowed: boolean;
+  /** This browser's choice to do so, kept between visits. */
+  tilesDirect: boolean;
   viewers: number | null;
   /** Whether the phone answered last time it was asked; null until it has been. */
   connected: boolean | null;
@@ -76,7 +81,7 @@ const firstState = (): ViewerState => ({
   coverageShown: false, coverageSide: "include", coverageOpen: new Map(), coverageQuery: "", coveragePlaces: null,
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),
-  serviceRead: null, layerOptions: null, optionsOpen: new Set()
+  serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -135,7 +140,24 @@ export function restoreKept() {
     const kept = localStorage.getItem(THEME_KEY);
     if (kept === "auto" || kept === "light" || kept === "dark") set({ theme: kept });
   } catch { /* no storage: Automatic */ }
+  try {
+    set({ tilesDirect: localStorage.getItem(DIRECT_KEY) === "1" });
+  } catch { /* no storage: through the phone */ }
   applyTheme();
+}
+
+// MARK: - Where tiles come from
+
+/** Tiles straight from their source only while the phone allows it and this browser chose it. */
+export const loadsDirect = (state: ViewerState) => state.directAllowed && state.tilesDirect;
+
+export function setTilesDirect(tilesDirect: boolean) {
+  if (get().tilesDirect === tilesDirect) return;
+  set({ tilesDirect });
+  try {
+    localStorage.setItem(DIRECT_KEY, tilesDirect ? "1" : "0");
+  } catch { /* kept for this visit only */ }
+  if (get().directAllowed) mapControl()?.draw();
 }
 
 // MARK: - Light or dark
@@ -187,12 +209,16 @@ export async function askToJoin() {
 
 export function applySession(answer: SessionAnswer) {
   const was = get().standing;
+  const drewDirect = loadsDirect(get());
   const edits = answer.edits === true;
   set({ standing: answer.standing, edits, viewers: typeof answer.viewers === "number" ? answer.viewers : null });
   if (!edits && get().editToken) keepToken(null);
   if (answer.device) set({ gateDevice: answer.device });
+  set({ directAllowed: answer.direct === true });
   if (answer.standing !== "admitted") {
     mapControl()?.stopLive();
+  } else if (was === "admitted" && drewDirect !== loadsDirect(get())) {
+    mapControl()?.draw();
   } else if (was !== "admitted") {
     void readDevice();
     if (busy.addressKey) void checkKey(busy.addressKey);

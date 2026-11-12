@@ -251,7 +251,7 @@ export function createMapView(container: HTMLElement): MapControl {
     try {
       const answer = await backend.style({ mapID: shared.id, styleID: state.styleID, hidden: [...state.hidden],
         theme: isDark() ? "dark" : "light", tiles: Math.max(0.25, (box.width * box.height) / (512 * 512)).toFixed(2),
-        revision: shared.revision });
+        revision: shared.revision, direct: state.directAllowed && state.tilesDirect });
       if (!answer.ok) {
         if (asked === lastAsked) notice(answer.said);
         return;

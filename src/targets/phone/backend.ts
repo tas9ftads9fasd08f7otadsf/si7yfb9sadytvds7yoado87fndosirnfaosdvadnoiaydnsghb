@@ -82,6 +82,7 @@ export const backend: Backend = {
       atlas: "1" });
     if (ask.styleID) query.set("styleID", ask.styleID);
     if (ask.revision != null) query.set("rev", String(ask.revision));
+    if (ask.direct) query.set("direct", "1");
     return answered(await fetch(`${ROOT}/maps/${ask.mapID}/style?${query.toString()}`, { cache: "no-store" }), json);
   },
 

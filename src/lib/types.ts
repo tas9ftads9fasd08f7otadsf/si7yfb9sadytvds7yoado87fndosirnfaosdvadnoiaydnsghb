@@ -307,4 +307,6 @@ export interface SessionAnswer {
   edits?: boolean;
   device?: string;
   viewers?: number | null;
+  /** The phone lets a browser load tiles from their source. */
+  direct?: boolean;
 }

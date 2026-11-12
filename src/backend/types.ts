@@ -27,6 +27,8 @@ export interface StyleAsk {
   /** How many 512 px tiles the map's box holds, so the phone sizes its answer. */
   tiles: string;
   revision?: number | null;
+  /** Sources that need nothing of the phone keep their own address. */
+  direct?: boolean;
 }
 
 export interface AddressAsk {

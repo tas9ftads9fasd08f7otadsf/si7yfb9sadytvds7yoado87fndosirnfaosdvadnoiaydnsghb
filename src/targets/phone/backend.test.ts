@@ -55,6 +55,18 @@ describe("the phone backend", () => {
     expect(init.headers).toEqual({ Authorization: "Bearer second" });
   });
 
+  // 43 the style is asked with direct=1 only by a browser loading tiles from their source
+  it("asks for a style with direct=1 only when loading from the source", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    const asked = (call: number) => new URL((fetcher.mock.calls[call] as unknown as [string])[0], "http://phone").searchParams;
+    const ask = { mapID: "M", styleID: null, hidden: [], theme: "light" as const, tiles: "4.00" };
+    await backend.style({ ...ask, direct: true });
+    await backend.style(ask);
+    expect(asked(0).get("direct")).toBe("1");
+    expect(asked(1).has("direct")).toBe(false);
+  });
+
   // 36 a phone from before guests answers no session, and lets every browser in
   it("reads an older phone's missing session as let in", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));

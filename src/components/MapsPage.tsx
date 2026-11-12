@@ -7,6 +7,7 @@ import { filledIn } from "@/lib/words";
 import { checkKey, importMap, makeMap, openMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
 import { railItemOf } from "./NavRail";
 import { ServerCards } from "./Servers";
+import { TileSource } from "./TileSource";
 import { MarkTile } from "./ui/MarkTile";
 import { Switch } from "./ui/Switch";
 import { Sym } from "./ui/Sym";
@@ -102,6 +103,7 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
         </div>
       </div>
       <Versions shared={shared} />
+      <TileSource />
       {canEdit && styles.length > 1 ? (
         <div className="chips" role="group" aria-label={words.styles}>
           {styles.map((style) => (
