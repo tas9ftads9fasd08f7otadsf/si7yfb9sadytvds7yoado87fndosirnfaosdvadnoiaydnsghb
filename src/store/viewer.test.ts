@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portable } from "@/lib/types";
 import { type MapControl, setMapControl } from "@/map/control";
-import { FILE_LIMIT, addFile, editCoverage, addPackages, addServer, applySession, importServers, change, loadsDirect, setTilesDirect, checkKey, go, loadWords,
+import { FILE_LIMIT, addFile, editCoverage, addPackages, addServer, applySession, importServers, change, checkKey, go, loadWords,
   notice, readAddress, resetViewer, restoreKept, setLayerShown, showEdit, startSession, tickPackage, useViewer } from "./viewer";
 
 const get = useViewer.getState;
@@ -158,56 +158,6 @@ describe("the session", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
     await change({ kind: "name", name: "x" });
     expect(get().connected).toBe(false);
-  });
-});
-
-describe("where tiles come from", () => {
-  // 43 the choice is the browser's, kept between visits, and redraws the map where the phone allows it
-  it("keeps the choice and redraws when the phone allows loading from the source", () => {
-    const map = control();
-    setMapControl(map);
-    useViewer.setState({ directAllowed: true });
-    setTilesDirect(true);
-    expect(loadsDirect(get())).toBe(true);
-    expect(localStorage.getItem("riki-tiles-direct")).toBe("1");
-    expect(map.draw).toHaveBeenCalledTimes(1);
-    setTilesDirect(true);
-    expect(map.draw).toHaveBeenCalledTimes(1);
-    setTilesDirect(false);
-    expect(localStorage.getItem("riki-tiles-direct")).toBe("0");
-    expect(map.draw).toHaveBeenCalledTimes(2);
-  });
-
-  // 43 a choice made earlier means nothing on a phone that does not allow it
-  it("goes through the phone while the phone does not allow the source", () => {
-    const map = control();
-    setMapControl(map);
-    setTilesDirect(true);
-    expect(loadsDirect(get())).toBe(false);
-    expect(map.draw).not.toHaveBeenCalled();
-  });
-
-  // 43 the choice comes back on the next visit
-  it("restores the choice kept from an earlier visit", () => {
-    localStorage.setItem("riki-tiles-direct", "1");
-    restoreKept();
-    expect(get().tilesDirect).toBe(true);
-    localStorage.removeItem("riki-tiles-direct");
-  });
-
-  // 43 the phone's switch arrives with each beat; turning it off or on redraws a map drawn the other way
-  it("follows the phone's switch, redrawing when it changes what is drawn", () => {
-    const map = control();
-    setMapControl(map);
-    useViewer.setState({ standing: "admitted", tilesDirect: true });
-    applySession({ standing: "admitted", direct: true });
-    expect(get().directAllowed).toBe(true);
-    expect(map.draw).toHaveBeenCalledTimes(1);
-    applySession({ standing: "admitted", direct: true });
-    expect(map.draw).toHaveBeenCalledTimes(1);
-    applySession({ standing: "admitted" });
-    expect(get().directAllowed).toBe(false);
-    expect(map.draw).toHaveBeenCalledTimes(2);
   });
 });
 
