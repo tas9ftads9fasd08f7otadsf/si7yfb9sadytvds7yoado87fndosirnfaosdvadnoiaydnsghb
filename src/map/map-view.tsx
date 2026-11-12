@@ -10,6 +10,7 @@ import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY } from "@/lib/page";
 import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
 import { drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
+import { watchTraffic, workerCounter } from "@/lib/traffic";
 import type { MapControl } from "./control";
 
 const PICK = 6;
@@ -21,6 +22,9 @@ export function createMapView(container: HTMLElement): MapControl {
   const { words } = get();
   const protocol = new Protocol();
   maplibregl.addProtocol("pmtiles", protocol.tilev4);
+  // 46: vector tiles are fetched in MapLibre's workers, so they are counted there.
+  void maplibregl.importScriptInWorkers(workerCounter()).catch(() => {});
+  const stopTraffic = watchTraffic((traffic) => useViewer.setState({ traffic }));
 
   // A camera in the address was put there by someone; framing the map would undo it.
   let framed = /^#\d/.test(location.hash);
@@ -371,6 +375,7 @@ export function createMapView(container: HTMLElement): MapControl {
       clearTimeout(phone.timer);
       clearTimeout(regions.timer);
       clearTimeout(moved);
+      stopTraffic();
       maplibregl.removeProtocol("pmtiles");
       map.remove();
     }

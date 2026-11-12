@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { Speeds } from "@/lib/traffic";
 import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
 import type { Answer, Saved } from "@/backend/types";
@@ -39,6 +40,8 @@ export interface ViewerState {
   theme: Theme;
   notice: string | null;
   sharesLocation: boolean;
+  /** Bytes a second now arriving from the phone and from elsewhere; null until measured. */
+  traffic: Speeds | null;
   regionOffer: RegionOffer;
   zoomText: string;
   pointerText: string;
@@ -67,7 +70,7 @@ const firstState = (): ViewerState => ({
   route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "",
   editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
-  editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, regionOffer: null,
+  editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, traffic: null, regionOffer: null,
   zoomText: "", pointerText: "", addedLanguages: new Set(), startKind: null, startFound: null, coverage: null,
   coverageShown: false, coverageSide: "include", coverageOpen: new Map(), coverageQuery: "", coveragePlaces: null,
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",

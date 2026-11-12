@@ -109,6 +109,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 #viewers { display: none; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px;
   background: var(--inset); font-weight: 600; font-variant-numeric: tabular-nums; }
 #viewers .sym { font-size: 15px; }
+#traffic { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px;
+  background: var(--inset); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#traffic .sym { font-size: 14px; color: var(--sub); }
+#traffic span { min-width: 58px; }
 #rail { position: absolute; top: var(--top); bottom: var(--status); left: 0; width: var(--rail); z-index: 3;
   display: flex; flex-direction: column; gap: 4px; padding: 12px 8px; background: var(--card);
   border-right: 1px solid var(--sep); }

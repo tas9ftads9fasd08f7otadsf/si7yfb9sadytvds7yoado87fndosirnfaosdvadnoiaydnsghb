@@ -6,6 +6,7 @@ import { go, openMap, pickStyle, shareAddress, showSide, shownMapOf, useViewer }
 import { Link } from "./ui/Link";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
+import { Traffic } from "./Traffic";
 
 function PickerRow({ shared, onPicked }: { shared: SharedMap; onPicked: () => void }) {
   const isShown = useViewer((state) => state.mapID === shared.id);
@@ -89,6 +90,7 @@ export function TopBar() {
           {(styles ?? []).map((each) => <option key={each.id} value={each.id}>{each.name}</option>)}
         </select>
       </label>
+      <Traffic />
       <span id="viewers" role="status" title={viewing} aria-label={viewing}
         style={{ display: viewers == null ? "none" : "inline-flex" }}>
         <Sym name="desktopcomputer" /><span id="viewerCount">{viewers}</span>
