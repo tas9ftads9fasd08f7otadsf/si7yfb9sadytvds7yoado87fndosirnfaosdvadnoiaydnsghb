@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portable } from "@/lib/types";
 import { type MapControl, setMapControl } from "@/map/control";
 import { FILE_LIMIT, addFile, editCoverage, addPackages, addServer, applySession, importServers, change, checkKey, go, loadWords,
-  notice, readAddress, resetViewer, restoreKept, setLayerShown, showEdit, startSession, tickPackage, useViewer } from "./viewer";
+  notice, pickMap, readAddress, resetViewer, restoreKept, setLayerShown, showEdit, startSession, tickPackage, useViewer } from "./viewer";
 
 const get = useViewer.getState;
 const portable: Portable = { id: "a", name: "Tatras", styles: [{ id: "s", name: "Summer" }], selectedStyleID: "s" };
@@ -158,6 +158,36 @@ describe("the session", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
     await change({ kind: "name", name: "x" });
     expect(get().connected).toBe(false);
+  });
+});
+
+describe("picking a map", () => {
+  // 42 the map counts as being read from the ask until the phone's answer
+  it("is picking until the phone answers with the map", async () => {
+    let answer: (response: Response) => void = () => {};
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => { answer = resolve; })));
+    useViewer.setState({ device });
+    const picked = pickMap("a", null);
+    expect(get().picking).toBe(true);
+    answer(json(portable));
+    await picked;
+    expect(get().picking).toBe(false);
+    expect(get().portable?.name).toBe("Tatras");
+  });
+
+  // 42 an answer for a map since left is dropped, so it cannot end the newer map's wait
+  it("drops the answer for a map no longer picked", async () => {
+    const answers: ((response: Response) => void)[] = [];
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => { answers.push(resolve); })));
+    const first = pickMap("a", null);
+    const second = pickMap("b", null);
+    answers[0]!(json(portable));
+    await first;
+    expect(get().picking).toBe(true);
+    expect(get().portable).toBeNull();
+    answers[1]!(json({ ...portable, id: "b", name: "Bratislava" }));
+    await second;
+    expect(get().portable?.name).toBe("Bratislava");
   });
 });
 

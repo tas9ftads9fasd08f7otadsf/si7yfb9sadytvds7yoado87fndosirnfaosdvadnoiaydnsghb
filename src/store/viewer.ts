@@ -26,6 +26,10 @@ export interface ViewerState {
   /** Whether the phone answered last time it was asked; null until it has been. */
   connected: boolean | null;
   gateDevice: string;
+  /** The map is being read from the phone. */
+  picking: boolean;
+  /** The style or its tiles are still on their way. */
+  mapBusy: boolean;
   editToken: string | null;
   device: Device | null;
   mapID: string | null;
@@ -64,7 +68,7 @@ export interface ViewerState {
 }
 
 const firstState = (): ViewerState => ({
-  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "",
+  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "", picking: false, mapBusy: false,
   editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, regionOffer: null,
@@ -317,7 +321,7 @@ export async function pickMap(id: string, styleID: string | null) {
   try {
     localStorage.setItem(LAST_MAP_KEY, id);
   } catch { /* the first map next time */ }
-  set({ mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
+  set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
     coverageOpen: new Map(), packages: null, addingPackages: false, serverPicks: new Map(), serviceRead: null,
     layerOptions: null, optionsOpen: new Set() });
   let portable: Portable | null = null;
@@ -325,7 +329,8 @@ export async function pickMap(id: string, styleID: string | null) {
     portable = await backend.map(id);
     keepPictures(id, picturesOf(portable));
   } catch { /* drawn with nothing to edit */ }
-  set({ portable });
+  if (get().mapID !== id) return;
+  set({ portable, picking: false });
   const styles = portable?.styles ?? [];
   const wanted = styles.find((style) => style.id === styleID);
   pickStyle(wanted ? wanted.id : (portable?.selectedStyleID || styles[0]?.id || null));

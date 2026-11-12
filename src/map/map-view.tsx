@@ -224,6 +224,23 @@ export function createMapView(container: HTMLElement): MapControl {
   let lastAsked = 0;
   let drawnMapID: string | null = null;
 
+  // 42: busy from the style being asked for until the map has drawn every tile it wanted.
+  const busy = (mapBusy: boolean) => { if (get().mapBusy !== mapBusy) useViewer.setState({ mapBusy }); };
+  map.on("dataloading", () => busy(true));
+  map.on("idle", () => busy(false));
+  map.on("error", () => { if (map.loaded()) busy(false); });
+
+  let lastSet = 0;
+
+  /** Busy while the style is asked for; a draw that set none leaves nothing on its way. */
+  async function drawBusy() {
+    const mine = lastAsked + 1;
+    const before = lastSet;
+    busy(true);
+    await draw();
+    if (lastSet === before && lastAsked <= mine) busy(false);
+  }
+
   async function draw() {
     const state = get();
     const shared = shownMapOf(state);
@@ -255,6 +272,7 @@ export function createMapView(container: HTMLElement): MapControl {
     const isSameMap = drawnMapID === shared.id;
     drawnMapID = shared.id;
     map.once("style.load", settled);
+    lastSet = asked;
     map.setStyle(drawable(style), { diff: isSameMap, validate: false });
     if (isSameMap && map.getStyle()) {
       map.off("style.load", settled);
@@ -351,7 +369,7 @@ export function createMapView(container: HTMLElement): MapControl {
   Object.assign(window, { __riki: { map, state: get } });
 
   return {
-    draw,
+    draw: drawBusy,
     resize: () => map.resize(),
     stopLive: () => clearTimeout(liveTimer),
     watchPhone,

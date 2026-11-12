@@ -8,6 +8,7 @@ import { NavRail } from "./NavRail";
 import { Gate, Notice, RegionOffer, SmallScreen, StatusBar } from "./Overlays";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
+import { Boot, LoadingBar } from "./Overlays";
 
 const SMALL_SCREEN = "(max-width: 899px), (max-height: 499px)";
 
@@ -76,11 +77,13 @@ export function AppShell() {
       <NavRail />
       <SideBar />
       <div id="map" ref={mapBox} />
+      <LoadingBar />
       <RegionOffer />
       <StatusBar />
       <Notice />
       <Gate />
       <SmallScreen />
+      <Boot />
     </>
   );
 }

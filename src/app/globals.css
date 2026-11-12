@@ -300,6 +300,26 @@ body.gated #gate { display: flex; }
 .spinner { width: 28px; height: 28px; margin: 4px auto 0; border-radius: 50%; border: 3px solid var(--fill);
   border-top-color: var(--accent); animation: turn 0.9s linear infinite; }
 @keyframes turn { to { transform: rotate(360deg); } }
+
+/* 42: what is still on its way pulses, and the page says it is loading. */
+@keyframes pulse { 50% { opacity: 0.4; } }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(350%); } }
+.pending { animation: pulse 1.2s ease-in-out infinite; }
+.skeleton .row { pointer-events: none; }
+.skeleton .mark { background: var(--fill); }
+.skeleton .bar { flex: 1; height: 12px; border-radius: 6px; background: var(--fill); }
+#boot { position: fixed; inset: 0; z-index: 15; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 16px; background: var(--ground); color: var(--sub); }
+#boot .tile { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: 28px; }
+#boot .spinner { margin: 0; }
+#loadingBar { position: absolute; z-index: 4; top: var(--top); left: 0; right: 0; height: 3px; overflow: hidden;
+  pointer-events: none; }
+#loadingBar i { display: block; width: 30%; height: 100%; background: var(--accent); animation: slide 1.1s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pending, #loadingBar i { animation: none; }
+  #loadingBar i { width: 100%; opacity: 0.5; }
+}
 /* Item 1994: a phone's or a small window's size is not supported; the app is the way there. */
 @media (max-width: 899px), (max-height: 499px) {
   #small { display: flex; z-index: 30; }

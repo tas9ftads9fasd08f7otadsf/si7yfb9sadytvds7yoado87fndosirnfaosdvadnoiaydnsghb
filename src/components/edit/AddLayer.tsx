@@ -5,6 +5,7 @@ import type { APIRead, APIReading, PackageRow, ServerRow } from "@/lib/types";
 import { FILE_KINDS, SERVER_KINDS, addAPI, addFile, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
   exportServers, importServers, loadPackages, loadServers, readAPI, tickPackage, tickServerRow, tickServiceLayer,
   useViewer } from "@/store/viewer";
+import { Skeleton } from "../Overlays";
 import { MarkTile } from "../ui/MarkTile";
 import { Sym } from "../ui/Sym";
 
@@ -234,7 +235,7 @@ function Servers() {
   useEffect(() => {
     if (!servers) void loadServers();
   }, [servers]);
-  if (!servers) return null;
+  if (!servers) return <Skeleton />;
   return (
     <>
       <h2 className="title">{words.yourServers}</h2>
@@ -265,7 +266,7 @@ export function AddLayer() {
   useEffect(() => {
     if (!packages) void loadPackages();
   }, [packages]);
-  if (!packages) return null;
+  if (!packages) return <Skeleton />;
   const adding = [...ticks].filter((overlay) => !packages.rows.some((row) => row.overlay === overlay && row.isDrawn));
   return (
     <>

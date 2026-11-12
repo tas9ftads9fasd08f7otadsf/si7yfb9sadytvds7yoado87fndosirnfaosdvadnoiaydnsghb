@@ -18,7 +18,8 @@ function useLayerCount() {
 
 function MapMark({ shared }: { shared: SharedMap }) {
   const icon = useViewer((state) => state.pictures.get(shared.id)?.icon);
-  return <MarkTile symbol={shared.symbol} tint={shared.iconTintHex} picture={icon} />;
+  const pending = useViewer((state) => !state.pictures.has(shared.id));
+  return <MarkTile symbol={shared.symbol} tint={shared.iconTintHex} picture={icon} pending={pending} />;
 }
 
 /** The oldest app and viewer the map's author allows; this viewer is the phone's app. */
@@ -82,6 +83,8 @@ function PasswordForm() {
 function CurrentMap({ shared }: { shared: SharedMap }) {
   const words = useViewer((state) => state.words);
   const preview = useViewer((state) => state.pictures.get(shared.id)?.preview);
+  const unread = useViewer((state) => !state.pictures.has(shared.id));
+  const picking = useViewer((state) => state.picking);
   const styles = useViewer((state) => state.portable?.styles) ?? [];
   const styleID = useViewer((state) => state.styleID);
   const canEdit = useViewer((state) => state.editToken != null);
@@ -89,10 +92,10 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
   const layerCount = useLayerCount();
   return (
     <>
-      <div className="hero">
+      <div className={picking ? "hero pending" : "hero"} aria-busy={picking}>
         {preview ? <div className="picture" style={{ backgroundImage: `url("${preview}")` }}>
           <span className="badge">{words.onMapNow}</span>
-        </div> : null}
+        </div> : unread ? <div className="picture pending" /> : null}
         <div className="lines">
           <MapMark shared={shared} />
           <div className="words"><b>{shared.name}</b><span className="muted">{layerCount(shared.layers.length)}</span></div>
