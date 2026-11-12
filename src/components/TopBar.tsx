@@ -8,10 +8,9 @@ import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
 
 function PickerRow({ shared, onPicked }: { shared: SharedMap; onPicked: () => void }) {
-  const isShown = useViewer((state) => state.mapID === shared.id);
   const icon = useViewer((state) => state.pictures.get(shared.id)?.icon);
   return (
-    <Link to={{ screen: "map", map: shared.id }} className="row" role="menuitem" current={isShown}
+    <Link to={{ screen: "map", map: shared.id }} className="row" role="menuitem"
       onFollow={() => { onPicked(); openMap(shared.id); }}>
       <MarkTile symbol={shared.symbol} tint={shared.iconTintHex} picture={icon} small />
       <span className="words">{shared.name}</span>
@@ -19,11 +18,12 @@ function PickerRow({ shared, onPicked }: { shared: SharedMap; onPicked: () => vo
   );
 }
 
-/** The map on screen; its menu lists the others, and All maps at its foot. */
+/** The map on screen, drawn as the style switcher is; its menu lists the others, and All maps at its foot. */
 function MapPicker() {
   const words = useViewer((state) => state.words);
   const shown = useViewer(shownMapOf);
   const maps = useViewer((state) => state.device?.maps) ?? [];
+  const others = maps.filter((each) => each.id !== shown?.id);
   const icon = useViewer((state) => (shown ? state.pictures.get(shown.id)?.icon : null));
   const [isOpen, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -56,7 +56,7 @@ function MapPicker() {
       </button>
       {isOpen ? (
         <div className="menu" id="mapMenu" role="menu" aria-label={words.maps}>
-          {maps.map((each) => <PickerRow key={each.id} shared={each} onPicked={close} />)}
+          {others.map((each) => <PickerRow key={each.id} shared={each} onPicked={close} />)}
           <div className="foot">
             <Link to={{ screen: "maps" }} id="allMaps" className="row" role="menuitem"
               onFollow={() => { close(); go({ screen: "maps" }); showSide(true); }}>

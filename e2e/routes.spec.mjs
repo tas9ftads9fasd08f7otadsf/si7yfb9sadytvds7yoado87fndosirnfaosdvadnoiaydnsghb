@@ -75,11 +75,20 @@ test("back and forward walk the screens", async ({ page }) => {
 });
 
 // 30 the top bar's map picker and the rail.
-test("the map picker lists every map and All maps; the rail lights the screen shown", async ({ page }) => {
+test("the map picker lists the other maps and All maps; the rail lights the screen shown", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await expect(page.locator("#railMap")).toHaveAttribute("aria-current", "page");
   await page.locator("#mapPickerButton").click();
-  await expect(page.locator("#mapMenu .row")).toHaveText(["High Tatras", "Bratislava", "All maps"]);
+  // 44 the map on screen is not offered again, and a row reads as the page's text does.
+  await expect(page.locator("#mapMenu .row")).toHaveText(["Bratislava", "All maps"]);
+  const row = page.locator("#mapMenu .row", { hasText: "Bratislava" });
+  await expect(row).toHaveCSS("text-decoration-line", "none");
+  await expect(row).toHaveCSS("color", await page.locator("#mapName").evaluate((name) => getComputedStyle(name).color));
+  // 44 the picker is drawn as the style switcher beside it is.
+  for (const property of ["height", "border-radius", "border-top-color", "background-color"]) {
+    const wanted = await page.locator("#styleSelect").evaluate((select, each) => getComputedStyle(select)[each], property);
+    await expect(page.locator("#mapPickerButton")).toHaveCSS(property, wanted);
+  }
   await expect(page.locator("#mapMenu .row", { hasText: "Bratislava" })).toHaveAttribute("href", `/maps/${BRATISLAVA}`);
   await page.locator("#allMaps").click();
   await expect(page.locator("#mapMenu")).toHaveCount(0);
