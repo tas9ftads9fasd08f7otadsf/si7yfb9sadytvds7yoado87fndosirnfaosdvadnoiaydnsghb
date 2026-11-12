@@ -4,6 +4,7 @@ export const ENGLISH = {
   nothing: "No map here can be shared.", away: "Not serving", app: "Riki Maps", allMaps: "All maps",
   loading: "Loading…", loadingApp: "Loading {app}…",
   onMapNow: "On map now", edit: "Edit map", done: "Done", cancel: "Cancel", save: "Save", name: "Name",
+  fromPhone: "From the phone", fromElsewhere: "From other sources",
   note: "Note", otherLanguages: "Other languages", addLanguage: "Add a language", remove: "Remove",
   languages: "", opacity: "Opacity", rename: "Rename", newStyle: "New style", delete: "Delete",
   tilesVia: "Load tiles", viaPhone: "Through the phone", viaSource: "From their source",
