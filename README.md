@@ -49,6 +49,27 @@ runs PHP 8.1 or later, at a domain's root or under a path, and send every reques
 `composer install --working-dir=server` and `npm run test:php` run its PHPUnit tests, and
 `npm run test:e2e:web` runs the browser specs against the zip at `/` and under `/editor/`.
 
+### Deploying it
+
+Every merge to `master` runs CI, publishes a release and then deploys that release's
+`web-site.zip` to the PHP server over FTPS (`.github/workflows/deploy-site.yml`,
+`scripts/deploy-site.sh`). Actions › Deploy site › Run workflow deploys any release again by tag.
+The server's `config.php` is never uploaded, replaced or deleted.
+
+Set it up once in Settings › Environments › `site`:
+
+| Name | Kind | What |
+|---|---|---|
+| `FTPS_HOST` | secret | the server's host name |
+| `FTPS_USER` | secret | the FTP account |
+| `FTPS_PASSWORD` | secret | its password |
+| `FTPS_DIR` | variable | the site's folder on the server, `/` when unset |
+| `FTPS_PORT` | variable | `21` when unset (explicit FTPS) |
+
+Until the three secrets are set, the deploy job says so and skips. The server's certificate must
+be valid for its host name. Add required reviewers to the `site` environment to approve each
+deploy by hand.
+
 ## Layout
 
 - `src/app`: the root layout, the one page, the stylesheet.
