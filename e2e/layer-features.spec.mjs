@@ -58,3 +58,27 @@ test("a drawn file is narrowed to some of its values", async ({ page }) => {
   expect(await asked).toMatchObject({ layer, valueTint: "Hiking", ink: "#2E9E5B" });
   await expect(panel.locator("input[type=color][aria-label='Hiking']")).toHaveValue("#2e9e5b");
 });
+
+// 48 bug: each change emptied the options until the phone was read again, so the open panel and
+// its Options button blinked out, and a click made in that gap was lost.
+test("an open Options panel stays in place while the phone's list is read again", async ({ page }) => {
+  const panel = await openFeatures(page);
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let reads = 0;
+  await page.route("**/layer-options", async (route) => {
+    reads += 1;
+    await gate;
+    await route.continue();
+  });
+  const asked = sent(page);
+  await panel.getByRole("switch", { name: "Group features by name" }).click({ force: true });
+  await asked;
+  await expect.poll(() => reads).toBe(1);
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("slider", { name: "Line width" })).toBeVisible();
+  const row = page.locator("#editBody .row", { has: page.locator("input[value='Trails']") });
+  await expect(row.getByRole("button", { name: "Options" })).toBeVisible();
+  release();
+  await expect(panel.getByRole("switch", { name: "Group features by name" })).toBeChecked();
+});

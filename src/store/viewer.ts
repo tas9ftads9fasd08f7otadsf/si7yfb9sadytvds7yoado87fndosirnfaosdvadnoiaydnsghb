@@ -96,7 +96,7 @@ const set = useViewer.setState;
 const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof setTimeout> | undefined,
   notice: undefined as ReturnType<typeof setTimeout> | undefined, layerOptions: null as string | null,
   packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
-  coverageEdits: Promise.resolve() };
+  coverageEdits: Promise.resolve(), optionsAsked: 0 };
 
 export function resetViewer() {
   clearTimeout(busy.heartbeat);
@@ -625,15 +625,24 @@ export function toggleOptions(id: string) {
   set({ optionsOpen });
 }
 
+/** Read again with the last answer left on screen, so an open panel does not blink out. */
+async function rereadLayerOptions() {
+  const { mapID, layerOptions } = get();
+  if (!mapID || !layerOptions) return;
+  const asked = ++busy.optionsAsked;
+  const answer = await editing(() => backend.layerOptions(mapID), { quiet: true });
+  if (answer?.ok && get().mapID === mapID && asked === busy.optionsAsked) set({ layerOptions: answer.value });
+}
+
 /** Every choice goes into each style, so the phone's list is read again. */
 export async function setDrawn(fields: Record<string, string>) {
-  if (await change({ kind: "layerOptions", fields })) set({ layerOptions: null });
+  if (await change({ kind: "layerOptions", fields })) await rereadLayerOptions();
 }
 
 /** A refused layout change reads the layout again: the phone's may have moved on. */
 export async function setLayout(fields: Record<string, string>) {
   await change({ kind: "layerDetails", fields });
-  set({ layerOptions: null });
+  await rereadLayerOptions();
 }
 
 // MARK: - Add layer
@@ -697,7 +706,8 @@ async function addedBy(asking: (mapID: string) => Promise<Answer<Portable>>): Pr
   if (!mapID) return false;
   const portable = told(await editing(() => asking(mapID)));
   if (!portable) return false;
-  set({ portable, addingPackages: false, packages: null, serviceRead: null, layerOptions: null });
+  set({ portable, addingPackages: false, packages: null, serviceRead: null });
+  void rereadLayerOptions();
   await refreshDevice();
   pickStyle(get().styleID);
   return true;
