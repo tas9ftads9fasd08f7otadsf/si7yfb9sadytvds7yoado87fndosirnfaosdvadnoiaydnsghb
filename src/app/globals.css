@@ -83,21 +83,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .tool.round { background: var(--inset); padding: 0; width: 40px; height: 40px; }
 .tool.tinted { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
   font-weight: 600; padding: 0 14px; height: 40px; }
-#mapPicker { position: relative; }
-#mapPickerButton { height: 36px; padding: 0 10px 0 3px; border-radius: 10px; background: var(--card);
-  border: 1px solid var(--sep); gap: 8px; }
-#mapPickerButton .mark { width: 28px; height: 28px; border-radius: 7px; }
+#mapPicker { display: inline-flex; align-items: center; gap: 8px; height: 36px; }
+#mapPicker[hidden] { display: none; }
+#mapPicker .mark { width: 28px; height: 28px; border-radius: 7px; }
 #mapName { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 240px; }
-#mapPickerButton > .sym { font-size: 12px; color: var(--sub); }
-.menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; min-width: 280px; max-height: 60vh;
-  overflow: auto; padding: 6px; border-radius: 14px; background: var(--card); border: 1px solid var(--sep);
-  box-shadow: 0 12px 36px var(--shadow); }
-.menu .row { width: 100%; border: 0; background: none; text-align: left; border-radius: 10px; color: var(--text);
-  text-decoration: none; }
-.menu .row:hover { background: var(--hover); }
-.menu .foot:not(:first-child) { border-top: 1px solid var(--sep); margin-top: 6px; padding-top: 6px; }
-.menu .foot .row { color: var(--link); font-weight: 600; }
 #top .spacer { flex: 1; }
 #device { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; font-weight: 600;
   height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 999px;

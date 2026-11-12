@@ -14,41 +14,16 @@ describe("TopBar", () => {
     useViewer.setState({ device, mapID: "a", route: { screen: "map", map: "a" } });
   });
 
-  // 44 the map picker: the other maps as links, the shown one left out, All maps at its foot
-  it("lists the other maps and All maps, not the one on screen", () => {
-    render(<TopBar />);
+  // 47 the map is named with no menu: the style switcher is the header's only drop-down
+  it("names the map on screen and offers no menu of maps", () => {
+    const { container } = render(<TopBar />);
     expect(screen.getByText("Riki's iPad")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Maps" }));
-    const items = screen.getAllByRole("menuitem");
-    expect(items.map((each) => each.textContent)).toEqual(["Bratislava", "All maps"]);
-    expect(items.map((each) => each.getAttribute("href"))).toEqual(["/maps/b", "/maps"]);
-    expect(screen.getByRole("button", { name: "Maps" }).textContent).toBe("High Tatras");
-  });
-
-  // 44 a phone sharing one map still offers All maps
-  it("offers All maps alone when no other map is shared", () => {
-    useViewer.setState({ device: { ...device, maps: device.maps.slice(0, 1) } });
-    render(<TopBar />);
-    fireEvent.click(screen.getByRole("button", { name: "Maps" }));
-    expect(screen.getAllByRole("menuitem").map((each) => each.textContent)).toEqual(["All maps"]);
-  });
-
-  // 31 picking a map moves to its address and closes the menu
-  it("opens the picked map and closes", () => {
-    render(<TopBar />);
-    fireEvent.click(screen.getByRole("button", { name: "Maps" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Bratislava" }));
-    expect(location.pathname).toBe("/maps/b");
+    expect(screen.getByText("High Tatras")).toBeTruthy();
     expect(screen.queryByRole("menu")).toBeNull();
-  });
-
-  // 31 Escape closes the menu and is marked, so Edit map under it stays open
-  it("closes on Escape, marking the key as taken", () => {
-    render(<TopBar />);
-    fireEvent.click(screen.getByRole("button", { name: "Maps" }));
-    const taken = !fireEvent.keyDown(document, { key: "Escape" });
-    expect(taken).toBe(true);
-    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.queryByRole("menuitem")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Maps" })).toBeNull();
+    expect([...container.querySelectorAll("select")].map((each) => each.id)).toEqual(["styleSelect"]);
+    expect(container.querySelector("[aria-haspopup]")).toBeNull();
   });
 
   // 40 no dot until the phone has been asked, green once it answers, red when it does not

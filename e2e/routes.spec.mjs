@@ -58,10 +58,13 @@ test("back and forward walk the screens", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/maps/${TATRAS}/edit/layers`));
   await page.locator("#back").click();
   await expect(page.locator("#editPage")).toHaveClass(/ahead/);
-  await page.locator("#mapPickerButton").click();
-  await page.locator("#mapMenu .row", { hasText: "Bratislava" }).click();
+  // 47 another map is opened from the Maps screen, which is one more step back.
+  await showAllMaps(page);
+  await page.locator("#others .row", { hasText: "Bratislava" }).click();
   await expect(page.locator("#mapName")).toHaveText("Bratislava");
 
+  await page.goBack();
+  expect(path(page)).toBe("/maps");
   await page.goBack();
   await expect(page.locator("#mapName")).toHaveText("High Tatras");
   expect(path(page)).toBe(`/maps/${TATRAS}`);
@@ -71,27 +74,23 @@ test("back and forward walk the screens", async ({ page }) => {
   await page.goForward();
   await expect(page.locator("#editPage")).toHaveClass(/ahead/);
   await page.goForward();
+  await page.goForward();
   await expect(page.locator("#mapName")).toHaveText("Bratislava");
 });
 
-// 30 the top bar's map picker and the rail.
-test("the map picker lists the other maps and All maps; the rail lights the screen shown", async ({ page }) => {
+// 30 the rail. 47 the header names the map and holds one drop-down, the style switcher.
+test("the header's only drop-down is the styles; the rail lights the screen shown", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await expect(page.locator("#railMap")).toHaveAttribute("aria-current", "page");
-  await page.locator("#mapPickerButton").click();
-  // 44 the map on screen is not offered again, and a row reads as the page's text does.
-  await expect(page.locator("#mapMenu .row")).toHaveText(["Bratislava", "All maps"]);
-  const row = page.locator("#mapMenu .row", { hasText: "Bratislava" });
-  await expect(row).toHaveCSS("text-decoration-line", "none");
-  await expect(row).toHaveCSS("color", await page.locator("#mapName").evaluate((name) => getComputedStyle(name).color));
-  // 44 the picker is drawn as the style switcher beside it is.
-  for (const property of ["height", "border-radius", "border-top-color", "background-color"]) {
-    const wanted = await page.locator("#styleSelect").evaluate((select, each) => getComputedStyle(select)[each], property);
-    await expect(page.locator("#mapPickerButton")).toHaveCSS(property, wanted);
-  }
-  await expect(page.locator("#mapMenu .row", { hasText: "Bratislava" })).toHaveAttribute("href", `/maps/${BRATISLAVA}`);
-  await page.locator("#allMaps").click();
+  await expect(page.locator("#mapName")).toHaveText("High Tatras");
+  await expect(page.locator("#mapPickerButton")).toHaveCount(0);
   await expect(page.locator("#mapMenu")).toHaveCount(0);
+  await expect(page.locator("#top select")).toHaveCount(1);
+  await expect(page.locator("#top [aria-haspopup]")).toHaveCount(0);
+  await expect(page.locator("#styleSelect option")).toHaveText(["Summer", "Winter"]);
+  await page.locator("#mapName").click();
+  await expect(page.locator("#top [role=menu]")).toHaveCount(0);
+  await page.locator("#railMaps").click();
   expect(path(page)).toBe("/maps");
   await expect(page.locator("#railMaps")).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#railMap")).not.toHaveAttribute("aria-current", /.*/);
