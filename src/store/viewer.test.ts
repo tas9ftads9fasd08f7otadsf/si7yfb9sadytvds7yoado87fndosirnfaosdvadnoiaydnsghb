@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portable } from "@/lib/types";
 import { type MapControl, setMapControl } from "@/map/control";
 import { FILE_LIMIT, addFile, editCoverage, addPackages, addServer, applySession, importServers, change, checkKey, go, loadWords,
-  notice, readAddress, resetViewer, restoreKept, setLayerShown, showEdit, tickPackage, useViewer } from "./viewer";
+  notice, readAddress, resetViewer, restoreKept, setLayerShown, showEdit, startSession, tickPackage, useViewer } from "./viewer";
 
 const get = useViewer.getState;
 const portable: Portable = { id: "a", name: "Tatras", styles: [{ id: "s", name: "Summer" }], selectedStyleID: "s" };
@@ -127,6 +127,37 @@ describe("the session", () => {
     expect(get().viewers).toBe(2);
     applySession({ standing: "admitted", viewers: null });
     expect(get().viewers).toBeNull();
+  });
+
+  // 40 the dot by the phone's name: connected once the phone answers a beat
+  it("is connected once the phone answers", async () => {
+    expect(get().connected).toBeNull();
+    answering(() => json({ standing: "waiting" }));
+    startSession(false);
+    await vi.waitFor(() => expect(get().connected).toBe(true));
+  });
+
+  // 40 not connected when the phone cannot be reached, and it says so
+  it("is not connected when the phone cannot be reached", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
+    startSession(false);
+    await vi.waitFor(() => expect(get().connected).toBe(false));
+    expect(get().notice).toBe(get().words.away);
+  });
+
+  // 40 a phone that answers but is not sharing is not connected either
+  it("is not connected when the phone refuses the beat", async () => {
+    answering(() => new Response("This phone is not sharing maps", { status: 503 }));
+    startSession(false);
+    await vi.waitFor(() => expect(get().connected).toBe(false));
+  });
+
+  // 40 a failed edit marks the phone gone before the next beat
+  it("is not connected after a call that could not reach the phone", async () => {
+    useViewer.setState({ connected: true, editToken: "t", mapID: "a", styleID: "s", portable, device });
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
+    await change({ kind: "name", name: "x" });
+    expect(get().connected).toBe(false);
   });
 });
 
