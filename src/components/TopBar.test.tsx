@@ -43,6 +43,16 @@ describe("TopBar", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  // 40 no dot until the phone has been asked, green once it answers, red when it does not
+  it("marks the phone connected or not by its name", () => {
+    render(<TopBar />);
+    expect(screen.queryByRole("img")).toBeNull();
+    act(() => useViewer.setState({ connected: true }));
+    expect(screen.getByRole("img", { name: "Connected" }).className).toBe("dot on");
+    act(() => useViewer.setState({ connected: false }));
+    expect(screen.getByRole("img", { name: "Not connected" }).className).toBe("dot off");
+  });
+
   // 31 Share copies the address and says so
   it("copies the address on Share", async () => {
     const writeText = vi.fn(async () => {});

@@ -23,6 +23,8 @@ export interface ViewerState {
   standing: Standing | null;
   edits: boolean;
   viewers: number | null;
+  /** Whether the phone answered last time it was asked; null until it has been. */
+  connected: boolean | null;
   gateDevice: string;
   editToken: string | null;
   device: Device | null;
@@ -62,7 +64,8 @@ export interface ViewerState {
 }
 
 const firstState = (): ViewerState => ({
-  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, gateDevice: "", editToken: null, device: null,
+  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "",
+  editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, regionOffer: null,
   zoomText: "", pointerText: "", addedLanguages: new Set(), startKind: null, startFound: null, coverage: null,
@@ -100,7 +103,10 @@ export function notice(text: string | null) {
   if (text) busy.notice = setTimeout(() => notice(null), 4000);
 }
 
-const away = () => notice(get().words.away);
+function away() {
+  set({ connected: false });
+  notice(get().words.away);
+}
 
 // MARK: - Starting up
 
@@ -158,6 +164,7 @@ async function heartbeat() {
   clearTimeout(busy.heartbeat);
   try {
     const answer = await backend.session();
+    set({ connected: answer.ok });
     if (answer.ok) applySession(answer.value);
   } catch {
     away();

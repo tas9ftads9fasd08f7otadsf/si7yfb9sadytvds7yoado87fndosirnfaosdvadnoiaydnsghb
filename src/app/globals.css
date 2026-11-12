@@ -101,6 +101,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 999px;
   background: var(--inset); }
 #device .sym { font-size: 16px; color: var(--sub); }
+#device .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+#device .dot.on { background: var(--switch-on); }
 #styleLabel { display: none; align-items: center; gap: 8px; color: var(--sub); }
 #styleSelect { height: 36px; border-radius: 10px; border: 1px solid var(--sep); background: var(--card);
   padding: 0 28px 0 10px; min-width: 160px; max-width: 280px; }

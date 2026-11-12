@@ -75,7 +75,9 @@ export function TopBar() {
   const styles = useViewer((state) => state.portable?.styles);
   const styleID = useViewer((state) => state.styleID);
   const viewers = useViewer((state) => state.viewers);
+  const connected = useViewer((state) => state.connected);
   const viewing = `${words.viewing}: ${viewers ?? ""}`;
+  const reach = connected ? words.connected : words.notConnected;
   return (
     <header id="top">
       <div id="brand"><span className="tile"><Sym name="map" /></span><b id="appName">{words.app}</b></div>
@@ -93,7 +95,11 @@ export function TopBar() {
       </span>
       <button id="shareButton" className="tool round" type="button" title={words.share} aria-label={words.share}
         onClick={() => void shareAddress()}><Sym name="square.and.arrow.up" /></button>
-      <span id="device" hidden={!device}><Sym name="iphone" />{device?.name}</span>
+      <span id="device" hidden={!device}><Sym name="iphone" />
+        {connected == null ? null
+          : <i id="deviceDot" className={connected ? "dot on" : "dot off"} role="img" title={reach} aria-label={reach} />}
+        {device?.name}
+      </span>
     </header>
   );
 }
