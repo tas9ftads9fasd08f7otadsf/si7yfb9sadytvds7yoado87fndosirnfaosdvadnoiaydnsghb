@@ -484,6 +484,7 @@ async function madeBy(asking: () => Promise<Answer<{ id: string }>>) {
   if (!made) return false;
   await refreshDevice();
   await pickMap(made.id, null);
+  go({ screen: "map", map: made.id });
   return true;
 }
 
@@ -501,12 +502,11 @@ export const exportServer = (id: string) => saveFrom(() => backend.exportServers
 
 /** 27 A server's page opens on Layers, as the phone's does. */
 export function openServer(id: string | null) {
-  const { mapID } = get();
   if (id) {
     go({ screen: "servers", server: id, part: "layers" });
     showSide(true);
   } else {
-    go(mapID ? { screen: "map", map: mapID } : { screen: "maps" });
+    go({ screen: "servers" });
   }
 }
 

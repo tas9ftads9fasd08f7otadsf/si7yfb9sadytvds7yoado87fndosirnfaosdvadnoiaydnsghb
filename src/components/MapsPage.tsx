@@ -5,6 +5,7 @@ import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
 import { checkKey, importMap, makeMap, openMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
+import { railItemOf } from "./NavRail";
 import { ServerCards } from "./Servers";
 import { MarkTile } from "./ui/MarkTile";
 import { Switch } from "./ui/Switch";
@@ -172,6 +173,7 @@ export function MapsPage() {
   const words = useViewer((state) => state.words);
   const device = useViewer((state) => state.device);
   const shown = useViewer(shownMapOf);
+  const onMap = useViewer((state) => railItemOf(state.route) === "map");
   const maps = device?.maps ?? [];
   return (
     <>
@@ -179,12 +181,14 @@ export function MapsPage() {
         {device && maps.length === 0 ? <div className="empty">{words.nothing}</div> : null}
         {shown ? <CurrentMap shared={shown} /> : null}
       </div>
-      <div id="others">
-        {maps.length ? <h2 className="title">{words.allMaps}</h2> : null}
-        {maps.length ? <div className="list">{maps.map((each) => <MapRow key={each.id} shared={each} />)}</div> : null}
-        <NewMap />
-        <ServerCards />
-      </div>
+      {shown && onMap ? null : (
+        <div id="others">
+          {maps.length ? <h2 className="title">{words.allMaps}</h2> : null}
+          {maps.length ? <div className="list">{maps.map((each) => <MapRow key={each.id} shared={each} />)}</div> : null}
+          <NewMap />
+          <ServerCards />
+        </div>
+      )}
     </>
   );
 }

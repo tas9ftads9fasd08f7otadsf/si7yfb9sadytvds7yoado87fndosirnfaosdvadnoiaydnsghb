@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { openViewer, reset, showAllMaps } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -28,8 +28,8 @@ test("a computer's screen gets a header, a side bar, the map and a status line",
   // 2945: its styles are the header's switcher only.
   await expect(page.locator(".chips")).toHaveCount(0);
   await expect(page.locator("#styleSelect option")).toHaveText(["Summer", "Winter"]);
-  await expect(page.locator("#others .row")).toHaveCount(2);
-  await expect(page.locator("#others .row.picked")).toContainText("High Tatras");
+  // 41 an open map's side bar is the map alone.
+  await expect(page.locator("#others")).toHaveCount(0);
   await expect(page.locator(".maplibregl-ctrl-zoom-in")).toBeVisible();
   await expect(page.locator(".maplibregl-ctrl-fullscreen")).toBeVisible();
   await expect(page.locator(".maplibregl-ctrl-scale")).toBeVisible();
@@ -75,18 +75,25 @@ test("a layer switched off in the side bar is left out of the style", async ({ p
   await expect(page.getByRole("switch", { name: "Trails" })).not.toBeChecked();
 });
 
-// 2945: one map is listed too, so a browser sees what the phone shares.
-test("the side bar lists the maps even when the phone shares only one", async ({ page, request }) => {
+// 2945: one map is listed too, so a browser sees what the phone shares. 41 on the Maps screen.
+test("the Maps screen lists the maps even when the phone shares only one", async ({ page, request }) => {
   await request.get("/__test/one-map");
   await openViewer(page);
+  await showAllMaps(page);
   await expect(page.locator("#others .title")).toHaveText("All maps");
   await expect(page.locator("#others .row")).toHaveCount(1);
   await expect(page.locator("#others .row.picked")).toContainText("High Tatras");
 });
 
-test("another map is opened from the side bar's list", async ({ page }) => {
+// 41 the list is the Maps screen's; the opened map's side bar drops it again.
+test("another map is opened from the Maps screen's list", async ({ page }) => {
   await openViewer(page);
+  await showAllMaps(page);
+  await expect(page.locator("#others .row")).toHaveCount(2);
+  await expect(page.locator("#others .row.picked")).toContainText("High Tatras");
+  await expect(page).toHaveURL(/\/maps#/);
   await page.locator("#others .row", { hasText: "Bratislava" }).click();
+  await expect(page.locator("#others")).toHaveCount(0);
   await expect(page.locator("#mapName")).toHaveText("Bratislava");
   await expect(page.locator("#styleLabel")).toBeHidden();
   await expect(page.locator("#current .hero b")).toHaveText("Bratislava");
