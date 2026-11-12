@@ -75,10 +75,12 @@ describe("change", () => {
     expect(sessionStorage.getItem("riki-edit-token")).toBeNull();
   });
 
-  it("says the phone is away when it cannot be reached", async () => {
+  // 45 the banner says it, so no passing notice repeats it
+  it("marks the phone not connected when it cannot be reached", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
     expect(await change({ kind: "name", name: "x" })).toBe(false);
-    expect(get().notice).toBe(get().words.away);
+    expect(get().connected).toBe(false);
+    expect(get().notice).toBeNull();
   });
 });
 
@@ -142,7 +144,41 @@ describe("the session", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
     startSession(false);
     await vi.waitFor(() => expect(get().connected).toBe(false));
-    expect(get().notice).toBe(get().words.away);
+  });
+
+  // 45 back in reach: said once, and the maps and the style are read again with no reload
+  it("says Connected again and reads the phone anew when it comes back", async () => {
+    const map = control();
+    setMapControl(map);
+    useViewer.setState({ connected: false, standing: "admitted", device, mapID: "a" });
+    const renamed = { name: "iPad", maps: [{ id: "a", name: "Renamed", layers: [] }] };
+    answering((url) => url.includes("/web/session") ? json({ standing: "admitted" }) : json(renamed));
+    startSession(false);
+    await vi.waitFor(() => expect(get().device?.maps[0]?.name).toBe("Renamed"));
+    expect(get().connected).toBe(true);
+    expect(get().notice).toBe("Connected again");
+    expect(map.draw).toHaveBeenCalled();
+  });
+
+  // 45 a phone that never went away is not announced
+  it("says nothing on the first beat or while it stays connected", async () => {
+    answering(() => json({ standing: "waiting" }));
+    startSession(false);
+    await vi.waitFor(() => expect(get().connected).toBe(true));
+    expect(get().notice).toBeNull();
+  });
+
+  // 45 out of reach, the page asks sooner than its usual beat
+  it("asks again sooner while the phone is out of reach", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn(async () => { throw new TypeError("offline"); });
+    vi.stubGlobal("fetch", fetcher);
+    startSession(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
   });
 
   // 40 a phone that answers but is not sharing is not connected either

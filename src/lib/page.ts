@@ -1,4 +1,5 @@
 export const HEARTBEAT_EVERY = 5000;
+export const RETRY_EVERY = 2000;
 export const LIVE_EVERY = 60000;
 export const PHONE_EVERY = 5000;
 export const REGIONS_EVERY = 10000;

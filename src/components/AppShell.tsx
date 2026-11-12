@@ -5,7 +5,7 @@ import { type MapControl, setMapControl } from "@/map/control";
 import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
   from "@/store/viewer";
 import { NavRail } from "./NavRail";
-import { Gate, Notice, RegionOffer, SmallScreen, StatusBar } from "./Overlays";
+import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar } from "./Overlays";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
 import { Boot, LoadingBar } from "./Overlays";
@@ -81,6 +81,7 @@ export function AppShell() {
       <RegionOffer />
       <StatusBar />
       <Notice />
+      <Offline />
       <Gate />
       <SmallScreen />
       <Boot />
