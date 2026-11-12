@@ -35,3 +35,42 @@ describe("CI's concurrency", () => {
     expect(group).not.toContain("ref_name");
   });
 });
+
+// 49 a release that passed CI is deployed to the PHP server over FTPS, and only then
+describe("the site's deploy", () => {
+  const release = read("release.yml");
+  const deploy = read("deploy-site.yml");
+
+  it("follows the release, which follows CI, and is handed the release's tag", () => {
+    const job = release.slice(release.indexOf("\n  deploy:"));
+    expect(job).toContain("needs: release");
+    expect(job).toContain("uses: ./.github/workflows/deploy-site.yml");
+    expect(job).toContain("tag: ${{ needs.release.outputs.tag }}");
+    expect(release).toMatch(/release:[\s\S]*needs: check/);
+    expect(release).toContain('echo "tag=v$version" >> "$GITHUB_OUTPUT"');
+  });
+
+  it("can be run again by hand for any release", () => {
+    expect(deploy).toMatch(/workflow_dispatch:\s*\n\s*inputs:\s*\n\s*tag:/);
+  });
+
+  it("reads the server's password from a secret, never from the workflow's text", () => {
+    expect(deploy).toContain("FTPS_PASSWORD: ${{ secrets.FTPS_PASSWORD }}");
+    expect(deploy).not.toMatch(/FTPS_PASSWORD:\s*["']?[^$\s]/);
+    expect(deploy).toContain("environment: site");
+  });
+
+  it("never cuts a deploy short for the next one", () => {
+    expect(deploy).toMatch(/concurrency:\s*\n\s*group: deploy-site\s*\n\s*cancel-in-progress: false/);
+  });
+
+  it("gives the release's called deploy what it needs to read releases", () => {
+    const job = release.slice(release.indexOf("\n  deploy:"));
+    for (const permission of asked(deploy)) expect(asked(job)).toContain(permission);
+  });
+
+  it("gives CI the FTPS tools the deploy script's test needs", () => {
+    expect(read("ci.yml")).toContain("apt-get install -y -q lftp");
+    expect(read("ci.yml")).toContain("pip install pyftpdlib pyopenssl");
+  });
+});

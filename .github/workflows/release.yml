@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -34,6 +36,7 @@ jobs:
       - run: npm ci
       # Two zips: the app takes web-editor.zip, the site's deploy web-site.zip.
       - name: Pack and publish
+        id: publish
         run: |
           version="$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')").${GITHUB_RUN_NUMBER}"
           npm run build
@@ -43,3 +46,14 @@ jobs:
           gh release create "v$version" dist/web-editor.zip dist/web-editor.zip.sha256 \
             dist/web-site.zip dist/web-site.zip.sha256 \
             --target "$GITHUB_SHA" --title "v$version" --generate-notes
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy the site
+    needs: release
+    uses: ./.github/workflows/deploy-site.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+    secrets: inherit
+    permissions:
+      contents: read

@@ -60,6 +60,8 @@ jobs:
       - run: npm ci
       # The site's server: PHPUnit, with the runner's own PHP and Composer.
       - run: composer install --working-dir=server --no-interaction --no-progress
+      # The deploy script's test runs it against a stand-in FTPS server.
+      - run: sudo apt-get update -q && sudo apt-get install -y -q lftp && pip install pyftpdlib pyopenssl
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test

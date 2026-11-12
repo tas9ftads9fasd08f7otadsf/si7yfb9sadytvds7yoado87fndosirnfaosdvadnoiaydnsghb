@@ -1,0 +1,63 @@
+name: Deploy site
+
+# A release's web-site.zip onto the PHP server over FTPS: after each release, or again by hand.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release to deploy, such as v0.1.42
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+# One deploy at a time, none cut short halfway.
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.tag }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: site
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+      FTPS_HOST: ${{ secrets.FTPS_HOST }}
+      FTPS_USER: ${{ secrets.FTPS_USER }}
+      FTPS_PASSWORD: ${{ secrets.FTPS_PASSWORD }}
+      FTPS_DIR: ${{ vars.FTPS_DIR }}
+      FTPS_PORT: ${{ vars.FTPS_PORT }}
+    steps:
+      - id: ready
+        name: Settings and order
+        run: |
+          if [ -z "$FTPS_HOST" ] || [ -z "$FTPS_USER" ] || [ -z "$FTPS_PASSWORD" ]; then
+            echo "::warning::FTPS_HOST, FTPS_USER and FTPS_PASSWORD are not all set on the site environment"
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          latest="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
+          # After a merge, a release that a newer one has overtaken is not put back over it.
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ] && [ "$latest" != "$TAG" ]; then
+            echo "::notice::$TAG is not the latest release ($latest), so it is not deployed"
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "go=true" >> "$GITHUB_OUTPUT"
+      - if: steps.ready.outputs.go == 'true'
+        uses: actions/checkout@v5
+      - if: steps.ready.outputs.go == 'true'
+        run: sudo apt-get update -q && sudo apt-get install -y -q lftp
+      - if: steps.ready.outputs.go == 'true'
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'web-site.zip*' --dir dist
+      - if: steps.ready.outputs.go == 'true'
+        run: bash scripts/deploy-site.sh dist/web-site.zip
