@@ -6,6 +6,8 @@ test.beforeEach(async ({ request }) => { await reset(request); });
 // 27 TestFlight AApG, AL9n: View on a server's card opens its page in parts, as on the phone.
 test("a server's View opens its page on Layers, then General and Sharing", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
+  // 41 the cards are on the Servers screen, and Back returns to it.
+  await page.locator("#railServers").click();
   const card = page.locator("[data-server-card='0D5E1F00-0000-4000-8000-000000000002']");
   await expect(card).toContainText("ZBGIS");
   await card.getByRole("button", { name: "View ZBGIS" }).click();
@@ -20,11 +22,14 @@ test("a server's View opens its page on Layers, then General and Sharing", async
   expect((await saved).suggestedFilename()).toBe("ZBGIS.servson");
   await page.locator("#serverBack").click();
   await expect(page.locator("#serverPage")).toHaveClass(/ahead/);
+  await expect(page).toHaveURL(/\/servers#/);
+  await expect(card).toBeVisible();
 });
 
 // 27: a browser that may only look sees no servers
 test("a browser without the edit password lists no servers", async ({ page }) => {
   await openViewer(page, "/");
-  await expect(page.locator("#mapsPage")).toBeVisible();
+  await page.locator("#railMaps").click();
+  await expect(page.locator("#others .row")).toHaveCount(2);
   await expect(page.locator("#serverCards")).toHaveCount(0);
 });

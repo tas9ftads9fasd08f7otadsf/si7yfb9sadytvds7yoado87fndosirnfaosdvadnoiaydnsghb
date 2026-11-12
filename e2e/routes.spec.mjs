@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { openViewer, reset, showAllMaps } from "./phone.mjs";
 
 const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
 const BRATISLAVA = "6F1E2A10-0000-4000-8000-000000000002";
@@ -23,6 +23,7 @@ test("the unlock address leaves no key behind", async ({ page }) => {
 test("home opens the first map, then the one shown last", async ({ page }) => {
   await openViewer(page);
   await expect(page).toHaveURL(new RegExp(`/maps/${TATRAS}#`));
+  await showAllMaps(page);
   await page.locator("#others .row", { hasText: "Bratislava" }).click();
   await expect(page).toHaveURL(new RegExp(`/maps/${BRATISLAVA}#`));
   await openViewer(page, "/");

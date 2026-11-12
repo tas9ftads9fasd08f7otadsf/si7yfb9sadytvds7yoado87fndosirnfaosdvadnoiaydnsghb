@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { openViewer, reset, showAllMaps } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -60,6 +60,7 @@ test("A switch of light and dark keeps the sources, and another map replaces the
   await page.waitForTimeout(300);
   expect(await marked()).toBe(true);
 
+  await showAllMaps(page);
   const other = page.waitForResponse((answer) => answer.url().includes("000000000002/style"));
   await page.locator("#others .list button", { hasText: "Bratislava" }).click();
   await other;
