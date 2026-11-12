@@ -6,9 +6,9 @@ import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession,
   from "@/store/viewer";
 import { NavRail } from "./NavRail";
 import { Gate, Notice, RegionOffer, SmallScreen, StatusBar } from "./Overlays";
-import { Boot, LoadingBar } from "./Overlays";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
+import { Boot, LoadingBar } from "./Overlays";
 
 const SMALL_SCREEN = "(max-width: 899px), (max-height: 499px)";
 
