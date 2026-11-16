@@ -29,7 +29,14 @@ const EDITS: [Edit, Record<string, string>][] = [
   [{ kind: "addPackages", overlays: ["roads", "rails"] }, { addPackages: "roads,rails" }],
   [{ kind: "removeLayer", layer: "L" }, { removeLayer: "L" }],
   [{ kind: "layerOptions", fields: { layer: "L", lineWidth: "2" } }, { layer: "L", lineWidth: "2" }],
-  [{ kind: "layerDetails", fields: { layer: "L", details: "move" } }, { layer: "L", details: "move" }]
+  [{ kind: "layerDetails", fields: { layer: "L", details: "move" } }, { layer: "L", details: "move" }],
+  // 50 the styles' order, the arranging rows and Availability's switches
+  [{ kind: "styleOrder", styles: ["W", "S"] }, { styleOrder: "W,S" }],
+  [{ kind: "arrange", action: "unite" }, { arrange: "unite" }],
+  [{ kind: "arrange", action: "stylePerLayer" }, { arrange: "stylePerLayer" }],
+  [{ kind: "groupByOrigin", groups: true }, { groupByOrigin: "1" }],
+  [{ kind: "availability", switch: "carPlay", shown: false }, { carPlay: "0" }],
+  [{ kind: "availability", switch: "world", shown: true }, { world: "1" }]
 ];
 
 describe("queryOf", () => {

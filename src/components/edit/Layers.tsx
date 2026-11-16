@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import { groundID } from "@/lib/ground";
 import type { Portable, SharedLayer, StackLayer } from "@/lib/types";
-import { change, removeLayer, shownMapOf, toggleAddingPackages, toggleOptions, useViewer } from "@/store/viewer";
+import { change, groupByOrigin, removeLayer, shownMapOf, toggleAddingPackages, toggleOptions, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { MarkTile } from "../ui/MarkTile";
 import { Switch } from "../ui/Switch";
@@ -32,7 +32,7 @@ function LayerRow({ layer, listed, isBase, movable }: RowProps) {
   };
   return (
     <>
-      <div className="row">
+      <div className="row" data-layer={layer.id}>
         <MarkTile symbol={layer.symbol} tint={layer.tintHex} small />
         <div className="words">
           <CommitField type="text" value={layer.name} aria-label={words.rename}
@@ -64,6 +64,7 @@ export function Layers({ portable }: { portable: Portable }) {
   const words = useViewer((state) => state.words);
   const adding = useViewer((state) => state.addingPackages);
   const hidden = useViewer((state) => state.hidden);
+  const grouping = useViewer((state) => state.switches);
   const styleName = useViewer((state) => state.portable?.styles?.find((each) => each.id === state.styleID)?.name);
   const sharedLayers = useViewer((state) => shownMapOf(state)?.layers) ?? [];
   const ground = groundID(portable.id);
@@ -81,6 +82,12 @@ export function Layers({ portable }: { portable: Portable }) {
           onClick={() => change({ kind: "layersShown", shown: !allOn })}>{allOn ? words.allLayersOff : words.allLayersOn}</button>
       </div>
       <div className="list">
+        {grouping?.groupingOffered ? (
+          <div className="row" id="groupBySource">
+            <div className="words">{words.groupBySource}</div>
+            <Switch isOn={grouping.groupsByOrigin} label={words.groupBySource} onChange={(groups) => void groupByOrigin(groups)} />
+          </div>
+        ) : null}
         {sharedLayers.map((listed) => {
           const layer = byID.get(listed.id.toUpperCase());
           if (!layer || listed.id.toUpperCase() === ground) {

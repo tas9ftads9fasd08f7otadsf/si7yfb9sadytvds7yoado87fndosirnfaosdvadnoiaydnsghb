@@ -48,3 +48,48 @@ test("a text block is added to the Details layout", async ({ page }) => {
   await expect(panel.locator(".layout-block")).toHaveCount(3);
   await expect(panel).toContainText("3 of 10 content blocks used");
 });
+
+// 50: a text block's heading, words and style, each sent with the block's place and handle.
+test("a text block's heading, value and style are edited", async ({ page }) => {
+  const panel = await openLayout(page);
+  const text = panel.locator(".layout-block[data-handle='t1']");
+
+  let asked = sent(page);
+  await text.getByRole("textbox", { name: "Title" }).fill("Line");
+  await text.getByRole("textbox", { name: "Title" }).press("Enter");
+  expect(await asked).toMatchObject({ details: "edit", section: "0", block: "1", was: "t1", title: "Line",
+    value: "{note}" });
+
+  asked = sent(page);
+  await text.getByRole("textbox", { name: "Value" }).fill("{line}");
+  await text.getByRole("textbox", { name: "Title" }).focus();
+  expect(await asked).toMatchObject({ details: "edit", was: "t1", value: "{line}" });
+
+  asked = sent(page);
+  await text.getByRole("combobox", { name: "Text" }).selectOption("warning");
+  expect(await asked).toMatchObject({ details: "edit", was: "t1", style: "warning" });
+  await expect(panel.locator(".layout-block[data-handle='t1']").getByRole("combobox", { name: "Text" }))
+    .toHaveValue("warning");
+});
+
+// 50: sections are added, titled and removed; the last one stays.
+test("a section is added, titled and removed", async ({ page }) => {
+  const panel = await openLayout(page);
+  await expect(panel.getByRole("button", { name: "Remove section" })).toHaveCount(0);
+
+  let asked = sent(page);
+  await panel.getByRole("button", { name: "Add section" }).click();
+  expect(await asked).toMatchObject({ layer, details: "addSection" });
+  await expect(panel.locator(".layout-section")).toHaveCount(2);
+
+  asked = sent(page);
+  const title = panel.locator(".layout-section[data-section='1']").getByRole("textbox", { name: "Title" }).first();
+  await title.fill("Timetable");
+  await title.press("Enter");
+  expect(await asked).toMatchObject({ details: "sectionTitle", section: "1", title: "Timetable" });
+
+  asked = sent(page);
+  await panel.locator(".layout-section[data-section='1']").getByRole("button", { name: "Remove section" }).click();
+  expect(await asked).toMatchObject({ details: "removeSection", section: "1" });
+  await expect(panel.locator(".layout-section")).toHaveCount(1);
+});

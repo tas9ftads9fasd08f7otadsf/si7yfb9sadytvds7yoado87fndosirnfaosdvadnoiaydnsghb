@@ -55,7 +55,8 @@ test("a layer is renamed and its opacity set; the base layer has no opacity", as
 
 test("a layer moves down and back up, and the ends cannot move further", async ({ page }) => {
   await openEdit(page);
-  const switches = page.locator("#editBody").getByRole("switch");
+  // 50 the layer rows' switches alone, now that Availability and grouping have their own
+  const switches = page.locator("#editBody [data-layer]").getByRole("switch");
   const names = async () => switches.evaluateAll((all) => all.map((one) => one.getAttribute("aria-label")));
   expect(await names()).toEqual(["Trails", "Huts"]);
   await expect(layerRow(page, "Trails").getByRole("button", { name: "Move up" })).toBeDisabled();
@@ -131,4 +132,21 @@ test("the last style left cannot be deleted", async ({ page }) => {
   await page.locator("#editBody .list").first().getByRole("button", { name: "Delete" }).first().click();
   await expect(remove).toHaveCount(1);
   await expect(remove).toBeDisabled();
+});
+
+// 50: a layer's own switch in Edit map, written into the style the browser shows.
+test("a layer is switched off and on in Edit map", async ({ page }) => {
+  await openEdit(page);
+  const huts = () => layerRow(page, "Huts").getByRole("switch", { name: "Huts" });
+  await expect(huts()).toBeChecked();
+
+  let asked = sent(page);
+  await huts().click({ force: true });
+  expect(await asked).toMatchObject({ layer: HUTS, shown: "0" });
+  await expect(huts()).not.toBeChecked();
+
+  asked = sent(page);
+  await huts().click({ force: true });
+  expect(await asked).toMatchObject({ layer: HUTS, shown: "1" });
+  await expect(huts()).toBeChecked();
 });

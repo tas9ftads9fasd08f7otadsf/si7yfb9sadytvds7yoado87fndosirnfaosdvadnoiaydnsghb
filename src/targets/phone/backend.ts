@@ -47,6 +47,10 @@ export function queryOf(edit: Edit): Record<string, string> {
     case "iconTint": return { iconTint: edit.tint };
     case "addPackages": return { addPackages: edit.overlays.join(",") };
     case "removeLayer": return { removeLayer: edit.layer };
+    case "styleOrder": return { styleOrder: edit.styles.join(",") };
+    case "arrange": return { arrange: edit.action };
+    case "groupByOrigin": return { groupByOrigin: edit.groups ? "1" : "0" };
+    case "availability": return { [edit.switch]: edit.shown ? "1" : "0" };
     case "layerOptions":
     case "layerDetails": return edit.fields;
   }
@@ -95,6 +99,8 @@ export const backend: Backend = {
   newMap: (name) => editing(`${ROOT}/new-map?${new URLSearchParams({ name })}`),
   importMap: async (file) => editing(`${ROOT}/new-map`, "POST", await file.arrayBuffer()),
   exportMap: (id) => editing(`${ROOT}/maps/${id}/mapson`, "GET", undefined, saved),
+  duplicateMap: (id) => editing(`${ROOT}/maps/${id}/duplicate`),
+  switches: (mapID) => editing(`${ROOT}/maps/${mapID}/switches`, "GET"),
   setPicture: (mapID, kind, picture) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, "POST", picture),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),

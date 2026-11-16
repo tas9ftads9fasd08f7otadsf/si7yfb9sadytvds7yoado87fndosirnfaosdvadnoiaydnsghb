@@ -1,6 +1,6 @@
 import type { Edit } from "@/lib/edit";
 import type { APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
-  LayerOptions, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
+  LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
@@ -61,6 +61,10 @@ export interface Backend {
   newMap(name: string): Promise<Answer<{ id: string }>>;
   importMap(file: Blob): Promise<Answer<{ id: string }>>;
   exportMap(id: string): Promise<Answer<Saved>>;
+  /** 50 A copy of the map, shared at once as a new map is. */
+  duplicateMap(id: string): Promise<Answer<{ id: string }>>;
+  /** 50 What Availability and the Styles card's rows read, which the portable copy leaves out. */
+  switches(mapID: string): Promise<Answer<MapSwitches>>;
   setPicture(mapID: string, kind: "icon" | "preview", picture: ArrayBuffer): Promise<Answer<Portable>>;
 
   layerOptions(mapID: string): Promise<Answer<LayerOptions>>;

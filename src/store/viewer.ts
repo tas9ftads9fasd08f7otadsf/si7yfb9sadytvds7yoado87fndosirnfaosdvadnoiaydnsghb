@@ -10,7 +10,7 @@ import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
+  LayerOptions, MapSwitches, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
@@ -73,6 +73,7 @@ export interface ViewerState {
   serviceRead: ServiceRead | null;
   layerOptions: LayerOptions | null;
   optionsOpen: Set<string>;
+  switches: MapSwitches | null;
 }
 
 const firstState = (): ViewerState => ({
@@ -84,7 +85,8 @@ const firstState = (): ViewerState => ({
   coverageShown: false, coverageSide: "include", coverageOpen: new Map(), coverageQuery: "", coveragePlaces: null,
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),
-  serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false
+  serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
+  switches: null
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -365,7 +367,7 @@ export async function pickMap(id: string, styleID: string | null) {
     localStorage.setItem(LAST_MAP_KEY, id);
   } catch { /* the first map next time */ }
   set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
-    coverageOpen: new Map(), packages: null, addingPackages: false, serverPicks: new Map(), serviceRead: null,
+    coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, serverPicks: new Map(), serviceRead: null,
     layerOptions: null, optionsOpen: new Set() });
   let portable: Portable | null = null;
   try {
@@ -522,7 +524,37 @@ export async function change(edit: Edit): Promise<boolean> {
   await refreshDevice();
   const stands = (portable.styles ?? []).some((style) => style.id === get().styleID);
   pickStyle(stands ? get().styleID : (portable.selectedStyleID ?? null));
+  if (get().switches) await loadSwitches();
   return true;
+}
+
+/** 50 Availability and the Styles card's rows, read again after each change they may follow. */
+export async function loadSwitches() {
+  const { mapID } = get();
+  if (!mapID) return;
+  const answer = await editing(() => backend.switches(mapID), { quiet: true });
+  if (answer?.ok && mapID === get().mapID) set({ switches: answer.value });
+}
+
+/** 50 Grouping mixed sources reorders the layers, so it asks first, as Edit map does. */
+export function groupByOrigin(groups: boolean) {
+  const { words, switches } = get();
+  if (groups && switches?.groupingReorders && !confirm(`${words.groupAsk}\n\n${words.groupReorders}`)) {
+    set({ editEpoch: get().editEpoch + 1 });
+    return Promise.resolve(false);
+  }
+  return change({ kind: "groupByOrigin", groups });
+}
+
+/** 50 A style moved one place up or down the list, as the styles' page drags it. */
+export function moveStyle(id: string, by: number) {
+  const styles = (get().portable?.styles ?? []).map((style) => style.id);
+  const from = styles.indexOf(id);
+  const to = from + by;
+  if (from < 0 || to < 0 || to >= styles.length) return Promise.resolve(false);
+  styles.splice(from, 1);
+  styles.splice(to, 0, id);
+  return change({ kind: "styleOrder", styles });
 }
 
 // MARK: - A new map
@@ -539,6 +571,9 @@ async function madeBy(asking: () => Promise<Answer<{ id: string }>>) {
 export const makeMap = (name: string) => madeBy(() => backend.newMap(name));
 
 export const importMap = (file: File) => madeBy(() => backend.importMap(file));
+
+/** 50 Edit map's Duplicate: the copy opens, as a new map does. */
+export const duplicateMap = () => madeBy(() => backend.duplicateMap(get().mapID ?? ""));
 
 export const exportMap = () => saveFrom(() => backend.exportMap(get().mapID ?? ""));
 
