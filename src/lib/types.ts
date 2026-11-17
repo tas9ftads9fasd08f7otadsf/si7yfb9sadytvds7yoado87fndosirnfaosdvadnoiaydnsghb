@@ -310,3 +310,22 @@ export interface SessionAnswer {
   /** The phone lets a browser load tiles from their source. */
   direct?: boolean;
 }
+
+/** 50 What Edit map's Availability and Styles rows read, as `PeerWebMapSwitches.Switches` writes it. */
+export interface MapSwitches {
+  picker: boolean;
+  carPlay: boolean;
+  legend: boolean;
+  world: boolean;
+  legendEverywhere: boolean;
+  worldEverywhere: boolean;
+  hasNothingToDraw: boolean;
+  ownsSettings: boolean;
+  groupsByOrigin: boolean;
+  groupingOffered: boolean;
+  groupingReorders: boolean;
+  stylesDisagree: boolean;
+  differsFromDefault: boolean;
+  layersWithoutStyle: number;
+  removedStyles: number;
+}

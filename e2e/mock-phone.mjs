@@ -32,7 +32,8 @@ function freshMaps() {
       styles: [{ id: "6F1E2A10-0000-4000-8000-0000000000B1", name: "Summer", arrangement: { hidden: [] } },
         { id: "6F1E2A10-0000-4000-8000-0000000000B2", name: "Winter",
           arrangement: { hidden: ["6F1E2A10-0000-4000-8000-0000000000A2"] } }],
-      nameTranslations: { sk: "Vysoké Tatry" } },
+      nameTranslations: { sk: "Vysoké Tatry" }, stylesDisagree: true, differsFromDefault: true, removedStyles: 1,
+      mixedSources: true },
     { id: "6F1E2A10-0000-4000-8000-000000000002", name: "Bratislava", symbol: "building.2", iconTintHex: null,
       revision: 3, note: "",
       layers: [layer("6F1E2A10-0000-4000-8000-0000000000C1", "Streets", "Vector tiles", "road.lanes")],
@@ -42,7 +43,8 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false };
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
+    legendEverywhere: true, ownsSettings: true };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
@@ -53,7 +55,8 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false };
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
+    legendEverywhere: true, ownsSettings: true };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -295,6 +298,13 @@ function editLayout(layer, query) {
     sections.push({ title: null, blocks: [] });
   } else if (op === "sectionTitle") {
     sections[number("section")].title = query.get("title") || null;
+  } else if (op === "removeSection") {
+    // 50: as `LayerDetailsChange` takes a section away, its blocks with it.
+    if (sections.length < 2) return false;
+    sections.splice(number("section"), 1);
+  } else if (op === "edit") {
+    Object.assign(held(), { value: query.get("value"), heading: query.get("title") || undefined,
+      style: query.get("style") || undefined });
   }
   return true;
 }
@@ -442,7 +452,70 @@ function setShown(each, query, layers, isOn) {
   style.arrangement = { ...style.arrangement, hidden: [...hidden] };
 }
 
+// 50: as `PeerWebMapSwitches.switches` reads the map and Settings › Map.
+function switches(each) {
+  const grouped = each.groupsLayersByOrigin === true;
+  return { picker: each.hiddenFromPicker !== true, carPlay: !(each.hiddenFromCarPlay ?? each.hiddenFromPicker === true),
+    legend: each.hidesLegend !== true, world: each.hidesWorldAround !== true, legendEverywhere: phone.legendEverywhere,
+    worldEverywhere: true, hasNothingToDraw: each.layers.length === 0, ownsSettings: phone.ownsSettings,
+    groupsByOrigin: grouped, groupingOffered: grouped || each.mixedSources === true,
+    groupingReorders: each.mixedSources === true && !grouped, stylesDisagree: each.stylesDisagree === true,
+    differsFromDefault: each.differsFromDefault === true,
+    layersWithoutStyle: each.layers.filter((layer) => !each.styles.some((style) => style.name === layer.name)).length,
+    removedStyles: each.removedStyles ?? 0 };
+}
+
+const AVAILABILITY = { picker: "hiddenFromPicker", carPlay: "hiddenFromCarPlay", legend: "hidesLegend",
+  world: "hidesWorldAround" };
+
+// 50: as `PeerWebEdit+Arrange` makes it; null for a query that is none of these.
+function arranged(each, query) {
+  if (query.has("layer")) return null;
+  if (query.has("styleOrder")) {
+    const asked = query.get("styleOrder").split(",");
+    const placed = asked.map((id) => each.styles.find((one) => one.id === id));
+    if (placed.includes(undefined) || new Set(asked).size !== each.styles.length) {
+      return [404, "This change does not fit the map"];
+    }
+    each.styles = placed;
+    return [];
+  }
+  const action = query.get("arrange");
+  if (action === "unite") each.stylesDisagree = false;
+  else if (action === "reset") Object.assign(each, { differsFromDefault: false, stylesDisagree: false });
+  else if (action === "restoreStyles") {
+    if (each.removedStyles) each.styles.push({ id: randomUUID().toUpperCase(), name: "Classic", arrangement: { hidden: [] } });
+    each.removedStyles = 0;
+  } else if (action === "stylePerLayer") {
+    const lacking = each.layers.filter((layer) => !each.styles.some((style) => style.name === layer.name));
+    if (!lacking.length) return [409, "Every layer has a style of its own already"];
+    each.styles.push(...lacking.map((layer) => ({ id: randomUUID().toUpperCase(), name: layer.name,
+      arrangement: { hidden: each.layers.filter((other) => other !== layer).map((other) => other.id) } })));
+    each.styles.sort((one, other) => one.name.localeCompare(other.name));
+  } else if (action != null) return [400, ""];
+  if (action != null) return [];
+  if (query.has("groupByOrigin")) {
+    each.groupsLayersByOrigin = query.get("groupByOrigin") === "1" ? true : undefined;
+    if (each.groupsLayersByOrigin) each.layers.reverse();
+    return [];
+  }
+  const key = Object.keys(AVAILABILITY).find((one) => query.has(one));
+  if (!key) return null;
+  if (["legend", "world"].includes(key) && !phone.ownsSettings) {
+    return [403, "This map is shared with this phone to look at, not to change"];
+  }
+  const shown = query.get(key) === "1";
+  each[AVAILABILITY[key]] = key === "carPlay" ? !shown : shown ? undefined : true;
+  return [];
+}
+
 function edit(each, query, response) {
+  const refused = arranged(each, query);
+  if (refused?.length) return send(response, refused[0], refused[1]);
+  if (refused) {
+    each.revision += 1;
+    return json(response, portable(each));
+  }
   const adjust = (change) => each.styles.forEach((style) => { style.adjustments = change({ ...style.adjustments }); });
   const looked = query.has("layer") && LAYER_LOOKS.find((key) => query.has(key));
   const featured = query.has("layer") && FEATURE_KEYS.find((key) => query.has(key));
@@ -819,6 +892,20 @@ async function answer(request, response) {
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     return json(response, packages(each));
   }
+  if (parts[4] === "switches" && parts.length === 5) {
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    return json(response, switches(each));
+  }
+  if (method === "POST" && parts[4] === "duplicate" && parts.length === 5) {
+    // 50: as `MapCatalogStore.duplicate`: a fresh id for the map and each style, named as a copy.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const id = randomUUID().toUpperCase();
+    phone.maps.push({ ...structuredClone(each), id, name: `${each.name} copy`,
+      styles: each.styles.map((style) => ({ ...structuredClone(style), id: randomUUID().toUpperCase() })) });
+    return json(response, { id });
+  }
   if (parts[4] === "coverage" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -978,6 +1065,8 @@ function testControl(route, query, response) {
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-00000000009E", name: "Bedrock", kind: "Esri",
       symbol: "map", isEnabled: true, esri: true });
     break;
+  case "/__test/legend-everywhere": phone.legendEverywhere = query.get("on") === "1"; break;
+  case "/__test/reader": phone.ownsSettings = false; break;
   case "/__test/laid-out-layer":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000A5", name: "Trams", kind: "API",
       symbol: "tram", isEnabled: true, layout: [{ title: null, blocks: [

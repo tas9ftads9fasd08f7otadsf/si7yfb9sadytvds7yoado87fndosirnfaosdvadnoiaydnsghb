@@ -24,6 +24,17 @@ export type Edit =
   | { kind: "iconTint"; tint: string }
   | { kind: "addPackages"; overlays: string[] }
   | { kind: "removeLayer"; layer: string }
+  // 50: every style, in the order the list shows them.
+  | { kind: "styleOrder"; styles: string[] }
+  | { kind: "arrange"; action: ArrangeAction }
+  | { kind: "groupByOrigin"; groups: boolean }
+  | { kind: "availability"; switch: AvailabilitySwitch; shown: boolean }
   // The Options panel's and the Details layout's rows are described by the phone, keys and all.
   | { kind: "layerOptions"; fields: Record<string, string> }
   | { kind: "layerDetails"; fields: Record<string, string> };
+
+/** 50 Edit map's Styles card's rows, as `PeerWebEdit.Arranging` names them. */
+export type ArrangeAction = "unite" | "reset" | "stylePerLayer" | "restoreStyles";
+
+/** 50 Availability's switches, as `PeerWebEdit.Availability` names them. */
+export type AvailabilitySwitch = "picker" | "carPlay" | "legend" | "world";

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { change, exportMap, loadCoverage, loadLayerOptions, useViewer } from "@/store/viewer";
+import { change, duplicateMap, exportMap, loadCoverage, loadLayerOptions, loadSwitches, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
 import { AddLayer } from "./AddLayer";
+import { Availability } from "./Availability";
 import { CoverageCard } from "./CoverageCard";
 import { Languages } from "./Languages";
 import { Layers } from "./Layers";
@@ -26,6 +27,10 @@ export function EditPage() {
   useEffect(() => {
     if (!hasCoverage) void loadCoverage();
   }, [hasCoverage, mapID]);
+  const hasSwitches = useViewer((state) => state.switches != null);
+  useEffect(() => {
+    if (!hasSwitches) void loadSwitches();
+  }, [hasSwitches, mapID]);
   return portable ? <EditFields key={epoch} /> : null;
 }
 
@@ -33,6 +38,7 @@ function EditFields() {
   const words = useViewer((state) => state.words);
   const portable = useViewer((state) => state.portable);
   const adding = useViewer((state) => state.addingPackages);
+  const switches = useViewer((state) => state.switches);
   if (!portable) return null;
   return (
     <>
@@ -53,8 +59,12 @@ function EditFields() {
       <Layers portable={portable} />
       {adding ? <AddLayer /> : null}
       {portable.styles?.length ? <div className="foot-note">{words.layerCap}</div> : null}
+      {switches ? <Availability switches={switches} /> : null}
       <button type="button" className="action" id="exportMap" onClick={exportMap}>
         <Sym name="square.and.arrow.up" />{words.export}
+      </button>
+      <button type="button" className="action" id="duplicateMap" onClick={() => void duplicateMap()}>
+        <Sym name="plus.square.on.square" />{words.duplicateMap}
       </button>
     </>
   );

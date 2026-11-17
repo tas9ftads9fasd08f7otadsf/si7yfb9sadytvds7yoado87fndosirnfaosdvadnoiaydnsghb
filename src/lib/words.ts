@@ -64,7 +64,19 @@ export const ENGLISH = {
   "serverKind.wmts": "WMTS", "serverKind.wms": "WMS", "serverKind.mapproxy": "MapProxy",
   servers: "Servers", view: "View", general: "General", sharing: "Sharing", address: "Address", kind: "Kind",
   whatItSupports: "What it supports", whatServerHas: "What the server has",
-  map: "Map", share: "Share", linkCopied: "Link copied"
+  map: "Map", share: "Share", linkCopied: "Link copied",
+  groupBySource: "Group by source", groupAsk: "Group the layers by source?", groupAndReorder: "Group and reorder",
+  groupReorders: "Sources are mixed. Grouping puts each one's layers together and changes their order.",
+  orderDiffers: "Layer order differs between styles", unite: "Unite",
+  orderUnited: "Every style uses the same layer order", resetOrder: "Reset the layers to the default draw order",
+  restoreStyles: "Restore the styles this map shipped with", stylePerLayer: "A style for each layer",
+  stylePerLayerNote: "One layer in each", availability: "Availability", inPicker: "In the map switcher",
+  inPickerNote: "Offered when a map is picked", nothingToDraw: "This map has no layers to draw",
+  inCarPlay: "In the CarPlay switcher", inCarPlayNote: "Offered among the maps on CarPlay", showLegend: "Show legend",
+  showLegendNote: "The legend button over this map", showWorld: "Show the world around",
+  showWorldNote: "Sea, borders and country names around this map",
+  hiddenEverywhere: "Hidden on every map under Settings › Map",
+  ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;
