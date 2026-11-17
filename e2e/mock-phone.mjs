@@ -610,6 +610,16 @@ function edit(each, query, response) {
     const picked = query.get("appearance");
     if (!["automatic", "light", "dark"].includes(picked)) return send(response, 400, "");
     each.appearance = picked === "automatic" ? undefined : picked;
+  } else if (query.has("style") && query.has("language")) {
+    // 51: a style's name in one language; blank takes the language away.
+    const styled = each.styles.find((one) => one.id === query.get("style"));
+    if (!styled) return send(response, 404, "No such style");
+    const code = query.get("language");
+    if (!["de", "sk"].includes(code)) return send(response, 404, "The app has no such language");
+    const names = { ...(styled.nameTranslations || {}) };
+    const text = (query.get("name") ?? "").trim();
+    if (text) names[code] = text; else delete names[code];
+    styled.nameTranslations = Object.keys(names).length ? names : undefined;
   } else if (query.has("style") && ["symbol", "iconTint", "note"].some((key) => query.has(key))) {
     // 51: as `PeerWebEdit` writes a style's own icon, its ground and its note.
     const styled = each.styles.find((one) => one.id === query.get("style"));

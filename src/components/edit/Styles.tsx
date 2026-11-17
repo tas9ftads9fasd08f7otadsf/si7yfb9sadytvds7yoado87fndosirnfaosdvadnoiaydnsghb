@@ -43,7 +43,46 @@ function StyleOptions({ style }: { style: PortableStyle }) {
         <CommitField type="text" value={style.notes ?? ""} aria-label={`${words.note} ${style.name}`}
           onCommit={(note) => change({ kind: "styleNote", style: style.id, note })} />
       </div>
+      <StyleLanguages style={style} />
     </div>
+  );
+}
+
+/** 51 A style's name in other languages, as the phone's style page writes it. */
+function StyleLanguages({ style }: { style: PortableStyle }) {
+  const words = useViewer((state) => state.words);
+  const [added, setAdded] = useState<string[]>([]);
+  const languageName = (code: string) => words[`language.${code}`] ?? code;
+  const names = style.nameTranslations ?? {};
+  const written = [...new Set([...Object.keys(names), ...added])]
+    .sort((one, other) => languageName(one).localeCompare(languageName(other)));
+  const free = listed(words.languages).filter((code) => !written.includes(code));
+  const name = (language: string, text: string) =>
+    change({ kind: "styleNameIn", style: style.id, language, name: text });
+  return (
+    <>
+      <div className="field"><label>{words.otherLanguages}</label></div>
+      {written.map((code) => (
+        <div className="field language-head" key={code} data-style-language={code}>
+          <CommitField type="text" value={names[code] ?? ""} maxLength={200}
+            aria-label={`${words.name} · ${languageName(code)} · ${style.name}`}
+            placeholder={languageName(code)} onCommit={(text) => name(code, text)} />
+          <button type="button" className="icon-button danger" title={words.remove}
+            aria-label={`${words.remove} · ${languageName(code)} · ${style.name}`}
+            onClick={() => { setAdded(added.filter((one) => one !== code)); if (names[code]) name(code, ""); }}>
+            <Sym name="trash" /></button>
+        </div>
+      ))}
+      {free.length ? (
+        <div className="field">
+          <select aria-label={`${words.addLanguage} · ${style.name}`} value=""
+            onChange={(event) => event.target.value && setAdded([...added, event.target.value])}>
+            <option value="">{words.addLanguage}</option>
+            {free.map((code) => <option key={code} value={code}>{languageName(code)}</option>)}
+          </select>
+        </div>
+      ) : null}
+    </>
   );
 }
 

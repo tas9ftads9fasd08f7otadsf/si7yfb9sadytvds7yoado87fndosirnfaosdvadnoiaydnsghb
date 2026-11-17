@@ -32,4 +32,12 @@ test("a style's icon, colour and note are set from its options", async ({ page }
   await note.press("Enter");
   expect(await asked).toMatchObject({ style: WINTER, note: "For the snow" });
   await expect(note).toHaveValue("For the snow");
+
+  await page.getByRole("combobox", { name: "Add a language · Winter" }).selectOption("sk");
+  asked = sent(page);
+  const slovak = page.getByRole("textbox", { name: "Name · Slovak · Winter" });
+  await slovak.fill("Zima");
+  await slovak.press("Enter");
+  expect(await asked).toMatchObject({ style: WINTER, language: "sk", name: "Zima" });
+  await expect(slovak).toHaveValue("Zima");
 });

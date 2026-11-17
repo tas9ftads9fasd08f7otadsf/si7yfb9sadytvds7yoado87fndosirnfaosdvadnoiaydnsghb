@@ -37,6 +37,7 @@ export interface PortableStyle {
   symbol?: string;
   iconTintHex?: string | null;
   notes?: string;
+  nameTranslations?: Record<string, string>;
   arrangement?: { hidden?: string[] };
 }
 

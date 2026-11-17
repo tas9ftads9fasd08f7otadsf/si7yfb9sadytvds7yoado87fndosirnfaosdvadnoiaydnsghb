@@ -87,4 +87,19 @@ describe("Styles", () => {
     expect(url()).toContain("style=S");
     expect(url().replaceAll("+", " ")).toContain("note=For the long days");
   });
+
+  // 51 a language picked for a style takes a name sent for that style alone
+  it("sends a style's name in another language", () => {
+    useViewer.setState({ words: { ...useViewer.getState().words, languages: "de,sk", "language.sk": "Slovak" } });
+    const url = asking();
+    render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Add a language · Winter" }), { target: { value: "sk" } });
+    const field = screen.getByRole("textbox", { name: "Name · Slovak · Winter" });
+    fireEvent.change(field, { target: { value: "Zima" } });
+    field.dispatchEvent(new Event("change"));
+    expect(url()).toContain("style=W");
+    expect(url()).toContain("language=sk");
+    expect(url()).toContain("name=Zima");
+  });
 });
