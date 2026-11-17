@@ -19,7 +19,7 @@ interface SwatchProps {
   children?: ReactNode;
 }
 
-function Swatch({ label, isPicked, onPick, tint, data, children }: SwatchProps) {
+export function Swatch({ label, isPicked, onPick, tint, data, children }: SwatchProps) {
   return <button type="button" aria-label={label} title={label} aria-pressed={isPicked} style={ground(tint)} {...data}
     onClick={isPicked ? undefined : onPick}>{children}</button>;
 }

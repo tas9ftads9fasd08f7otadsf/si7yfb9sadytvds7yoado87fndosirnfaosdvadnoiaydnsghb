@@ -1,10 +1,51 @@
 "use client";
 
+import { useState } from "react";
 import type { ArrangeAction } from "@/lib/edit";
-import type { MapSwitches, Portable } from "@/lib/types";
+import type { MapSwitches, Portable, PortableStyle } from "@/lib/types";
+import { listed } from "@/lib/words";
 import { change, moveStyle, pickStyle, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
+import { Swatch } from "./Styling";
+
+/** 51 A style's own icon, its ground and its note, as the phone's style page sets them. */
+function StyleOptions({ style }: { style: PortableStyle }) {
+  const words = useViewer((state) => state.words);
+  const symbol = style.symbol || "map";
+  const tint = (style.iconTintHex ?? "").toUpperCase() || null;
+  const symbols = [...new Set([symbol, ...listed(words.styleSymbols)])];
+  const tints = listed(words.iconTints);
+  if (tint && !tints.includes(tint)) tints.push(tint);
+  return (
+    <div className="card" data-style-options={style.id}>
+      <div className="field"><label>{words.icon}</label></div>
+      <div className="swatches" role="group" aria-label={`${words.icon} ${style.name}`}>
+        {symbols.map((name) => (
+          <Swatch key={name} label={name} isPicked={name === symbol} tint={tint} data={{ "data-symbol": name }}
+            onPick={() => change({ kind: "styleSymbol", style: style.id, symbol: name })}><Sym name={name} /></Swatch>
+        ))}
+      </div>
+      <div className="field"><label>{words.background}</label></div>
+      <div className="swatches" role="group" aria-label={`${words.background} ${style.name}`}>
+        <CommitField type="color" value={(tint ?? "#8E8E93").toLowerCase()} aria-label={words.pickColour}
+          title={words.pickColour}
+          onCommit={(hex) => change({ kind: "styleTint", style: style.id, tint: hex.toUpperCase() })} />
+        <Swatch label={words["theme.auto"]} isPicked={!tint}
+          onPick={() => change({ kind: "styleTint", style: style.id, tint: "" })}><Sym name="wand.and.stars" /></Swatch>
+        {tints.map((hex) => (
+          <Swatch key={hex} label={hex} isPicked={hex === tint} tint={hex} data={{ "data-hex": hex }}
+            onPick={() => change({ kind: "styleTint", style: style.id, tint: hex })} />
+        ))}
+      </div>
+      <div className="field">
+        <label>{words.note}</label>
+        <CommitField type="text" value={style.notes ?? ""} aria-label={`${words.note} ${style.name}`}
+          onCommit={(note) => change({ kind: "styleNote", style: style.id, note })} />
+      </div>
+    </div>
+  );
+}
 
 /** 50 The rows Edit map's Styles card and the styles' page offer only when they would change something. */
 function ArrangeRows({ switches }: { switches: MapSwitches }) {
@@ -45,12 +86,14 @@ export function Styles({ portable }: { portable: Portable }) {
   const styleID = useViewer((state) => state.styleID);
   const switches = useViewer((state) => state.switches);
   const styles = portable.styles ?? [];
+  const [opened, setOpened] = useState<string | null>(null);
   return (
     <>
       <h2 className="title">{words.styles}</h2>
       <div className="list" id="styleList">
         {styles.map((style, place) => (
-          <div className="row" key={style.id} data-style={style.id}>
+          <div key={style.id}>
+          <div className="row" data-style={style.id}>
             <button type="button" className="icon-button" aria-label={style.name} onClick={() => pickStyle(style.id)}>
               <Sym name={style.id === styleID ? "checkmark.circle.fill" : "circle"} />
             </button>
@@ -58,6 +101,10 @@ export function Styles({ portable }: { portable: Portable }) {
               <CommitField type="text" value={style.name} aria-label={words.rename}
                 onCommit={(name) => change({ kind: "styleName", style: style.id, name })} />
             </div>
+            <button type="button" className="icon-button" aria-label={`${words.layerOptions} ${style.name}`}
+              title={words.layerOptions} aria-expanded={opened === style.id}
+              onClick={() => setOpened(opened === style.id ? null : style.id)}>
+              <Sym name="slider.horizontal.3" /></button>
             <button type="button" className="icon-button" aria-label={`${words.moveUp} ${style.name}`}
               title={words.moveUp} disabled={place === 0} onClick={() => moveStyle(style.id, -1)}>
               <Sym name="chevron.up" /></button>
@@ -66,6 +113,8 @@ export function Styles({ portable }: { portable: Portable }) {
               <Sym name="chevron.down" /></button>
             <button type="button" className="icon-button danger" aria-label={words.delete} title={words.delete}
               disabled={styles.length < 2} onClick={() => change({ kind: "removeStyle", style: style.id })}><Sym name="trash" /></button>
+          </div>
+          {opened === style.id ? <StyleOptions style={style} /> : null}
           </div>
         ))}
         <button type="button" className="row add" onClick={() => change({ kind: "addStyle", name: `${words.newStyle} ${styles.length + 1}` })}>

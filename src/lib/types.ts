@@ -34,6 +34,9 @@ export interface Device {
 export interface PortableStyle {
   id: string;
   name: string;
+  symbol?: string;
+  iconTintHex?: string | null;
+  notes?: string;
   arrangement?: { hidden?: string[] };
 }
 

@@ -54,4 +54,37 @@ describe("Styles", () => {
     expect(screen.getByText("Restore the styles this map shipped with")).toBeTruthy();
     expect(screen.getByText("A style for each layer")).toBeTruthy();
   });
+
+  // 51 a style's own icon, its ground and its note go to that style alone
+  it("sends a style's icon, colour and note from its options", () => {
+    useViewer.setState({ words: { ...useViewer.getState().words, styleSymbols: "map,snowflake",
+      iconTints: "#FF0000" } });
+    const url = asking();
+    render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
+    fireEvent.click(screen.getByRole("button", { name: "snowflake" }));
+    expect(url()).toContain("style=W");
+    expect(url()).toContain("symbol=snowflake");
+  });
+
+  it("sends a style's colour", () => {
+    useViewer.setState({ words: { ...useViewer.getState().words, iconTints: "#FF0000" } });
+    const url = asking();
+    render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Summer" }));
+    fireEvent.click(screen.getByRole("button", { name: "#FF0000" }));
+    expect(url()).toContain("style=S");
+    expect(url()).toContain("iconTint=#FF0000");
+  });
+
+  it("sends a style's note", () => {
+    const url = asking();
+    render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Summer" }));
+    const note = screen.getByRole("textbox", { name: "Note Summer" });
+    fireEvent.change(note, { target: { value: "For the long days" } });
+    fireEvent.blur(note);
+    expect(url()).toContain("style=S");
+    expect(url().replaceAll("+", " ")).toContain("note=For the long days");
+  });
 });
