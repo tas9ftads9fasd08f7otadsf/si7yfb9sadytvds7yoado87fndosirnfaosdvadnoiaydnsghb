@@ -11,6 +11,8 @@ test.beforeEach(async ({ request }) => {
 const sent = (page) => page.waitForRequest((request) => request.url().includes("/edit?"))
   .then((request) => Object.fromEntries(new URL(request.url()).searchParams));
 
+const reread = (page) => page.waitForResponse((response) => response.url().includes("layer-options"));
+
 async function openLayout(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
@@ -25,8 +27,10 @@ test("the Details header takes a title and an icon", async ({ page }) => {
   const header = panel.locator("[data-part='header']");
   let asked = sent(page);
   await header.getByRole("textbox", { name: "Header Title" }).fill("{line}");
+  const read = reread(page);
   await header.getByRole("textbox", { name: "Header Title" }).press("Enter");
   expect(await asked).toMatchObject({ layer, details: "header", title: "{line}", symbol: "" });
+  await read;
 
   asked = sent(page);
   await header.getByRole("combobox", { name: "Header Icon" }).selectOption("tram.fill");
@@ -43,7 +47,7 @@ test("the action buttons and a custom button are set", async ({ page }) => {
   expect(await asked).toMatchObject({ details: "addActions" });
 
   asked = sent(page);
-  await actions.getByRole("checkbox", { name: "Copy" }).check();
+  await actions.getByRole("checkbox", { name: "Copy" }).click();
   expect(await asked).toMatchObject({ details: "action", name: "copy", on: "1" });
   await expect(actions.getByRole("button", { name: "Move up Copy" })).toBeVisible();
 
@@ -68,7 +72,7 @@ test("the action buttons and a custom button are set", async ({ page }) => {
 test("a block's own settings and rows are set", async ({ page }) => {
   const panel = await openLayout(page);
   let asked = sent(page);
-  await panel.getByRole("checkbox", { name: "A note icon before the text" }).check();
+  await panel.getByRole("checkbox", { name: "A note icon before the text" }).click();
   expect(await asked).toMatchObject({ details: "blockSettings", block: "1", was: "t1", icon: "1" });
   await expect(panel.getByRole("checkbox", { name: "A note icon before the text" })).toBeChecked();
 

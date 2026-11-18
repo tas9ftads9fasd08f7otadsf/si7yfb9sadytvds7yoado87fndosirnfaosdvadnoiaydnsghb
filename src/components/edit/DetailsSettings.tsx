@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { DetailsLayout, LayoutBlock, LayoutButton } from "@/lib/types";
 import { useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
@@ -19,10 +20,15 @@ function Choice({ label, value, options, onPick }:
   );
 }
 
+/** Moves at the click and settles on what the phone then says, as `Switch` does. */
 function Check({ label, isOn, onChange }: { label: string; isOn: boolean; onChange: (on: boolean) => void }) {
+  const box = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (box.current) box.current.checked = isOn;
+  }, [isOn]);
   return (
     <label className="check">
-      <input type="checkbox" checked={isOn} onChange={(event) => onChange(event.target.checked)} />
+      <input ref={box} type="checkbox" defaultChecked={isOn} onChange={(event) => onChange(event.target.checked)} />
       {label}
     </label>
   );

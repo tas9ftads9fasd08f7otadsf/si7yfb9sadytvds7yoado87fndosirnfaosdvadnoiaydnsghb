@@ -299,7 +299,14 @@ function apiRead(query) {
 // 29: a layer's Details layout as `PeerWebLayerOptions+Details` lists it, and its edits.
 const LAYOUT_WORDS = { addContent: "Add content", addSection: "Add section", removeSection: "Remove section",
   sectionTitle: "Title", fromTheApp: "From the app", name: "Name", value: "Value", label: "Label", link: "Link",
-  heading: "Title", plain: "Plain", box: "Box", warning: "Warning", full: "This layout holds 10 content blocks" };
+  heading: "Title", plain: "Plain", box: "Box", warning: "Warning", full: "This layout holds 10 content blocks",
+  header: "Header", icon: "Icon", layerIcon: "As the app shows it", headerTitleNote: "Left empty, the sheet keeps the name.",
+  actions: "Action buttons", addActions: "Add action buttons", removeActions: "Remove from Details",
+  addButton: "Add custom button", buttonsShow: "Buttons show", highlight: "Highlight the first one", look: "Look",
+  whenTapped: "When tapped", subject: "Subject", body: "Message", hidesButton: "Hide when a key is empty",
+  textIcon: "A note icon before the text", hidesText: "Hide when empty", nameAndValue: "Name and value",
+  rowIcons: "A small icon before each row", hidesRows: "Hide empty rows", addRow: "Add a row", liveFor: "Live for",
+  card: "What the card shows" };
 
 function detailsSections(layer) {
   const used = layer.layout.flatMap((section) => section.blocks).filter((block) => block.counts).length;
