@@ -70,11 +70,11 @@ test("an unshared map is shared by its first invitation", async ({ page }) => {
 test("the owner opens the link to anyone and closes it again", async ({ page }) => {
   await openEdit(page);
   let sent = asked(page);
-  await page.getByRole("radio", { name: /Anyone with the link/ }).check();
+  await page.getByRole("radio", { name: /Anyone with the link/ }).click();
   expect(await sent).toEqual({ link: "reader" });
   await expect(page.locator("#peopleLink")).toContainText("Anyone who opens it can join");
   sent = asked(page);
-  await page.getByRole("radio", { name: /Only people you invite/ }).check();
+  await page.getByRole("radio", { name: /Only people you invite/ }).click();
   expect(await sent).toEqual({ link: "none" });
   await expect(page.locator("#peopleLink")).toContainText("Works only for people you invite");
 });
