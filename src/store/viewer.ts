@@ -73,6 +73,8 @@ export interface ViewerState {
   serviceRead: ServiceRead | null;
   layerOptions: LayerOptions | null;
   optionsOpen: Set<string>;
+  /** 58 The sources whose layers are folded open; each opening of Edit map starts closed, as the app's. */
+  originsOpen: Set<string>;
   switches: MapSwitches | null;
   /** 57 Download tiles as the phone last counted it, and what it was asked for. */
   offline: OfflinePlan | null;
@@ -90,7 +92,7 @@ const firstState = (): ViewerState => ({
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
-  switches: null, offline: null, offlineAsk: null, offlineOpen: false
+  switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -375,7 +377,7 @@ export async function pickMap(id: string, styleID: string | null) {
   set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
     coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, offline: null, offlineAsk: null, offlineOpen: false,
     serverPicks: new Map(), serviceRead: null,
-    layerOptions: null, optionsOpen: new Set() });
+    layerOptions: null, optionsOpen: new Set(), originsOpen: new Set() });
   let portable: Portable | null = null;
   try {
     portable = await backend.map(id);
@@ -426,6 +428,7 @@ export const toggleSide = () => showSide(!get().sideShown);
 export function showEdit(editing: boolean) {
   const { mapID, route } = get();
   if (editing) {
+    set({ originsOpen: new Set() });
     if (mapID) go({ screen: "edit", map: mapID, tab: "layers" });
     showSide(true);
     return;
@@ -668,6 +671,12 @@ export async function loadLayerOptions() {
   const answer = await editing(() => backend.layerOptions(mapID), { quiet: true });
   if (answer?.ok && get().mapID === mapID) set({ layerOptions: answer.value });
   busy.layerOptions = null;
+}
+
+export function toggleOrigin(key: string) {
+  const originsOpen = new Set(get().originsOpen);
+  if (!originsOpen.delete(key)) originsOpen.add(key);
+  set({ originsOpen });
 }
 
 export function toggleOptions(id: string) {

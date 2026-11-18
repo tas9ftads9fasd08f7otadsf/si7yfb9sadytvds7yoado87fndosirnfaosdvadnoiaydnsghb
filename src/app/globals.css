@@ -180,6 +180,8 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 button.row { width: 100%; border: 0; background: none; text-align: left; }
 button.row.picked { background: var(--fill); }
 button.row.part { padding-left: 28px; }
+button.row.origin { font-weight: 600; }
+button.row.origin small { color: var(--secondary); font-size: 12px; font-weight: 400; white-space: nowrap; }
 button.row:disabled { opacity: 0.6; cursor: default; }
 .row.dimmed { color: var(--secondary); }
 .card.options { margin: 0 8px 8px; }

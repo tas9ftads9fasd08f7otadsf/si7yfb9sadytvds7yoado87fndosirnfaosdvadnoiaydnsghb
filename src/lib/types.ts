@@ -12,6 +12,14 @@ export interface SharedLayer {
   kind: string;
   symbol?: string;
   isLive?: boolean;
+  /** 58 The source Edit map folds it under; older phones leave it out. */
+  origin?: LayerOrigin;
+}
+
+export interface LayerOrigin {
+  key: string;
+  title: string;
+  symbol: string;
 }
 
 export interface SharedMap {

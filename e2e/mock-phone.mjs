@@ -175,7 +175,9 @@ function catalog() {
       stackID: each.stackID, stackName: each.stackName,
       stackSymbol: each.stackID ? each.stackSymbol ?? "square.stack" : undefined,
       stackIconTintHex: each.stackID ? each.stackIconTintHex : undefined,
-      layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive })) })) };
+      layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive,
+        // 58: as `MapDefinition.origin(of:)` falls back to a layer's kind.
+        origin: { key: `kind:${kind}`, title: kind, symbol } })) })) };
 }
 
 // 2957: as `PeerWebCoverage` answers: the places to pick, and a map's choices said in a line.
