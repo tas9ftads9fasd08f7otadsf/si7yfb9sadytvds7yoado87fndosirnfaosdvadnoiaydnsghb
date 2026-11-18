@@ -11,7 +11,8 @@ export const backend: Backend = {
   setPicture: notYet, layerOptions: notYet, packages: notYet, servers: notYet, addServer: notYet,
   importServers: notYet, exportServers: notYet, addServerLayers: notYet, readAPI: notYet, addAPI: notYet,
   addFile: notYet, readAddress: notYet, addTiles: notYet, addServiceLayers: notYet, coverage: notYet,
-  coveragePlaces: notYet, startPlaces: notYet, regions: notYet, downloadRegion: notYet, live: notYet,
+  coveragePlaces: notYet, startPlaces: notYet, regions: notYet, downloadRegion: notYet, offlinePlan: notYet,
+  offlineDownload: notYet, discardStored: notYet, live: notYet,
   identify: notYet, details: notYet, phoneLocation: notYet, icon: notYet,
   symbolURL: () => "none"
 };

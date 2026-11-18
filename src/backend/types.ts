@@ -1,7 +1,7 @@
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk } from "@/lib/people";
 import type { APIAsk, APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
-  LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
+  LayerOptions, MapSwitches, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
   SharePeople } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
@@ -69,7 +69,8 @@ export interface Backend {
   shelve(shelving: Shelving): Promise<Answer<Device>>;
   /** 50 What Availability and the Styles card's rows read, which the portable copy leaves out. */
   switches(mapID: string): Promise<Answer<MapSwitches>>;
-  setPicture(mapID: string, kind: "icon" | "preview", picture: ArrayBuffer): Promise<Answer<Portable>>;
+  /** 65 `styleIcon` is the picture of the style named, as its style page sets one. */
+  setPicture(mapID: string, kind: "icon" | "preview" | "styleIcon", picture: ArrayBuffer, style?: string): Promise<Answer<Portable>>;
   /** 59 Who the map is shared with, read off the phone's share. */
   people(mapID: string): Promise<Answer<SharePeople>>;
   /** 59 One change to the share, carried out by the phone; it answers with the people again. */
@@ -94,6 +95,12 @@ export interface Backend {
   startPlaces(kind: string, query: string): Promise<Answer<FoundPlace[]>>;
   regions(mapID: string): Promise<RegionList>;
   downloadRegion(mapID: string, regionID: string): Promise<Answer<null>>;
+  /** 57 Download tiles for the whole map, as the phone counts it for this area. */
+  offlinePlan(mapID: string, ask: OfflineAsk): Promise<Answer<OfflinePlan>>;
+  /** 57 Queues the ticked layers, or cancels them; the plan comes back as it now stands. */
+  offlineDownload(mapID: string, ask: OfflineAsk, action: "start" | "cancel"): Promise<Answer<OfflinePlan>>;
+  /** 57 Deletes what a layer has stored, as Edit map's Delete does. */
+  discardStored(mapID: string, layerID: string): Promise<Answer<null>>;
 
   live(mapID: string, layerID: string, box: string): Promise<unknown>;
   identify(mapID: string, ask: AddressAsk): Promise<IdentifyListing>;

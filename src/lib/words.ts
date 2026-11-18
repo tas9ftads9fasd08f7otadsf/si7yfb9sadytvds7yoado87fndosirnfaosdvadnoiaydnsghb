@@ -104,7 +104,14 @@ export const ENGLISH = {
   "role.owner": "Owner", "role.admin": "Admin", "role.editor": "Can edit", "role.reader": "View only",
   "roleDetail.owner": "Shares the map, and is the only one who can stop",
   "roleDetail.admin": "Edits the map, and says who else may", "roleDetail.editor": "Edits the map",
-  "roleDetail.reader": "Sees the map as it is"
+  "roleDetail.reader": "Sees the map as it is",
+  offline: "Offline", downloadTiles: "Download tiles", downloadArea: "Area to download", chooseOnMap: "Choose on map",
+  detail: "Detail", maximumZoom: "Maximum zoom", layersToStore: "Layers to store", urlLayersOnly: "URL layers only",
+  nothingToStore: "This map has no layers to store.", storedHere: "Stored on this device",
+  estimated: "Estimated download", download: "Download", queued: "Queued",
+  fetchedStay: "Fetched tiles stay on the device and the map draws them.",
+  noSpace: "Not enough free space for this selection.",
+  onlyURLLayers: "Only layers served from a URL can be downloaded."
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;
