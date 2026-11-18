@@ -261,6 +261,60 @@ function editFeatures(layer, query, key) {
   layer.shownValues = kept.length === DRAWN_VALUES.length ? undefined : kept;
 }
 
+// 64: Edit layer's Mark rows, as `PeerWebLayerMarks` lists them for a layer whose points the app draws.
+const MARK_KEYS = ["pointMark", "pointIcon", "pointSize", "circlePadding", "pointIconColour"];
+const MARK_ICONS = [["mappin", "Places"], ["house.fill", "Places"], ["tent", "Outdoors"], ["tree", "Outdoors"]];
+
+const markOf = (layer) => (!layer.pointIcon ? "dot" : layer.pointIconAlone ? "alone" : "circled");
+
+function markSections(layer) {
+  const kind = markOf(layer);
+  const found = [{ kind: "choice", title: "Mark", footnote: "", key: "pointMark", layerScoped: true, value: kind,
+    options: [["dot", "Dot"], ["circled", "Icon in circle"], ["alone", "Icon alone"]]
+      .map(([id, title]) => ({ id, title, detail: "" })) }];
+  if (kind !== "dot") {
+    found.push({ kind: "symbols", title: "Icon", footnote: "", key: "pointIcon", layerScoped: true,
+      value: layer.pointIcon, palette: ["mappin", "tent"],
+      options: MARK_ICONS.map(([id, detail]) => ({ id, title: id, detail })) });
+  }
+  found.push({ kind: "slider", title: "Point size", footnote: "", key: "pointSize", layerScoped: true,
+    value: String(layer.pointSizeScale || 1), range: [0.5, 4, 0.25], ends: ["Dot", "Large"] });
+  if (kind !== "alone") {
+    found.push({ kind: "slider", title: "Circle padding", footnote: "", key: "circlePadding", layerScoped: true,
+      value: String(layer.pointCirclePadding || 0), range: [-4, 12, 1], ends: ["Tight", "Roomy"] });
+  }
+  if (kind === "circled") {
+    found.push({ kind: "colour", title: "Icon colour", footnote: "", key: "pointIconColour", layerScoped: true,
+      value: layer.pointIconColourHex || null, automatic: "#FFFFFF", palette: ["#E5533D", "#2E9E5B"] });
+  }
+  return found;
+}
+
+/** As `PeerWebLayerMarks.Marking.make`: false where the mark has no such row. */
+function editMarks(layer, query, key) {
+  const value = query.get(key);
+  const kind = markOf(layer);
+  if (key === "pointMark") {
+    if (!["dot", "circled", "alone"].includes(value)) return false;
+    layer.pointIcon = value === "dot" ? undefined : layer.pointIcon || "mappin";
+    layer.pointIconAlone = value === "alone";
+  } else if (key === "pointIcon") {
+    if (kind === "dot" || !MARK_ICONS.some(([id]) => id === value)) return false;
+    layer.pointIcon = value;
+  } else if (key === "pointSize") {
+    layer.pointSizeScale = Number(value);
+  } else if (key === "circlePadding") {
+    if (kind === "alone") return false;
+    layer.pointCirclePadding = Math.round(Number(value));
+  } else {
+    if (kind !== "circled") return false;
+    layer.pointIconColourHex = value.toUpperCase() || undefined;
+  }
+  if (layer.pointIconAlone) layer.pointCirclePadding = undefined;
+  if (markOf(layer) !== "circled") layer.pointIconColourHex = undefined;
+  return true;
+}
+
 // 2999: Edit layer's Connection, as `PeerWebLayerOptions+Network` lists it for a tile layer.
 const NETWORK_KEYS = ["connectionOverride", "offlineDownload", "connection"];
 const GROUPS = [["layerTiles", "Map tiles", "Tiles as you pan"], ["layerRefresh", "Refreshing", "Live answers"]];
@@ -372,7 +426,7 @@ function layerOptions(each) {
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
     }
     if (layer.layout) return detailsSections(layer);
-    return layer.drawn ? featureSections(layer) : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
+    return layer.drawn ? [...featureSections(layer), ...markSections(layer)] : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
     .filter((layer) => layer.sections.length) };
@@ -571,6 +625,7 @@ function edit(each, query, response) {
   const adjust = (change) => each.styles.forEach((style) => { style.adjustments = change({ ...style.adjustments }); });
   const looked = query.has("layer") && LAYER_LOOKS.find((key) => query.has(key));
   const featured = query.has("layer") && FEATURE_KEYS.find((key) => query.has(key));
+  const marked = query.has("layer") && MARK_KEYS.find((key) => query.has(key));
   const asking = query.has("layer") && QUESTION_KEYS.find((key) => query.has(key));
   const networked = query.has("layer") && NETWORK_KEYS.find((key) => query.has(key));
   if (query.has("layer") && query.has("details")) {
@@ -579,6 +634,10 @@ function edit(each, query, response) {
     if (!editLayout(layer, query)) {
       return send(response, 409, "The layout changed on the phone; it is shown again as it is now");
     }
+  } else if (marked) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
+    if (!editMarks(layer, query, marked)) return send(response, 409, "This change does not fit the map");
   } else if (featured) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
