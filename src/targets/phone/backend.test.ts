@@ -110,6 +110,20 @@ describe("the phone backend", () => {
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "admitted", viewers: null } });
   });
 
+  // 59 the People card reads with GET and changes with one POST each, carrying the token
+  it("reads and changes a map's people at its people address", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    backend.useToken(() => "T");
+    await backend.people("M");
+    await backend.askPeople("M", { kind: "invite", address: "eva@example.com", role: "editor" });
+    const [read, readInit] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    const [asked, askedInit] = fetcher.mock.calls[1] as unknown as [string, RequestInit];
+    expect([read, readInit.method]).toEqual(["/riki/v1/maps/M/people", "GET"]);
+    expect([asked, askedInit.method]).toEqual(["/riki/v1/maps/M/people?invite=eva%40example.com&role=editor", "POST"]);
+    expect(askedInit.headers).toEqual({ Authorization: "Bearer T" });
+  });
+
   // 36 an unreachable phone rejects, so the store says it is away
   it("rejects when the phone cannot be reached", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));

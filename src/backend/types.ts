@@ -1,6 +1,8 @@
 import type { Edit, Shelving } from "@/lib/edit";
+import type { PeopleAsk } from "@/lib/people";
 import type { APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
-  LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
+  LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
+  SharePeople } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
@@ -68,6 +70,10 @@ export interface Backend {
   /** 50 What Availability and the Styles card's rows read, which the portable copy leaves out. */
   switches(mapID: string): Promise<Answer<MapSwitches>>;
   setPicture(mapID: string, kind: "icon" | "preview", picture: ArrayBuffer): Promise<Answer<Portable>>;
+  /** 59 Who the map is shared with, read off the phone's share. */
+  people(mapID: string): Promise<Answer<SharePeople>>;
+  /** 59 One change to the share, carried out by the phone; it answers with the people again. */
+  askPeople(mapID: string, ask: PeopleAsk): Promise<Answer<SharePeople>>;
 
   layerOptions(mapID: string): Promise<Answer<LayerOptions>>;
   packages(mapID: string): Promise<Answer<Packages>>;
