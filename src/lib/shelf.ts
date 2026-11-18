@@ -3,7 +3,7 @@ import type { SharedMap } from "./types";
 /** 52 One row of the Maps list: a map, or a folder of two or more, as `MapShelf.of` folds them. */
 export type ShelfItem =
   | { kind: "map"; id: string; map: SharedMap }
-  | { kind: "folder"; id: string; name: string; maps: SharedMap[] };
+  | { kind: "folder"; id: string; name: string; maps: SharedMap[]; symbol?: string; tint?: string };
 
 export function shelfOf(maps: SharedMap[], untitled: string): ShelfItem[] {
   const counts = new Map<string, number>();
@@ -18,7 +18,9 @@ export function shelfOf(maps: SharedMap[], untitled: string): ShelfItem[] {
       drawn.add(stack);
       const members = maps.filter((each) => each.stackID === stack);
       const name = members.map((each) => each.stackName?.trim()).find((each) => each) ?? untitled;
-      shelf.push({ kind: "folder", id: stack, name, maps: members });
+      const symbol = members.map((each) => each.stackSymbol).find((each) => each) ?? undefined;
+      const tint = members.map((each) => each.stackIconTintHex).find((each) => each) ?? undefined;
+      shelf.push({ kind: "folder", id: stack, name, maps: members, symbol, tint });
     }
   }
   return shelf;

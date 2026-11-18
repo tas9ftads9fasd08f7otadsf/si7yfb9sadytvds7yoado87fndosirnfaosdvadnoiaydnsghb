@@ -25,6 +25,9 @@ export interface SharedMap {
   /** 52 The folder it is in on the phone's Maps sheet. */
   stackID?: string | null;
   stackName?: string | null;
+  /** 56 The folder's mark and ground as the phone's Maps sheet draws them. */
+  stackSymbol?: string | null;
+  stackIconTintHex?: string | null;
 }
 
 export interface Device {

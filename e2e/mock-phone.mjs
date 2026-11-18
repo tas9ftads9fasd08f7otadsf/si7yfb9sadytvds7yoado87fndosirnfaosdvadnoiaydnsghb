@@ -126,6 +126,8 @@ function send(response, status, body, type = "text/plain; charset=utf-8", header
 const json = (response, value, headers = {}) =>
   send(response, 200, JSON.stringify(value), "application/json", { "Cache-Control": "no-store", ...headers });
 
+const FOLDER_SYMBOLS = ["square.stack", "folder", "tray.full"];
+
 function shelve(asked) {
   const byID = new Map(phone.maps.map((each) => [each.id, each]));
   const folderOf = (id) => phone.maps.filter((each) => each.stackID === id);
@@ -147,6 +149,18 @@ function shelve(asked) {
     Object.assign(byID.get(asked.get("map")), { stackID: asked.get("stack"), stackName: name });
   } else if (asked.has("name")) {
     for (const each of folderOf(asked.get("stack"))) each.stackName = asked.get("name");
+  } else if (asked.has("symbol") || asked.has("iconTint")) {
+    // 56: as `PeerWebShelf` dresses a folder: an offered mark, a colour or blank for automatic.
+    const members = folderOf(asked.get("stack"));
+    const symbol = asked.get("symbol");
+    const tint = (asked.get("iconTint") ?? "").toUpperCase();
+    if (!members.length) return false;
+    if (symbol !== null && !FOLDER_SYMBOLS.includes(symbol)) return false;
+    if (symbol === null && tint && !/^#[0-9A-F]{6}$/.test(tint)) return false;
+    for (const each of members) {
+      if (symbol !== null) each.stackSymbol = symbol;
+      else each.stackIconTintHex = tint || undefined;
+    }
   } else {
     return false;
   }
@@ -159,6 +173,8 @@ function catalog() {
     maps: phone.maps.map((each) => ({ id: each.id, name: each.name, symbol: each.symbol,
       iconTintHex: each.iconTintHex, revision: each.revision, minimumVersion: each.minimumVersion,
       stackID: each.stackID, stackName: each.stackName,
+      stackSymbol: each.stackID ? each.stackSymbol ?? "square.stack" : undefined,
+      stackIconTintHex: each.stackID ? each.stackIconTintHex : undefined,
       layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive })) })) };
 }
 
@@ -743,7 +759,8 @@ function edit(each, query, response) {
 
 const WORDS = { language: "en", words: { "layers.1": "1 layer", "layers.2": "2 layers",
   languages: "de,sk", "language.de": "German", "language.sk": "Slovak",
-  mapSymbols: "map,mountain.2,tent", styleSymbols: "map,snowflake,sun.max", iconTints: "#F2B8B5,#B5D8F2" } };
+  mapSymbols: "map,mountain.2,tent", styleSymbols: "map,snowflake,sun.max", iconTints: "#F2B8B5,#B5D8F2",
+  folderSymbols: FOLDER_SYMBOLS.join(",") } };
 
 // Read off `out/`, as the app reads its bundle; nothing outside it.
 async function buildFile(name) {

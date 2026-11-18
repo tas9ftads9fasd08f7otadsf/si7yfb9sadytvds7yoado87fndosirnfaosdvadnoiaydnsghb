@@ -57,6 +57,9 @@ describe("shelfQueryOf", () => {
     [{ kind: "join", folder: "F", map: "a" }, { stack: "F", map: "a" }],
     [{ kind: "leave", map: "a" }, { leave: "a" }],
     [{ kind: "renameFolder", folder: "F", name: "Tatras" }, { stack: "F", name: "Tatras" }],
+    // 56 a folder's mark and ground
+    [{ kind: "folderSymbol", folder: "F", symbol: "tray.full" }, { stack: "F", symbol: "tray.full" }],
+    [{ kind: "folderTint", folder: "F", tint: "#B5D8F2" }, { stack: "F", iconTint: "#B5D8F2" }],
   ])("%o", (shelving, query) => {
     expect(shelfQueryOf(shelving)).toEqual(query);
   });
