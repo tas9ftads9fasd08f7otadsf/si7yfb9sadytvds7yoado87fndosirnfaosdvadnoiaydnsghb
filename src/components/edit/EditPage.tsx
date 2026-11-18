@@ -11,6 +11,7 @@ import { Languages } from "./Languages";
 import { Layers } from "./Layers";
 import { MinimumVersion } from "./MinimumVersion";
 import { OpensAt } from "./OpensAt";
+import { People } from "./People";
 import { Styles } from "./Styles";
 import { Styling } from "./Styling";
 
@@ -60,6 +61,7 @@ function EditFields() {
       {adding ? <AddLayer /> : null}
       {portable.styles?.length ? <div className="foot-note">{words.layerCap}</div> : null}
       {switches ? <Availability switches={switches} /> : null}
+      <People />
       <button type="button" className="action" id="exportMap" onClick={exportMap}>
         <Sym name="square.and.arrow.up" />{words.export}
       </button>

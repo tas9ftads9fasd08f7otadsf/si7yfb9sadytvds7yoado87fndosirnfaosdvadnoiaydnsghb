@@ -79,7 +79,25 @@ export const ENGLISH = {
   showLegendNote: "The legend button over this map", showWorld: "Show the world around",
   showWorldNote: "Sea, borders and country names around this map",
   hiddenEverywhere: "Hidden on every map under Settings › Map",
-  ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map"
+  ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map",
+  people: "People", inviteSomeone: "Invite someone", askToInvite: "Ask to invite",
+  aloneHeadline: "This map is yours alone.", aloneAdvice: "Invite someone and it becomes a map you both have.",
+  emailOrPhone: "Email or phone", invite: "Invite", invited: "Invited",
+  theyGetMap: "They get the map by opening the link with this address's Apple Account.",
+  ownerSends: "The owner's device sends the invitation; yours asks for it.", inviteElse: "Invite someone else",
+  newPeopleCan: "New people can", changeLater: "You can change it for each person later.", linkTitle: "Link",
+  copyLink: "Copy the link", linkInvitedOnly: "Works only for people you invite", linkOpen: "Anyone who opens it can join",
+  whoCanJoin: "Who can join", onlyInvited: "Only people you invite", onlyInvitedNote: "They sign in with their Apple Account",
+  anyoneWithLink: "Anyone with the link",
+  anyoneWithLinkNote: "Whoever opens it joins without asking you. You can remove anyone later.", role: "Role",
+  removePerson: "Remove {name}", removePersonAsk: "Remove {name}?", removeNote: "The map disappears from their devices.",
+  askingLink: "Asking iCloud for a link\u2026", sharedNote: "Shared through iCloud. Changes reach everyone automatically.",
+  linkNote: "Anyone with the link can join. Changes reach everyone automatically.",
+  heldBy: "Shared as part of {name}; manage people and sharing on the stack.",
+  "role.owner": "Owner", "role.admin": "Admin", "role.editor": "Can edit", "role.reader": "View only",
+  "roleDetail.owner": "Shares the map, and is the only one who can stop",
+  "roleDetail.admin": "Edits the map, and says who else may", "roleDetail.editor": "Edits the map",
+  "roleDetail.reader": "Sees the map as it is"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;
