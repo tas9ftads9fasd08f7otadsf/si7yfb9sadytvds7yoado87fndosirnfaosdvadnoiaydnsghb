@@ -12,6 +12,14 @@ export interface SharedLayer {
   kind: string;
   symbol?: string;
   isLive?: boolean;
+  /** 58 The source Edit map folds it under; older phones leave it out. */
+  origin?: LayerOrigin;
+}
+
+export interface LayerOrigin {
+  key: string;
+  title: string;
+  symbol: string;
 }
 
 export interface SharedMap {
@@ -426,6 +434,36 @@ export interface MapSwitches {
   removedStyles: number;
   /** 53 The styles edited away from what was published; older phones leave it out. */
   editedStyles?: string[];
+}
+
+/** 59 A role on a shared map, as `MapShareRole` names it. */
+export type ShareRole = "owner" | "admin" | "editor" | "reader";
+
+/** 59 One person on the share, as `PeerWebPeople.Person` writes them. */
+export interface SharePerson {
+  id: string;
+  name: string;
+  role: ShareRole;
+  line: string;
+  hasAccepted: boolean;
+  isYou: boolean;
+  mayChangeRole: boolean;
+  mayRemove: boolean;
+}
+
+/** 59 Edit map's People card, as `PeerWebPeople.Roster` writes it. */
+export interface SharePeople {
+  isShared: boolean;
+  role: ShareRole;
+  mayInvite: boolean;
+  invitesDirectly: boolean;
+  people: SharePerson[];
+  tally: string;
+  link?: string | null;
+  linkRole?: ShareRole | null;
+  mayChangeLink: boolean;
+  heldBy?: string | null;
+  caveat: string;
 }
 
 /** 57 What the page asks Download tiles for: its view, or the view chosen on the map. */

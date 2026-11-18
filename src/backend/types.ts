@@ -1,6 +1,8 @@
 import type { Edit, Shelving } from "@/lib/edit";
+import type { PeopleAsk } from "@/lib/people";
 import type { APIAsk, APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
-  LayerOptions, LayerTest, MapSwitches, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
+  LayerOptions, LayerTest, MapSwitches, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
+  SharePeople } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
@@ -69,6 +71,10 @@ export interface Backend {
   switches(mapID: string): Promise<Answer<MapSwitches>>;
   /** 65 `styleIcon` is the picture of the style named, as its style page sets one. */
   setPicture(mapID: string, kind: "icon" | "preview" | "styleIcon", picture: ArrayBuffer, style?: string): Promise<Answer<Portable>>;
+  /** 59 Who the map is shared with, read off the phone's share. */
+  people(mapID: string): Promise<Answer<SharePeople>>;
+  /** 59 One change to the share, carried out by the phone; it answers with the people again. */
+  askPeople(mapID: string, ask: PeopleAsk): Promise<Answer<SharePeople>>;
 
   layerOptions(mapID: string): Promise<Answer<LayerOptions>>;
   /** 60 The layer's address asked as the phone's Test asks it. */

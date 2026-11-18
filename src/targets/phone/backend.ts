@@ -1,5 +1,6 @@
 import type { Answer, Backend, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
+import { peopleQueryOf } from "@/lib/people";
 import { startQuery } from "@/lib/places";
 import type { APIAsk, APIRead, OfflineAsk, Portable, SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
@@ -146,6 +147,8 @@ export const backend: Backend = {
   switches: (mapID) => editing(`${ROOT}/maps/${mapID}/switches`, "GET"),
   setPicture: (mapID, kind, picture, style) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`
     + (style ? `&style=${encodeURIComponent(style)}` : ""), "POST", picture),
+  people: (mapID) => editing(`${ROOT}/maps/${mapID}/people`, "GET"),
+  askPeople: (mapID, ask) => editing(`${ROOT}/maps/${mapID}/people?${new URLSearchParams(peopleQueryOf(ask))}`),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),
   testLayer: (mapID, layerID) =>

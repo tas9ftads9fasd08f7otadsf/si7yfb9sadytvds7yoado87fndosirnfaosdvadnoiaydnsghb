@@ -46,7 +46,72 @@ let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedA
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
   tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
     offlineAsks: [], discarded: [],
-    legendEverywhere: true, ownsSettings: true };
+    legendEverywhere: true, ownsSettings: true, shares: freshShares() };
+
+// 59: the High Tatras shared with Rita, who joined; Bratislava with nobody yet.
+function freshShares() {
+  return { "6F1E2A10-0000-4000-8000-000000000001": { role: "owner", linkRole: null,
+    link: "https://www.icloud.com/share/0mockTatras",
+    people: [{ id: "you", name: "Riki (you)", role: "owner", hasAccepted: true, isYou: true },
+      { id: "rita", name: "Rita", role: "reader", hasAccepted: true, isYou: false }] } };
+}
+
+const ROLE_DETAIL = { owner: "Owner", admin: "Edits the map, and says who else may", editor: "Edits the map",
+  reader: "Sees the map as it is" };
+
+// 59: as `PeerWebPeople.roster` writes the share, with what this phone's role may do.
+function roster(id) {
+  const share = phone.shares[id];
+  const role = share?.role ?? "owner";
+  const owns = role === "owner";
+  const people = (share?.people ?? []).map((person) => ({ ...person,
+    line: person.hasAccepted ? ROLE_DETAIL[person.role] : "Invited · hasn’t joined yet",
+    mayChangeRole: (owns || role === "admin") && person.role !== "owner" && !person.isYou,
+    mayRemove: owns && person.role !== "owner" }));
+  const others = people.filter((person) => person.role !== "owner");
+  return { isShared: share != null, role, mayInvite: owns || role === "admin", invitesDirectly: owns, people,
+    tally: others.length ? `${others.filter((person) => person.hasAccepted).length} joined` : "",
+    link: owns ? share?.link ?? null : null, linkRole: share?.linkRole ?? null, mayChangeLink: owns && share != null,
+    heldBy: null, caveat: "Admin is a role this app keeps, not a lock iCloud enforces." };
+}
+
+// 59: as `PeerWebPeople.refusal` and `PeerWebSharing` carry out one ask; null when refused.
+function askPeople(id, query) {
+  const OFFERED = ["reader", "editor", "admin"];
+  const role = phone.shares[id]?.role ?? "owner";
+  const owns = role === "owner";
+  const made = () => (phone.shares[id] ??= { role: "owner", linkRole: null,
+    link: `https://www.icloud.com/share/0mock${id.slice(-4)}`,
+    people: [{ id: "you", name: "Riki (you)", role: "owner", hasAccepted: true, isYou: true }] });
+  const person = (wanted) => phone.shares[id]?.people.find((each) => each.id === wanted);
+  if (query.get("share") === "1") return owns ? made() : null;
+  if (query.has("invite")) {
+    const address = (query.get("invite") || "").trim().toLowerCase();
+    const asked = query.get("role") || "reader";
+    if (!(owns || role === "admin") || !address.includes("@") || !OFFERED.includes(asked)) return null;
+    made().people.push({ id: `invited-${address}`, name: address, role: asked, hasAccepted: false, isYou: false });
+    return true;
+  }
+  if (query.has("person")) {
+    const found = person(query.get("person"));
+    if (!found || found.role === "owner" || !OFFERED.includes(query.get("role")) || !(owns || role === "admin")) return null;
+    found.role = query.get("role");
+    return true;
+  }
+  if (query.has("remove")) {
+    const found = person(query.get("remove"));
+    if (!owns || !found || found.role === "owner") return null;
+    phone.shares[id].people = phone.shares[id].people.filter((each) => each !== found);
+    return true;
+  }
+  if (query.has("link") && owns && phone.shares[id]) {
+    const link = query.get("link");
+    if (link !== "none" && !OFFERED.includes(link)) return null;
+    phone.shares[id].linkRole = link === "none" ? null : link;
+    return true;
+  }
+  return null;
+}
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
@@ -59,7 +124,7 @@ function reset() {
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
     tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
     offlineAsks: [], discarded: [],
-    legendEverywhere: true, ownsSettings: true };
+    legendEverywhere: true, ownsSettings: true, shares: freshShares() };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -175,7 +240,9 @@ function catalog() {
       stackID: each.stackID, stackName: each.stackName,
       stackSymbol: each.stackID ? each.stackSymbol ?? "square.stack" : undefined,
       stackIconTintHex: each.stackID ? each.stackIconTintHex : undefined,
-      layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive })) })) };
+      layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive,
+        // 58: as `MapDefinition.origin(of:)` falls back to a layer's kind.
+        origin: { key: `kind:${kind}`, title: kind, symbol } })) })) };
 }
 
 // 2957: as `PeerWebCoverage` answers: the places to pick, and a map's choices said in a line.
@@ -1193,6 +1260,15 @@ async function answer(request, response) {
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     return json(response, packages(each));
   }
+  if (parts[4] === "people" && parts.length === 5) {
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (each.locked) return send(response, 403, "This map is locked on the phone");
+    if (method === "POST" && !askPeople(each.id, url.searchParams)) {
+      return send(response, 403, "Your role on this map does not allow that");
+    }
+    return json(response, roster(each.id));
+  }
   if (parts[4] === "switches" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -1436,6 +1512,9 @@ function testControl(route, query, response) {
     break;
   case "/__test/legend-everywhere": phone.legendEverywhere = query.get("on") === "1"; break;
   case "/__test/reader": phone.ownsSettings = false; break;
+  case "/__test/share-role": phone.shares[query.get("map")].role = query.get("role"); break;
+  case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
+  case "/__test/shares": return json(response, phone.shares);
   case "/__test/laid-out-layer":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000A5", name: "Trams", kind: "API",
       symbol: "tram", isEnabled: true, layout: [{ title: null, blocks: [
