@@ -1149,8 +1149,8 @@ function offlinePlan(each, query) {
   const queued = ticked.filter((row) => row.job);
   return { area: query.get("chosen") === "1" ? "120 km²" : "43 km²", box: (query.get("box") || "").split(",").map(Number),
     minZoom: 8, maxZoom: 19, zoom, zoomLabel: `z ${zoom}`, limits: "",
-    rows, toFetch: `≈ ${ticked.length * 120 * zoom} tiles to fetch`, held: "None of it is here yet", free: "20 MB free",
-    total: `≈ ${total / 1_000_000} MB`, exceedsSpace: total > 20_000_000, isQueued: queued.length > 0,
+    rows, toFetch: `≈ ${ticked.length * 120 * zoom} tiles to fetch`, held: "None of it is here yet", free: "18 MB free",
+    total: `≈ ${total / 1_000_000} MB`, exceedsSpace: total > 18_000_000, isQueued: queued.length > 0,
     cancel: queued.length ? "Cancel this download" : null };
 }
 

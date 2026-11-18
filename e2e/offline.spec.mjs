@@ -48,7 +48,7 @@ test("a download larger than the free space is not offered", async ({ page }) =>
   await openEdit(page);
   await page.locator("#downloadTiles").click();
   await page.getByRole("slider", { name: "Maximum zoom" }).fill("19");
-  await expect(page.locator("#offlineSummary + button")).toBeDisabled();
+  await expect(page.locator("#startOfflineDownload")).toBeDisabled();
   await expect(page.getByText("Not enough free space for this selection.")).toBeVisible();
 });
 
