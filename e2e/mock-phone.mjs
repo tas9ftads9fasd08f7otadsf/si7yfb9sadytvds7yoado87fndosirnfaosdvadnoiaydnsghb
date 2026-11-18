@@ -44,7 +44,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false,
     legendEverywhere: true, ownsSettings: true };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
@@ -56,7 +56,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false,
     legendEverywhere: true, ownsSettings: true };
 }
 
@@ -301,6 +301,10 @@ function questionSections(layer) {
   { kind: "text", title: "Identify request", footnote: "Asked when the map is tapped.", key: "identifyRequest",
     layerScoped: true, value: layer.identifyRequest || "" }];
 }
+
+// 3409: `CoordinateSystem.allCases`, titled as the phone titles them.
+const DXF_SYSTEMS = [{ value: "wgs84", title: "WGS 84" }, { value: "sjtsk", title: "S-JTSK (Křovák)" },
+  { value: "utm33", title: "UTM 33N" }, { value: "utm34", title: "UTM 34N" }, { value: "webMercator", title: "Web Mercator" }];
 
 // 3003: an API answering two vehicles, as `PeerWebAPI` reads one.
 function apiRead(query) {
@@ -1050,6 +1054,19 @@ async function answer(request, response) {
     phone.pictureKinds.push(kind + ":" + body.length);
     return json(response, portable(each));
   }
+  if (method === "POST" && parts[4] === "read-dxf") {
+    // 3409: as `PeerWebDXF` answers: the phone's systems, and S-JTSK guessed from negative numbers.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString();
+    const file = url.searchParams.get("file") || "";
+    if (!body.includes("ENTITIES")) return send(response, 409, `${file}: That file could not be read.`);
+    const guessed = body.includes("-568990");
+    return json(response, { fileName: file, system: guessed ? "sjtsk" : null, systems: DXF_SYSTEMS, features: guessed ? 1 : 0,
+      said: guessed ? "Guessed from its numbers. Check it on the map." : "The file does not say. Choose the system it was drawn in." });
+  }
   if (method === "POST" && parts[4] === "add-file") {
     // 2995: as `PeerWebAddFile` answers: DXF stays on the phone, an unreadable file is refused.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -1058,8 +1075,13 @@ async function answer(request, response) {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     const body = Buffer.concat(chunks).toString();
-    if (/\.dxf$/i.test(file)) return send(response, 409, "Add a DXF file on the phone: it asks for the drawing's coordinate system.");
-    if (!body.includes("Feature")) return send(response, 409, `${file} could not be read as a map layer.`);
+    if (/\.dxf$/i.test(file)) {
+      // 3409: placed in the system the page picked, as Add layer's Coordinates menu places it.
+      const system = DXF_SYSTEMS.find((each) => each.value === url.searchParams.get("system"));
+      if (!system) return send(response, 409, "The file does not say. Choose the system it was drawn in.");
+      if (system.value === "wgs84") return send(response, 409, `${file}: none of its points is anywhere in WGS 84.`);
+      phone.dxfAdds.push(`${file}:${system.value}:${body.includes("ENTITIES")}`);
+    } else if (!body.includes("Feature")) return send(response, 409, `${file} could not be read as a map layer.`);
     const stem = file.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
     each.layers.push({ id: randomUUID().toUpperCase(), name: stem.charAt(0).toUpperCase() + stem.slice(1),
       kind: "Files on this device", symbol: "folder", isEnabled: true });
@@ -1165,6 +1187,7 @@ function testControl(route, query, response) {
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
   case "/__test/details-asked": return json(response, phone.detailsAsked);
   case "/__test/pictures": return json(response, phone.pictureKinds);
+  case "/__test/dxf-adds": return json(response, phone.dxfAdds);
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);
     phone.regions.downloading = [];
