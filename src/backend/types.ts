@@ -67,7 +67,8 @@ export interface Backend {
   shelve(shelving: Shelving): Promise<Answer<Device>>;
   /** 50 What Availability and the Styles card's rows read, which the portable copy leaves out. */
   switches(mapID: string): Promise<Answer<MapSwitches>>;
-  setPicture(mapID: string, kind: "icon" | "preview", picture: ArrayBuffer): Promise<Answer<Portable>>;
+  /** 65 `styleIcon` is the picture of the style named, as its style page sets one. */
+  setPicture(mapID: string, kind: "icon" | "preview" | "styleIcon", picture: ArrayBuffer, style?: string): Promise<Answer<Portable>>;
 
   layerOptions(mapID: string): Promise<Answer<LayerOptions>>;
   packages(mapID: string): Promise<Answer<Packages>>;

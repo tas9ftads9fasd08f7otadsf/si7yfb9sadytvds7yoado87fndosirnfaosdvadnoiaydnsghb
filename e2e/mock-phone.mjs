@@ -1248,10 +1248,17 @@ async function answer(request, response) {
     for await (const chunk of request) chunks.push(chunk);
     const body = Buffer.concat(chunks);
     const kind = url.searchParams.get("kind");
-    if (!["icon", "preview"].includes(kind)) return send(response, 409, "That picture could not be read");
+    if (!["icon", "preview", "styleIcon"].includes(kind)) return send(response, 409, "That picture could not be read");
     const isPicture = body.length === 0 || body[0] === 0xff || body[0] === 0x89;
     if (!isPicture) return send(response, 409, "That picture could not be read");
-    each[kind + "Picture"] = body.length ? body.toString("base64") : undefined;
+    const picture = body.length ? body.toString("base64") : undefined;
+    if (kind === "styleIcon") {
+      // 65: as `PeerWebPicture` reads a style's own, the style named or refused.
+      const style = each.styles.find((one) => one.id === url.searchParams.get("style"));
+      if (!url.searchParams.get("style")) return send(response, 409, "That picture could not be read");
+      if (!style) return send(response, 404, "This change does not fit the map");
+      style.iconPicture = picture;
+    } else each[kind + "Picture"] = picture;
     phone.pictureKinds.push(kind + ":" + body.length);
     return json(response, portable(each));
   }

@@ -772,6 +772,12 @@ export async function setPicture(kind: "icon" | "preview", picture?: Blob | null
   if (await addedBy((id) => backend.setPicture(id, kind, body))) keepPictures(mapID, picturesOf(get().portable));
 }
 
+/** 65 A style's own picture, squared on the phone as its style page squares one; none takes it away. */
+export async function setStylePicture(style: string, picture?: Blob | null) {
+  const body = picture ? await picture.arrayBuffer() : new ArrayBuffer(0);
+  await addedBy((id) => backend.setPicture(id, "styleIcon", body, style));
+}
+
 export async function takePreview() {
   const shot = await mapControl()?.snapshot();
   if (shot) await setPicture("preview", shot);

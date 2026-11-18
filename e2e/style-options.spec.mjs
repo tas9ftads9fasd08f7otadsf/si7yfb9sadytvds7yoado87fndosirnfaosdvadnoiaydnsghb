@@ -41,3 +41,23 @@ test("a style's icon, colour and note are set from its options", async ({ page }
   expect(await asked).toMatchObject({ style: WINTER, language: "sk", name: "Zima" });
   await expect(slovak).toHaveValue("Zima");
 });
+
+// 65: a style's own picture, chosen from its options and taken away, as its style page does.
+test("a style's picture is set and removed from its options", async ({ page, request }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await page.locator("#editButton").click();
+  await page.locator("#availability").waitFor();
+  await page.getByRole("button", { name: "Options Winter" }).click();
+  const options = page.locator(`[data-style-options="${WINTER}"]`);
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==",
+    "base64");
+  const asked = page.waitForRequest((one) => one.url().includes("/picture?"));
+  await options.locator(`[data-style-picture="${WINTER}"]`).setInputFiles({ name: "snow.png", mimeType: "image/png", buffer: png });
+  expect(Object.fromEntries(new URL((await asked).url()).searchParams)).toEqual({ kind: "styleIcon", style: WINTER });
+  await expect(options.locator("[data-picture=style]")).toBeVisible();
+  await expect(options.locator('[data-symbol="map"]')).toHaveAttribute("aria-pressed", "false");
+
+  await options.getByRole("button", { name: "Remove the picture · Winter" }).click();
+  await expect(options.locator("[data-picture=style]")).toHaveCount(0);
+  expect(await (await request.get("/__test/pictures")).json()).toEqual([`styleIcon:${png.length}`, "styleIcon:0"]);
+});
