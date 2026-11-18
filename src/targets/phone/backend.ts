@@ -42,6 +42,7 @@ export function queryOf(edit: Edit): Record<string, string> {
     case "styleTint": return { style: edit.style, iconTint: edit.tint };
     case "styleNote": return { style: edit.style, note: edit.note };
     case "styleNameIn": return { style: edit.style, language: edit.language, name: edit.name };
+    case "resetStyle": return { resetStyle: edit.style };
     case "minimumVersion": return { minimumApp: edit.app, minimumBrowser: edit.browser };
     case "start": return startQuery(edit.start);
     case "startAt": return { start: "coordinates", lat: edit.lat, lon: edit.lon, zoom: edit.zoom };

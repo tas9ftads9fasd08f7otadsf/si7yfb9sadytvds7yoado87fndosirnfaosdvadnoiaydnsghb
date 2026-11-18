@@ -37,7 +37,8 @@ function freshMaps() {
     { id: "6F1E2A10-0000-4000-8000-000000000002", name: "Bratislava", symbol: "building.2", iconTintHex: null,
       revision: 3, note: "",
       layers: [layer("6F1E2A10-0000-4000-8000-0000000000C1", "Streets", "Vector tiles", "road.lanes")],
-      styles: [{ id: "6F1E2A10-0000-4000-8000-0000000000D1", name: "Day", arrangement: { hidden: [] } }] }
+      styles: [{ id: "6F1E2A10-0000-4000-8000-0000000000D1", name: "Day", arrangement: { hidden: [] } }],
+      editedStyles: ["6F1E2A10-0000-4000-8000-0000000000D1"] }
   ];
 }
 
@@ -462,7 +463,7 @@ function switches(each) {
     groupingReorders: each.mixedSources === true && !grouped, stylesDisagree: each.stylesDisagree === true,
     differsFromDefault: each.differsFromDefault === true,
     layersWithoutStyle: each.layers.filter((layer) => !each.styles.some((style) => style.name === layer.name)).length,
-    removedStyles: each.removedStyles ?? 0 };
+    removedStyles: each.removedStyles ?? 0, editedStyles: each.editedStyles ?? [] };
 }
 
 const AVAILABILITY = { picker: "hiddenFromPicker", carPlay: "hiddenFromCarPlay", legend: "hidesLegend",
@@ -478,6 +479,13 @@ function arranged(each, query) {
       return [404, "This change does not fit the map"];
     }
     each.styles = placed;
+    return [];
+  }
+  if (query.has("resetStyle")) {
+    // 53: as `PeerWebArrange` resets a style's adjustments.
+    const style = query.get("resetStyle");
+    if (!each.styles.some((one) => one.id === style)) return [404, "This change does not fit the map"];
+    each.editedStyles = (each.editedStyles ?? []).filter((id) => id !== style);
     return [];
   }
   const action = query.get("arrange");

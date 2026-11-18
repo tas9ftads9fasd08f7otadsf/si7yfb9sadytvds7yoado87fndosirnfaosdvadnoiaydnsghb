@@ -89,6 +89,9 @@ function StyleLanguages({ style }: { style: PortableStyle }) {
 /** 50 The rows Edit map's Styles card and the styles' page offer only when they would change something. */
 function ArrangeRows({ switches }: { switches: MapSwitches }) {
   const words = useViewer((state) => state.words);
+  const styleID = useViewer((state) => state.styleID);
+  // 53 one way back, as Edit map offers: the removed styles first, else the style on screen
+  const resets = switches.removedStyles === 0 && styleID != null && switches.editedStyles?.includes(styleID);
   const arrange = (action: ArrangeAction) => change({ kind: "arrange", action });
   return (
     <>
@@ -101,6 +104,12 @@ function ArrangeRows({ switches }: { switches: MapSwitches }) {
       {switches.removedStyles > 0 ? (
         <button type="button" className="row add" id="restoreStyles" onClick={() => arrange("restoreStyles")}>
           <Sym name="arrow.uturn.backward" />{words.restoreStyles}
+        </button>
+      ) : null}
+      {resets ? (
+        <button type="button" className="row add" id="resetStyle"
+          onClick={() => change({ kind: "resetStyle", style: styleID })}>
+          <Sym name="arrow.uturn.backward" />{words.resetStyle}
         </button>
       ) : null}
       {switches.differsFromDefault ? (

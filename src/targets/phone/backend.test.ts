@@ -36,7 +36,9 @@ const EDITS: [Edit, Record<string, string>][] = [
   [{ kind: "arrange", action: "stylePerLayer" }, { arrange: "stylePerLayer" }],
   [{ kind: "groupByOrigin", groups: true }, { groupByOrigin: "1" }],
   [{ kind: "availability", switch: "carPlay", shown: false }, { carPlay: "0" }],
-  [{ kind: "availability", switch: "world", shown: true }, { world: "1" }]
+  [{ kind: "availability", switch: "world", shown: true }, { world: "1" }],
+  // 53
+  [{ kind: "resetStyle", style: "S" }, { resetStyle: "S" }]
 ];
 
 describe("queryOf", () => {

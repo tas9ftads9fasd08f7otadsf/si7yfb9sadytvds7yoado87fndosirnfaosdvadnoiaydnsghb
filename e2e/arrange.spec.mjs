@@ -71,6 +71,18 @@ test("the styles the map shipped with are restored", async ({ page }) => {
   await expect(page.locator("#restoreStyles")).toHaveCount(0);
 });
 
+// 53: an edited style on screen goes back to published, as Edit map's row offers.
+test("an edited style is reset to published", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await page.getByRole("button", { name: /^Bratislava/ }).click();
+  await page.locator("#editButton").click();
+  await page.locator("#availability").waitFor();
+  const asked = sent(page);
+  await page.locator("#resetStyle").click();
+  expect((await asked).resetStyle).toBe("6F1E2A10-0000-4000-8000-0000000000D1");
+  await expect(page.locator("#resetStyle")).toHaveCount(0);
+});
+
 // 50: mixed sources reorder once grouped, so the page asks first, as Edit map does.
 test("grouping by source asks first and is sent once agreed", async ({ page }) => {
   await openEdit(page);

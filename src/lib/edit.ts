@@ -19,6 +19,7 @@ export type Edit =
   | { kind: "styleTint"; style: string; tint: string }
   | { kind: "styleNote"; style: string; note: string }
   | { kind: "styleNameIn"; style: string; language: string; name: string }
+  | { kind: "resetStyle"; style: string }
   | { kind: "minimumVersion"; app: string; browser: string }
   | { kind: "start"; start: Start }
   // Kept as typed, so the place written is the one the person sees.
