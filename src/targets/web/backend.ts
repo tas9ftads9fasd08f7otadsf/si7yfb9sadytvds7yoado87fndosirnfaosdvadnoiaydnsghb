@@ -8,7 +8,7 @@ export const backend: Backend = {
   words: notYet, session: notYet, askToJoin: notYet, unlock: notYet, useToken: () => {},
   maps: notYet, map: notYet, style: notYet, change: notYet, newMap: notYet, importMap: notYet, exportMap: notYet,
   duplicateMap: notYet, deleteMap: notYet, shelve: notYet, switches: notYet, people: notYet, askPeople: notYet,
-  setPicture: notYet, layerOptions: notYet, packages: notYet, servers: notYet, addServer: notYet,
+  setPicture: notYet, layerOptions: notYet, testLayer: notYet, packages: notYet, servers: notYet, addServer: notYet,
   importServers: notYet, exportServers: notYet, addServerLayers: notYet, readAPI: notYet, addAPI: notYet,
   addFile: notYet, readAddress: notYet, addTiles: notYet, addServiceLayers: notYet, coverage: notYet,
   coveragePlaces: notYet, startPlaces: notYet, regions: notYet, downloadRegion: notYet, offlinePlan: notYet,

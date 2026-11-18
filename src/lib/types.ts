@@ -167,7 +167,7 @@ export interface OptionChoice {
 
 export interface OptionSection {
   kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values"
-    | "details" | "symbols";
+    | "details" | "headers" | "probe" | "symbols";
   title?: string;
   footnote?: string;
   layerScoped?: boolean;
@@ -330,6 +330,12 @@ export interface APIAsk {
   cookies?: CookiePreflight | null;
   cookie?: string;
   tint?: string | null;
+}
+
+/** 60: what the phone's Test or Read said about a layer's address. */
+export interface LayerTest {
+  reachable: boolean;
+  said: string;
 }
 
 export interface LayerOptions {

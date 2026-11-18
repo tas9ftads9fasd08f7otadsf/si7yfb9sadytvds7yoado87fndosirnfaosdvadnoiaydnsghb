@@ -229,6 +229,11 @@ label.action { cursor: pointer; }
 .field textarea { resize: vertical; min-height: 54px; }
 .card.options .field input[type=url] { width: 100%; font: inherit; padding: 5px 8px; border-radius: 6px;
   border: 1px solid var(--line); background: var(--panel); color: inherit; }
+.card.options .row.header input, .card.options .row.header-add input { min-width: 0; flex: 1; font: inherit;
+  padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; }
+.card.options .row.header-add { gap: 6px; }
+.card.options .row.probe[data-reachable=true] .words { color: var(--on, inherit); }
+.card.options .row.probe[data-reachable=false] .words { color: var(--danger); }
 .field select { width: 100%; font: inherit; padding: 5px 4px; border-radius: 6px; border: 1px solid var(--line);
   background: var(--panel); color: inherit; }
 .field input[aria-invalid=true] { border-color: var(--danger); }

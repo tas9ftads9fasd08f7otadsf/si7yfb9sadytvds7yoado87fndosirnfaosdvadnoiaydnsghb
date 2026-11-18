@@ -92,6 +92,7 @@ export const ENGLISH = {
   deleteEveryone: "Everyone you shared it with loses access to it.",
   deleteYourList: "Others keep it, and it stays shared with you: add it back from the Maps list.",
   cannotUndo: "This cannot be undone.", typeNameToDelete: "Type the map\u2019s name to delete it.",
+  headerName: "Header", headerValue: "Value", testing: "Testing…",
   people: "People", inviteSomeone: "Invite someone", askToInvite: "Ask to invite",
   aloneHeadline: "This map is yours alone.", aloneAdvice: "Invite someone and it becomes a map you both have.",
   emailOrPhone: "Email or phone", invite: "Invite", invited: "Invited",
