@@ -157,7 +157,9 @@ function catalog() {
     maps: phone.maps.map((each) => ({ id: each.id, name: each.name, symbol: each.symbol,
       iconTintHex: each.iconTintHex, revision: each.revision, minimumVersion: each.minimumVersion,
       stackID: each.stackID, stackName: each.stackName,
-      layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive })) })) };
+      layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive,
+        // 58: as `MapDefinition.origin(of:)` falls back to a layer's kind.
+        origin: { key: `kind:${kind}`, title: kind, symbol } })) })) };
 }
 
 // 2957: as `PeerWebCoverage` answers: the places to pick, and a map's choices said in a line.

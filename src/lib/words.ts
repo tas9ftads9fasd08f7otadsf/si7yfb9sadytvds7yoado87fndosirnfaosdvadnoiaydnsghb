@@ -69,6 +69,7 @@ export const ENGLISH = {
   whatItSupports: "What it supports", whatServerHas: "What the server has",
   map: "Map", share: "Share", linkCopied: "Link copied",
   groupBySource: "Group by source", groupAsk: "Group the layers by source?", groupAndReorder: "Group and reorder",
+  groupLayersOn: "{on} of {count} on",
   groupReorders: "Sources are mixed. Grouping puts each one's layers together and changes their order.",
   orderDiffers: "Layer order differs between styles", unite: "Unite",
   orderUnited: "Every style uses the same layer order", resetOrder: "Reset the layers to the default draw order",
