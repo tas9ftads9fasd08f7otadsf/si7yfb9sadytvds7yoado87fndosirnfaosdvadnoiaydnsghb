@@ -123,11 +123,39 @@ function send(response, status, body, type = "text/plain; charset=utf-8", header
 const json = (response, value, headers = {}) =>
   send(response, 200, JSON.stringify(value), "application/json", { "Cache-Control": "no-store", ...headers });
 
+function shelve(asked) {
+  const byID = new Map(phone.maps.map((each) => [each.id, each]));
+  const folderOf = (id) => phone.maps.filter((each) => each.stackID === id);
+  if (asked.has("order")) {
+    const order = asked.get("order").split(",");
+    if (!order.every((id) => byID.has(id))) return false;
+    const queue = order.map((id) => byID.get(id));
+    phone.maps = phone.maps.map((each) => (order.includes(each.id) ? queue.shift() : each));
+  } else if (asked.has("sort")) {
+    const down = asked.get("sort") === "nameDescending";
+    phone.maps.sort((one, other) => one.name.localeCompare(other.name) * (down ? -1 : 1));
+  } else if (asked.has("folder")) {
+    const stackID = randomUUID().toUpperCase();
+    for (const id of asked.get("maps").split(",")) Object.assign(byID.get(id), { stackID, stackName: asked.get("folder") });
+  } else if (asked.has("leave")) {
+    Object.assign(byID.get(asked.get("leave")), { stackID: undefined, stackName: undefined });
+  } else if (asked.has("map")) {
+    const name = folderOf(asked.get("stack"))[0]?.stackName;
+    Object.assign(byID.get(asked.get("map")), { stackID: asked.get("stack"), stackName: name });
+  } else if (asked.has("name")) {
+    for (const each of folderOf(asked.get("stack"))) each.stackName = asked.get("name");
+  } else {
+    return false;
+  }
+  return true;
+}
+
 function catalog() {
   return { deviceID: "mock", name: phone.name, model: "iPad", version: 1, appVersion: "0.20.0",
     sharesLocation: phone.location ? true : undefined,
     maps: phone.maps.map((each) => ({ id: each.id, name: each.name, symbol: each.symbol,
       iconTintHex: each.iconTintHex, revision: each.revision, minimumVersion: each.minimumVersion,
+      stackID: each.stackID, stackName: each.stackName,
       layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive })) })) };
 }
 
@@ -783,6 +811,14 @@ async function answer(request, response) {
     phone.maps.push({ id, name, symbol: "map", iconTintHex: null, revision: 1, note: "", layers: [],
       styles: [{ id: randomUUID().toUpperCase(), name: "Style", arrangement: { hidden: [] } }] });
     return json(response, { id });
+  }
+  if (parts[2] === "shelf" && parts.length === 3) {
+    // 52: as `PeerWebShelf` answers: the list arranged, then the listing again.
+    if (method !== "POST") return send(response, 405, "");
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (!shelve(url.searchParams)) return send(response, 400, "");
+    return json(response, catalog());
   }
   if (parts[2] === "coverage-places" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");

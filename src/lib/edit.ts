@@ -43,3 +43,12 @@ export type ArrangeAction = "unite" | "reset" | "stylePerLayer" | "restoreStyles
 
 /** 50 Availability's switches, as `PeerWebEdit.Availability` names them. */
 export type AvailabilitySwitch = "picker" | "carPlay" | "legend" | "world";
+
+/** 52 One arrangement of the Maps list, a case per `PeerWebShelf.Shelving`. */
+export type Shelving =
+  | { kind: "order"; maps: string[] }
+  | { kind: "sort"; sort: "nameAscending" | "nameDescending" }
+  | { kind: "makeFolder"; name: string; maps: string[] }
+  | { kind: "join"; folder: string; map: string }
+  | { kind: "leave"; map: string }
+  | { kind: "renameFolder"; folder: string; name: string };
