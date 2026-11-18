@@ -1,5 +1,5 @@
 import type { Edit, Shelving } from "@/lib/edit";
-import type { APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
+import type { APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
   LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
@@ -78,7 +78,8 @@ export interface Backend {
   addServerLayers(mapID: string, picks: ServerPick[]): Promise<Answer<Portable>>;
   readAPI(address: string, reading?: APIReading | null): Promise<Answer<APIRead>>;
   addAPI(mapID: string, address: string, reading: APIReading, name: string): Promise<Answer<Portable>>;
-  addFile(mapID: string, file: File): Promise<Answer<Portable>>;
+  addFile(mapID: string, file: File, system?: string): Promise<Answer<Portable>>;
+  readDXF(mapID: string, file: File): Promise<Answer<DXFReading>>;
   readAddress(address: string): Promise<Answer<{ kind: string }>>;
   addTiles(mapID: string, template: string): Promise<Answer<Portable>>;
   addServiceLayers(mapID: string, address: string, picks: string[]): Promise<Answer<Portable>>;

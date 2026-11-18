@@ -144,8 +144,11 @@ export const backend: Backend = {
     return editing(`${ROOT}/maps/${mapID}/add-api?${query}`);
   },
 
-  addFile: async (mapID, file) =>
-    editing(`${ROOT}/maps/${mapID}/add-file?${new URLSearchParams({ file: file.name })}`, "POST", await file.arrayBuffer()),
+  addFile: async (mapID, file, system) => editing(
+    `${ROOT}/maps/${mapID}/add-file?${new URLSearchParams({ file: file.name, ...system ? { system } : {} })}`, "POST",
+    await file.arrayBuffer()),
+  readDXF: async (mapID, file) =>
+    editing(`${ROOT}/maps/${mapID}/read-dxf?${new URLSearchParams({ file: file.name })}`, "POST", await file.arrayBuffer()),
   readAddress: (address) => editing(`${ROOT}/read-address?${new URLSearchParams({ address })}`, "GET"),
   addTiles: (mapID, template) => editing(`${ROOT}/maps/${mapID}/add-tiles?${new URLSearchParams({ template })}`),
   addServiceLayers: (mapID, address, picks) => editing(

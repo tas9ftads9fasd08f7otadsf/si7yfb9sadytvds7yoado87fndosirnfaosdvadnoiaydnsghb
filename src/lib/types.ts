@@ -234,6 +234,15 @@ export interface APIReading {
   [other: string]: unknown;
 }
 
+/** 3409: a DXF as `PeerWebDXF` reads it: the phone's systems and the one it found. */
+export interface DXFReading {
+  fileName: string;
+  system: string | null;
+  systems: { value: string; title: string }[];
+  said: string;
+  features: number;
+}
+
 /** 3003: what the phone read of an API, and the reading it would add. */
 export interface APIRead {
   reading: APIReading | null;

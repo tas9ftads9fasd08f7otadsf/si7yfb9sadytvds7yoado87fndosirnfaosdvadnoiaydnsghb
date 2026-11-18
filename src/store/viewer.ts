@@ -9,7 +9,7 @@ import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/
 import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
-import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
+import type { APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, MapSwitches, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, readPhoneWords } from "@/lib/words";
@@ -786,14 +786,27 @@ export async function addServerLayers() {
 /** The phone copies the file in as Add layer does, and draws it from there. */
 /** The most a request to the phone may carry. */
 export const FILE_LIMIT = 16 * 1024 * 1024;
-export const FILE_KINDS = ".geojson,.json,.kml,.kmz,.gpx,.pmtiles,.mbtiles";
+export const FILE_KINDS = ".geojson,.json,.kml,.kmz,.gpx,.pmtiles,.mbtiles,.dxf";
 
-export async function addFile(file: File) {
+export const isDXF = (file: File) => /\.dxf$/i.test(file.name);
+
+export async function addFile(file: File, system?: string) {
   if (file.size > FILE_LIMIT) {
     notice(get().words.fileKinds);
-    return;
+    return false;
   }
-  await addedBy((mapID) => backend.addFile(mapID, file));
+  return addedBy((mapID) => backend.addFile(mapID, file, system));
+}
+
+/** 3409 The phone reads a DXF first and answers its Coordinates menu; the page then picks a system. */
+export async function readDXF(file: File): Promise<DXFReading | null> {
+  const { mapID } = get();
+  if (!mapID) return null;
+  if (file.size > FILE_LIMIT) {
+    notice(get().words.fileKinds);
+    return null;
+  }
+  return told(await editing(() => backend.readDXF(mapID, file)));
 }
 
 /** The phone says what an address is; a service's layers are ticked first. */
