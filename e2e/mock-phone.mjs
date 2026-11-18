@@ -491,7 +491,13 @@ function switches(each) {
     groupingReorders: each.mixedSources === true && !grouped, stylesDisagree: each.stylesDisagree === true,
     differsFromDefault: each.differsFromDefault === true,
     layersWithoutStyle: each.layers.filter((layer) => !each.styles.some((style) => style.name === layer.name)).length,
-    removedStyles: each.removedStyles ?? 0, editedStyles: each.editedStyles ?? [] };
+    removedStyles: each.removedStyles ?? 0, editedStyles: each.editedStyles ?? [], deletion: deletionOf(each) };
+}
+
+// 62: as `PeerWebDeleteMap.offered`: the last map stays, a locked one waits for Face ID.
+function deletionOf(each) {
+  if (phone.maps.length < 2 || each.locked) return undefined;
+  return phone.ownsSettings ? "onlyYou" : "yourList";
 }
 
 const AVAILABILITY = { picker: "hiddenFromPicker", carPlay: "hiddenFromCarPlay", legend: "hidesLegend",
@@ -976,6 +982,19 @@ async function answer(request, response) {
       styles: each.styles.map((style) => ({ ...structuredClone(style), id: randomUUID().toUpperCase() })) });
     return json(response, { id });
   }
+  if (method === "POST" && parts[4] === "delete" && parts.length === 5) {
+    // 62: as `PeerWebDeleteMap.answer`: refused where Delete is not offered or the name differs.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (each.locked) return send(response, 403, "This map is locked on the phone");
+    if (phone.maps.length < 2) return send(response, 403, "The phone keeps at least one map");
+    if ((url.searchParams.get("name") ?? "").trim() !== each.name) {
+      return send(response, 409, "Type the map's name exactly to delete it");
+    }
+    phone.maps = phone.maps.filter((one) => one.id !== each.id);
+    response.writeHead(204, { "Cache-Control": "no-store" });
+    return response.end();
+  }
   if (parts[4] === "coverage" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -1116,6 +1135,7 @@ function testControl(route, query, response) {
     phone.maps[0].start = { kind: "city", latitude: 49.06, longitude: 20.3, name: "Poprad" };
     break;
   case "/__test/one-map": phone.maps = phone.maps.slice(0, 1); break;
+  case "/__test/lock": phone.maps[0].locked = true; break;
   case "/__test/ski-and-rail":
     phone.maps[0].layers.push(
       { id: "6F1E2A10-0000-4000-8000-0000000000F1", name: "Ski & winter", kind: "Riki Maps package",
