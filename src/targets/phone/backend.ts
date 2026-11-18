@@ -1,5 +1,5 @@
 import type { Answer, Backend, Saved } from "@/backend/types";
-import type { Edit } from "@/lib/edit";
+import type { Edit, Shelving } from "@/lib/edit";
 import { startQuery } from "@/lib/places";
 import type { SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
@@ -22,6 +22,18 @@ async function editing<T>(path: string, method = "POST", body?: BodyInit,
 
 const saved = async (answer: Response): Promise<Saved> =>
   ({ blob: await answer.blob(), name: savedName(answer.headers.get("Content-Disposition") ?? "") });
+
+/** 52 An arrangement of the Maps list as `PeerWebShelf.shelving` reads it. */
+export function shelfQueryOf(shelving: Shelving): Record<string, string> {
+  switch (shelving.kind) {
+    case "order": return { order: shelving.maps.join(",") };
+    case "sort": return { sort: shelving.sort };
+    case "makeFolder": return { folder: shelving.name, maps: shelving.maps.join(",") };
+    case "join": return { stack: shelving.folder, map: shelving.map };
+    case "leave": return { leave: shelving.map };
+    case "renameFolder": return { stack: shelving.folder, name: shelving.name };
+  }
+}
 
 /** An edit as `/edit` reads it, the query `PeerWebEdit(query:)` takes apart. */
 export function queryOf(edit: Edit): Record<string, string> {
@@ -104,6 +116,7 @@ export const backend: Backend = {
   importMap: async (file) => editing(`${ROOT}/new-map`, "POST", await file.arrayBuffer()),
   exportMap: (id) => editing(`${ROOT}/maps/${id}/mapson`, "GET", undefined, saved),
   duplicateMap: (id) => editing(`${ROOT}/maps/${id}/duplicate`),
+  shelve: (shelving) => editing(`${ROOT}/shelf?${new URLSearchParams(shelfQueryOf(shelving))}`),
   switches: (mapID) => editing(`${ROOT}/maps/${mapID}/switches`, "GET"),
   setPicture: (mapID, kind, picture) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, "POST", picture),
 

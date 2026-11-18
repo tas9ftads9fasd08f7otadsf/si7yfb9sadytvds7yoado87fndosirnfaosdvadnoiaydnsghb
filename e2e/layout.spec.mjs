@@ -70,7 +70,7 @@ test("a layer switched off in the side bar is left out of the style", async ({ p
   await expect(page.locator("#layerList .row")).toHaveCount(2);
   const asked = page.waitForRequest((request) => request.url().includes("/style?")
     && request.url().includes("hide=6F1E2A10-0000-4000-8000-0000000000A1"));
-  await page.getByRole("switch", { name: "Trails" }).click({ force: true });
+  await page.getByRole("switch", { name: "Trails" }).click();
   await asked;
   await expect(page.getByRole("switch", { name: "Trails" })).not.toBeChecked();
 });

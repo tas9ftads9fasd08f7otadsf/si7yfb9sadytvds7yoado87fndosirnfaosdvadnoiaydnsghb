@@ -62,11 +62,12 @@ describe("MapsPage", () => {
   });
 
   // 41 the Maps and Servers screens list them, with New map for an editing browser
+  // 52 the row is the map's, not its move buttons named after it
   it.each([{ screen: "maps" }, { screen: "servers" }])("lists All maps on $screen", (route) => {
     show({ device: device(null), editToken: "t", route });
     render(<MapsPage />);
     expect(screen.getByText("All maps")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Tatras/ }).getAttribute("aria-current")).toBe("true");
+    expect(screen.getByRole("button", { name: /^Tatras/ }).getAttribute("aria-current")).toBe("true");
     expect(screen.getByText("New map")).toBeTruthy();
   });
 

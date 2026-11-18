@@ -4,24 +4,14 @@ import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { checkKey, importMap, makeMap, openMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
+import { checkKey, importMap, makeMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
+import { MapMark, MapShelf, useLayerCount } from "./MapShelf";
+import { MarkTile } from "./ui/MarkTile";
 import { railItemOf } from "./NavRail";
 import { ServerCards } from "./Servers";
 import { TileSource } from "./TileSource";
-import { MarkTile } from "./ui/MarkTile";
 import { Switch } from "./ui/Switch";
 import { Sym } from "./ui/Sym";
-
-function useLayerCount() {
-  const words = useViewer((state) => state.words);
-  return (count: number) => words[`layers.${count}`] ?? String(count);
-}
-
-function MapMark({ shared }: { shared: SharedMap }) {
-  const icon = useViewer((state) => state.pictures.get(shared.id)?.icon);
-  const pending = useViewer((state) => !state.pictures.has(shared.id));
-  return <MarkTile symbol={shared.symbol} tint={shared.iconTintHex} picture={icon} pending={pending} />;
-}
 
 /** The oldest app and viewer the map's author allows; this viewer is the phone's app. */
 function Versions({ shared }: { shared: SharedMap }) {
@@ -122,18 +112,6 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
   );
 }
 
-function MapRow({ shared }: { shared: SharedMap }) {
-  const isShown = useViewer((state) => state.mapID === shared.id);
-  const layerCount = useLayerCount();
-  return (
-    <button type="button" className={isShown ? "row picked" : "row"} aria-current={isShown ? "true" : undefined}
-      onClick={() => openMap(shared.id)}>
-      <MapMark shared={shared} />
-      <span className="words">{shared.name}<small>{layerCount(shared.layers.length)}</small></span>
-    </button>
-  );
-}
-
 /** Only for a browser allowed to change maps: the phone makes it, and shares it at once. */
 function NewMap() {
   const words = useViewer((state) => state.words);
@@ -189,7 +167,7 @@ export function MapsPage() {
       {shown && onMap ? null : (
         <div id="others">
           {maps.length ? <h2 className="title">{words.allMaps}</h2> : null}
-          {maps.length ? <div className="list">{maps.map((each) => <MapRow key={each.id} shared={each} />)}</div> : null}
+          {maps.length ? <MapShelf maps={maps} /> : null}
           <NewMap />
           <ServerCards />
         </div>

@@ -26,12 +26,12 @@ test("a layer's connection switches go with the transport and group", async ({ p
   await expect(panel.locator("[data-locked]").getByRole("switch")).toBeDisabled();
 
   let asked = sent(page);
-  await panel.getByRole("switch", { name: "Map tiles" }).first().click({ force: true });
+  await panel.getByRole("switch", { name: "Map tiles" }).first().click();
   expect(await asked).toMatchObject({ layer, connection: "wifi", group: "layerTiles", allowed: "0" });
   await expect(panel.getByRole("switch", { name: "Map tiles" }).first()).not.toBeChecked();
 
   asked = sent(page);
-  await panel.getByRole("switch", { name: "Override Settings" }).click({ force: true });
+  await panel.getByRole("switch", { name: "Override Settings" }).click();
   expect(await asked).toMatchObject({ layer, connectionOverride: "1" });
   await expect(panel.locator("[data-locked]")).toHaveCount(0);
 });
@@ -40,7 +40,7 @@ test("a layer's connection switches go with the transport and group", async ({ p
 test("a layer's offline download is switched off", async ({ page }) => {
   const panel = await openConnection(page);
   const asked = sent(page);
-  await panel.getByRole("switch", { name: "Allow offline download" }).click({ force: true });
+  await panel.getByRole("switch", { name: "Allow offline download" }).click();
   expect(await asked).toMatchObject({ layer, offlineDownload: "0" });
   await expect(panel.getByRole("switch", { name: "Allow offline download" })).not.toBeChecked();
 });

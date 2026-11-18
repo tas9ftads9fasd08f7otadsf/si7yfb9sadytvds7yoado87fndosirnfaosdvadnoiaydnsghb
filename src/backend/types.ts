@@ -1,4 +1,4 @@
-import type { Edit } from "@/lib/edit";
+import type { Edit, Shelving } from "@/lib/edit";
 import type { APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
   LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
 
@@ -63,6 +63,8 @@ export interface Backend {
   exportMap(id: string): Promise<Answer<Saved>>;
   /** 50 A copy of the map, shared at once as a new map is. */
   duplicateMap(id: string): Promise<Answer<{ id: string }>>;
+  /** 52 The Maps list's order, sort and folders; the phone answers with the list again. */
+  shelve(shelving: Shelving): Promise<Answer<Device>>;
   /** 50 What Availability and the Styles card's rows read, which the portable copy leaves out. */
   switches(mapID: string): Promise<Answer<MapSwitches>>;
   setPicture(mapID: string, kind: "icon" | "preview", picture: ArrayBuffer): Promise<Answer<Portable>>;

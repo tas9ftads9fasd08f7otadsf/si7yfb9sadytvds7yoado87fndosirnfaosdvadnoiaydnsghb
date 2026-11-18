@@ -81,12 +81,12 @@ test("grouping by source asks first and is sent once agreed", async ({ page }) =
     expect(dialog.message()).toContain("Group the layers by source?");
     void dialog.dismiss();
   });
-  await grouping.click({ force: true });
+  await grouping.click();
   await expect(page.locator("#groupBySource").getByRole("switch")).not.toBeChecked();
 
   page.once("dialog", (dialog) => void dialog.accept());
   const asked = sent(page);
-  await page.locator("#groupBySource").getByRole("switch").click({ force: true });
+  await page.locator("#groupBySource").getByRole("switch").click();
   expect((await asked).groupByOrigin).toBe("1");
   await expect(page.locator("#groupBySource").getByRole("switch")).toBeChecked();
   await expect.poll(() => page.evaluate(() => __riki.state().portable.stack.map((layer) => layer.name)))
@@ -101,13 +101,13 @@ for (const [name, key] of [["In the map switcher", "picker"], ["In the CarPlay s
     const toggle = () => page.locator(`#availability [data-switch=${key}]`).getByRole("switch", { name });
     await expect(toggle()).toBeChecked();
     let asked = sent(page);
-    await toggle().click({ force: true });
+    await toggle().click();
     expect((await asked)[key]).toBe("0");
     await expect.poll(() => page.evaluate(() => __riki.state().switches)).toMatchObject({ [key]: false });
     await expect(toggle()).not.toBeChecked();
 
     asked = sent(page);
-    await toggle().click({ force: true });
+    await toggle().click();
     expect((await asked)[key]).toBe("1");
     await expect(toggle()).toBeChecked();
   });
