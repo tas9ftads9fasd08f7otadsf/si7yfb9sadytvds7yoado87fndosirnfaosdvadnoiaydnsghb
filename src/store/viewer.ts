@@ -484,7 +484,7 @@ backend.useToken(() => get().editToken);
  * Asks something that needs the edit password: null when the phone can't be reached or the
  * token went stale, which sends the browser back to the password.
  */
-async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = {}): Promise<Answer<T> | null> {
+export async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = {}): Promise<Answer<T> | null> {
   let answer: Answer<T>;
   try {
     answer = await asking();
@@ -502,7 +502,7 @@ async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = 
 }
 
 /** The value, or null once the phone's words for a refusal are shown. */
-function told<T>(answer: Answer<T> | null): T | null {
+export function told<T>(answer: Answer<T> | null): T | null {
   if (!answer) return null;
   if (answer.ok) return answer.value;
   notice(answer.said);
@@ -619,14 +619,16 @@ export function showServerPart(part: ServerPart) {
 }
 
 /** The address, camera and all, copied for whoever it is sent to. */
-export async function shareAddress() {
-  const address = location.href;
+export const shareAddress = () => copyText(location.href);
+
+/** 59 Copied, and said so, as the page copies its own address. */
+export async function copyText(text: string) {
   try {
-    await navigator.clipboard.writeText(address);
+    await navigator.clipboard.writeText(text);
   } catch {
     // A phone's plain address is no secure context, so there is no clipboard API.
     const field = document.createElement("textarea");
-    field.value = address;
+    field.value = text;
     document.body.append(field);
     field.select();
     document.execCommand("copy");
