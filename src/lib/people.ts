@@ -27,9 +27,9 @@ export function isAddress(text: string): boolean {
   const typed = text.trim();
   if (!typed) return false;
   if (typed.includes("@")) {
-    const parts = typed.split("@");
-    return parts.length === 2 && parts[0] !== "" && parts[1].includes(".") && !parts[1].startsWith(".")
-      && !parts[1].endsWith(".") && !/\s/.test(typed);
+    const [name, domain, ...more] = typed.split("@");
+    return more.length === 0 && name !== "" && domain != null && domain.includes(".") && !domain.startsWith(".")
+      && !domain.endsWith(".") && !/\s/.test(typed);
   }
   return /^[+0-9 ()\-./]+$/.test(typed) && typed.replace(/\D/g, "").length >= 6;
 }
