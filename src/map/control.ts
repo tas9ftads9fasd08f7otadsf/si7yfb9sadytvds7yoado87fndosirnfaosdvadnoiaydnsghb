@@ -7,6 +7,8 @@ export interface MapControl {
   showPhone(): void;
   readRegions(): void;
   camera(): { lat: number; lng: number; zoom: number };
+  /** 57 West, south, east and north of what the map shows now. */
+  box(): number[];
   /** The map as drawn now, for its preview picture. */
   snapshot(): Promise<Blob | null>;
   remove(): void;
