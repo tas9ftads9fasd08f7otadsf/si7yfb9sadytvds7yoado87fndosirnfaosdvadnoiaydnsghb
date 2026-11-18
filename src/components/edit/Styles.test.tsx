@@ -81,7 +81,7 @@ describe("Styles", () => {
 
   // 65 a style's own picture goes to the phone for that style, and its Remove sends none
   it("sends a style's picture from its options and takes it away", async () => {
-    const asked = vi.fn((input: RequestInfo | URL) => new Promise<Response>(() => void input));
+    const asked = vi.fn((input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>(() => void [input, init]));
     vi.stubGlobal("fetch", asked);
     const { unmount } = render(<Styles portable={portable} />);
     fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
@@ -98,7 +98,7 @@ describe("Styles", () => {
     expect(screen.getByRole("button", { name: "map" }).getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "Remove the picture · Winter" }));
     await vi.waitFor(() => expect(asked).toHaveBeenCalledTimes(2));
-    const init = asked.mock.calls[1]?.[1] as RequestInit | undefined;
+    const init = asked.mock.calls[1]?.[1];
     expect((init?.body as ArrayBuffer | undefined)?.byteLength).toBe(0);
   });
 
