@@ -97,7 +97,10 @@ export const ENGLISH = {
   "role.owner": "Owner", "role.admin": "Admin", "role.editor": "Can edit", "role.reader": "View only",
   "roleDetail.owner": "Shares the map, and is the only one who can stop",
   "roleDetail.admin": "Edits the map, and says who else may", "roleDetail.editor": "Edits the map",
-  "roleDetail.reader": "Sees the map as it is"
+  "roleDetail.reader": "Sees the map as it is",
+  folderSharing: "Sharing a folder", folderAlone: "This folder is yours alone.",
+  folderAdvice: "Share it and every map in it goes at once.", shareFolder: "Share this folder",
+  addRest: "Add the rest to this share", inviteToFolder: "Invite someone to this folder"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;

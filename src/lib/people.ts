@@ -3,6 +3,15 @@ import type { ShareRole } from "./types";
 /** 59 The roles an owner hands out, in the order the phone's pills show them. */
 export const OFFERED_ROLES: ShareRole[] = ["reader", "editor", "admin"];
 
+/** 68 Whose people: a map's own share, or a folder's that carries its maps. */
+export interface Sharer {
+  kind: "map" | "folder";
+  id: string;
+}
+
+/** 68 Where the phone answers for a sharer's people. */
+export const peoplePathOf = (of: Sharer) => `${of.kind === "map" ? "maps" : "folders"}/${of.id}/people`;
+
 /** 59 What the People card asks the phone to do, one change per request. */
 export type PeopleAsk =
   | { kind: "share" }

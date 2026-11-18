@@ -353,3 +353,5 @@ body.gated #gate { display: flex; }
 /* 59 The share's link is long; the row keeps its Copy button in view. */
 .link-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #peopleInvited .text-button { display: block; margin: 10px auto 6px; }
+/* 68 A folder's sharing sits under its row, inset like its maps. */
+.folder-people { margin: 0 0 8px 24px; }

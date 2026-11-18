@@ -1,6 +1,6 @@
 import type { Answer, Backend, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
-import { peopleQueryOf } from "@/lib/people";
+import { peoplePathOf, peopleQueryOf } from "@/lib/people";
 import { startQuery } from "@/lib/places";
 import type { SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
@@ -121,8 +121,8 @@ export const backend: Backend = {
   shelve: (shelving) => editing(`${ROOT}/shelf?${new URLSearchParams(shelfQueryOf(shelving))}`),
   switches: (mapID) => editing(`${ROOT}/maps/${mapID}/switches`, "GET"),
   setPicture: (mapID, kind, picture) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, "POST", picture),
-  people: (mapID) => editing(`${ROOT}/maps/${mapID}/people`, "GET"),
-  askPeople: (mapID, ask) => editing(`${ROOT}/maps/${mapID}/people?${new URLSearchParams(peopleQueryOf(ask))}`),
+  people: (of) => editing(`${ROOT}/${peoplePathOf(of)}`, "GET"),
+  askPeople: (of, ask) => editing(`${ROOT}/${peoplePathOf(of)}?${new URLSearchParams(peopleQueryOf(ask))}`),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),
   packages: (mapID) => editing(`${ROOT}/maps/${mapID}/packages`, "GET"),

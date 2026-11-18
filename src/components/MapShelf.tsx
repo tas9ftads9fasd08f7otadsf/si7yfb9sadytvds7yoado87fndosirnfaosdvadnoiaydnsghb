@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { movedInFolder, movedOrder, type ShelfItem, shelfOf } from "@/lib/shelf";
 import type { SharedMap } from "@/lib/types";
 import { openMap, shelve, useViewer } from "@/store/viewer";
+import { FolderPeople, FolderShareButton } from "./FolderSharing";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
 
@@ -150,8 +151,10 @@ export function MapShelf({ maps }: { maps: SharedMap[] }) {
             <div className="shelf-row">
               <Sym name="folder" />
               <FolderName key={item.name} id={item.id} name={item.name} />
+              <FolderShareButton id={item.id} name={item.name} />
               <MoveButtons name={item.name} place={place} count={shelf.length} move={(by) => moveItem(place, by)} />
             </div>
+            <FolderPeople id={item.id} />
             {item.maps.map((map, inner) => (
               <div className="shelf-row inside" key={map.id} data-map={map.id}>
                 <MapRow shared={map} />

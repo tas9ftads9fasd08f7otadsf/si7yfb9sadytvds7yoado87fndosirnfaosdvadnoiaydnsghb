@@ -367,4 +367,8 @@ export interface SharePeople {
   mayChangeLink: boolean;
   heldBy?: string | null;
   caveat: string;
+  /** 68 A folder's maps in its share, and those shared alone that stay out. */
+  folderLine?: string | null;
+  /** 68 Maps put in the folder since it was shared, which Share moves in. */
+  addsMore?: boolean | null;
 }

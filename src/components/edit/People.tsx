@@ -11,9 +11,9 @@ import { Sym } from "../ui/Sym";
 /** 59 Edit map's People card: the phone's share read and changed, one ask at a time. */
 export function People() {
   const mapID = useViewer((state) => state.mapID);
-  const people = usePeople((state) => (state.mapID === mapID ? state.people : null));
+  const people = usePeople((state) => (state.of?.kind === "map" && state.of.id === mapID ? state.people : null));
   useEffect(() => {
-    void loadPeople();
+    if (mapID) void loadPeople({ kind: "map", id: mapID });
   }, [mapID]);
   return people ? <Roster people={people} /> : null;
 }
@@ -21,11 +21,13 @@ export function People() {
 export function Roster({ people }: { people: SharePeople }) {
   const words = useViewer((state) => state.words);
   const asking = usePeople((state) => state.asking);
+  const isFolder = usePeople((state) => state.of?.kind === "folder");
   const [role, setRole] = useState<ShareRole>("reader");
+  const offersShare = isFolder && people.mayInvite && (!people.isShared || people.addsMore === true);
   return (
     <>
       <div className="title-row">
-        <h2 className="title">{words.people}</h2>
+        <h2 className="title">{isFolder ? words.folderSharing : words.people}</h2>
         {people.tally ? <span className="foot-note" id="peopleTally">{people.tally}</span> : null}
       </div>
       <div className="list" id="people">
@@ -33,13 +35,21 @@ export function Roster({ people }: { people: SharePeople }) {
           : null}
         {!people.heldBy && !people.isShared ? (
           <div className="row" id="peopleAlone">
-            <div className="words">{words.aloneHeadline}<small>{words.aloneAdvice}</small></div>
+            <div className="words">{isFolder ? words.folderAlone : words.aloneHeadline}
+              <small>{isFolder ? words.folderAdvice : words.aloneAdvice}</small></div>
           </div>
         ) : null}
+        {people.folderLine ? <div className="foot-note" id="folderLine">{people.folderLine}</div> : null}
         {people.people.map((person) => <PersonRow key={person.id} person={person} />)}
       </div>
       {asking === "share" || (asking === "invite" && !people.isShared) ? (
         <div className="foot-note" id="peopleWorking">{words.askingLink}</div>
+      ) : null}
+      {offersShare ? (
+        <button type="button" className="action" id="shareFolder" disabled={asking != null}
+          onClick={() => void askPeople({ kind: "share" })}>
+          <Sym name="person.badge.plus" />{people.isShared ? words.addRest : words.shareFolder}
+        </button>
       ) : null}
       {people.mayInvite ? <Invite people={people} role={role} onRole={setRole} /> : null}
       {people.link ? <LinkCard people={people} role={role} /> : null}

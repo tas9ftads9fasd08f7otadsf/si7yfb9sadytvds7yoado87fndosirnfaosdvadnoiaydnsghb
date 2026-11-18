@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import { backend } from "@backend";
-import type { PeopleAsk } from "@/lib/people";
+import type { PeopleAsk, Sharer } from "@/lib/people";
 import type { SharePeople } from "@/lib/types";
 import { editing, told, useViewer } from "./viewer";
 
-/** 59 Edit map's People card: who the phone's share holds, for the map on screen. */
+/** 59 Edit map's People card, and since 68 a folder's: who the phone's share holds. */
 export interface PeopleState {
-  mapID: string | null;
+  of: Sharer | null;
   people: SharePeople | null;
   /** An ask the phone is carrying out, which iCloud may take a while to answer. */
   asking: PeopleAsk["kind"] | null;
@@ -14,31 +14,39 @@ export interface PeopleState {
   invited: string | null;
 }
 
-export const usePeople = create<PeopleState>(() => ({ mapID: null, people: null, asking: null, invited: null }));
+const FIRST: PeopleState = { of: null, people: null, asking: null, invited: null };
+
+export const usePeople = create<PeopleState>(() => FIRST);
 
 const set = usePeople.setState;
+const get = usePeople.getState;
 
-export const resetPeople = () => set({ mapID: null, people: null, asking: null, invited: null }, true);
+export const resetPeople = () => set(FIRST, true);
 
-/** 59 Read again for each map opened; an answer for a map no longer on screen is dropped. */
-export async function loadPeople() {
-  const { mapID, editToken } = useViewer.getState();
-  if (!mapID || !editToken) return;
-  if (usePeople.getState().mapID !== mapID) set({ mapID, people: null, asking: null, invited: null });
-  const answer = await editing(() => backend.people(mapID), { quiet: true });
-  if (answer?.ok && usePeople.getState().mapID === mapID) set({ people: answer.value });
+export const isSharer = (one: Sharer | null, other: Sharer | null) =>
+  one != null && other != null && one.kind === other.kind && one.id === other.id;
+
+/** 59 Read again for each map or folder opened; an answer for one no longer shown is dropped. */
+export async function loadPeople(of: Sharer) {
+  if (!useViewer.getState().editToken) return;
+  if (!isSharer(get().of, of)) set({ ...FIRST, of });
+  const answer = await editing(() => backend.people(of), { quiet: true });
+  if (answer?.ok && isSharer(get().of, of)) set({ people: answer.value });
 }
+
+/** 68 A folder's sharing shown no more. */
+export const closePeople = () => set(FIRST, true);
 
 /** 59 One change, as the People screen makes it; the phone answers with the people again. */
 export async function askPeople(ask: PeopleAsk): Promise<boolean> {
-  const { mapID } = useViewer.getState();
-  if (!mapID || usePeople.getState().asking) return false;
+  const { of, asking } = get();
+  if (!of || asking) return false;
   set({ asking: ask.kind });
-  const people = told(await editing(() => backend.askPeople(mapID, ask)));
-  if (usePeople.getState().mapID !== mapID) return false;
+  const people = told(await editing(() => backend.askPeople(of, ask)));
+  if (!isSharer(get().of, of)) return false;
   set({ asking: null });
   if (!people) return false;
-  set({ people, invited: ask.kind === "invite" ? ask.address.trim() : usePeople.getState().invited });
+  set({ people, invited: ask.kind === "invite" ? ask.address.trim() : get().invited });
   return true;
 }
 
