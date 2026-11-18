@@ -12,20 +12,21 @@ export function DeleteMap({ place }: { place: "card" | "edit" }) {
   const reach = useViewer((state) => state.switches?.deletion);
   const hasSwitches = useViewer((state) => state.switches != null);
   const mapID = useViewer((state) => state.mapID);
-  const [asking, setAsking] = useState(false);
+  // Held by map, so another map shown starts unasked.
+  const [askedFor, setAskedFor] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   useEffect(() => {
     if (canEdit && !hasSwitches) void loadSwitches();
   }, [canEdit, hasSwitches, mapID]);
-  useEffect(() => {
-    setAsking(false);
-    setTyped("");
-  }, [mapID]);
   if (!canEdit || !reach || name == null) return null;
   const id = `deleteMap-${place}`;
-  if (!asking) {
+  const ask = (map: string | null) => {
+    setAskedFor(map);
+    setTyped("");
+  };
+  if (askedFor !== mapID) {
     return (
-      <button type="button" className="action danger" id={id} onClick={() => setAsking(true)}>
+      <button type="button" className="action danger" id={id} onClick={() => ask(mapID)}>
         <Sym name="trash" />{words.deleteMap}
       </button>
     );
@@ -46,7 +47,7 @@ export function DeleteMap({ place }: { place: "card" | "edit" }) {
       <input type="text" id={`${id}-name`} autoComplete="off" spellCheck={false} placeholder={name}
         aria-label={words.typeNameToDelete} value={typed} autoFocus onChange={(event) => setTyped(event.target.value)} />
       <div className="buttons">
-        <button type="button" className="action" onClick={() => { setAsking(false); setTyped(""); }}>
+        <button type="button" className="action" onClick={() => ask(null)}>
           {words.cancel}
         </button>
         <button type="submit" className="action danger" id={`${id}-yes`} disabled={!matches}>
