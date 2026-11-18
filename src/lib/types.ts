@@ -188,6 +188,43 @@ export interface DetailsLayout {
   keys: string[];
   offers: OptionChoice[];
   words: Record<string, string>;
+  /** 55: the header, the action buttons (none until added) and the choices they offer. */
+  header?: { title?: string | null; symbol?: string | null; layerSymbol: string };
+  actions?: LayoutActions | null;
+  symbols?: string[];
+  choices?: Record<string, OptionChoice[]>;
+}
+
+/** 55: the placed buttons in the sheet's order, then the app's own left off. */
+export interface LayoutActions {
+  items: { id: string; name: string; note: string; isOn: boolean; button?: LayoutButton }[];
+  labels: string;
+  highlightsFirst: boolean;
+}
+
+export interface LayoutButton {
+  id: string;
+  label: string;
+  symbol?: string | null;
+  look: string;
+  action: string;
+  template?: string | null;
+  subject?: string | null;
+  body?: string | null;
+  hides: boolean;
+}
+
+/** 55: a block's own settings, only those of its kind. */
+export interface BlockSettings {
+  icon?: boolean;
+  hides?: boolean;
+  look?: string;
+  icons?: boolean;
+  hidesEmpty?: boolean;
+  rows?: { index: number; title: string; value: string }[];
+  button?: LayoutButton;
+  card?: Record<string, string>;
+  live?: number | null;
 }
 
 export interface LayoutBlock {
@@ -199,6 +236,7 @@ export interface LayoutBlock {
   heading?: string;
   style?: string;
   counts: boolean;
+  settings?: BlockSettings | null;
 }
 
 /** 21: a layer's Details layout, filled and worded by the phone. */

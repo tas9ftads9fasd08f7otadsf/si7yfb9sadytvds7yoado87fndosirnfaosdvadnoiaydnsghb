@@ -330,14 +330,110 @@ function apiRead(query, cookie) {
 // 29: a layer's Details layout as `PeerWebLayerOptions+Details` lists it, and its edits.
 const LAYOUT_WORDS = { addContent: "Add content", addSection: "Add section", removeSection: "Remove section",
   sectionTitle: "Title", fromTheApp: "From the app", name: "Name", value: "Value", label: "Label", link: "Link",
-  heading: "Title", plain: "Plain", box: "Box", warning: "Warning", full: "This layout holds 10 content blocks" };
+  heading: "Title", plain: "Plain", box: "Box", warning: "Warning", full: "This layout holds 10 content blocks",
+  header: "Header", icon: "Icon", layerIcon: "As the app shows it", headerTitleNote: "Left empty, the sheet keeps the name.",
+  actions: "Action buttons", addActions: "Add action buttons", removeActions: "Remove from Details",
+  addButton: "Add custom button", buttonsShow: "Buttons show", highlight: "Highlight the first one", look: "Look",
+  whenTapped: "When tapped", subject: "Subject", body: "Message", hidesButton: "Hide when a key is empty",
+  textIcon: "A note icon before the text", hidesText: "Hide when empty", nameAndValue: "Name and value",
+  rowIcons: "A small icon before each row", hidesRows: "Hide empty rows", addRow: "Add a row", liveFor: "Live for",
+  card: "What the card shows", place: "Place", withActions: "With action buttons", belowRows: "Below the rows" };
 
 function detailsSections(layer) {
   const used = layer.layout.flatMap((section) => section.blocks).filter((block) => block.counts).length;
   return [{ kind: "details", title: "Details", footnote: "What a tapped point's sheet shows.", layerScoped: true,
     layout: { sections: layer.layout.map((section, index) => ({ ...section, name: section.title || `Section ${index + 1}` })),
       used, limit: 10, parts: [], keys: ["line", "note"], offers: [{ id: "text", title: "Text" }],
-      words: { ...LAYOUT_WORDS, used: `${used} of 10 content blocks used` } } }];
+      words: { ...LAYOUT_WORDS, used: `${used} of 10 content blocks used` },
+      header: { title: layer.header?.title ?? null, symbol: layer.header?.symbol ?? null, layerSymbol: layer.symbol },
+      actions: layer.actions ? { ...layer.actions, items: [...layer.actions.items,
+        ...BUILT_INS.filter(([id]) => !layer.actions.items.some((item) => item.id === id))
+          .map(([id, name]) => ({ id, name, note: "", isOn: false }))] } : null,
+      symbols: ["tram.fill", "star.fill"], choices: LAYOUT_CHOICES } }];
+}
+
+// 55: the settings `PeerWebDetailsListing` lists beside the blocks, and `PeerWebDetailsSettings` sets.
+const BUILT_INS = [["directions", "Directions"], ["save", "Save"], ["share", "Share"], ["follow", "Follow"],
+  ["copy", "Copy"]];
+const LAYOUT_CHOICES = { labels: [{ id: "iconAndLabel", title: "Icon and label" }, { id: "iconOnly", title: "Icon only" }],
+  buttonKinds: [{ id: "link", title: "Open link", detail: "Link" }, { id: "call", title: "Call", detail: "Number" },
+    { id: "email", title: "Email", detail: "Address" }],
+  buttonLooks: [{ id: "filled", title: "Filled" }, { id: "tinted", title: "Tinted" }, { id: "outline", title: "Outline" }],
+  rowLooks: [{ id: "nameAboveValue", title: "Name above value" }, { id: "sideBySide", title: "Side by side" }],
+  cardParts: [{ id: "delay", title: "Delay in minutes" }, { id: "station", title: "Station" }] };
+
+function settleLayout(layer, query, held) {
+  const op = query.get("details");
+  const on = (key) => query.get(key) === "1";
+  if (op === "header") {
+    layer.header = { title: query.get("title") || null, symbol: query.get("symbol") || null };
+  } else if (op === "addActions") {
+    layer.actions ??= { items: BUILT_INS.slice(0, 4).map(([id, name]) => ({ id, name, note: "", isOn: true })),
+      labels: "iconAndLabel", highlightsFirst: false };
+  } else if (op === "removeActions") {
+    layer.actions = null;
+  } else if (!layer.actions && ["action", "moveAction", "actionsLook", "addButton", "removeButton"].includes(op)) {
+    return false;
+  } else if (op === "action") {
+    const items = layer.actions.items.filter((item) => item.id !== query.get("name"));
+    const named = BUILT_INS.find(([id]) => id === query.get("name"));
+    layer.actions.items = on("on") && named ? [...items, { id: named[0], name: named[1], note: "", isOn: true }] : items;
+  } else if (op === "moveAction") {
+    const items = layer.actions.items;
+    const from = items.findIndex((item) => item.id === query.get("item"));
+    if (from < 0) return false;
+    const [item] = items.splice(from, 1);
+    items.splice(Number(query.get("to")), 0, item);
+  } else if (op === "actionsLook") {
+    Object.assign(layer.actions, { labels: query.get("labels"), highlightsFirst: on("highlight") });
+  } else if (op === "addButton") {
+    const id = `b${Date.now()}`;
+    layer.actions.items.push({ id, name: "Custom button", note: "Open link", isOn: true,
+      button: { id, label: "Custom button", look: "tinted", action: "link", template: null, hides: false } });
+  } else if (op === "removeButton") {
+    layer.actions.items = layer.actions.items.filter((item) => item.id !== query.get("button"));
+  } else if (op === "buttonPlace") {
+    // 55: as `movingActionButtonToRows` and `movingButtonToActions` move it.
+    const item = layer.actions?.items.find((one) => one.id === query.get("button"));
+    if (item) {
+      layer.actions.items = layer.actions.items.filter((one) => one !== item);
+      layer.layout[0].blocks.push({ handle: `h${item.id}`, kind: "button", name: item.name, counts: true,
+        settings: { button: item.button } });
+    } else if (held()?.kind === "button") {
+      const [block] = layer.layout[Number(query.get("section"))].blocks.splice(Number(query.get("block")), 1);
+      layer.actions ??= { items: [], labels: "iconAndLabel", highlightsFirst: false };
+      layer.actions.items.push({ id: block.settings.button.id, name: block.name, note: "Open link", isOn: true,
+        button: block.settings.button });
+    } else {
+      return false;
+    }
+  } else if (op === "button") {
+    const item = layer.actions?.items.find((one) => one.id === query.get("button"));
+    const button = item?.button ?? held()?.settings?.button;
+    if (!button) return false;
+    Object.assign(button, { label: query.get("label"), symbol: query.get("symbol") || null, look: query.get("look"),
+      action: query.get("action"), template: query.get("template") || null, subject: query.get("subject") || null,
+      body: query.get("body") || null, hides: on("hides") });
+    if (item) Object.assign(item, { name: button.label });
+  } else if (op === "blockSettings") {
+    const settings = held()?.settings;
+    if (!settings) return false;
+    for (const key of ["icon", "hides", "icons", "hidesEmpty"]) if (query.has(key)) settings[key] = on(key);
+    if (query.has("look")) settings.look = query.get("look");
+    if (settings.card) for (const { id } of LAYOUT_CHOICES.cardParts) if (query.has(id)) settings.card[id] = query.get(id);
+  } else if (op === "addRow") {
+    const rows = held()?.settings?.rows;
+    if (!rows) return false;
+    rows.push({ index: rows.length, title: query.get("title"), value: query.get("value") });
+  } else if (op === "removeRow") {
+    const rows = held()?.settings?.rows;
+    if (!rows) return false;
+    rows.splice(Number(query.get("row")), 1);
+    rows.forEach((row, index) => { row.index = index; });
+  } else {
+    return false;
+  }
+  return true;
 }
 
 function editLayout(layer, query) {
@@ -345,7 +441,9 @@ function editLayout(layer, query) {
   const number = (key) => Number(query.get(key));
   const held = () => sections[number("section")]?.blocks[number("block")];
   const op = query.get("details");
-  if (["remove", "move", "edit"].includes(op) && held()?.handle !== query.get("was")) return false;
+  const byHandle = ["remove", "move", "edit", "blockSettings", "addRow", "removeRow"].includes(op)
+    || (op === "buttonPlace" && query.has("was"));
+  if (byHandle && held()?.handle !== query.get("was")) return false;
   if (op === "add") {
     sections[number("section")].blocks.splice(number("place"), 0, { handle: `n${Date.now()}`,
       kind: query.get("kind"), name: "Text", value: query.get("value"), style: "box", counts: true });
@@ -365,6 +463,8 @@ function editLayout(layer, query) {
   } else if (op === "edit") {
     Object.assign(held(), { value: query.get("value"), heading: query.get("title") || undefined,
       style: query.get("style") || undefined });
+  } else {
+    return settleLayout(layer, query, held);
   }
   return true;
 }
@@ -1175,8 +1275,10 @@ function testControl(route, query, response) {
   case "/__test/laid-out-layer":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000A5", name: "Trams", kind: "API",
       symbol: "tram", isEnabled: true, layout: [{ title: null, blocks: [
-        { handle: "r1", kind: "rows", name: "Info rows", counts: true },
-        { handle: "t1", kind: "text", name: "Text", value: "{note}", style: "box", counts: true }] }] });
+        { handle: "r1", kind: "rows", name: "Info rows", counts: true, settings: { look: "nameAboveValue", icons: true,
+          hidesEmpty: true, rows: [{ index: 0, title: "Speed", value: "{speed}" }] } },
+        { handle: "t1", kind: "text", name: "Text", value: "{note}", style: "box", counts: true,
+          settings: { icon: false, hides: true } }] }] });
     break;
   case "/__test/answers-servers": phone.answersServers = true; break;
   case "/__test/identified": return json(response, phone.identified);
