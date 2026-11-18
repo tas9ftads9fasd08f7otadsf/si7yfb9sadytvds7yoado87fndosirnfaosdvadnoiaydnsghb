@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Edit } from "@/lib/edit";
+import type { Shelving } from "@/lib/edit";
 import { backend, queryOf, shelfQueryOf } from "./backend";
 import { savedName } from "./phone";
 
@@ -47,14 +48,14 @@ describe("queryOf", () => {
 
 describe("shelfQueryOf", () => {
   // 52 each arrangement as PeerWebShelf.shelving reads it
-  it.each([
+  it.each<[Shelving, Record<string, string>]>([
     [{ kind: "order", maps: ["a", "b"] }, { order: "a,b" }],
     [{ kind: "sort", sort: "nameDescending" }, { sort: "nameDescending" }],
     [{ kind: "makeFolder", name: "Hills", maps: ["a", "b"] }, { folder: "Hills", maps: "a,b" }],
     [{ kind: "join", folder: "F", map: "a" }, { stack: "F", map: "a" }],
     [{ kind: "leave", map: "a" }, { leave: "a" }],
     [{ kind: "renameFolder", folder: "F", name: "Tatras" }, { stack: "F", name: "Tatras" }],
-  ] as const)("%o", (shelving, query) => {
+  ])("%o", (shelving, query) => {
     expect(shelfQueryOf(shelving)).toEqual(query);
   });
 
