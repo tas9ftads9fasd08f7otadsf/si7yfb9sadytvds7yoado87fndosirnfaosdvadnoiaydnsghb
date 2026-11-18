@@ -54,4 +54,52 @@ describe("Styles", () => {
     expect(screen.getByText("Restore the styles this map shipped with")).toBeTruthy();
     expect(screen.getByText("A style for each layer")).toBeTruthy();
   });
+
+  // 51 a style's own icon, its ground and its note go to that style alone
+  it("sends a style's icon, colour and note from its options", () => {
+    useViewer.setState({ words: { ...useViewer.getState().words, styleSymbols: "map,snowflake",
+      iconTints: "#FF0000" } });
+    const url = asking();
+    render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
+    fireEvent.click(screen.getByRole("button", { name: "snowflake" }));
+    expect(url()).toContain("style=W");
+    expect(url()).toContain("symbol=snowflake");
+  });
+
+  it("sends a style's colour", () => {
+    useViewer.setState({ words: { ...useViewer.getState().words, iconTints: "#FF0000" } });
+    const url = asking();
+    render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Summer" }));
+    fireEvent.click(screen.getByRole("button", { name: "#FF0000" }));
+    expect(url()).toContain("style=S");
+    expect(url()).toContain("iconTint=#FF0000");
+  });
+
+  it("sends a style's note", () => {
+    const url = asking();
+    render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Summer" }));
+    const note = screen.getByRole("textbox", { name: "Note Summer" });
+    fireEvent.change(note, { target: { value: "For the long days" } });
+    fireEvent.blur(note);
+    expect(url()).toContain("style=S");
+    expect(url().replaceAll("+", " ")).toContain("note=For the long days");
+  });
+
+  // 51 a language picked for a style takes a name sent for that style alone
+  it("sends a style's name in another language", () => {
+    useViewer.setState({ words: { ...useViewer.getState().words, languages: "de,sk", "language.sk": "Slovak" } });
+    const url = asking();
+    render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Add a language · Winter" }), { target: { value: "sk" } });
+    const field = screen.getByRole("textbox", { name: "Name · Slovak · Winter" });
+    fireEvent.change(field, { target: { value: "Zima" } });
+    field.dispatchEvent(new Event("change"));
+    expect(url()).toContain("style=W");
+    expect(url()).toContain("language=sk");
+    expect(url()).toContain("name=Zima");
+  });
 });

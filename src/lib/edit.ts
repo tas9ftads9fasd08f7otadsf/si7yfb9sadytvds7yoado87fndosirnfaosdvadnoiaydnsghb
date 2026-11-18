@@ -14,6 +14,11 @@ export type Edit =
   | { kind: "styleName"; style: string; name: string }
   | { kind: "addStyle"; name: string }
   | { kind: "removeStyle"; style: string }
+  // 51: a style's own icon, its ground and its note, as the phone's style page sets them.
+  | { kind: "styleSymbol"; style: string; symbol: string }
+  | { kind: "styleTint"; style: string; tint: string }
+  | { kind: "styleNote"; style: string; note: string }
+  | { kind: "styleNameIn"; style: string; language: string; name: string }
   | { kind: "minimumVersion"; app: string; browser: string }
   | { kind: "start"; start: Start }
   // Kept as typed, so the place written is the one the person sees.

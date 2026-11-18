@@ -610,6 +610,32 @@ function edit(each, query, response) {
     const picked = query.get("appearance");
     if (!["automatic", "light", "dark"].includes(picked)) return send(response, 400, "");
     each.appearance = picked === "automatic" ? undefined : picked;
+  } else if (query.has("style") && query.has("language")) {
+    // 51: a style's name in one language; blank takes the language away.
+    const styled = each.styles.find((one) => one.id === query.get("style"));
+    if (!styled) return send(response, 404, "No such style");
+    const code = query.get("language");
+    if (!["de", "sk"].includes(code)) return send(response, 404, "The app has no such language");
+    const names = { ...(styled.nameTranslations || {}) };
+    const text = (query.get("name") ?? "").trim();
+    if (text) names[code] = text; else delete names[code];
+    styled.nameTranslations = Object.keys(names).length ? names : undefined;
+  } else if (query.has("style") && ["symbol", "iconTint", "note"].some((key) => query.has(key))) {
+    // 51: as `PeerWebEdit` writes a style's own icon, its ground and its note.
+    const styled = each.styles.find((one) => one.id === query.get("style"));
+    if (!styled) return send(response, 404, "No such style");
+    if (query.has("symbol")) {
+      if (![styled.symbol, "map", "snowflake", "sun.max"].includes(query.get("symbol"))) {
+        return send(response, 404, "The style page offers no such icon");
+      }
+      styled.symbol = query.get("symbol");
+    } else if (query.has("iconTint")) {
+      const hex = query.get("iconTint").trim().toUpperCase();
+      if (hex && !/^#[0-9A-F]{6}$/.test(hex)) return send(response, 400, "");
+      styled.iconTintHex = hex || null;
+    } else {
+      styled.notes = query.get("note").trim();
+    }
   } else if (query.has("symbol")) {
     if (![each.symbol, "map", "mountain.2", "tent"].includes(query.get("symbol"))) {
       return send(response, 404, "Edit map offers no such icon");
@@ -679,7 +705,7 @@ function edit(each, query, response) {
 
 const WORDS = { language: "en", words: { "layers.1": "1 layer", "layers.2": "2 layers",
   languages: "de,sk", "language.de": "German", "language.sk": "Slovak",
-  mapSymbols: "map,mountain.2,tent", iconTints: "#F2B8B5,#B5D8F2" } };
+  mapSymbols: "map,mountain.2,tent", styleSymbols: "map,snowflake,sun.max", iconTints: "#F2B8B5,#B5D8F2" } };
 
 // Read off `out/`, as the app reads its bundle; nothing outside it.
 async function buildFile(name) {
