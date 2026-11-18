@@ -11,6 +11,10 @@ async function openEdit(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
+  // 54 a forced click skips the stability check, so it missed switches on the sliding page
+  await page.locator("#availability").waitFor();
+  await page.locator("#editBody").evaluate((body) =>
+    Promise.all(body.closest(".page").getAnimations({ subtree: true }).map((one) => one.finished)));
 }
 
 const sent = (page) => page.waitForRequest((request) => request.url().includes("/edit?"))

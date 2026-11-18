@@ -18,10 +18,11 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
   .then((request) => Object.fromEntries(new URL(request.url()).searchParams));
 
 // 2960: only a layer with Edit layer panels offers them; plain ones have no button.
+// 54 exact, as each style's own button is named "Options" and the style's name
 test("only the layers with panels offer Options", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  await expect(page.getByRole("button", { name: "Options" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Options", exact: true })).toHaveCount(2);
 });
 
 // 2960: a ski kind switched off is written into every style, and the switch reads it back.
