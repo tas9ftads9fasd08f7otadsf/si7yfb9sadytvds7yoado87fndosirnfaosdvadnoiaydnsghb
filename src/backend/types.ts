@@ -1,6 +1,6 @@
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk } from "@/lib/people";
-import type { APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
+import type { APIAsk, APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
   LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
   SharePeople } from "@/lib/types";
 
@@ -82,8 +82,8 @@ export interface Backend {
   importServers(file: Blob): Promise<Answer<ServerList>>;
   exportServers(id?: string): Promise<Answer<Saved>>;
   addServerLayers(mapID: string, picks: ServerPick[]): Promise<Answer<Portable>>;
-  readAPI(address: string, reading?: APIReading | null): Promise<Answer<APIRead>>;
-  addAPI(mapID: string, address: string, reading: APIReading, name: string): Promise<Answer<Portable>>;
+  readAPI(address: string, reading?: APIReading | null, ask?: APIAsk): Promise<Answer<APIRead>>;
+  addAPI(mapID: string, address: string, reading: APIReading, name: string, ask?: APIAsk): Promise<Answer<Portable>>;
   addFile(mapID: string, file: File): Promise<Answer<Portable>>;
   readAddress(address: string): Promise<Answer<{ kind: string }>>;
   addTiles(mapID: string, template: string): Promise<Answer<Portable>>;

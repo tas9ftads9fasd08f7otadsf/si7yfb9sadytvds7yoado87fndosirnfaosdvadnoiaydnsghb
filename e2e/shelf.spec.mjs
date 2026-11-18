@@ -42,6 +42,26 @@ test("A folder is made, renamed and left", async ({ page }) => {
   await expect(page.locator("[data-folder]")).toHaveCount(0);
 });
 
+// 56: a folder's mark and ground are set from Edit folder's marks and kept by the phone.
+test("A folder's icon and ground are set", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await showAllMaps(page);
+  await page.locator("#newFolderButton").click();
+  await page.locator("#newFolderName").fill("Slovakia");
+  await page.getByLabel("High Tatras", { exact: true }).check();
+  await page.getByLabel("Bratislava", { exact: true }).check();
+  await page.locator("#newFolderSave").click();
+  await page.getByLabel("Icon · Slovakia").click();
+  const marks = page.getByRole("group", { name: "Icon Slovakia" });
+  await expect(marks.locator("[data-symbol='square.stack']")).toHaveAttribute("aria-pressed", "true");
+  await marks.locator("[data-symbol='tray.full']").click();
+  await expect(marks.locator("[data-symbol='tray.full']")).toHaveAttribute("aria-pressed", "true");
+  const grounds = page.getByRole("group", { name: "Background Slovakia" });
+  await grounds.locator("[data-hex='#B5D8F2']").click();
+  await expect(grounds.locator("[data-hex='#B5D8F2']")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Icon · Slovakia").locator(".mark")).toHaveAttribute("style", /rgb\(181, 216, 242\)|#B5D8F2/i);
+});
+
 test("A browser that may not edit cannot arrange the maps", async ({ page }) => {
   await openViewer(page);
   await showAllMaps(page);

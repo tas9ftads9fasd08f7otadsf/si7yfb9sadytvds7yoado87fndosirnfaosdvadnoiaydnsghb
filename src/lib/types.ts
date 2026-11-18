@@ -25,6 +25,9 @@ export interface SharedMap {
   /** 52 The folder it is in on the phone's Maps sheet. */
   stackID?: string | null;
   stackName?: string | null;
+  /** 56 The folder's mark and ground as the phone's Maps sheet draws them. */
+  stackSymbol?: string | null;
+  stackIconTintHex?: string | null;
 }
 
 export interface Device {
@@ -185,6 +188,43 @@ export interface DetailsLayout {
   keys: string[];
   offers: OptionChoice[];
   words: Record<string, string>;
+  /** 55: the header, the action buttons (none until added) and the choices they offer. */
+  header?: { title?: string | null; symbol?: string | null; layerSymbol: string };
+  actions?: LayoutActions | null;
+  symbols?: string[];
+  choices?: Record<string, OptionChoice[]>;
+}
+
+/** 55: the placed buttons in the sheet's order, then the app's own left off. */
+export interface LayoutActions {
+  items: { id: string; name: string; note: string; isOn: boolean; button?: LayoutButton }[];
+  labels: string;
+  highlightsFirst: boolean;
+}
+
+export interface LayoutButton {
+  id: string;
+  label: string;
+  symbol?: string | null;
+  look: string;
+  action: string;
+  template?: string | null;
+  subject?: string | null;
+  body?: string | null;
+  hides: boolean;
+}
+
+/** 55: a block's own settings, only those of its kind. */
+export interface BlockSettings {
+  icon?: boolean;
+  hides?: boolean;
+  look?: string;
+  icons?: boolean;
+  hidesEmpty?: boolean;
+  rows?: { index: number; title: string; value: string }[];
+  button?: LayoutButton;
+  card?: Record<string, string>;
+  live?: number | null;
 }
 
 export interface LayoutBlock {
@@ -196,6 +236,7 @@ export interface LayoutBlock {
   heading?: string;
   style?: string;
   counts: boolean;
+  settings?: BlockSettings | null;
 }
 
 /** 21: a layer's Details layout, filled and worded by the phone. */
@@ -228,7 +269,37 @@ export interface APIReading {
   longitudeKey: string;
   positionKey: string;
   nameKey?: string | null;
+  positionOrder?: string | null;
+  colourKey?: string | null;
+  imageKey?: string | null;
+  shownKeys?: string[];
+  refreshSeconds?: number | null;
+  detailRows?: APIDetailRow[] | null;
+  cookies?: CookiePreflight | null;
   [other: string]: unknown;
+}
+
+/** 3397: a page asked for cookies before the address, as `CookiePreflight` is written. */
+export interface CookiePreflight {
+  isOn: boolean;
+  page: string;
+  seconds: number;
+}
+
+/** 3397: a row of the sheet's Details card, as `APIDetailRow` is written. */
+export interface APIDetailRow {
+  id: string;
+  title: string;
+  symbol: string;
+  value: string;
+  isCoordinates?: boolean | null;
+  isHidden?: boolean | null;
+}
+
+export interface APIChoice {
+  value: string;
+  title: string;
+  detail?: string | null;
 }
 
 /** 3003: what the phone read of an API, and the reading it would add. */
@@ -239,6 +310,16 @@ export interface APIRead {
   points: number;
   name: string;
   said: string;
+  samples?: Record<string, string>;
+  keepsCookie?: boolean;
+  choices?: { spellings: APIChoice[]; orders: APIChoice[]; refresh: APIChoice[]; cookieAges: APIChoice[] };
+}
+
+/** 3397: how the phone asks beyond the reading: its cookie page, a typed cookie, the colour. */
+export interface APIAsk {
+  cookies?: CookiePreflight | null;
+  cookie?: string;
+  tint?: string | null;
 }
 
 export interface LayerOptions {
