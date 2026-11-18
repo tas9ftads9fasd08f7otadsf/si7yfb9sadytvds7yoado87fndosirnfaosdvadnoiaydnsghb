@@ -44,6 +44,8 @@ export interface PortableStyle {
   iconTintHex?: string | null;
   notes?: string;
   nameTranslations?: Record<string, string>;
+  /** 65 Worn in place of its symbol, base64. */
+  iconPicture?: string | null;
   arrangement?: { hidden?: string[] };
 }
 

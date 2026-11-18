@@ -121,7 +121,8 @@ export const backend: Backend = {
   duplicateMap: (id) => editing(`${ROOT}/maps/${id}/duplicate`),
   shelve: (shelving) => editing(`${ROOT}/shelf?${new URLSearchParams(shelfQueryOf(shelving))}`),
   switches: (mapID) => editing(`${ROOT}/maps/${mapID}/switches`, "GET"),
-  setPicture: (mapID, kind, picture) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, "POST", picture),
+  setPicture: (mapID, kind, picture, style) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`
+    + (style ? `&style=${encodeURIComponent(style)}` : ""), "POST", picture),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),
   packages: (mapID) => editing(`${ROOT}/maps/${mapID}/packages`, "GET"),

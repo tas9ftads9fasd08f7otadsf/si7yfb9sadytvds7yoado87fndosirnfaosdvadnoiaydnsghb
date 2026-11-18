@@ -79,6 +79,29 @@ describe("Styles", () => {
     expect(screen.queryByText("Reset this style to published")).toBeNull();
   });
 
+  // 65 a style's own picture goes to the phone for that style, and its Remove sends none
+  it("sends a style's picture from its options and takes it away", async () => {
+    const asked = vi.fn((input: RequestInfo | URL) => new Promise<Response>(() => void input));
+    vi.stubGlobal("fetch", asked);
+    const { unmount } = render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
+    expect(screen.queryByRole("button", { name: "Remove the picture · Winter" })).toBeNull();
+    const file = new File([new Uint8Array([0x89, 0x50])], "snow.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Choose a picture for this icon · Winter"), { target: { files: [file] } });
+    await vi.waitFor(() => expect(asked).toHaveBeenCalled());
+    expect(String(asked.mock.calls[0]?.[0])).toContain("/picture?kind=styleIcon&style=W");
+    unmount();
+    const pictured: Portable = { ...portable, styles: [{ id: "W", name: "Winter", symbol: "map", iconPicture: "AAAA" }] };
+    useViewer.setState({ portable: pictured });
+    render(<Styles portable={pictured} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
+    expect(screen.getByRole("button", { name: "map" }).getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Remove the picture · Winter" }));
+    await vi.waitFor(() => expect(asked).toHaveBeenCalledTimes(2));
+    const init = asked.mock.calls[1]?.[1] as RequestInit | undefined;
+    expect((init?.body as ArrayBuffer | undefined)?.byteLength).toBe(0);
+  });
+
   // 51 a style's own icon, its ground and its note go to that style alone
   it("sends a style's icon, colour and note from its options", () => {
     useViewer.setState({ words: { ...useViewer.getState().words, styleSymbols: "map,snowflake",
