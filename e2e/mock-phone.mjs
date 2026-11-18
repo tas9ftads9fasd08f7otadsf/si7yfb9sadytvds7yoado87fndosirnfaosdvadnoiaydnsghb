@@ -1207,6 +1207,7 @@ function testControl(route, query, response) {
   case "/__test/identified": return json(response, phone.identified);
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
   case "/__test/details-asked": return json(response, phone.detailsAsked);
+  case "/__test/offline": return json(response, { asks: phone.offlineAsks, discarded: phone.discarded });
   case "/__test/pictures": return json(response, phone.pictureKinds);
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);
