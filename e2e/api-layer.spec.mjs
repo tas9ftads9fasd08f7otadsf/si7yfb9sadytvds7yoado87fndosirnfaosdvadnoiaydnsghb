@@ -84,7 +84,11 @@ test("cookies, colours and Details rows are set in the form's parts and reach th
     cookies: { isOn: true, page: "https://buses.example/" } });
   expect(added.reading.detailRows).toMatchObject([{ title: "Line", value: "{line}", symbol: "info.circle" }]);
 
-  // 61: the phone keeps the cookie; the page is told so, never the value.
+  // 61: the phone keeps the cookie; the next read is told so, never the value.
+  await page.locator("#addLayer").click();
+  await page.locator("#apiAddress").fill("https://buses.example/now");
+  await page.locator("#readAPI").click();
   await page.locator("#apiParts [data-part='source']").click();
+  await expect(page.locator("#apiCookie")).toHaveValue("");
   await expect(page.locator("#apiCookie")).toHaveAttribute("placeholder", "Kept on this phone");
 });
