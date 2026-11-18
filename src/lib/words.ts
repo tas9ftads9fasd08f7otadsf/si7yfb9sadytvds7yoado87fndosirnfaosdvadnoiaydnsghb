@@ -79,7 +79,14 @@ export const ENGLISH = {
   showLegendNote: "The legend button over this map", showWorld: "Show the world around",
   showWorldNote: "Sea, borders and country names around this map",
   hiddenEverywhere: "Hidden on every map under Settings › Map",
-  ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map"
+  ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map",
+  offline: "Offline", downloadTiles: "Download tiles", downloadArea: "Area to download", chooseOnMap: "Choose on map",
+  detail: "Detail", maximumZoom: "Maximum zoom", layersToStore: "Layers to store", urlLayersOnly: "URL layers only",
+  nothingToStore: "This map has no layers to store.", storedHere: "Stored on this device",
+  estimated: "Estimated download", download: "Download", queued: "Queued",
+  fetchedStay: "Fetched tiles stay on the device and the map draws them.",
+  noSpace: "Not enough free space for this selection.",
+  onlyURLLayers: "Only layers served from a URL can be downloaded."
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;

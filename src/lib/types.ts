@@ -338,3 +338,46 @@ export interface MapSwitches {
   /** 53 The styles edited away from what was published; older phones leave it out. */
   editedStyles?: string[];
 }
+
+/** 57 What the page asks Download tiles for: its view, or the view chosen on the map. */
+export interface OfflineAsk {
+  box: number[];
+  chosen: boolean;
+  zoom?: number;
+  layers?: string[];
+}
+
+/** 57 One layer of Download tiles, as `PeerWebOffline.Row` writes it. */
+export interface OfflineRow {
+  id: string;
+  name: string;
+  isDownloadable: boolean;
+  isIncluded: boolean;
+  detail: string;
+  bytes: number;
+  stored: number;
+  storedLine?: string | null;
+  job?: string | null;
+  fraction?: number | null;
+  /** Edit map's question, offered only where the phone would delete. */
+  discard?: { ask: string; note: string } | null;
+}
+
+/** 57 Download tiles for the whole map, counted by the phone, as `PeerWebOffline.Plan` writes it. */
+export interface OfflinePlan {
+  area: string;
+  box: number[];
+  minZoom: number;
+  maxZoom: number;
+  zoom: number;
+  zoomLabel: string;
+  limits: string;
+  rows: OfflineRow[];
+  toFetch: string;
+  held: string;
+  free: string;
+  total: string;
+  exceedsSpace: boolean;
+  isQueued: boolean;
+  cancel?: string | null;
+}
