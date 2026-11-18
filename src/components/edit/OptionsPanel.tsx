@@ -5,6 +5,7 @@ import type { LayerTest, OptionSection } from "@/lib/types";
 import { setDrawn, testLayer, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { DetailsLayoutPanel } from "./DetailsLayoutPanel";
+import { MarkSymbols } from "./MarkSymbols";
 import { Switch } from "../ui/Switch";
 import { Sym } from "../ui/Sym";
 import { ground } from "../ui/ground";
@@ -184,6 +185,7 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
       </div>
     );
   }
+  if (section.kind === "symbols") return <MarkSymbols section={section} pick={(name) => setDrawn(scoped({ [key]: name }))} />;
   if (section.kind === "colour") {
     return <ColourSwatches section={section} pick={(hex) => setDrawn(scoped({ [key]: hex }))} />;
   }

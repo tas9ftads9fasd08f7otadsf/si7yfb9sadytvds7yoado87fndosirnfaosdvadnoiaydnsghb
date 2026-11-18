@@ -1,7 +1,7 @@
 import type { Answer, Backend, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { startQuery } from "@/lib/places";
-import type { APIAsk, APIRead, Portable, SessionAnswer } from "@/lib/types";
+import type { APIAsk, APIRead, OfflineAsk, Portable, SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
 
 let token: () => string | null = () => null;
@@ -89,6 +89,15 @@ export function queryOf(edit: Edit): Record<string, string> {
   }
 }
 
+/** 57 An area, a zoom and the ticked layers as `PeerWebOffline.Asked` reads them. */
+export function offlineQueryOf(ask: OfflineAsk): Record<string, string> {
+  const query: Record<string, string> = { box: ask.box.join(",") };
+  if (ask.chosen) query.chosen = "1";
+  if (ask.zoom != null) query.zoom = String(ask.zoom);
+  if (ask.layers) query.layers = ask.layers.join(",");
+  return query;
+}
+
 /** The phone sharing these maps, asked over `/riki/v1` as Nearby sharing answers. */
 export const backend: Backend = {
   target: "phone",
@@ -135,7 +144,8 @@ export const backend: Backend = {
   duplicateMap: (id) => editing(`${ROOT}/maps/${id}/duplicate`),
   shelve: (shelving) => editing(`${ROOT}/shelf?${new URLSearchParams(shelfQueryOf(shelving))}`),
   switches: (mapID) => editing(`${ROOT}/maps/${mapID}/switches`, "GET"),
-  setPicture: (mapID, kind, picture) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, "POST", picture),
+  setPicture: (mapID, kind, picture, style) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`
+    + (style ? `&style=${encodeURIComponent(style)}` : ""), "POST", picture),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),
   testLayer: (mapID, layerID) =>
@@ -179,6 +189,14 @@ export const backend: Backend = {
   regions: (mapID) => readJSON(`${ROOT}/maps/${mapID}/regions`),
   downloadRegion: (mapID, regionID) =>
     editing(`${ROOT}/maps/${mapID}/download?region=${encodeURIComponent(regionID)}`, "POST", undefined, async () => null),
+
+  offlinePlan: (mapID, ask) =>
+    editing(`${ROOT}/maps/${mapID}/tile-download?${new URLSearchParams(offlineQueryOf(ask))}`, "GET"),
+  offlineDownload: (mapID, ask, action) => editing(
+    `${ROOT}/maps/${mapID}/tile-download?${new URLSearchParams({ ...offlineQueryOf(ask), [action]: "1" })}`),
+  discardStored: (mapID, layerID) => editing(
+    `${ROOT}/maps/${mapID}/discard-stored?${new URLSearchParams({ layer: layerID })}`, "POST", undefined,
+    async () => null),
 
   live: (mapID, layerID, box) => readJSON(`${ROOT}/maps/${mapID}/live/${layerID}?bbox=${box}`),
 

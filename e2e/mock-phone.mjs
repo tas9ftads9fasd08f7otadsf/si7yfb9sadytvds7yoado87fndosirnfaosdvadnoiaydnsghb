@@ -45,6 +45,7 @@ function freshMaps() {
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
   tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
+    offlineAsks: [], discarded: [],
     legendEverywhere: true, ownsSettings: true };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
@@ -57,6 +58,7 @@ function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
     tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
+    offlineAsks: [], discarded: [],
     legendEverywhere: true, ownsSettings: true };
 }
 
@@ -259,6 +261,60 @@ function editFeatures(layer, query, key) {
   if (key === "allValuesShown") { shown.clear(); if (value === "1") DRAWN_VALUES.forEach((one) => shown.add(one)); }
   const kept = DRAWN_VALUES.filter((one) => shown.has(one));
   layer.shownValues = kept.length === DRAWN_VALUES.length ? undefined : kept;
+}
+
+// 64: Edit layer's Mark rows, as `PeerWebLayerMarks` lists them for a layer whose points the app draws.
+const MARK_KEYS = ["pointMark", "pointIcon", "pointSize", "circlePadding", "pointIconColour"];
+const MARK_ICONS = [["mappin", "Places"], ["house.fill", "Places"], ["tent", "Outdoors"], ["tree", "Outdoors"]];
+
+const markOf = (layer) => (!layer.pointIcon ? "dot" : layer.pointIconAlone ? "alone" : "circled");
+
+function markSections(layer) {
+  const kind = markOf(layer);
+  const found = [{ kind: "choice", title: "Mark", footnote: "", key: "pointMark", layerScoped: true, value: kind,
+    options: [["dot", "Dot"], ["circled", "Icon in circle"], ["alone", "Icon alone"]]
+      .map(([id, title]) => ({ id, title, detail: "" })) }];
+  if (kind !== "dot") {
+    found.push({ kind: "symbols", title: "Icon", footnote: "", key: "pointIcon", layerScoped: true,
+      value: layer.pointIcon, palette: ["mappin", "tent"],
+      options: MARK_ICONS.map(([id, detail]) => ({ id, title: id, detail })) });
+  }
+  found.push({ kind: "slider", title: "Point size", footnote: "", key: "pointSize", layerScoped: true,
+    value: String(layer.pointSizeScale || 1), range: [0.5, 4, 0.25], ends: ["Dot", "Large"] });
+  if (kind !== "alone") {
+    found.push({ kind: "slider", title: "Circle padding", footnote: "", key: "circlePadding", layerScoped: true,
+      value: String(layer.pointCirclePadding || 0), range: [-4, 12, 1], ends: ["Tight", "Roomy"] });
+  }
+  if (kind === "circled") {
+    found.push({ kind: "colour", title: "Icon colour", footnote: "", key: "pointIconColour", layerScoped: true,
+      value: layer.pointIconColourHex || null, automatic: "#FFFFFF", palette: ["#E5533D", "#2E9E5B"] });
+  }
+  return found;
+}
+
+/** As `PeerWebLayerMarks.Marking.make`: false where the mark has no such row. */
+function editMarks(layer, query, key) {
+  const value = query.get(key);
+  const kind = markOf(layer);
+  if (key === "pointMark") {
+    if (!["dot", "circled", "alone"].includes(value)) return false;
+    layer.pointIcon = value === "dot" ? undefined : layer.pointIcon || "mappin";
+    layer.pointIconAlone = value === "alone";
+  } else if (key === "pointIcon") {
+    if (kind === "dot" || !MARK_ICONS.some(([id]) => id === value)) return false;
+    layer.pointIcon = value;
+  } else if (key === "pointSize") {
+    layer.pointSizeScale = Number(value);
+  } else if (key === "circlePadding") {
+    if (kind === "alone") return false;
+    layer.pointCirclePadding = Math.round(Number(value));
+  } else {
+    if (kind !== "circled") return false;
+    layer.pointIconColourHex = value.toUpperCase() || undefined;
+  }
+  if (layer.pointIconAlone) layer.pointCirclePadding = undefined;
+  if (markOf(layer) !== "circled") layer.pointIconColourHex = undefined;
+  return true;
 }
 
 // 2999: Edit layer's Connection, as `PeerWebLayerOptions+Network` lists it for a tile layer.
@@ -514,7 +570,7 @@ function layerOptions(each) {
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
     }
     if (layer.layout) return detailsSections(layer);
-    return layer.drawn ? featureSections(layer) : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
+    return layer.drawn ? [...featureSections(layer), ...markSections(layer)] : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
     .filter((layer) => layer.sections.length) };
@@ -713,6 +769,7 @@ function edit(each, query, response) {
   const adjust = (change) => each.styles.forEach((style) => { style.adjustments = change({ ...style.adjustments }); });
   const looked = query.has("layer") && LAYER_LOOKS.find((key) => query.has(key));
   const featured = query.has("layer") && FEATURE_KEYS.find((key) => query.has(key));
+  const marked = query.has("layer") && MARK_KEYS.find((key) => query.has(key));
   const asking = query.has("layer") && QUESTION_KEYS.find((key) => query.has(key));
   const networked = query.has("layer") && NETWORK_KEYS.find((key) => query.has(key));
   if (query.has("layer") && query.has("details")) {
@@ -721,6 +778,10 @@ function edit(each, query, response) {
     if (!editLayout(layer, query)) {
       return send(response, 409, "The layout changed on the phone; it is shown again as it is now");
     }
+  } else if (marked) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
+    if (!editMarks(layer, query, marked)) return send(response, 409, "This change does not fit the map");
   } else if (featured) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
@@ -1137,6 +1198,32 @@ async function answer(request, response) {
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     return json(response, switches(each));
   }
+  if ((parts[4] === "tile-download" || parts[4] === "discard-stored") && parts.length === 5) {
+    // 57: as `PeerWebOffline` answers: the plan for the area asked, the download queued or cancelled.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const held = offlineOf(each);
+    if (parts[4] === "discard-stored") {
+      if (method !== "POST") return send(response, 405, "");
+      const layer = url.searchParams.get("layer");
+      if (!each.layers.some((one) => one.id === layer)) return send(response, 404, "This map has no such layer");
+      delete held.stored[layer];
+      phone.discarded.push(layer);
+      response.writeHead(204);
+      return response.end();
+    }
+    const box = (url.searchParams.get("box") || "").split(",").map(Number);
+    if (box.length !== 4 || box.some((one) => !Number.isFinite(one))) return send(response, 400, "Name the area to download");
+    phone.offlineAsks.push({ method, ...Object.fromEntries(url.searchParams) });
+    const plan = offlinePlan(each, url.searchParams);
+    if (method === "POST") {
+      if (url.searchParams.get("cancel") === "1") held.queued = [];
+      else if (url.searchParams.get("start") === "1") held.queued = plan.rows.filter((row) => row.isIncluded).map((row) => row.id);
+      else return send(response, 400, "");
+      return json(response, offlinePlan(each, url.searchParams));
+    }
+    return json(response, plan);
+  }
   if (method === "POST" && parts[4] === "duplicate" && parts.length === 5) {
     // 50: as `MapCatalogStore.duplicate`: a fresh id for the map and each style, named as a copy.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -1199,10 +1286,17 @@ async function answer(request, response) {
     for await (const chunk of request) chunks.push(chunk);
     const body = Buffer.concat(chunks);
     const kind = url.searchParams.get("kind");
-    if (!["icon", "preview"].includes(kind)) return send(response, 409, "That picture could not be read");
+    if (!["icon", "preview", "styleIcon"].includes(kind)) return send(response, 409, "That picture could not be read");
     const isPicture = body.length === 0 || body[0] === 0xff || body[0] === 0x89;
     if (!isPicture) return send(response, 409, "That picture could not be read");
-    each[kind + "Picture"] = body.length ? body.toString("base64") : undefined;
+    const picture = body.length ? body.toString("base64") : undefined;
+    if (kind === "styleIcon") {
+      // 65: as `PeerWebPicture` reads a style's own, the style named or refused.
+      const style = each.styles.find((one) => one.id === url.searchParams.get("style"));
+      if (!url.searchParams.get("style")) return send(response, 409, "That picture could not be read");
+      if (!style) return send(response, 404, "This change does not fit the map");
+      style.iconPicture = picture;
+    } else each[kind + "Picture"] = picture;
     phone.pictureKinds.push(kind + ":" + body.length);
     return json(response, portable(each));
   }
@@ -1267,6 +1361,38 @@ function live(each, layerID, query, response) {
 
 // MARK: - The phone's side
 
+// 57: the Trails download tiles; the Huts were fetched whole, so only their store is deleted.
+function offlineOf(each) {
+  each.offline ??= { stored: { "6F1E2A10-0000-4000-8000-0000000000A2": 2000 }, queued: [] };
+  return each.offline;
+}
+
+function offlinePlan(each, query) {
+  const held = offlineOf(each);
+  const zoom = Number(query.get("zoom") || 16);
+  const asked = query.get("layers")?.split(",");
+  const rows = each.layers.map((layer) => {
+    const isDownloadable = layer.kind === "Vector tiles";
+    const stored = held.stored[layer.id] ?? 0;
+    const running = held.queued.includes(layer.id);
+    return { id: layer.id, name: layer.name, isDownloadable,
+      isIncluded: isDownloadable && (asked ? asked.includes(layer.id) : true),
+      detail: isDownloadable ? "https://t.test/{z}/{x}/{y}.pbf" : "Uploaded files · nothing to download",
+      bytes: isDownloadable ? zoom * 1_000_000 : 0, stored, storedLine: stored ? `${stored / 1000} KB stored` : null,
+      job: running ? "0 of 120 tiles" : null, fraction: running ? 0 : null,
+      discard: stored ? { ask: `Delete what ${layer.name} has stored?`,
+        note: `This frees ${stored / 1000} KB. The layer stays on the map and can download again.` } : null };
+  });
+  const ticked = rows.filter((row) => row.isIncluded);
+  const total = ticked.reduce((sum, row) => sum + row.bytes, 0);
+  const queued = ticked.filter((row) => row.job);
+  return { area: query.get("chosen") === "1" ? "120 km²" : "43 km²", box: (query.get("box") || "").split(",").map(Number),
+    minZoom: 8, maxZoom: 19, zoom, zoomLabel: `z ${zoom}`, limits: "",
+    rows, toFetch: `≈ ${ticked.length * 120 * zoom} tiles to fetch`, held: "None of it is here yet", free: "18 MB free",
+    total: `≈ ${total / 1_000_000} MB`, exceedsSpace: total > 18_000_000, isQueued: queued.length > 0,
+    cancel: queued.length ? "Cancel this download" : null };
+}
+
 function testControl(route, query, response) {
   const id = query.get("id");
   switch (route) {
@@ -1322,6 +1448,7 @@ function testControl(route, query, response) {
   case "/__test/identified": return json(response, phone.identified);
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
   case "/__test/details-asked": return json(response, phone.detailsAsked);
+  case "/__test/offline": return json(response, { asks: phone.offlineAsks, discarded: phone.discarded });
   case "/__test/pictures": return json(response, phone.pictureKinds);
   case "/__test/api-adds": return json(response, phone.apiAdds);
   case "/__test/land":
