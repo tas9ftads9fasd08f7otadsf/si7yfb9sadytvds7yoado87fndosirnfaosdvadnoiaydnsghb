@@ -4,8 +4,9 @@ import { applySession, loadsDirect, resetViewer, restoreKept, setTilesDirect, us
 
 const get = useViewer.getState;
 
+// 57 the map control also says what it shows, for Download tiles' area
 const control = () => ({ draw: vi.fn(), stopLive: vi.fn(), resize: vi.fn(), watchPhone: vi.fn(), showPhone: vi.fn(),
-  readRegions: vi.fn(), camera: vi.fn(), snapshot: vi.fn(), remove: vi.fn() }) satisfies MapControl;
+  readRegions: vi.fn(), camera: vi.fn(), box: vi.fn(), snapshot: vi.fn(), remove: vi.fn() }) satisfies MapControl;
 
 beforeEach(() => {
   resetViewer();

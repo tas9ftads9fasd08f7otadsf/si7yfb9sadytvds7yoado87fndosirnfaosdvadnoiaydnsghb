@@ -45,6 +45,7 @@ function freshMaps() {
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
   tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
+    offlineAsks: [], discarded: [],
     legendEverywhere: true, ownsSettings: true };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
@@ -57,6 +58,7 @@ function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
     tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
+    offlineAsks: [], discarded: [],
     legendEverywhere: true, ownsSettings: true };
 }
 
@@ -1099,6 +1101,32 @@ async function answer(request, response) {
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     return json(response, switches(each));
   }
+  if ((parts[4] === "tile-download" || parts[4] === "discard-stored") && parts.length === 5) {
+    // 57: as `PeerWebOffline` answers: the plan for the area asked, the download queued or cancelled.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const held = offlineOf(each);
+    if (parts[4] === "discard-stored") {
+      if (method !== "POST") return send(response, 405, "");
+      const layer = url.searchParams.get("layer");
+      if (!each.layers.some((one) => one.id === layer)) return send(response, 404, "This map has no such layer");
+      delete held.stored[layer];
+      phone.discarded.push(layer);
+      response.writeHead(204);
+      return response.end();
+    }
+    const box = (url.searchParams.get("box") || "").split(",").map(Number);
+    if (box.length !== 4 || box.some((one) => !Number.isFinite(one))) return send(response, 400, "Name the area to download");
+    phone.offlineAsks.push({ method, ...Object.fromEntries(url.searchParams) });
+    const plan = offlinePlan(each, url.searchParams);
+    if (method === "POST") {
+      if (url.searchParams.get("cancel") === "1") held.queued = [];
+      else if (url.searchParams.get("start") === "1") held.queued = plan.rows.filter((row) => row.isIncluded).map((row) => row.id);
+      else return send(response, 400, "");
+      return json(response, offlinePlan(each, url.searchParams));
+    }
+    return json(response, plan);
+  }
   if (method === "POST" && parts[4] === "duplicate" && parts.length === 5) {
     // 50: as `MapCatalogStore.duplicate`: a fresh id for the map and each style, named as a copy.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -1229,6 +1257,38 @@ function live(each, layerID, query, response) {
 
 // MARK: - The phone's side
 
+// 57: the Trails download tiles; the Huts were fetched whole, so only their store is deleted.
+function offlineOf(each) {
+  each.offline ??= { stored: { "6F1E2A10-0000-4000-8000-0000000000A2": 2000 }, queued: [] };
+  return each.offline;
+}
+
+function offlinePlan(each, query) {
+  const held = offlineOf(each);
+  const zoom = Number(query.get("zoom") || 16);
+  const asked = query.get("layers")?.split(",");
+  const rows = each.layers.map((layer) => {
+    const isDownloadable = layer.kind === "Vector tiles";
+    const stored = held.stored[layer.id] ?? 0;
+    const running = held.queued.includes(layer.id);
+    return { id: layer.id, name: layer.name, isDownloadable,
+      isIncluded: isDownloadable && (asked ? asked.includes(layer.id) : true),
+      detail: isDownloadable ? "https://t.test/{z}/{x}/{y}.pbf" : "Uploaded files · nothing to download",
+      bytes: isDownloadable ? zoom * 1_000_000 : 0, stored, storedLine: stored ? `${stored / 1000} KB stored` : null,
+      job: running ? "0 of 120 tiles" : null, fraction: running ? 0 : null,
+      discard: stored ? { ask: `Delete what ${layer.name} has stored?`,
+        note: `This frees ${stored / 1000} KB. The layer stays on the map and can download again.` } : null };
+  });
+  const ticked = rows.filter((row) => row.isIncluded);
+  const total = ticked.reduce((sum, row) => sum + row.bytes, 0);
+  const queued = ticked.filter((row) => row.job);
+  return { area: query.get("chosen") === "1" ? "120 km²" : "43 km²", box: (query.get("box") || "").split(",").map(Number),
+    minZoom: 8, maxZoom: 19, zoom, zoomLabel: `z ${zoom}`, limits: "",
+    rows, toFetch: `≈ ${ticked.length * 120 * zoom} tiles to fetch`, held: "None of it is here yet", free: "18 MB free",
+    total: `≈ ${total / 1_000_000} MB`, exceedsSpace: total > 18_000_000, isQueued: queued.length > 0,
+    cancel: queued.length ? "Cancel this download" : null };
+}
+
 function testControl(route, query, response) {
   const id = query.get("id");
   switch (route) {
@@ -1284,6 +1344,7 @@ function testControl(route, query, response) {
   case "/__test/identified": return json(response, phone.identified);
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
   case "/__test/details-asked": return json(response, phone.detailsAsked);
+  case "/__test/offline": return json(response, { asks: phone.offlineAsks, discarded: phone.discarded });
   case "/__test/pictures": return json(response, phone.pictureKinds);
   case "/__test/api-adds": return json(response, phone.apiAdds);
   case "/__test/land":

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Edit } from "@/lib/edit";
 import type { Shelving } from "@/lib/edit";
-import { apiAskQuery, backend, queryOf, shelfQueryOf } from "./backend";
+import { apiAskQuery, backend, offlineQueryOf, queryOf, shelfQueryOf } from "./backend";
 import { savedName } from "./phone";
 
 // 36 every edit is the query `PeerWebEdit(query:)` reads, as the store sent it before the split
@@ -139,5 +139,14 @@ describe("the phone backend", () => {
     expect(path).not.toContain("s=1");
     expect((init.headers as Record<string, string>)["X-Riki-Cookie"]).toBe("s=1");
     expect(apiAskQuery({ cookies: { ...cookies, isOn: false }, cookie: "s=1" })).toEqual({});
+  });
+});
+
+// 57 the area, the zoom and the ticked layers as `PeerWebOffline.Asked` reads them
+describe("offlineQueryOf", () => {
+  it("writes the view, and what was chosen only when it was", () => {
+    expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: false })).toEqual({ box: "1,2,3,4" });
+    expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: true, zoom: 12, layers: ["A", "B"] }))
+      .toEqual({ box: "1,2,3,4", chosen: "1", zoom: "12", layers: "A,B" });
   });
 });

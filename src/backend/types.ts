@@ -1,6 +1,6 @@
 import type { Edit, Shelving } from "@/lib/edit";
 import type { APIAsk, APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
-  LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
+  LayerOptions, MapSwitches, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
@@ -88,6 +88,12 @@ export interface Backend {
   startPlaces(kind: string, query: string): Promise<Answer<FoundPlace[]>>;
   regions(mapID: string): Promise<RegionList>;
   downloadRegion(mapID: string, regionID: string): Promise<Answer<null>>;
+  /** 57 Download tiles for the whole map, as the phone counts it for this area. */
+  offlinePlan(mapID: string, ask: OfflineAsk): Promise<Answer<OfflinePlan>>;
+  /** 57 Queues the ticked layers, or cancels them; the plan comes back as it now stands. */
+  offlineDownload(mapID: string, ask: OfflineAsk, action: "start" | "cancel"): Promise<Answer<OfflinePlan>>;
+  /** 57 Deletes what a layer has stored, as Edit map's Delete does. */
+  discardStored(mapID: string, layerID: string): Promise<Answer<null>>;
 
   live(mapID: string, layerID: string, box: string): Promise<unknown>;
   identify(mapID: string, ask: AddressAsk): Promise<IdentifyListing>;
