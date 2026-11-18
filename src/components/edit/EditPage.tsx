@@ -7,6 +7,7 @@ import { Sym } from "../ui/Sym";
 import { AddLayer } from "./AddLayer";
 import { Availability } from "./Availability";
 import { CoverageCard } from "./CoverageCard";
+import { DeleteMap } from "./DeleteMap";
 import { Languages } from "./Languages";
 import { Layers } from "./Layers";
 import { MinimumVersion } from "./MinimumVersion";
@@ -66,6 +67,7 @@ function EditFields() {
       <button type="button" className="action" id="duplicateMap" onClick={() => void duplicateMap()}>
         <Sym name="plus.square.on.square" />{words.duplicateMap}
       </button>
+      <DeleteMap place="edit" />
     </>
   );
 }

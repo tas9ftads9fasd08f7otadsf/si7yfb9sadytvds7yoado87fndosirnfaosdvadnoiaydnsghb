@@ -117,6 +117,8 @@ export const backend: Backend = {
   importMap: async (file) => editing(`${ROOT}/new-map`, "POST", await file.arrayBuffer()),
   exportMap: (id) => editing(`${ROOT}/maps/${id}/mapson`, "GET", undefined, saved),
   duplicateMap: (id) => editing(`${ROOT}/maps/${id}/duplicate`),
+  deleteMap: (id, name) =>
+    editing(`${ROOT}/maps/${id}/delete?${new URLSearchParams({ name })}`, "POST", undefined, async () => null),
   shelve: (shelving) => editing(`${ROOT}/shelf?${new URLSearchParams(shelfQueryOf(shelving))}`),
   switches: (mapID) => editing(`${ROOT}/maps/${mapID}/switches`, "GET"),
   setPicture: (mapID, kind, picture) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, "POST", picture),

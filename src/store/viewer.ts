@@ -584,6 +584,22 @@ export const importMap = (file: File) => madeBy(() => backend.importMap(file));
 /** 50 Edit map's Duplicate: the copy opens, as a new map does. */
 export const duplicateMap = () => madeBy(() => backend.duplicateMap(get().mapID ?? ""));
 
+/** 62 The Maps sheet's Delete, the name typed; the page goes back to the Maps list. */
+export async function deleteMap(name: string): Promise<boolean> {
+  const { editToken, mapID } = get();
+  if (!editToken || !mapID) return false;
+  const answer = await editing(() => backend.deleteMap(mapID, name));
+  if (!answer) return false;
+  if (!answer.ok) {
+    notice(answer.said);
+    return false;
+  }
+  set({ mapID: null, styleID: null, portable: null, switches: null, layerOptions: null, coverage: null });
+  await refreshDevice();
+  go({ screen: "maps" });
+  return true;
+}
+
 export const exportMap = () => saveFrom(() => backend.exportMap(get().mapID ?? ""));
 
 /** 2997 The phone's servers as Share servers writes them, keys left on the phone. */
