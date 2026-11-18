@@ -72,7 +72,7 @@ export const ENGLISH = {
   groupReorders: "Sources are mixed. Grouping puts each one's layers together and changes their order.",
   orderDiffers: "Layer order differs between styles", unite: "Unite",
   orderUnited: "Every style uses the same layer order", resetOrder: "Reset the layers to the default draw order",
-  restoreStyles: "Restore the styles this map shipped with", stylePerLayer: "A style for each layer",
+  restoreStyles: "Restore the styles this map shipped with", resetStyle: "Reset this style to published", stylePerLayer: "A style for each layer",
   stylePerLayerNote: "One layer in each", availability: "Availability", inPicker: "In the map switcher",
   inPickerNote: "Offered when a map is picked", nothingToDraw: "This map has no layers to draw",
   inCarPlay: "In the CarPlay switcher", inCarPlayNote: "Offered among the maps on CarPlay", showLegend: "Show legend",

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset } from "./phone.mjs";
+import { openViewer, phone, reset, showAllMaps } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -69,6 +69,20 @@ test("the styles the map shipped with are restored", async ({ page }) => {
   expect((await asked).arrange).toBe("restoreStyles");
   await expect.poll(() => styleNames(page)).toContain("Classic");
   await expect(page.locator("#restoreStyles")).toHaveCount(0);
+});
+
+// 53: an edited style on screen goes back to published, as Edit map's row offers.
+test("an edited style is reset to published", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await showAllMaps(page);
+  await page.locator("#others .row", { hasText: "Bratislava" }).click();
+  await expect(page.locator("#current .hero b")).toHaveText("Bratislava");
+  await page.locator("#editButton").click();
+  await page.locator("#availability").waitFor();
+  const asked = sent(page);
+  await page.locator("#resetStyle").click();
+  expect((await asked).resetStyle).toBe("6F1E2A10-0000-4000-8000-0000000000D1");
+  await expect(page.locator("#resetStyle")).toHaveCount(0);
 });
 
 // 50: mixed sources reorder once grouped, so the page asks first, as Edit map does.

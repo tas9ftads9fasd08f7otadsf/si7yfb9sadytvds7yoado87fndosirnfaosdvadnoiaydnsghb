@@ -335,4 +335,6 @@ export interface MapSwitches {
   differsFromDefault: boolean;
   layersWithoutStyle: number;
   removedStyles: number;
+  /** 53 The styles edited away from what was published; older phones leave it out. */
+  editedStyles?: string[];
 }

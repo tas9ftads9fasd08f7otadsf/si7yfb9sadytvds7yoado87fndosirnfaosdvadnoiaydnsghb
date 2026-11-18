@@ -55,6 +55,30 @@ describe("Styles", () => {
     expect(screen.getByText("A style for each layer")).toBeTruthy();
   });
 
+  // 53 the style on screen, edited, goes back to published, unless removed styles come first
+  it("resets the edited style on screen to published", () => {
+    useViewer.setState({ styleID: "W", switches: { ...quiet, editedStyles: ["W"] } });
+    const url = asking();
+    const { unmount } = render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reset this style to published" }));
+    expect(url()).toContain("resetStyle=W");
+    unmount();
+    useViewer.setState({ switches: { ...quiet, editedStyles: ["W"], removedStyles: 1 } });
+    render(<Styles portable={portable} />);
+    expect(screen.queryByText("Reset this style to published")).toBeNull();
+  });
+
+  // 53 a style nobody edited, or a phone too old to say, offers no reset
+  it("offers no reset for an unedited style", () => {
+    useViewer.setState({ styleID: "S", switches: { ...quiet, editedStyles: ["W"] } });
+    const { unmount } = render(<Styles portable={portable} />);
+    expect(screen.queryByText("Reset this style to published")).toBeNull();
+    unmount();
+    useViewer.setState({ styleID: "W", switches: quiet });
+    render(<Styles portable={portable} />);
+    expect(screen.queryByText("Reset this style to published")).toBeNull();
+  });
+
   // 51 a style's own icon, its ground and its note go to that style alone
   it("sends a style's icon, colour and note from its options", () => {
     useViewer.setState({ words: { ...useViewer.getState().words, styleSymbols: "map,snowflake",
