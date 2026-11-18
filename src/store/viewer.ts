@@ -9,7 +9,7 @@ import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/
 import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
-import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
+import type { APIAsk, APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, MapSwitches, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, readPhoneWords } from "@/lib/words";
@@ -771,12 +771,12 @@ export async function takePreview() {
 }
 
 /** 3003: the phone reads the API and guesses its keys, or reads them as the page picked. */
-export async function readAPI(address: string, reading?: APIReading | null): Promise<APIRead | null> {
-  return told(await editing(() => backend.readAPI(address, reading)));
+export async function readAPI(address: string, reading?: APIReading | null, ask?: APIAsk): Promise<APIRead | null> {
+  return told(await editing(() => backend.readAPI(address, reading, ask)));
 }
 
-export const addAPI = (address: string, reading: APIReading, name: string) =>
-  addedBy((mapID) => backend.addAPI(mapID, address, reading, name));
+export const addAPI = (address: string, reading: APIReading, name: string, ask?: APIAsk) =>
+  addedBy((mapID) => backend.addAPI(mapID, address, reading, name, ask));
 
 export async function addServerLayers() {
   const picks = [...get().serverPicks.values()];
