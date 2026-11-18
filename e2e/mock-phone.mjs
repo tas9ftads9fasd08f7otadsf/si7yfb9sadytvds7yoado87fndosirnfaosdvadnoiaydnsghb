@@ -322,7 +322,7 @@ const LAYOUT_WORDS = { addContent: "Add content", addSection: "Add section", rem
   whenTapped: "When tapped", subject: "Subject", body: "Message", hidesButton: "Hide when a key is empty",
   textIcon: "A note icon before the text", hidesText: "Hide when empty", nameAndValue: "Name and value",
   rowIcons: "A small icon before each row", hidesRows: "Hide empty rows", addRow: "Add a row", liveFor: "Live for",
-  card: "What the card shows" };
+  card: "What the card shows", place: "Place", withActions: "With action buttons", belowRows: "Below the rows" };
 
 function detailsSections(layer) {
   const used = layer.layout.flatMap((section) => section.blocks).filter((block) => block.counts).length;
@@ -377,6 +377,21 @@ function settleLayout(layer, query, held) {
       button: { id, label: "Custom button", look: "tinted", action: "link", template: null, hides: false } });
   } else if (op === "removeButton") {
     layer.actions.items = layer.actions.items.filter((item) => item.id !== query.get("button"));
+  } else if (op === "buttonPlace") {
+    // 55: as `movingActionButtonToRows` and `movingButtonToActions` move it.
+    const item = layer.actions?.items.find((one) => one.id === query.get("button"));
+    if (item) {
+      layer.actions.items = layer.actions.items.filter((one) => one !== item);
+      layer.layout[0].blocks.push({ handle: `h${item.id}`, kind: "button", name: item.name, counts: true,
+        settings: { button: item.button } });
+    } else if (held()?.kind === "button") {
+      const [block] = layer.layout[Number(query.get("section"))].blocks.splice(Number(query.get("block")), 1);
+      layer.actions ??= { items: [], labels: "iconAndLabel", highlightsFirst: false };
+      layer.actions.items.push({ id: block.settings.button.id, name: block.name, note: "Open link", isOn: true,
+        button: block.settings.button });
+    } else {
+      return false;
+    }
   } else if (op === "button") {
     const item = layer.actions?.items.find((one) => one.id === query.get("button"));
     const button = item?.button ?? held()?.settings?.button;
@@ -411,7 +426,9 @@ function editLayout(layer, query) {
   const number = (key) => Number(query.get(key));
   const held = () => sections[number("section")]?.blocks[number("block")];
   const op = query.get("details");
-  if (["remove", "move", "edit", "blockSettings", "addRow", "removeRow"].includes(op) && held()?.handle !== query.get("was")) return false;
+  const byHandle = ["remove", "move", "edit", "blockSettings", "addRow", "removeRow"].includes(op)
+    || (op === "buttonPlace" && query.has("was"));
+  if (byHandle && held()?.handle !== query.get("was")) return false;
   if (op === "add") {
     sections[number("section")].blocks.splice(number("place"), 0, { handle: `n${Date.now()}`,
       kind: query.get("kind"), name: "Text", value: query.get("value"), style: "box", counts: true });

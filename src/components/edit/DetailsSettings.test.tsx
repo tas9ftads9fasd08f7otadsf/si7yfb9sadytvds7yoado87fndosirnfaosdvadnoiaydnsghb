@@ -13,7 +13,8 @@ const words = { addContent: "Add content", addSection: "Add section", removeSect
   look: "Look", whenTapped: "When tapped", subject: "Subject", body: "Message",
   hidesButton: "Hide when a key is empty", textIcon: "A note icon before the text", hidesText: "Hide when empty",
   nameAndValue: "Name and value", rowIcons: "A small icon before each row", hidesRows: "Hide empty rows",
-  addRow: "Add a row", liveFor: "Live for", card: "What the card shows" };
+  addRow: "Add a row", liveFor: "Live for", card: "What the card shows", place: "Place",
+  withActions: "With action buttons", belowRows: "Below the rows" };
 
 const button = { id: "b1", label: "Timetable", look: "tinted", action: "link", template: "https://t.test/{id}",
   hides: false };
@@ -102,6 +103,14 @@ describe("Details settings", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "When tapped" }), { target: { value: "email" } });
     expect(query()).toMatchObject({ details: "button", button: "b1", action: "email", label: "Timetable",
       template: "https://t.test/{id}", look: "tinted", hides: "0" });
+  });
+
+  // 55: a custom button among the action buttons moves below the rows by its id.
+  it("moves a custom button below the rows", () => {
+    const query = asked();
+    show(layout(row));
+    fireEvent.change(screen.getByRole("combobox", { name: "Place" }), { target: { value: "belowRows" } });
+    expect(query()).toMatchObject({ details: "buttonPlace", button: "b1" });
   });
 
   // 55

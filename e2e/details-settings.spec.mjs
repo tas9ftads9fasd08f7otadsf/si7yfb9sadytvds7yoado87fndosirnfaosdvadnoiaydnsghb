@@ -63,6 +63,18 @@ test("the action buttons and a custom button are set", async ({ page }) => {
   await expect(button.getByRole("textbox", { name: "Number" })).toBeVisible();
 
   asked = sent(page);
+  await button.getByRole("combobox", { name: "Place" }).selectOption("belowRows");
+  expect(await asked).toMatchObject({ details: "buttonPlace" });
+  await expect(button).toHaveCount(0);
+  const placed = panel.locator(".layout-block[data-block='button'] .button-fields");
+  await expect(placed).toHaveCount(1);
+
+  asked = sent(page);
+  await placed.getByRole("combobox", { name: "Place" }).selectOption("withActions");
+  expect(await asked).toMatchObject({ details: "buttonPlace", section: "0" });
+  await expect(button).toHaveCount(1);
+
+  asked = sent(page);
   await actions.getByRole("button", { name: "Remove from Details" }).click();
   expect(await asked).toMatchObject({ details: "removeActions" });
   await expect(actions.getByRole("button", { name: "Add action buttons" })).toBeVisible();

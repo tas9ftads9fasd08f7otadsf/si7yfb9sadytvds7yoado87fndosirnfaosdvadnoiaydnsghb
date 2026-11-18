@@ -71,6 +71,7 @@ export function ButtonFields({ button, place, layout, send }:
     action: button.action, template: button.template ?? "", subject: button.subject ?? "",
     body: button.body ?? "", hides: flag(button.hides), ...fields,
   });
+  const standsAt = place.button ? "withActions" : "belowRows";
   const field = choices.buttonKinds?.find((kind) => kind.id === button.action)?.detail ?? words.link;
   return (
     <div className="block-fields button-fields" data-button={button.id}>
@@ -80,6 +81,9 @@ export function ButtonFields({ button, place, layout, send }:
         onPick={(symbol) => set({ symbol })} />
       <Choice label={words.look ?? ""} value={button.look} options={choices.buttonLooks ?? []}
         onPick={(look) => set({ look })} />
+      <Choice label={words.place ?? ""} value={standsAt}
+        options={[{ id: "withActions", title: words.withActions ?? "" }, { id: "belowRows", title: words.belowRows ?? "" }]}
+        onPick={(picked) => { if (picked !== standsAt) send({ details: "buttonPlace", ...place }); }} />
       <Choice label={words.whenTapped ?? ""} value={button.action} options={choices.buttonKinds ?? []}
         onPick={(action) => set({ action })} />
       <CommitField value={button.template ?? ""} aria-label={field} placeholder={field} spellCheck={false}
