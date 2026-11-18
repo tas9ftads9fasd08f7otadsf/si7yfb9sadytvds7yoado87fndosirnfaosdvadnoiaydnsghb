@@ -1,6 +1,6 @@
 import type { Edit, Shelving } from "@/lib/edit";
 import type { APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
-  LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
+  LayerOptions, LayerTest, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
@@ -70,6 +70,8 @@ export interface Backend {
   setPicture(mapID: string, kind: "icon" | "preview", picture: ArrayBuffer): Promise<Answer<Portable>>;
 
   layerOptions(mapID: string): Promise<Answer<LayerOptions>>;
+  /** 60 The layer's address asked as the phone's Test asks it. */
+  testLayer(mapID: string, layerID: string): Promise<Answer<LayerTest>>;
   packages(mapID: string): Promise<Answer<Packages>>;
   servers(): Promise<Answer<ServerList>>;
   addServer(kind: string, address: string, name: string): Promise<Answer<ServerList>>;

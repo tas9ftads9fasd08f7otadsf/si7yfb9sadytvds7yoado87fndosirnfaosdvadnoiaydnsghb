@@ -154,7 +154,7 @@ export interface OptionChoice {
 
 export interface OptionSection {
   kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values"
-    | "details";
+    | "details" | "headers" | "probe";
   title?: string;
   footnote?: string;
   layerScoped?: boolean;
@@ -238,6 +238,12 @@ export interface APIRead {
   keys: string[];
   points: number;
   name: string;
+  said: string;
+}
+
+/** 60: what the phone's Test or Read said about a layer's address. */
+export interface LayerTest {
+  reachable: boolean;
   said: string;
 }
 

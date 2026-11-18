@@ -79,7 +79,8 @@ export const ENGLISH = {
   showLegendNote: "The legend button over this map", showWorld: "Show the world around",
   showWorldNote: "Sea, borders and country names around this map",
   hiddenEverywhere: "Hidden on every map under Settings › Map",
-  ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map"
+  ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map",
+  headerName: "Header", headerValue: "Value", testing: "Testing…"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;

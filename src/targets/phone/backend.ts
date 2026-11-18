@@ -122,6 +122,8 @@ export const backend: Backend = {
   setPicture: (mapID, kind, picture) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, "POST", picture),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),
+  testLayer: (mapID, layerID) =>
+    editing(`${ROOT}/maps/${mapID}/layer-test?${new URLSearchParams({ layer: layerID })}`, "GET"),
   packages: (mapID) => editing(`${ROOT}/maps/${mapID}/packages`, "GET"),
   servers: () => editing(`${ROOT}/servers`, "GET"),
   addServer: (kind, address, name) => editing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`),
