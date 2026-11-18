@@ -3,7 +3,7 @@ export const ENGLISH = {
   maps: "Maps", styles: "Styles", layers: "Layers", newMap: "New map", importMap: "Import",
   nothing: "No map here can be shared.", away: "Not serving", app: "Riki Maps", allMaps: "All maps",
   sort: "Sort", nameAZ: "Name A–Z", nameZA: "Name Z–A", newFolder: "New folder", folder: "Folder",
-  outOfFolder: "Out of the folder", into: "Into",
+  outOfFolder: "Out of the folder", into: "Into", folderSymbols: "",
   loading: "Loading…", loadingApp: "Loading {app}…",
   onMapNow: "On map now", edit: "Edit map", done: "Done", cancel: "Cancel", save: "Save", name: "Name",
   fromPhone: "From the phone", fromElsewhere: "From other sources",
