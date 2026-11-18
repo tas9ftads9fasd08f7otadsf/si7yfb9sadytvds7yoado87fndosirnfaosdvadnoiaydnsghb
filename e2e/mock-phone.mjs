@@ -246,13 +246,40 @@ function editFeatures(layer, query, key) {
 }
 
 // 2999: Edit layer's Connection, as `PeerWebLayerOptions+Network` lists it for a tile layer.
-const NETWORK_KEYS = ["connectionOverride", "offlineDownload", "connection"];
+const NETWORK_KEYS = ["connectionOverride", "offlineDownload", "connection", "address", "header", "removeHeader",
+  "proxy"];
 const GROUPS = [["layerTiles", "Map tiles", "Tiles as you pan"], ["layerRefresh", "Refreshing", "Live answers"]];
+
+// 60: Network settings' address, Test, headers and proxy, as `PeerWebLayerKeys` lists them; values stay here.
+function keySections(layer) {
+  const keys = layer.keys || {};
+  return [{ kind: "text", title: "URL", footnote: "The URL needs {z}, {x} and {y}.", key: "address", layerScoped: true,
+    value: layer.address || "https://tiles.example/{z}/{x}/{y}.png" },
+  { kind: "probe", title: "", footnote: "", key: "test", label: "Test", layerScoped: true },
+  { kind: "headers", title: "Headers", footnote: "Values stay on the phone's keychain.", key: "header",
+    label: "Add header", layerScoped: true, options: [{ id: "X-API-Key", title: "X-API-Key", detail: "A key" }],
+    items: Object.keys(keys).map((name) => ({ id: name, title: name, light: "", dark: "", isOn: keys[name] !== "",
+      detail: keys[name] !== "" ? "Saved on this device" : "Not set on this device" })) },
+  { kind: "text", title: "Proxy", footnote: "Straight to the address", key: "proxy", layerScoped: true,
+    value: layer.proxy || "" }];
+}
+
+function editKeys(layer, query, key) {
+  const value = query.get(key);
+  if (key === "address") {
+    if (!/\{z\}/.test(value) || !/\{x\}/.test(value) || !/\{y\}/.test(value)) return "Missing {x}, {y}";
+    layer.address = value.trim();
+  }
+  if (key === "header") layer.keys = { ...layer.keys, [value]: query.get("headerValue") ?? layer.keys?.[value] ?? "" };
+  if (key === "removeHeader") { layer.keys = { ...layer.keys }; delete layer.keys[value]; }
+  if (key === "proxy") layer.proxy = value.trim();
+  return null;
+}
 
 function networkSections(layer) {
   const blocked = layer.blocked || [];
   const over = layer.overrides === true;
-  return [{ kind: "switch", title: "Connection", footnote: over ? "On this map, these switches override Settings."
+  return [...keySections(layer), { kind: "switch", title: "Connection", footnote: over ? "On this map, these switches override Settings."
     : "The switches apply to this layer on this map only.", key: "connectionOverride", label: "Override Settings",
   isOn: over, layerScoped: true },
   ...[["wifi", "Wi-Fi"], ["cellular", "Mobile data"]].map(([family, title]) => ({ kind: "connection", title,
@@ -570,6 +597,8 @@ function edit(each, query, response) {
   } else if (networked) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer?.net) return send(response, 404, "This change does not fit the map");
+    const refused = editKeys(layer, query, networked);
+    if (refused) return send(response, 409, refused);
     editNetwork(layer, query, networked);
   } else if (asking) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
@@ -951,6 +980,15 @@ async function answer(request, response) {
     return json(response, { answers: phone.answersServers ? [
       { layer: "Geology", properties: { name: "Granite", age: "300 Ma" } },
       { layer: "Geology", properties: { name: "Gneiss" } }] : [] });
+  }
+  if (parts[4] === "layer-test" && parts.length === 5) {
+    // 60: as `PeerWebLayerKeys.test`: the address asked with the values the phone keeps.
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const layer = each.layers.find((one) => one.id === url.searchParams.get("layer"));
+    if (!layer?.net) return send(response, 404, "");
+    const keyed = Object.values(layer.keys || {}).some(Boolean);
+    return json(response, keyed ? { reachable: true, said: "Tiles reachable · 256 px" }
+      : { reachable: false, said: "Server replied 401" });
   }
   if (parts[4] === "layer-options" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
