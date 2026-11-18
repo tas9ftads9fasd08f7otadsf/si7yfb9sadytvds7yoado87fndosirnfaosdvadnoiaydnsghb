@@ -2,8 +2,11 @@
 
 import { Fragment } from "react";
 import { groundID } from "@/lib/ground";
+import { movedPast, originGroups, type OriginGroup } from "@/lib/origins";
 import type { Portable, SharedLayer, StackLayer } from "@/lib/types";
-import { change, groupByOrigin, removeLayer, shownMapOf, toggleAddingPackages, toggleOptions, useViewer } from "@/store/viewer";
+import { filledIn } from "@/lib/words";
+import { change, groupByOrigin, removeLayer, shownMapOf, toggleAddingPackages, toggleOptions, toggleOrigin,
+  useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { MarkTile } from "../ui/MarkTile";
 import { Switch } from "../ui/Switch";
@@ -15,21 +18,18 @@ interface RowProps {
   listed: SharedLayer;
   isBase: boolean;
   movable: string[];
+  /** 58 The rows it moves among: its group's while grouped, else every movable one. */
+  peers: string[];
 }
 
-function LayerRow({ layer, listed, isBase, movable }: RowProps) {
+function LayerRow({ layer, listed, isBase, movable, peers }: RowProps) {
   const words = useViewer((state) => state.words);
   const isHidden = useViewer((state) => state.hidden.has(layer.id));
   const sections = useViewer((state) =>
     state.layerOptions?.layers.find((each) => each.id.toUpperCase() === layer.id.toUpperCase())?.sections);
   const isOpen = useViewer((state) => state.optionsOpen.has(layer.id));
-  const place = movable.indexOf(listed.id);
-  const move = (by: number) => {
-    const order = movable.slice();
-    order.splice(place, 1);
-    order.splice(place + by, 0, listed.id);
-    void change({ kind: "order", layers: order });
-  };
+  const place = peers.indexOf(listed.id);
+  const move = (by: -1 | 1) => void change({ kind: "order", layers: movedPast(movable, peers, listed.id, by) });
   return (
     <>
       <div className="row" data-layer={layer.id}>
@@ -50,7 +50,7 @@ function LayerRow({ layer, listed, isBase, movable }: RowProps) {
         <button type="button" className="icon-button" aria-label={words.moveUp} title={words.moveUp}
           disabled={place <= 0} onClick={() => move(-1)}><Sym name="chevron.up" /></button>
         <button type="button" className="icon-button" aria-label={words.moveDown} title={words.moveDown}
-          disabled={place < 0 || place >= movable.length - 1} onClick={() => move(1)}><Sym name="chevron.down" /></button>
+          disabled={place < 0 || place >= peers.length - 1} onClick={() => move(1)}><Sym name="chevron.down" /></button>
         <Switch isOn={!isHidden} label={layer.name} onChange={(isOn) => change({ kind: "layerShown", layer: layer.id, shown: isOn })} />
         <button type="button" className="icon-button danger" aria-label={words.deleteLayer} title={words.deleteLayer}
           onClick={() => removeLayer(layer)}><Sym name="trash" /></button>
@@ -60,11 +60,29 @@ function LayerRow({ layer, listed, isBase, movable }: RowProps) {
   );
 }
 
+/** 58 A source's header, folding its layers open as Edit map's group header does. */
+function OriginHeader({ group, isOpen }: { group: OriginGroup; isOpen: boolean }) {
+  const words = useViewer((state) => state.words);
+  const hidden = useViewer((state) => state.hidden);
+  const on = group.layers.filter((layer) => !hidden.has(layer.id)).length;
+  const count = filledIn(filledIn(words.groupLayersOn, "on", String(on)), "count", String(group.layers.length));
+  return (
+    <button type="button" className="row origin" data-origin={group.origin.key} aria-expanded={isOpen}
+      onClick={() => toggleOrigin(group.origin.key)}>
+      <Sym name={isOpen ? "chevron.down" : "chevron.forward"} />
+      <MarkTile symbol={group.origin.symbol} small />
+      <span className="words">{group.origin.title}</span>
+      <small>{count}</small>
+    </button>
+  );
+}
+
 export function Layers({ portable }: { portable: Portable }) {
   const words = useViewer((state) => state.words);
   const adding = useViewer((state) => state.addingPackages);
   const hidden = useViewer((state) => state.hidden);
   const grouping = useViewer((state) => state.switches);
+  const originsOpen = useViewer((state) => state.originsOpen);
   const styleName = useViewer((state) => state.portable?.styles?.find((each) => each.id === state.styleID)?.name);
   const sharedLayers = useViewer((state) => shownMapOf(state)?.layers) ?? [];
   const ground = groundID(portable.id);
@@ -74,6 +92,23 @@ export function Layers({ portable }: { portable: Portable }) {
   // 3083: the list's own switch, as the app's header has; the phone keeps it to its layer cap.
   const switchable = stack.filter((layer) => layer.id.toUpperCase() !== ground);
   const allOn = switchable.length > 0 && switchable.every((layer) => !hidden.has(layer.id));
+  const row = (listed: SharedLayer, peers: string[]) => {
+    const layer = byID.get(listed.id.toUpperCase());
+    if (!layer || listed.id.toUpperCase() === ground) {
+      return (
+        <div className="row" key={listed.id}>
+          <MarkTile symbol={listed.symbol} small />
+          <div className="words">{listed.name}<small>{listed.kind}</small></div>
+        </div>
+      );
+    }
+    const isBase = stack[0]?.id.toUpperCase() === listed.id.toUpperCase();
+    return (
+      <Fragment key={listed.id}>
+        <LayerRow layer={layer} listed={listed} isBase={isBase} movable={movable} peers={peers} />
+      </Fragment>
+    );
+  };
   return (
     <>
       <div className="title-row">
@@ -88,19 +123,16 @@ export function Layers({ portable }: { portable: Portable }) {
             <Switch isOn={grouping.groupsByOrigin} label={words.groupBySource} onChange={(groups) => void groupByOrigin(groups)} />
           </div>
         ) : null}
-        {sharedLayers.map((listed) => {
-          const layer = byID.get(listed.id.toUpperCase());
-          if (!layer || listed.id.toUpperCase() === ground) {
-            return (
-              <div className="row" key={listed.id}>
-                <MarkTile symbol={listed.symbol} small />
-                <div className="words">{listed.name}<small>{listed.kind}</small></div>
-              </div>
-            );
-          }
-          const isBase = stack[0]?.id.toUpperCase() === listed.id.toUpperCase();
-          return <Fragment key={listed.id}><LayerRow layer={layer} listed={listed} isBase={isBase} movable={movable} /></Fragment>;
-        })}
+        {grouping?.groupsByOrigin ? originGroups(sharedLayers).map((group) => {
+          const isOpen = originsOpen.has(group.origin.key);
+          const peers = group.layers.map((layer) => layer.id).filter((id) => movable.includes(id));
+          return (
+            <Fragment key={group.origin.key}>
+              <OriginHeader group={group} isOpen={isOpen} />
+              {isOpen ? group.layers.map((listed) => row(listed, peers)) : null}
+            </Fragment>
+          );
+        }) : sharedLayers.map((listed) => row(listed, movable))}
         <button type="button" className="row add" id="addLayer" aria-expanded={adding} onClick={toggleAddingPackages}>
           <Sym name={adding ? "chevron.down" : "plus.circle.fill"} />{words.addLayer}
         </button>

@@ -73,6 +73,8 @@ export interface ViewerState {
   serviceRead: ServiceRead | null;
   layerOptions: LayerOptions | null;
   optionsOpen: Set<string>;
+  /** 58 The sources whose layers are folded open; each opening of Edit map starts closed, as the app's. */
+  originsOpen: Set<string>;
   switches: MapSwitches | null;
   /** 57 Download tiles as the phone last counted it, and what it was asked for. */
   offline: OfflinePlan | null;
@@ -90,7 +92,7 @@ const firstState = (): ViewerState => ({
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
-  switches: null, offline: null, offlineAsk: null, offlineOpen: false
+  switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -375,7 +377,7 @@ export async function pickMap(id: string, styleID: string | null) {
   set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
     coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, offline: null, offlineAsk: null, offlineOpen: false,
     serverPicks: new Map(), serviceRead: null,
-    layerOptions: null, optionsOpen: new Set() });
+    layerOptions: null, optionsOpen: new Set(), originsOpen: new Set() });
   let portable: Portable | null = null;
   try {
     portable = await backend.map(id);
@@ -426,6 +428,7 @@ export const toggleSide = () => showSide(!get().sideShown);
 export function showEdit(editing: boolean) {
   const { mapID, route } = get();
   if (editing) {
+    set({ originsOpen: new Set() });
     if (mapID) go({ screen: "edit", map: mapID, tab: "layers" });
     showSide(true);
     return;
@@ -481,7 +484,7 @@ backend.useToken(() => get().editToken);
  * Asks something that needs the edit password: null when the phone can't be reached or the
  * token went stale, which sends the browser back to the password.
  */
-async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = {}): Promise<Answer<T> | null> {
+export async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = {}): Promise<Answer<T> | null> {
   let answer: Answer<T>;
   try {
     answer = await asking();
@@ -499,7 +502,7 @@ async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = 
 }
 
 /** The value, or null once the phone's words for a refusal are shown. */
-function told<T>(answer: Answer<T> | null): T | null {
+export function told<T>(answer: Answer<T> | null): T | null {
   if (!answer) return null;
   if (answer.ok) return answer.value;
   notice(answer.said);
@@ -632,14 +635,16 @@ export function showServerPart(part: ServerPart) {
 }
 
 /** The address, camera and all, copied for whoever it is sent to. */
-export async function shareAddress() {
-  const address = location.href;
+export const shareAddress = () => copyText(location.href);
+
+/** 59 Copied, and said so, as the page copies its own address. */
+export async function copyText(text: string) {
   try {
-    await navigator.clipboard.writeText(address);
+    await navigator.clipboard.writeText(text);
   } catch {
     // A phone's plain address is no secure context, so there is no clipboard API.
     const field = document.createElement("textarea");
-    field.value = address;
+    field.value = text;
     document.body.append(field);
     field.select();
     document.execCommand("copy");
@@ -684,6 +689,12 @@ export async function loadLayerOptions() {
   const answer = await editing(() => backend.layerOptions(mapID), { quiet: true });
   if (answer?.ok && get().mapID === mapID) set({ layerOptions: answer.value });
   busy.layerOptions = null;
+}
+
+export function toggleOrigin(key: string) {
+  const originsOpen = new Set(get().originsOpen);
+  if (!originsOpen.delete(key)) originsOpen.add(key);
+  set({ originsOpen });
 }
 
 export function toggleOptions(id: string) {

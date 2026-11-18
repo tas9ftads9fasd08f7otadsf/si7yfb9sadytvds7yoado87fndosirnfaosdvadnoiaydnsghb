@@ -180,6 +180,8 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 button.row { width: 100%; border: 0; background: none; text-align: left; }
 button.row.picked { background: var(--fill); }
 button.row.part { padding-left: 28px; }
+button.row.origin { font-weight: 600; }
+button.row.origin small { color: var(--secondary); font-size: 12px; font-weight: 400; white-space: nowrap; }
 button.row:disabled { opacity: 0.6; cursor: default; }
 .row.dimmed { color: var(--secondary); }
 .card.options { margin: 0 8px 8px; }
@@ -362,3 +364,6 @@ body.gated #gate { display: flex; }
 .feature-note.warning { background: color-mix(in srgb, orange 18%, transparent); }
 .feature-link { display: inline-block; margin: 4px 0; padding: 6px 12px; border-radius: 999px; background: var(--fill); color: var(--accent); text-decoration: none; }
 .feature-image { aspect-ratio: 4 / 3; margin: 6px 0; border-radius: 10px; background: var(--fill) center / cover no-repeat; }
+/* 59 The share's link is long; the row keeps its Copy button in view. */
+.link-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#peopleInvited .text-button { display: block; margin: 10px auto 6px; }
