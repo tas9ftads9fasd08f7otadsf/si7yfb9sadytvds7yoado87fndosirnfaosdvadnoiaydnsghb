@@ -7,6 +7,7 @@ import { Sym } from "../ui/Sym";
 import { AddLayer } from "./AddLayer";
 import { Availability } from "./Availability";
 import { CoverageCard } from "./CoverageCard";
+import { EsriServices } from "./EsriServices";
 import { Languages } from "./Languages";
 import { Layers } from "./Layers";
 import { MinimumVersion } from "./MinimumVersion";
@@ -57,6 +58,7 @@ function EditFields() {
       <MinimumVersion />
       <Styles portable={portable} />
       <Layers portable={portable} />
+      <EsriServices />
       {adding ? <AddLayer /> : null}
       {portable.styles?.length ? <div className="foot-note">{words.layerCap}</div> : null}
       {switches ? <Availability switches={switches} /> : null}

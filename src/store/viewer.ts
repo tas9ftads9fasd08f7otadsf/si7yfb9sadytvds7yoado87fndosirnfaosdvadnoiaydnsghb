@@ -9,7 +9,7 @@ import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/
 import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
-import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
+import type { APIRead, APIReading, Coverage, EsriChange, EsriListing, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, MapSwitches, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, readPhoneWords } from "@/lib/words";
@@ -74,6 +74,9 @@ export interface ViewerState {
   layerOptions: LayerOptions | null;
   optionsOpen: Set<string>;
   switches: MapSwitches | null;
+  /** 67 Edit map's Esri services as the phone last listed them, and the one opened. */
+  esri: EsriListing | null;
+  esriOpen: string | null;
 }
 
 const firstState = (): ViewerState => ({
@@ -86,7 +89,7 @@ const firstState = (): ViewerState => ({
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
-  switches: null
+  switches: null, esri: null, esriOpen: null
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -367,7 +370,8 @@ export async function pickMap(id: string, styleID: string | null) {
     localStorage.setItem(LAST_MAP_KEY, id);
   } catch { /* the first map next time */ }
   set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
-    coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, serverPicks: new Map(), serviceRead: null,
+    coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, esri: null, esriOpen: null,
+    serverPicks: new Map(), serviceRead: null,
     layerOptions: null, optionsOpen: new Set() });
   let portable: Portable | null = null;
   try {
@@ -901,4 +905,40 @@ export async function downloadRegion(region: Region) {
   const answer = await editing(() => backend.downloadRegion(mapID, region.id));
   if (answer?.ok) mapControl()?.readRegions();
   else if (answer) notice(answer.said);
+}
+
+// MARK: - 67 Esri services
+
+export async function loadEsri() {
+  const { mapID } = get();
+  if (!mapID) return;
+  const answer = await editing(() => backend.esriServices(mapID), { quiet: true });
+  if (answer?.ok && mapID === get().mapID) set({ esri: answer.value });
+}
+
+export const openEsri = (esriOpen: string | null) => set({ esriOpen });
+
+/** As the service's page: taking a layer off asks first, in its words. */
+export async function changeEsri(serviceID: string, asked: EsriChange) {
+  const { mapID, words, esri } = get();
+  if (!mapID) return;
+  if (asked.kind === "remove") {
+    const name = esri?.services.find((one) => one.id === serviceID)?.layers.find((one) => one.id === asked.layer)?.name ?? "";
+    if (!confirm(`${words.takeOffAsk.replace("{name}", name)}\n\n${words.comesOff.replace("{name}", name)}`)) {
+      set({ editEpoch: get().editEpoch + 1 });
+      return;
+    }
+  }
+  const answer = await editing(() => backend.changeEsriService(mapID, serviceID, asked));
+  const portable = told(answer);
+  if (!portable) {
+    set({ editEpoch: get().editEpoch + 1 });
+    return;
+  }
+  set({ portable });
+  if (asked.kind === "forget") set({ esriOpen: null });
+  await refreshDevice();
+  const stands = (portable.styles ?? []).some((style) => style.id === get().styleID);
+  pickStyle(stands ? get().styleID : (portable.selectedStyleID ?? null));
+  await loadEsri();
 }

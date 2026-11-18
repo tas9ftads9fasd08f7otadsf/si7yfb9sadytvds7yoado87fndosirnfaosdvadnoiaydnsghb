@@ -79,7 +79,11 @@ export const ENGLISH = {
   showLegendNote: "The legend button over this map", showWorld: "Show the world around",
   showWorldNote: "Sea, borders and country names around this map",
   hiddenEverywhere: "Hidden on every map under Settings › Map",
-  ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map"
+  ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map",
+  esriServices: "Esri services", esriService: "Service", esriAddress: "Address", takenAs: "Taken as",
+  noLayerList: "This service published no layer list the last time it was read.",
+  forgetService: "Forget this service", takeOffAsk: "Take {name} off the map?", takeOff: "Take it off",
+  comesOff: "{name} comes off this map. Its downloads stay on this device.", drawOnMap: "Draw {name} on this map"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;
