@@ -65,7 +65,7 @@ test("leaving out what a layer requires, or everything, is warned of", async ({ 
   await expect(page.locator("#coverage .warning")).toContainText("yet a layer requires it: Vysoké Tatry");
 
   asked = sent(page);
-  await page.getByRole("switch", { name: "Whole world" }).click({ force: true });
+  await page.getByRole("switch", { name: "Whole world" }).click();
   expect(await asked).toEqual({ exclude: { regions: ["vysoke_tatry"], world: true } });
   await expect(page.locator("#coverage .warning").first()).toHaveText(/covers no place at all/);
 });

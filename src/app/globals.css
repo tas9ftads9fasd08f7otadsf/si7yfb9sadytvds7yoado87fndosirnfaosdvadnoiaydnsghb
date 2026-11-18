@@ -168,6 +168,11 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 
 .list { margin: 0 8px; }
 .row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 8px; border-radius: 8px; }
+.shelf-row { display: flex; align-items: center; gap: 6px; padding-right: 4px; }
+.shelf-row > .row { flex: 1; min-width: 0; }
+.shelf-row.inside { padding-left: 24px; }
+.shelf-row > select { max-width: 9em; }
+.folder-name { flex: 1; min-width: 0; font-weight: 600; }
 .row:hover { background: var(--hover); }
 .row .words { flex: 1; min-width: 0; }
 .row .words small { display: block; color: var(--secondary); font-size: 12px; }

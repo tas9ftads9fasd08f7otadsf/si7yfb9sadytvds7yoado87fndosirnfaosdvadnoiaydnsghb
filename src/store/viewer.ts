@@ -4,7 +4,7 @@ import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
 import { DIRECT_KEY } from "@/lib/page";
 import type { Answer, Saved } from "@/backend/types";
-import type { Edit } from "@/lib/edit";
+import type { Edit, Shelving } from "@/lib/edit";
 import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
@@ -569,6 +569,15 @@ async function madeBy(asking: () => Promise<Answer<{ id: string }>>) {
 }
 
 export const makeMap = (name: string) => madeBy(() => backend.newMap(name));
+
+/** 52 The Maps list moved, sorted or folded; the phone answers with the list as it now stands. */
+export async function shelve(shelving: Shelving): Promise<boolean> {
+  if (!get().editToken) return false;
+  const device = told(await editing(() => backend.shelve(shelving)));
+  if (!device) return false;
+  set({ device });
+  return true;
+}
 
 export const importMap = (file: File) => madeBy(() => backend.importMap(file));
 

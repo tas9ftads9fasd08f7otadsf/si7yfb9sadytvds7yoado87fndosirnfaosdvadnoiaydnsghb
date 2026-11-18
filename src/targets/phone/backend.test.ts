@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Edit } from "@/lib/edit";
-import { backend, queryOf } from "./backend";
+import type { Shelving } from "@/lib/edit";
+import { backend, queryOf, shelfQueryOf } from "./backend";
 import { savedName } from "./phone";
 
 // 36 every edit is the query `PeerWebEdit(query:)` reads, as the store sent it before the split
@@ -44,6 +45,33 @@ const EDITS: [Edit, Record<string, string>][] = [
 describe("queryOf", () => {
   it.each(EDITS)("%o", (edit, query) => {
     expect(queryOf(edit)).toEqual(query);
+  });
+});
+
+describe("shelfQueryOf", () => {
+  // 52 each arrangement as PeerWebShelf.shelving reads it
+  it.each<[Shelving, Record<string, string>]>([
+    [{ kind: "order", maps: ["a", "b"] }, { order: "a,b" }],
+    [{ kind: "sort", sort: "nameDescending" }, { sort: "nameDescending" }],
+    [{ kind: "makeFolder", name: "Hills", maps: ["a", "b"] }, { folder: "Hills", maps: "a,b" }],
+    [{ kind: "join", folder: "F", map: "a" }, { stack: "F", map: "a" }],
+    [{ kind: "leave", map: "a" }, { leave: "a" }],
+    [{ kind: "renameFolder", folder: "F", name: "Tatras" }, { stack: "F", name: "Tatras" }],
+  ])("%o", (shelving, query) => {
+    expect(shelfQueryOf(shelving)).toEqual(query);
+  });
+
+  // 52 posted to the shelf with the token, the list read back from the answer
+  it("posts to the shelf and reads the list back", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ name: "iPad", maps: [] })));
+    vi.stubGlobal("fetch", fetcher);
+    backend.useToken(() => "t");
+    const answer = await backend.shelve({ kind: "sort", sort: "nameAscending" });
+    expect(answer).toEqual({ ok: true, value: { name: "iPad", maps: [] } });
+    const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/riki/v1/shelf?sort=nameAscending");
+    expect(init.method).toBe("POST");
+    vi.unstubAllGlobals();
   });
 });
 

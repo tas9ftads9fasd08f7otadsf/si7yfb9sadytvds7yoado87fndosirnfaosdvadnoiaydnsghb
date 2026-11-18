@@ -22,6 +22,9 @@ export interface SharedMap {
   revision?: number;
   layers: SharedLayer[];
   minimumVersion?: MinimumVersion | null;
+  /** 52 The folder it is in on the phone's Maps sheet. */
+  stackID?: string | null;
+  stackName?: string | null;
 }
 
 export interface Device {

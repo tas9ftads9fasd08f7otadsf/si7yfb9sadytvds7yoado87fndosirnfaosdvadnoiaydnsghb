@@ -32,7 +32,7 @@ test("a drawn file's line width and switches are set from its Options", async ({
   await expect(panel.getByRole("slider", { name: "Line width" })).toHaveValue("2.5");
 
   asked = sent(page);
-  await panel.getByRole("switch", { name: "Group features by name" }).click({ force: true });
+  await panel.getByRole("switch", { name: "Group features by name" }).click();
   expect(await asked).toMatchObject({ layer, grouping: "1" });
   await expect(panel.getByRole("switch", { name: "Group features by name" })).toBeChecked();
 });
@@ -43,7 +43,7 @@ test("a drawn file is narrowed to some of its values", async ({ page }) => {
   await expect(panel).toContainText("Colour by Kind");
 
   let asked = sent(page);
-  await panel.getByRole("switch", { name: "Skiing" }).click({ force: true });
+  await panel.getByRole("switch", { name: "Skiing" }).click();
   expect(await asked).toMatchObject({ layer, valueShown: "Skiing", valueOn: "0" });
   await expect(panel.getByRole("switch", { name: "Skiing" })).not.toBeChecked();
   await expect(panel.getByRole("button", { name: "All" })).toBeVisible();
@@ -72,7 +72,7 @@ test("an open Options panel stays in place while the phone's list is read again"
     await route.continue();
   });
   const asked = sent(page);
-  await panel.getByRole("switch", { name: "Group features by name" }).click({ force: true });
+  await panel.getByRole("switch", { name: "Group features by name" }).click();
   await asked;
   await expect.poll(() => reads).toBe(1);
   await expect(panel).toBeVisible();
