@@ -1,7 +1,7 @@
 import type { Answer, Backend, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { startQuery } from "@/lib/places";
-import type { SessionAnswer } from "@/lib/types";
+import type { APIAsk, APIRead, OfflineAsk, Portable, SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
 
 let token: () => string | null = () => null;
@@ -15,8 +15,9 @@ const json = <T>(answer: Response) => answer.json() as Promise<T>;
 
 /** A call that may change something carries the token the password was traded for. */
 async function editing<T>(path: string, method = "POST", body?: BodyInit,
-  read: (answer: Response) => Promise<T> = json<T>): Promise<Answer<T>> {
-  const answer = await fetch(path, { method, body, cache: "no-store", headers: { Authorization: `Bearer ${token()}` } });
+  read: (answer: Response) => Promise<T> = json<T>, more: Record<string, string> = {}): Promise<Answer<T>> {
+  const answer = await fetch(path, { method, body, cache: "no-store",
+    headers: { ...more, Authorization: `Bearer ${token()}` } });
   return answered(answer, read);
 }
 
@@ -32,8 +33,23 @@ export function shelfQueryOf(shelving: Shelving): Record<string, string> {
     case "join": return { stack: shelving.folder, map: shelving.map };
     case "leave": return { leave: shelving.map };
     case "renameFolder": return { stack: shelving.folder, name: shelving.name };
+    case "folderSymbol": return { stack: shelving.folder, symbol: shelving.symbol };
+    case "folderTint": return { stack: shelving.folder, iconTint: shelving.tint };
   }
 }
+
+/** 3397 What `PeerWebAPIForm` reads off the query; the cookie itself goes in a header, never the address. */
+export function apiAskQuery(ask: APIAsk = {}): Record<string, string> {
+  const query: Record<string, string> = {};
+  if (ask.cookies?.isOn) query.cookies = JSON.stringify(ask.cookies);
+  if (ask.tint) query.tint = ask.tint;
+  return query;
+}
+
+const COOKIE_HEADER = "X-Riki-Cookie";
+
+const cookieHeader = (ask: APIAsk = {}): Record<string, string> =>
+  ask.cookie?.trim() ? { [COOKIE_HEADER]: ask.cookie.trim() } : {};
 
 /** An edit as `/edit` reads it, the query `PeerWebEdit(query:)` takes apart. */
 export function queryOf(edit: Edit): Record<string, string> {
@@ -71,6 +87,15 @@ export function queryOf(edit: Edit): Record<string, string> {
     case "layerOptions":
     case "layerDetails": return edit.fields;
   }
+}
+
+/** 57 An area, a zoom and the ticked layers as `PeerWebOffline.Asked` reads them. */
+export function offlineQueryOf(ask: OfflineAsk): Record<string, string> {
+  const query: Record<string, string> = { box: ask.box.join(",") };
+  if (ask.chosen) query.chosen = "1";
+  if (ask.zoom != null) query.zoom = String(ask.zoom);
+  if (ask.layers) query.layers = ask.layers.join(",");
+  return query;
 }
 
 /** The phone sharing these maps, asked over `/riki/v1` as Nearby sharing answers. */
@@ -121,7 +146,8 @@ export const backend: Backend = {
     editing(`${ROOT}/maps/${id}/delete?${new URLSearchParams({ name })}`, "POST", undefined, async () => null),
   shelve: (shelving) => editing(`${ROOT}/shelf?${new URLSearchParams(shelfQueryOf(shelving))}`),
   switches: (mapID) => editing(`${ROOT}/maps/${mapID}/switches`, "GET"),
-  setPicture: (mapID, kind, picture) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, "POST", picture),
+  setPicture: (mapID, kind, picture, style) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`
+    + (style ? `&style=${encodeURIComponent(style)}` : ""), "POST", picture),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),
   packages: (mapID) => editing(`${ROOT}/maps/${mapID}/packages`, "GET"),
@@ -133,15 +159,15 @@ export const backend: Backend = {
   addServerLayers: (mapID, picks) =>
     editing(`${ROOT}/maps/${mapID}/add-server-layers?${new URLSearchParams({ picks: JSON.stringify(picks) })}`),
 
-  readAPI(address, reading) {
-    const query = new URLSearchParams({ address });
+  readAPI(address, reading, ask) {
+    const query = new URLSearchParams({ address, ...apiAskQuery(ask) });
     if (reading) query.set("reading", JSON.stringify(reading));
-    return editing(`${ROOT}/read-api?${query}`, "GET");
+    return editing(`${ROOT}/read-api?${query}`, "GET", undefined, json<APIRead>, cookieHeader(ask));
   },
 
-  addAPI(mapID, address, reading, name) {
-    const query = new URLSearchParams({ address, reading: JSON.stringify(reading), name });
-    return editing(`${ROOT}/maps/${mapID}/add-api?${query}`);
+  addAPI(mapID, address, reading, name, ask) {
+    const query = new URLSearchParams({ address, reading: JSON.stringify(reading), name, ...apiAskQuery(ask) });
+    return editing(`${ROOT}/maps/${mapID}/add-api?${query}`, "POST", undefined, json<Portable>, cookieHeader(ask));
   },
 
   addFile: async (mapID, file) =>
@@ -163,6 +189,14 @@ export const backend: Backend = {
   regions: (mapID) => readJSON(`${ROOT}/maps/${mapID}/regions`),
   downloadRegion: (mapID, regionID) =>
     editing(`${ROOT}/maps/${mapID}/download?region=${encodeURIComponent(regionID)}`, "POST", undefined, async () => null),
+
+  offlinePlan: (mapID, ask) =>
+    editing(`${ROOT}/maps/${mapID}/tile-download?${new URLSearchParams(offlineQueryOf(ask))}`, "GET"),
+  offlineDownload: (mapID, ask, action) => editing(
+    `${ROOT}/maps/${mapID}/tile-download?${new URLSearchParams({ ...offlineQueryOf(ask), [action]: "1" })}`),
+  discardStored: (mapID, layerID) => editing(
+    `${ROOT}/maps/${mapID}/discard-stored?${new URLSearchParams({ layer: layerID })}`, "POST", undefined,
+    async () => null),
 
   live: (mapID, layerID, box) => readJSON(`${ROOT}/maps/${mapID}/live/${layerID}?bbox=${box}`),
 

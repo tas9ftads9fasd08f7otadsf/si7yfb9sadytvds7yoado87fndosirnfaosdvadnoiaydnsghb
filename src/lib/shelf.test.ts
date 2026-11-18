@@ -17,6 +17,15 @@ describe("shelfOf", () => {
     expect(folder?.kind === "folder" && folder.maps.map((each) => each.id)).toEqual(["b", "d"]);
   });
 
+  // 56 a folder wears the mark and ground the phone sends with any of its maps
+  it("dresses a folder as the phone does", () => {
+    const dressed = [map("a", "F"), { ...map("b", "F"), stackSymbol: "tray.full", stackIconTintHex: "#B5D8F2" }];
+    const [folder] = shelfOf(dressed, "Folder");
+    expect(folder?.kind === "folder" && [folder.symbol, folder.tint]).toEqual(["tray.full", "#B5D8F2"]);
+    const [plain] = shelfOf([map("a", "F"), map("b", "F")], "Folder");
+    expect(plain?.kind === "folder" && [plain.symbol, plain.tint]).toEqual([undefined, undefined]);
+  });
+
   // 52 a folder nobody named is called what the phone calls it
   it("names a nameless folder with the phone's word", () => {
     const shelf = shelfOf([map("a", "F"), map("b", "F")], "Složka");

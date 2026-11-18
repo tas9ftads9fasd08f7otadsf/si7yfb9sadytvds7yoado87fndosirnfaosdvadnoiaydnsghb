@@ -5,6 +5,7 @@ import type { DetailsLayout, LayoutBlock } from "@/lib/types";
 import { setLayout, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
+import { ActionsFields, BlockSettingsFields, HeaderFields } from "./DetailsSettings";
 
 type Send = (query: Record<string, string>) => void;
 type Place = { section: number; block: number };
@@ -90,6 +91,8 @@ export function DetailsLayoutPanel({ layout, scoped }:
     send({ details: "move", ...at(place, handle), toSection: String(to.section), toPlace: String(to.block) });
   return (
     <div className="details-layout">
+      <HeaderFields layout={layout} send={send} />
+      <ActionsFields layout={layout} send={send} />
       {sections.map((section, index) => (
         <div className="layout-section" key={index} data-section={index}>
           <div className="row">
@@ -119,6 +122,7 @@ export function DetailsLayoutPanel({ layout, scoped }:
                     onClick={() => send({ details: "remove", ...at(here, block.handle) })}><Sym name="minus.circle" /></button>
                 </div>
                 <BlockFields block={block} place={here} words={words} send={send} />
+                <BlockSettingsFields block={block} place={at(here, block.handle)} layout={layout} send={send} />
               </div>
             );
           })}

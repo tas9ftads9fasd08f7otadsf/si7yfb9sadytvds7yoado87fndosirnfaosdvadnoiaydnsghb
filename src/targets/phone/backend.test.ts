@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Edit } from "@/lib/edit";
 import type { Shelving } from "@/lib/edit";
-import { backend, queryOf, shelfQueryOf } from "./backend";
+import { apiAskQuery, backend, offlineQueryOf, queryOf, shelfQueryOf } from "./backend";
 import { savedName } from "./phone";
 
 // 36 every edit is the query `PeerWebEdit(query:)` reads, as the store sent it before the split
@@ -57,6 +57,9 @@ describe("shelfQueryOf", () => {
     [{ kind: "join", folder: "F", map: "a" }, { stack: "F", map: "a" }],
     [{ kind: "leave", map: "a" }, { leave: "a" }],
     [{ kind: "renameFolder", folder: "F", name: "Tatras" }, { stack: "F", name: "Tatras" }],
+    // 56 a folder's mark and ground
+    [{ kind: "folderSymbol", folder: "F", symbol: "tray.full" }, { stack: "F", symbol: "tray.full" }],
+    [{ kind: "folderTint", folder: "F", tint: "#B5D8F2" }, { stack: "F", iconTint: "#B5D8F2" }],
   ])("%o", (shelving, query) => {
     expect(shelfQueryOf(shelving)).toEqual(query);
   });
@@ -131,5 +134,30 @@ describe("the phone backend", () => {
     expect(savedName(`attachment; filename="a.mapson"; filename*=UTF-8''Pre%C5%A1ov.mapson`)).toBe("Prešov.mapson");
     expect(savedName(`attachment; filename="a.mapson"`)).toBe("a.mapson");
     expect(savedName("")).toBe("Map.mapson");
+  });
+
+  // 61 a typed cookie travels in a header, never in the address; the page and colour in the query
+  it("sends an API layer's cookie in a header and its page and colour in the query", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    const cookies = { isOn: true, page: "https://buses.example/", seconds: 300 };
+    const reading = { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "" };
+    await backend.addAPI("M", "https://buses.example/now", reading, "Buses", { cookies, cookie: " s=1 ", tint: "#FF8800" });
+    const [path, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    const query = new URL(path, "http://phone").searchParams;
+    expect(JSON.parse(query.get("cookies") ?? "")).toEqual(cookies);
+    expect(query.get("tint")).toBe("#FF8800");
+    expect(path).not.toContain("s=1");
+    expect((init.headers as Record<string, string>)["X-Riki-Cookie"]).toBe("s=1");
+    expect(apiAskQuery({ cookies: { ...cookies, isOn: false }, cookie: "s=1" })).toEqual({});
+  });
+});
+
+// 57 the area, the zoom and the ticked layers as `PeerWebOffline.Asked` reads them
+describe("offlineQueryOf", () => {
+  it("writes the view, and what was chosen only when it was", () => {
+    expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: false })).toEqual({ box: "1,2,3,4" });
+    expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: true, zoom: 12, layers: ["A", "B"] }))
+      .toEqual({ box: "1,2,3,4", chosen: "1", zoom: "12", layers: "A,B" });
   });
 });

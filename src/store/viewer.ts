@@ -9,8 +9,8 @@ import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/
 import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
-import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, MapSwitches, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
+import type { APIAsk, APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
+  LayerOptions, MapSwitches, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
@@ -74,6 +74,10 @@ export interface ViewerState {
   layerOptions: LayerOptions | null;
   optionsOpen: Set<string>;
   switches: MapSwitches | null;
+  /** 57 Download tiles as the phone last counted it, and what it was asked for. */
+  offline: OfflinePlan | null;
+  offlineAsk: OfflineAsk | null;
+  offlineOpen: boolean;
 }
 
 const firstState = (): ViewerState => ({
@@ -86,7 +90,7 @@ const firstState = (): ViewerState => ({
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
-  switches: null
+  switches: null, offline: null, offlineAsk: null, offlineOpen: false
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -98,11 +102,13 @@ const set = useViewer.setState;
 const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof setTimeout> | undefined,
   notice: undefined as ReturnType<typeof setTimeout> | undefined, layerOptions: null as string | null,
   packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
-  coverageEdits: Promise.resolve(), optionsAsked: 0 };
+  coverageEdits: Promise.resolve(), optionsAsked: 0,
+  offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0 };
 
 export function resetViewer() {
   clearTimeout(busy.heartbeat);
   clearTimeout(busy.notice);
+  clearTimeout(busy.offline);
   Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, servers: false, coverage: null,
     addressKey: null, coverageEdits: Promise.resolve() });
   set(firstState(), true);
@@ -367,7 +373,8 @@ export async function pickMap(id: string, styleID: string | null) {
     localStorage.setItem(LAST_MAP_KEY, id);
   } catch { /* the first map next time */ }
   set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
-    coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, serverPicks: new Map(), serviceRead: null,
+    coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, offline: null, offlineAsk: null, offlineOpen: false,
+    serverPicks: new Map(), serviceRead: null,
     layerOptions: null, optionsOpen: new Set() });
   let portable: Portable | null = null;
   try {
@@ -781,18 +788,24 @@ export async function setPicture(kind: "icon" | "preview", picture?: Blob | null
   if (await addedBy((id) => backend.setPicture(id, kind, body))) keepPictures(mapID, picturesOf(get().portable));
 }
 
+/** 65 A style's own picture, squared on the phone as its style page squares one; none takes it away. */
+export async function setStylePicture(style: string, picture?: Blob | null) {
+  const body = picture ? await picture.arrayBuffer() : new ArrayBuffer(0);
+  await addedBy((id) => backend.setPicture(id, "styleIcon", body, style));
+}
+
 export async function takePreview() {
   const shot = await mapControl()?.snapshot();
   if (shot) await setPicture("preview", shot);
 }
 
 /** 3003: the phone reads the API and guesses its keys, or reads them as the page picked. */
-export async function readAPI(address: string, reading?: APIReading | null): Promise<APIRead | null> {
-  return told(await editing(() => backend.readAPI(address, reading)));
+export async function readAPI(address: string, reading?: APIReading | null, ask?: APIAsk): Promise<APIRead | null> {
+  return told(await editing(() => backend.readAPI(address, reading, ask)));
 }
 
-export const addAPI = (address: string, reading: APIReading, name: string) =>
-  addedBy((mapID) => backend.addAPI(mapID, address, reading, name));
+export const addAPI = (address: string, reading: APIReading, name: string, ask?: APIAsk) =>
+  addedBy((mapID) => backend.addAPI(mapID, address, reading, name, ask));
 
 export async function addServerLayers() {
   const picks = [...get().serverPicks.values()];
@@ -917,4 +930,91 @@ export async function downloadRegion(region: Region) {
   const answer = await editing(() => backend.downloadRegion(mapID, region.id));
   if (answer?.ok) mapControl()?.readRegions();
   else if (answer) notice(answer.said);
+}
+
+// MARK: - 57 Download tiles and what a layer has stored
+
+/** How often a running download's progress is read again while the card is open. */
+export const OFFLINE_EVERY = 3000;
+
+/** The plan for the view now, or for what the page last asked, read again until nothing runs. */
+export async function loadOffline(ask?: OfflineAsk) {
+  const { mapID } = get();
+  const asked = ask ?? get().offlineAsk ?? viewAsk(false);
+  if (!mapID || !asked) return;
+  const round = ++busy.offlineAsked;
+  const answer = await editing(() => backend.offlinePlan(mapID, asked), { quiet: true });
+  if (round !== busy.offlineAsked || mapID !== get().mapID) return;
+  if (answer?.ok) set({ offline: answer.value, offlineAsk: asked });
+  else if (answer && ask) notice(answer.said);
+  followOffline();
+}
+
+function followOffline() {
+  clearTimeout(busy.offline);
+  if (get().offline?.isQueued) busy.offline = setTimeout(() => void loadOffline(), OFFLINE_EVERY);
+}
+
+export function stopOffline() {
+  clearTimeout(busy.offline);
+  busy.offlineAsked++;
+}
+
+function viewAsk(chosen: boolean): OfflineAsk | null {
+  const box = mapControl()?.box();
+  return box && box.length === 4 ? { box, chosen } : null;
+}
+
+export const openOffline = (offlineOpen: boolean) => set({ offlineOpen });
+
+/** As the phone's area picker: what the browser frames now is the area. */
+export function chooseOfflineArea() {
+  const view = viewAsk(true);
+  if (view) void loadOffline({ ...get().offlineAsk, ...view });
+}
+
+export function setOfflineZoom(zoom: number) {
+  const { offlineAsk, offline } = get();
+  if (offlineAsk && offline) void loadOffline({ ...offlineAsk, box: offline.box, chosen: true, zoom });
+}
+
+export function tickOfflineLayer(id: string) {
+  const { offlineAsk, offline } = get();
+  if (!offlineAsk || !offline) return;
+  const ticked = new Set(offline.rows.filter((row) => row.isIncluded).map((row) => row.id));
+  if (!ticked.delete(id)) ticked.add(id);
+  void loadOffline({ ...offlineAsk, box: offline.box, chosen: true, zoom: offline.zoom, layers: [...ticked] });
+}
+
+/** The screen's Download and Cancel, for what the plan last showed. */
+export async function offlineDownload(action: "start" | "cancel") {
+  const { mapID, offlineAsk, offline } = get();
+  if (!mapID || !offlineAsk || !offline) return;
+  const ask: OfflineAsk = { ...offlineAsk, box: offline.box, chosen: true, zoom: offline.zoom,
+    layers: offline.rows.filter((row) => row.isIncluded).map((row) => row.id) };
+  const answer = await editing(() => backend.offlineDownload(mapID, ask, action));
+  const plan = told(answer);
+  if (!plan || mapID !== get().mapID) return;
+  busy.offlineAsked++;
+  set({ offline: plan, offlineAsk: ask });
+  followOffline();
+}
+
+/** Edit map's Delete, asked first in its words; the map is drawn again without what went. */
+export async function discardStored(layerID: string) {
+  const { mapID, offline } = get();
+  const discard = offline?.rows.find((row) => row.id === layerID)?.discard;
+  if (!mapID || !discard || !confirm(`${discard.ask}\n\n${discard.note}`)) return;
+  const answer = await editing(() => backend.discardStored(mapID, layerID));
+  if (!answer) return;
+  if (!answer.ok) {
+    notice(answer.said);
+    return;
+  }
+  try {
+    const portable = await backend.map(mapID);
+    if (mapID === get().mapID) set({ portable });
+  } catch { /* the plan below still says what went */ }
+  mapControl()?.draw();
+  await loadOffline();
 }
