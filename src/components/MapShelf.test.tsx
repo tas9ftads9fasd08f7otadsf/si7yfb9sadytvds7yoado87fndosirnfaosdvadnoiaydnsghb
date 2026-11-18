@@ -94,4 +94,29 @@ describe("MapShelf", () => {
     fireEvent.blur(field);
     expect(url().replace(/\+/g, " ")).toBe("/riki/v1/shelf?stack=F&name=Low hills");
   });
+
+  // 56 a folder's mark opens its icon, offering Edit folder's marks and grounds
+  it("sets a folder's mark and ground on the phone", () => {
+    useViewer.setState({ editToken: "t",
+      words: { ...useViewer.getState().words, folderSymbols: "square.stack,tray.full", iconTints: "#B5D8F2" } });
+    const url = asking();
+    const dressed = maps.map((each) => (each.stackID ? { ...each, stackSymbol: "square.stack" } : each));
+    render(<MapShelf maps={dressed} />);
+    expect(screen.queryByRole("group", { name: "Icon Hills" })).toBeNull();
+    fireEvent.click(screen.getByLabelText("Icon · Hills"));
+    const marks = screen.getByRole("group", { name: "Icon Hills" });
+    expect([...marks.querySelectorAll("button")].map((each) => each.dataset.symbol)).toEqual(["square.stack", "tray.full"]);
+    fireEvent.click(screen.getByLabelText("tray.full"));
+    expect(url()).toBe("/riki/v1/shelf?stack=F&symbol=tray.full");
+  });
+
+  // 56 a ground is a colour of the palette, or blank for the named map's
+  it("sends a folder's ground", () => {
+    useViewer.setState({ editToken: "t", words: { ...useViewer.getState().words, iconTints: "#B5D8F2" } });
+    const url = asking();
+    render(<MapShelf maps={maps.map((each) => (each.stackID ? { ...each, stackIconTintHex: "#F2B8B5" } : each))} />);
+    fireEvent.click(screen.getByLabelText("Icon · Hills"));
+    fireEvent.click(screen.getByLabelText("#B5D8F2"));
+    expect(url()).toBe("/riki/v1/shelf?stack=F&iconTint=#B5D8F2");
+  });
 });

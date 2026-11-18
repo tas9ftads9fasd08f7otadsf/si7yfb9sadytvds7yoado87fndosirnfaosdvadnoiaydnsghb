@@ -32,6 +32,8 @@ export function shelfQueryOf(shelving: Shelving): Record<string, string> {
     case "join": return { stack: shelving.folder, map: shelving.map };
     case "leave": return { leave: shelving.map };
     case "renameFolder": return { stack: shelving.folder, name: shelving.name };
+    case "folderSymbol": return { stack: shelving.folder, symbol: shelving.symbol };
+    case "folderTint": return { stack: shelving.folder, iconTint: shelving.tint };
   }
 }
 
