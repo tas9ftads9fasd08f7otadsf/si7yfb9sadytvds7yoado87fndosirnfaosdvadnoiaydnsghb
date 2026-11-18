@@ -231,7 +231,37 @@ export interface APIReading {
   longitudeKey: string;
   positionKey: string;
   nameKey?: string | null;
+  positionOrder?: string | null;
+  colourKey?: string | null;
+  imageKey?: string | null;
+  shownKeys?: string[];
+  refreshSeconds?: number | null;
+  detailRows?: APIDetailRow[] | null;
+  cookies?: CookiePreflight | null;
   [other: string]: unknown;
+}
+
+/** 3397: a page asked for cookies before the address, as `CookiePreflight` is written. */
+export interface CookiePreflight {
+  isOn: boolean;
+  page: string;
+  seconds: number;
+}
+
+/** 3397: a row of the sheet's Details card, as `APIDetailRow` is written. */
+export interface APIDetailRow {
+  id: string;
+  title: string;
+  symbol: string;
+  value: string;
+  isCoordinates?: boolean | null;
+  isHidden?: boolean | null;
+}
+
+export interface APIChoice {
+  value: string;
+  title: string;
+  detail?: string | null;
 }
 
 /** 3003: what the phone read of an API, and the reading it would add. */
@@ -242,6 +272,16 @@ export interface APIRead {
   points: number;
   name: string;
   said: string;
+  samples?: Record<string, string>;
+  keepsCookie?: boolean;
+  choices?: { spellings: APIChoice[]; orders: APIChoice[]; refresh: APIChoice[]; cookieAges: APIChoice[] };
+}
+
+/** 3397: how the phone asks beyond the reading: its cookie page, a typed cookie, the colour. */
+export interface APIAsk {
+  cookies?: CookiePreflight | null;
+  cookie?: string;
+  tint?: string | null;
 }
 
 export interface LayerOptions {

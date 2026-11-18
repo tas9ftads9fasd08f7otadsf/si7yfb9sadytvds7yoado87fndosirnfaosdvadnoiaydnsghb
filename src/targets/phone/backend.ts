@@ -1,7 +1,7 @@
 import type { Answer, Backend, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { startQuery } from "@/lib/places";
-import type { SessionAnswer } from "@/lib/types";
+import type { APIAsk, APIRead, Portable, SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
 
 let token: () => string | null = () => null;
@@ -15,8 +15,9 @@ const json = <T>(answer: Response) => answer.json() as Promise<T>;
 
 /** A call that may change something carries the token the password was traded for. */
 async function editing<T>(path: string, method = "POST", body?: BodyInit,
-  read: (answer: Response) => Promise<T> = json<T>): Promise<Answer<T>> {
-  const answer = await fetch(path, { method, body, cache: "no-store", headers: { Authorization: `Bearer ${token()}` } });
+  read: (answer: Response) => Promise<T> = json<T>, more: Record<string, string> = {}): Promise<Answer<T>> {
+  const answer = await fetch(path, { method, body, cache: "no-store",
+    headers: { ...more, Authorization: `Bearer ${token()}` } });
   return answered(answer, read);
 }
 
@@ -36,6 +37,19 @@ export function shelfQueryOf(shelving: Shelving): Record<string, string> {
     case "folderTint": return { stack: shelving.folder, iconTint: shelving.tint };
   }
 }
+
+/** 3397 What `PeerWebAPIForm` reads off the query; the cookie itself goes in a header, never the address. */
+export function apiAskQuery(ask: APIAsk = {}): Record<string, string> {
+  const query: Record<string, string> = {};
+  if (ask.cookies?.isOn) query.cookies = JSON.stringify(ask.cookies);
+  if (ask.tint) query.tint = ask.tint;
+  return query;
+}
+
+const COOKIE_HEADER = "X-Riki-Cookie";
+
+const cookieHeader = (ask: APIAsk = {}): Record<string, string> =>
+  ask.cookie?.trim() ? { [COOKIE_HEADER]: ask.cookie.trim() } : {};
 
 /** An edit as `/edit` reads it, the query `PeerWebEdit(query:)` takes apart. */
 export function queryOf(edit: Edit): Record<string, string> {
@@ -133,15 +147,15 @@ export const backend: Backend = {
   addServerLayers: (mapID, picks) =>
     editing(`${ROOT}/maps/${mapID}/add-server-layers?${new URLSearchParams({ picks: JSON.stringify(picks) })}`),
 
-  readAPI(address, reading) {
-    const query = new URLSearchParams({ address });
+  readAPI(address, reading, ask) {
+    const query = new URLSearchParams({ address, ...apiAskQuery(ask) });
     if (reading) query.set("reading", JSON.stringify(reading));
-    return editing(`${ROOT}/read-api?${query}`, "GET");
+    return editing(`${ROOT}/read-api?${query}`, "GET", undefined, json<APIRead>, cookieHeader(ask));
   },
 
-  addAPI(mapID, address, reading, name) {
-    const query = new URLSearchParams({ address, reading: JSON.stringify(reading), name });
-    return editing(`${ROOT}/maps/${mapID}/add-api?${query}`);
+  addAPI(mapID, address, reading, name, ask) {
+    const query = new URLSearchParams({ address, reading: JSON.stringify(reading), name, ...apiAskQuery(ask) });
+    return editing(`${ROOT}/maps/${mapID}/add-api?${query}`, "POST", undefined, json<Portable>, cookieHeader(ask));
   },
 
   addFile: async (mapID, file) =>

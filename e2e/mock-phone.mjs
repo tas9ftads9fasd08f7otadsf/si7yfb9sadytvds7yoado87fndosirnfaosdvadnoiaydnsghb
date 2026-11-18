@@ -44,7 +44,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
     legendEverywhere: true, ownsSettings: true };
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
@@ -56,7 +56,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
     legendEverywhere: true, ownsSettings: true };
 }
 
@@ -302,14 +302,29 @@ function questionSections(layer) {
     layerScoped: true, value: layer.identifyRequest || "" }];
 }
 
-// 3003: an API answering two vehicles, as `PeerWebAPI` reads one.
-function apiRead(query) {
+// 3397: the form's choices, titled as `PeerWebAPI.Choices` titles them.
+const API_CHOICES = {
+  spellings: [{ value: "decimal", title: "Decimal degrees" }, { value: "degreesMinutesSeconds", title: "Degrees, minutes, seconds" },
+    { value: "position", title: "One key, both numbers" }],
+  orders: [{ value: "latitudeFirst", title: "Latitude first" }, { value: "longitudeFirst", title: "Longitude first" }],
+  refresh: [{ value: "0", title: "On the move" }, { value: "10", title: "10 sec" }, { value: "30", title: "30 sec" },
+    { value: "60", title: "1 min" }, { value: "300", title: "5 min" }],
+  cookieAges: [{ value: "0", title: "As they say" }, { value: "60", title: "1 min" }, { value: "300", title: "5 min" }]
+};
+
+// 3003: an API answering two vehicles, as `PeerWebAPI` reads one; 3397 a cookie is kept, never answered.
+function apiRead(query, cookie) {
   if (!/^https:\/\//.test(query.get("address") || "")) return null;
   const reading = query.has("reading") ? JSON.parse(query.get("reading"))
-    : { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "", nameKey: "line" };
+    : { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "", nameKey: "line",
+      shownKeys: [] };
+  const cookies = query.has("cookies") ? JSON.parse(query.get("cookies")) : null;
+  reading.cookies = cookies?.isOn ? cookies : undefined;
   const keys = reading.itemsPath === "vehicles" ? ["lat", "lon", "line"] : [];
   const points = keys.includes(reading.latitudeKey) && keys.includes(reading.longitudeKey) ? 2 : 0;
-  return { reading, paths: ["vehicles", "stops"], keys, points, name: "buses.example", said: `Answered · ${points} points` };
+  const samples = keys.length ? { lat: "48.15", lon: "17.11", line: "N33" } : {};
+  return { reading, paths: ["vehicles", "stops"], keys, points, name: "buses.example", said: `Answered · ${points} points`,
+    samples, keepsCookie: Boolean(cookie || phone.keptCookie), choices: API_CHOICES };
 }
 
 // 29: a layer's Details layout as `PeerWebLayerOptions+Details` lists it, and its edits.
@@ -854,7 +869,7 @@ async function answer(request, response) {
     // 3003: as `PeerWebAPI.read` answers: the vehicles list guessed, or read as the page picked.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
-    const read = apiRead(url.searchParams);
+    const read = apiRead(url.searchParams, request.headers["x-riki-cookie"]);
     return read ? json(response, read) : send(response, 409, "That is not an address this app can ask.");
   }
   if (parts[2] === "read-address" && parts.length === 3) {
@@ -1028,8 +1043,11 @@ async function answer(request, response) {
     // 3003: as `PeerWebAPI.edit`: nothing is added that would draw no point.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
-    const read = apiRead(url.searchParams);
+    const cookie = request.headers["x-riki-cookie"] || "";
+    const read = apiRead(url.searchParams, cookie);
     if (!read?.points) return send(response, 409, "None of those items had a coordinate this app could read.");
+    if (cookie) phone.keptCookie = cookie;
+    phone.apiAdds.push({ reading: read.reading, tint: url.searchParams.get("tint"), cookie, address: url.href });
     each.layers.push({ id: randomUUID().toUpperCase(), name: url.searchParams.get("name") || read.name,
       kind: "API", symbol: "antenna.radiowaves.left.and.right", isEnabled: true });
     each.revision += 1;
@@ -1165,6 +1183,7 @@ function testControl(route, query, response) {
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
   case "/__test/details-asked": return json(response, phone.detailsAsked);
   case "/__test/pictures": return json(response, phone.pictureKinds);
+  case "/__test/api-adds": return json(response, phone.apiAdds);
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);
     phone.regions.downloading = [];
