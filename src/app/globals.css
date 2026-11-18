@@ -242,6 +242,12 @@ label.action { cursor: pointer; }
 .layout-block .row button:disabled { color: var(--secondary); opacity: 0.4; }
 .block-fields, .add-content { display: flex; flex-direction: column; gap: 6px; padding: 2px 14px 8px; }
 .add-content button { align-self: flex-start; }
+.block-fields .check { display: flex; gap: 6px; align-items: center; }
+.block-fields > button.link { align-self: flex-start; }
+.layout-row input { flex: 1; }
+.add-row { gap: 6px; }
+.add-row input { flex: 1; }
+.layout-header, .layout-actions { border-top: 1px solid var(--line); padding: 4px 0; }
 .field.pictured { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .field.pictured .shown { width: 44px; height: 44px; border-radius: 10px; background: center / cover; }
 .field.pictured.preview .shown { width: 100%; height: auto; aspect-ratio: 4 / 3; }

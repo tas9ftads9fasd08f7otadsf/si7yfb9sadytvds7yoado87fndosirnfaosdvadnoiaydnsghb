@@ -52,4 +52,7 @@ export type Shelving =
   | { kind: "makeFolder"; name: string; maps: string[] }
   | { kind: "join"; folder: string; map: string }
   | { kind: "leave"; map: string }
-  | { kind: "renameFolder"; folder: string; name: string };
+  | { kind: "renameFolder"; folder: string; name: string }
+  | { kind: "folderSymbol"; folder: string; symbol: string }
+  /** 56 `#RRGGBB`, or blank for the named map's ground. */
+  | { kind: "folderTint"; folder: string; tint: string };

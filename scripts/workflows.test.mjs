@@ -74,3 +74,19 @@ describe("the site's deploy", () => {
     expect(read("ci.yml")).toContain("pip install pyftpdlib pyopenssl");
   });
 });
+
+// 63 a draft pull request runs no CI; marking it ready runs it, and so does each later push
+describe("CI on a pull request", () => {
+  const ci = read("ci.yml");
+
+  it("is started when the pull request is marked ready, and by every push to it", () => {
+    const types = /pull_request:\s*\n\s*types:\s*\[([^\]]*)\]/.exec(ci)?.[1].split(",").map((t) => t.trim());
+    expect(types).toEqual(expect.arrayContaining(["opened", "synchronize", "reopened", "ready_for_review"]));
+  });
+
+  it("skips a draft, and the check that needs it, but never a release's call", () => {
+    const changes = ci.slice(ci.indexOf("  changes:"), ci.indexOf("\n  check:"));
+    expect(changes).toContain("if: github.event_name != 'pull_request' || !github.event.pull_request.draft");
+    expect(ci.slice(ci.indexOf("\n  check:"))).toContain("needs: changes");
+  });
+});
