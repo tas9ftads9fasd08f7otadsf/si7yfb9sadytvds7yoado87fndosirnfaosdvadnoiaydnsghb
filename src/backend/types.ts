@@ -65,6 +65,8 @@ export interface Backend {
   exportMap(id: string): Promise<Answer<Saved>>;
   /** 50 A copy of the map, shared at once as a new map is. */
   duplicateMap(id: string): Promise<Answer<{ id: string }>>;
+  /** 62 The map deleted as the Maps sheet deletes it, its name typed to confirm. */
+  deleteMap(id: string, name: string): Promise<Answer<null>>;
   /** 52 The Maps list's order, sort and folders; the phone answers with the list again. */
   shelve(shelving: Shelving): Promise<Answer<Device>>;
   /** 50 What Availability and the Styles card's rows read, which the portable copy leaves out. */

@@ -216,6 +216,12 @@ label.action { cursor: pointer; }
 .icon-button:hover:not(:disabled) { background: var(--hover); }
 .icon-button:disabled { color: var(--tertiary); cursor: default; }
 .icon-button.danger { color: var(--danger); }
+.action.danger { color: var(--danger); }
+.action:disabled { color: var(--tertiary); cursor: default; }
+.confirm-delete { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); }
+.confirm-delete .reach, .confirm-delete span { font-size: 13px; color: var(--secondary); }
+.confirm-delete input { text-transform: none; letter-spacing: normal; }
+.confirm-delete .buttons { display: flex; gap: 8px; }
 .icon-button .sym { font-size: 15px; }
 .card { margin: 0 16px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; padding: 4px 0; }
 .field { padding: 8px 14px; }

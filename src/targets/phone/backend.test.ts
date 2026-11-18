@@ -95,6 +95,17 @@ describe("the phone backend", () => {
     expect(init.headers).toEqual({ Authorization: "Bearer second" });
   });
 
+  // 62 a delete posts the typed name with the token and reads no body back
+  it("posts a delete with the typed name", async () => {
+    const fetcher = vi.fn(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetcher);
+    backend.useToken(() => "t");
+    expect(await backend.deleteMap("M", "High Tatras")).toEqual({ ok: true, value: null });
+    const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/riki/v1/maps/M/delete?name=High+Tatras");
+    expect(init.method).toBe("POST");
+  });
+
   // 43 the style is asked with direct=1 only by a browser loading tiles from their source
   it("asks for a style with direct=1 only when loading from the source", async () => {
     const fetcher = vi.fn(async () => new Response("{}"));

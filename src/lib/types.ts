@@ -434,6 +434,8 @@ export interface MapSwitches {
   removedStyles: number;
   /** 53 The styles edited away from what was published; older phones leave it out. */
   editedStyles?: string[];
+  /** 62 Who loses the map deleted, as the Maps sheet asks; absent where it offers no Delete. */
+  deletion?: "onlyYou" | "everyone" | "yourList";
 }
 
 /** 59 A role on a shared map, as `MapShareRole` names it. */
