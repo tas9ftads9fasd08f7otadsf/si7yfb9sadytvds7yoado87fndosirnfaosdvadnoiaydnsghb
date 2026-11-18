@@ -88,6 +88,7 @@ export const ENGLISH = {
   showWorldNote: "Sea, borders and country names around this map",
   hiddenEverywhere: "Hidden on every map under Settings › Map",
   ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map",
+  headerName: "Header", headerValue: "Value", testing: "Testing…",
   people: "People", inviteSomeone: "Invite someone", askToInvite: "Ask to invite",
   aloneHeadline: "This map is yours alone.", aloneAdvice: "Invite someone and it becomes a map you both have.",
   emailOrPhone: "Email or phone", invite: "Invite", invited: "Invited",
