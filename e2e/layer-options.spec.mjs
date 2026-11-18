@@ -21,7 +21,7 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
 test("only the layers with panels offer Options", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  await expect(page.getByRole("button", { name: "Options" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Options", exact: true })).toHaveCount(2);
 });
 
 // 2960: a ski kind switched off is written into every style, and the switch reads it back.
@@ -33,7 +33,7 @@ test("a ski kind is switched off in every style", async ({ page }) => {
   await expect(lifts).toBeChecked();
 
   const asked = sent(page);
-  await lifts.click({ force: true });
+  await lifts.click();
   expect(await asked).toMatchObject({ kindFamily: "ski", kind: "lift", shown: "0" });
   await expect(panel.getByRole("switch", { name: "Lifts" })).not.toBeChecked();
 });
@@ -52,7 +52,7 @@ test("the railways look is picked per style and the marks for all", async ({ pag
   await expect(panel.getByRole("combobox", { name: "Summer" })).toHaveValue("standard");
 
   asked = sent(page);
-  await panel.getByRole("switch", { name: "Marks on the track" }).click({ force: true });
+  await panel.getByRole("switch", { name: "Marks on the track" }).click();
   expect((await asked).railMarks).toBe("0");
   await expect(panel.getByRole("switch", { name: "Marks on the track" })).not.toBeChecked();
 });
@@ -74,7 +74,7 @@ test("a layer's look is set from its Options", async ({ page }) => {
   await expect(panel.locator("[data-hex='#2E9E5B']")).toHaveAttribute("aria-pressed", "true");
 
   asked = sent(page);
-  await panel.getByRole("switch", { name: "Icons along its roads and paths" }).click({ force: true });
+  await panel.getByRole("switch", { name: "Icons along its roads and paths" }).click();
   expect(await asked).toMatchObject({ layer, routeIcons: "0" });
 
   asked = sent(page);

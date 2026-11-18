@@ -140,20 +140,20 @@ export function MapShelf({ maps }: { maps: SharedMap[] }) {
       </div>
       <div className="list" id="mapList">
         {shelf.map((item, place) => item.kind === "map" ? (
-          <div className="row arranged" key={item.id} data-map={item.id}>
+          <div className="shelf-row" key={item.id} data-map={item.id}>
             <MapRow shared={item.map} />
             <IntoFolder shared={item.map} folders={folders} />
             <MoveButtons name={item.map.name} place={place} count={shelf.length} move={(by) => moveItem(place, by)} />
           </div>
         ) : (
           <div className="folder" key={item.id} data-folder={item.id}>
-            <div className="row arranged">
+            <div className="shelf-row">
               <Sym name="folder" />
               <FolderName key={item.name} id={item.id} name={item.name} />
               <MoveButtons name={item.name} place={place} count={shelf.length} move={(by) => moveItem(place, by)} />
             </div>
             {item.maps.map((map, inner) => (
-              <div className="row arranged inside" key={map.id} data-map={map.id}>
+              <div className="shelf-row inside" key={map.id} data-map={map.id}>
                 <MapRow shared={map} />
                 <button type="button" className="icon-button" aria-label={`${words.outOfFolder} · ${map.name}`}
                   title={words.outOfFolder} onClick={() => shelve({ kind: "leave", map: map.id })}>

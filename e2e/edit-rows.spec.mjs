@@ -141,12 +141,12 @@ test("a layer is switched off and on in Edit map", async ({ page }) => {
   await expect(huts()).toBeChecked();
 
   let asked = sent(page);
-  await huts().click({ force: true });
+  await huts().click();
   expect(await asked).toMatchObject({ layer: HUTS, shown: "0" });
   await expect(huts()).not.toBeChecked();
 
   asked = sent(page);
-  await huts().click({ force: true });
+  await huts().click();
   expect(await asked).toMatchObject({ layer: HUTS, shown: "1" });
   await expect(huts()).toBeChecked();
 });
