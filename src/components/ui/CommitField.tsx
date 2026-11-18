@@ -20,7 +20,9 @@ export function CommitField({ value, onCommit, multiline, ...attributes }: Props
     return () => part?.removeEventListener("change", send);
   }, []);
   useEffect(() => {
-    if (field.current && field.current.value !== value) field.current.value = value;
+    const part = field.current;
+    // 72 an answer to the last edit must not wipe what is typed for the next
+    if (part && part.value !== value && document.activeElement !== part) part.value = value;
   }, [value]);
   return multiline
     ? <textarea ref={field} defaultValue={value} {...attributes as TextareaHTMLAttributes<HTMLTextAreaElement>} />
