@@ -255,6 +255,9 @@ label.action { cursor: pointer; }
 .row.value .swatches { padding: 0; }
 .details-layout input, .details-layout textarea, .details-layout select { font: inherit; padding: 5px 8px;
   border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; min-width: 0; }
+.details-preview { margin: 4px 0 8px; }
+.details-preview .feature { padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--fill); }
 .layout-section { border-top: 1px solid var(--line); padding: 4px 0; }
 .layout-section > .row input { flex: 1; }
 .layout-block .row button { border: 0; background: none; color: var(--accent); padding: 4px; }

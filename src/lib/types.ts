@@ -208,6 +208,16 @@ export interface DetailsLayout {
   /** 80: the icon picker's groups for a row's mark; none from a phone that cannot set it. */
   symbolGroups?: { title: string; symbols: string[] }[];
   choices?: Record<string, OptionChoice[]>;
+  /** 79: the layer's points the preview may fill; absent from a phone that sends none. */
+  samples?: LayoutSample[];
+  /** The phone's words for a layer with no point to show yet. */
+  sampleNote?: string;
+}
+
+/** 79: a point's tags and the phone's caption for it, as the app's editor words it. */
+export interface LayoutSample {
+  caption: string;
+  properties: Record<string, string>;
 }
 
 /** 55: the placed buttons in the sheet's order, then the app's own left off. */

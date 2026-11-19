@@ -575,6 +575,7 @@ function detailsSections(layer) {
   return [{ kind: "details", title: "Details", footnote: "What a tapped point's sheet shows.", layerScoped: true,
     layout: { sections: layer.layout.map((section, index) => ({ ...section, name: section.title || `Section ${index + 1}` })),
       used, limit: 10, parts: [], keys: ["line", "note"], offers: [{ id: "text", title: "Text" }],
+      ...(layer.samples ? { samples: layer.samples, sampleNote: "Tap a point on the map first" } : {}),
       words: { ...LAYOUT_WORDS, used: `${used} of 10 content blocks used` },
       header: { title: layer.header?.title ?? null, symbol: layer.header?.symbol ?? null, layerSymbol: layer.symbol },
       actions: layer.actions ? { ...layer.actions, items: [...layer.actions.items,
@@ -597,6 +598,27 @@ function allowsRowSymbol(symbol, worn) {
   if (symbol === worn) return true;
   return !phone.droppedSymbols.has(symbol)
     && [...SYMBOL_GROUPS.flatMap((group) => group.symbols), ...SUGGESTED_SYMBOLS].includes(symbol);
+}
+
+// 79: stands in for `LayerDetails.filled(from:)`: a `{key}` read from the point, empty ones dropped.
+function filledSheet(layer, values) {
+  const fill = (text) => (text || "").replace(/\{(\w+)\}/g, (_, key) => values[key] ?? "").trim();
+  const filled = (block) => {
+    const settings = block.settings || {};
+    if (block.kind === "rows") {
+      const rows = (settings.rows || []).map((row) => ({ title: row.title, value: fill(row.value) }))
+        .filter((row) => row.value || !settings.hidesEmpty);
+      return rows.length ? { kind: "rows", rows } : null;
+    }
+    if (block.kind === "text") {
+      const text = fill(block.value);
+      return text || !settings.hides ? { kind: "text", title: block.heading, text, warning: block.style === "warning" || undefined } : null;
+    }
+    return block.part === "allTags" ? { kind: "allTags" } : null;
+  };
+  const sections = layer.layout.map((section) => ({ title: section.title,
+    blocks: section.blocks.map(filled).filter(Boolean) })).filter((section) => section.blocks.length);
+  return { title: values.line ? `Line ${values.line}` : null, sections, keys: ["line", "speed", "note"] };
 }
 
 // 55: the settings `PeerWebDetailsListing` lists beside the blocks, and `PeerWebDetailsSettings` sets.
@@ -1395,6 +1417,8 @@ async function answer(request, response) {
     // 21: as `PeerWebDetails` answers: the layer's layout filled from the feature, or nothing.
     const values = JSON.parse(url.searchParams.get("values") || "{}");
     phone.detailsAsked.push({ layer: url.searchParams.get("layer"), values });
+    const laidOut = each.layers.find((one) => one.id === url.searchParams.get("layer") && one.layout);
+    if (laidOut) return json(response, filledSheet(laidOut, values));
     if (!phone.laysOutDetails) { response.writeHead(204); return response.end(); }
     return json(response, { title: `Hut ${values.Nazov}`, keys: ["Nazov", "Elevation"], sections: [
       { title: "About", blocks: [{ kind: "rows", rows: [{ title: "Height", value: `${values.Elevation} m` }] },
@@ -1808,6 +1832,15 @@ function testControl(route, query, response) {
       block.handle += "x";
     }
     break;
+  case "/__test/layer-samples": {
+    // 79: the points `PeerWebLayerOptions+Details` hands the page; none when the query says so.
+    const layer = phone.maps[0].layers.find((one) => one.id === "6F1E2A10-0000-4000-8000-0000000000A5");
+    layer.samples = query.has("none") ? [] : [
+      { caption: "Line 4 · Feature 1 of 3", properties: { line: "4", speed: "30", note: "Detour via Main St" } },
+      { caption: "Line 9 · Feature 2 of 3", properties: { line: "9", speed: "25" } },
+      { caption: "Line 12 · Feature 3 of 3", properties: { line: "12", speed: "40", note: "Closed" } }];
+    break;
+  }
   case "/__test/answers-servers": phone.answersServers = true; break;
   case "/__test/identified": return json(response, phone.identified);
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
