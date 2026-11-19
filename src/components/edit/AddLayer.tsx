@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { PackageRow, ServerRow } from "@/lib/types";
-import { FILE_KINDS, SERVER_KINDS, addFile, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
+import type { DXFReading, PackageRow, ServerRow } from "@/lib/types";
+import { FILE_KINDS, SERVER_KINDS, addFile, isDXF, readDXF, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
   exportServers, importServers, loadPackages, loadServers, tickPackage, tickServerRow, tickServiceLayer,
   useViewer } from "@/store/viewer";
 import { Skeleton } from "../Overlays";
@@ -40,16 +40,54 @@ function TileAddress() {
   );
 }
 
+/** 3409 A DXF waits for its coordinate system, picked from the phone's own list. */
+function DrawingSystem({ drawing, onDone }: { drawing: Drawing; onDone: () => void }) {
+  const words = useViewer((state) => state.words);
+  const [system, setSystem] = useState(drawing.reading.system ?? "");
+  return (
+    <>
+      <div className="card" id="dxfCard" data-file={drawing.reading.fileName}>
+        <div className="field"><label htmlFor="dxfSystem">{words.dxfCoordinates}</label>
+          <select id="dxfSystem" value={system} onChange={(event) => setSystem(event.target.value)}>
+            {system ? null : <option value="">{words.dxfChoose}</option>}
+            {drawing.reading.systems.map((each) => <option key={each.value} value={each.value}>{each.title}</option>)}
+          </select>
+          <small id="dxfSaid">{system === (drawing.reading.system ?? "") ? drawing.reading.said : ""}</small>
+        </div>
+      </div>
+      <button type="button" className="action" id="addDXF" disabled={!system}
+        onClick={async () => {
+          if (await addFile(drawing.file, system)) onDone();
+        }}><Sym name="plus" />{words.add}</button>
+    </>
+  );
+}
+
+interface Drawing {
+  file: File;
+  reading: DXFReading;
+}
+
 /** 2995 A file picked here or dropped on the map while Add layer is open. */
 function FileLayer() {
   const words = useViewer((state) => state.words);
+  const [drawing, setDrawing] = useState<Drawing | null>(null);
+  const take = useRef(async (file: File) => {
+    setDrawing(null);
+    if (!isDXF(file)) {
+      await addFile(file);
+      return;
+    }
+    const reading = await readDXF(file);
+    if (reading) setDrawing({ file, reading });
+  });
   useEffect(() => {
     const over = (event: DragEvent) => event.preventDefault();
     const drop = (event: DragEvent) => {
       const file = event.dataTransfer?.files[0];
       if (!file) return;
       event.preventDefault();
-      void addFile(file);
+      void take.current(file);
     };
     window.addEventListener("dragover", over);
     window.addEventListener("drop", drop);
@@ -65,8 +103,9 @@ function FileLayer() {
       <input type="file" id="layerFile" accept={FILE_KINDS} hidden onChange={(event) => {
         const file = event.target.files?.[0];
         event.target.value = "";
-        if (file) void addFile(file);
+        if (file) void take.current(file);
       }} />
+      {drawing ? <DrawingSystem key={drawing.reading.fileName} drawing={drawing} onDone={() => setDrawing(null)} /> : null}
       <div className="foot-note">{words.fileKinds}</div>
     </>
   );

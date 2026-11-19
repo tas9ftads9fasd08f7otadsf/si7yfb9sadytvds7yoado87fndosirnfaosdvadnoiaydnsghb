@@ -64,7 +64,7 @@ export const ENGLISH = {
   iconTints: "", addLayer: "Add layer", whichPackages: "Which packages",
   tickPackages: "Tick every package this map should draw.", add: "Add", deleteLayer: "Delete layer",
   removeAsk: "Remove {name}?", layerOptions: "Options", export: "Export",
-  tileURL: "Tile URL", files: "Files", chooseFile: "Choose a file",
+  tileURL: "Tile URL", files: "Files", chooseFile: "Choose a file", dxfCoordinates: "Coordinates", dxfChoose: "Choose",
   fileKinds: "GeoJSON, KML, KMZ, GPX, PMTiles or MBTiles up to 16 MB. You can also drop it on the map.",
   yourServers: "Your servers", noServers: "No server saved yet.", exportServers: "Export servers",
   importServers: "Import servers",

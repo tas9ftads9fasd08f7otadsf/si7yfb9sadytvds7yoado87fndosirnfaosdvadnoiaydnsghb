@@ -185,8 +185,11 @@ export const backend: Backend = {
     return editing(`${ROOT}/maps/${mapID}/add-api?${query}`, "POST", undefined, json<Portable>, cookieHeader(ask));
   },
 
-  addFile: async (mapID, file) =>
-    editing(`${ROOT}/maps/${mapID}/add-file?${new URLSearchParams({ file: file.name })}`, "POST", await file.arrayBuffer()),
+  addFile: async (mapID, file, system) => editing(
+    `${ROOT}/maps/${mapID}/add-file?${new URLSearchParams({ file: file.name, ...system ? { system } : {} })}`, "POST",
+    await file.arrayBuffer()),
+  readDXF: async (mapID, file) =>
+    editing(`${ROOT}/maps/${mapID}/read-dxf?${new URLSearchParams({ file: file.name })}`, "POST", await file.arrayBuffer()),
   esriServices: (mapID) => editing(`${ROOT}/maps/${mapID}/esri-services`, "GET"),
   changeEsriService: (mapID, serviceID, asked) =>
     editing(`${ROOT}/maps/${mapID}/esri-service?${new URLSearchParams(esriQueryOf(serviceID, asked))}`),

@@ -153,6 +153,21 @@ describe("the phone backend", () => {
     expect(savedName("")).toBe("Map.mapson");
   });
 
+  // 66 a DXF is read first, then sent again with the system picked; other files carry none
+  it("reads a DXF and sends it again with the coordinate system picked", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    const file = new File(["0\nEOF\n"], "plan.dxf");
+    await backend.readDXF("M", file);
+    await backend.addFile("M", file, "sjtsk");
+    await backend.addFile("M", new File(["{}"], "huts.geojson"));
+    const [read, added, plain] = fetcher.mock.calls.map((call) => new URL((call as unknown as [string])[0], "http://phone"));
+    expect(read?.pathname).toBe("/riki/v1/maps/M/read-dxf");
+    expect(read?.searchParams.get("file")).toBe("plan.dxf");
+    expect(added?.searchParams.get("system")).toBe("sjtsk");
+    expect(plain?.searchParams.has("system")).toBe(false);
+  });
+
   // 61 a typed cookie travels in a header, never in the address; the page and colour in the query
   it("sends an API layer's cookie in a header and its page and colour in the query", async () => {
     const fetcher = vi.fn(async () => new Response("{}"));
