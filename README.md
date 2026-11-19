@@ -36,6 +36,9 @@ PHONE_URL=http://192.168.1.20:8765 npm run dev   # against a real phone
 | `npm run pack` | The bundle and zip in `dist/` |
 | `npm run check` | All of it, as CI runs it |
 
+`npm run real-region` downloads Bratislavský kraj from maptiles' `maps.json` into `e2e/real/`, and
+`npm run phone:real` then opens the Riki Maps map over it first, drawn as the app draws it.
+
 `BASE_URL=http://192.168.1.20:8765/ npx playwright test` runs the specs that need no `/__test` side
 against a real phone.
 
