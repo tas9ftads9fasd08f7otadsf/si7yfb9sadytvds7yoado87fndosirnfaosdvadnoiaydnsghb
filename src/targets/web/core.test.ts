@@ -23,7 +23,8 @@ describe("the core's wrapper", () => {
     };
     const alloc = (length: number) => { const at = top; top += length; return at; };
     return { memory, riki_alloc: alloc, riki_free: (p, l) => { freed.push([p, l]); }, freed,
-      riki_maps: respond, riki_map: respond, riki_apply: respond, riki_style: respond, riki_changes: respond };
+      riki_maps: respond, riki_map: respond, riki_apply: respond, riki_style: respond, riki_changes: respond,
+      riki_read_address: respond, riki_add_layer: respond };
   }
 
   it("writes the request as JSON, reads the answer back and frees both buffers", () => {
@@ -59,6 +60,16 @@ describe("the core's wrapper", () => {
       .toEqual({ refused: "Only the owner may do this", status: 403 });
   });
 
+  // 86 an address is read in rounds, and a layer is added as an edit is applied
+  it("asks riki_read_address with the address and the replies, and riki_add_layer with what to add", () => {
+    const core = coreOf(echo());
+    const replies = [{ url: "https://a.example/x.json", status: 200, contentType: "application/json", text: "{}" }];
+    expect(core.readAddress({ address: "https://a.example/x.json", replies })).toEqual({ address: "https://a.example/x.json", replies });
+    const ask: Parameters<typeof core.addLayer>[0] = { rows: [], mapID: "M", styleID: null,
+      add: { kind: "service", address: "https://a.example/wms", replies, picks: ["roads"] }, author: "Rita", origin: "web" };
+    expect(core.addLayer(ask)).toEqual(ask);
+  });
+
   it("loads a module through the WASI shim and answers what it recorded", async () => {
     const bytes = fakeCoreWasm(account.core);
     const fetcher = async () => new Response(bytes.slice().buffer as ArrayBuffer, { status: 200 });
@@ -69,6 +80,12 @@ describe("the core's wrapper", () => {
     expect(core.apply({ rows: [], mapID: "x", styleID: null, edit: { kind: "name", name: "n" }, author: null, origin: "web" }))
       .toMatchObject({ write: [{ id: "own-tatras-layer" }] });
     expect(core.changes([])).toEqual([]);
+    // 86 the stand-in holds what an address reads as, and the rows an added layer writes
+    expect(core.readAddress({ address: "https://cors.example/{z}/{x}/{y}.png", replies: [] }))
+      .toEqual({ read: { kind: "tiles", probe: "https://cors.example/0/0/0.png" } });
+    expect(core.addLayer({ rows: [], mapID: "x", styleID: null, author: null, origin: "web",
+      add: { kind: "tiles", address: "https://cors.example/{z}/{x}/{y}.png", replies: [] } }))
+      .toMatchObject({ write: [{ id: "own-tatras-layer-2" }], history: { id: "change-web-2" } });
     expect(await loadCore(fetcher as typeof fetch, "/editor")).toBe(core);
   });
 

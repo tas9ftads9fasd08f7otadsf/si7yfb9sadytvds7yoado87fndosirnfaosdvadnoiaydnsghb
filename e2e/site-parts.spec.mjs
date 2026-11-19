@@ -36,9 +36,11 @@ test("Edit map offers what the site does and leaves out the rest, staying connec
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
   await expect(page.getByRole("textbox", { name: "Name" }).first()).toBeVisible();
-  for (const id of ["#addLayer", "#exportMap", "#duplicateMap", "#coverageBox", "#iconPictureFile", "#takePreview"]) {
+  for (const id of ["#exportMap", "#duplicateMap", "#coverageBox", "#iconPictureFile", "#takePreview"]) {
     await expect(page.locator(id)).toHaveCount(0);
   }
+  // 86 Add layer is there, with the tile address and nothing the site cannot add yet
+  await expect(page.locator("#addLayer")).toBeVisible();
   // Long enough for the beat that used to answer "Connected again".
   await page.waitForTimeout(1500);
   await expect(page.locator("#notice")).not.toHaveClass(/shown/);

@@ -12,6 +12,7 @@ import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
 import { drawStyle, failed, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
+import { heightModel, threeDView } from "./three-d";
 
 const PICK = 6;
 const MOST_ANSWERS = 20;
@@ -31,9 +32,7 @@ export function createMapView(container: HTMLElement): MapControl {
   const map = new maplibregl.Map({
     container, style: { version: 8, sources: {}, layers: [] },
     center: OPENING.center, zoom: OPENING.zoom, hash: true, validateStyle: false, attributionControl: { compact: true },
-    maxPitch: 85,
-    locale: { "TerrainControl.Enable": words["TerrainControl.Enable"],
-      "TerrainControl.Disable": words["TerrainControl.Disable"] }
+    maxPitch: 85
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
   map.addControl(new maplibregl.FullscreenControl(), "top-right");
@@ -131,20 +130,37 @@ export function createMapView(container: HTMLElement): MapControl {
     phone.fix = null;
   }
 
-  // A map with a height model gets the 3D button; each style starts flat.
-  let terrainButton: maplibregl.TerrainControl | null = null;
+  // 89 A map with a height model gets the 3D button, which raises the relief and tilts the
+  // camera together, as the phone's does; a new style keeps the view it was given.
+  const threeD = { dem: null as string | null, on: false };
+  const threeDButton = document.createElement("button");
+  threeDButton.id = "threeDButton";
+  threeDButton.type = "button";
+  threeDButton.innerHTML = '<span class="maplibregl-ctrl-icon" aria-hidden="true"></span>';
+  threeDButton.addEventListener("click", () => setThreeD(!threeD.on, true));
+  const threeDGroup = document.createElement("div");
+  threeDGroup.className = "maplibregl-ctrl maplibregl-ctrl-group";
+  threeDGroup.append(threeDButton);
+  map.addControl({ onAdd: () => threeDGroup, onRemove: () => threeDGroup.remove() }, "top-right");
+
+  function setThreeD(on: boolean, eased: boolean) {
+    threeD.on = on && threeD.dem !== null;
+    const view = threeDView(threeD.on, threeD.dem);
+    map.setTerrain(view.terrain);
+    if (eased) map.easeTo({ pitch: view.pitch });
+    else if (!threeD.on) map.setPitch(0);
+    const { words } = get();
+    const said = words[threeD.on ? "TerrainControl.Disable" : "TerrainControl.Enable"];
+    threeDButton.className = threeD.on ? "maplibregl-ctrl-terrain-enabled" : "maplibregl-ctrl-terrain";
+    threeDButton.title = said;
+    threeDButton.setAttribute("aria-label", said);
+    threeDButton.setAttribute("aria-pressed", String(threeD.on));
+  }
+
   function offerTerrain() {
-    const sources = map.getStyle().sources ?? {};
-    const dems = Object.keys(sources).filter((id) => sources[id]?.type === "raster-dem");
-    const dem = dems.find((id) => id === "terrain" || id.endsWith("__terrain")) ?? dems[0];
-    map.setTerrain(null);
-    if (terrainButton) {
-      map.removeControl(terrainButton);
-      terrainButton = null;
-    }
-    if (!dem) return;
-    terrainButton = new maplibregl.TerrainControl({ source: dem, exaggeration: 1 });
-    map.addControl(terrainButton, "top-right");
+    threeD.dem = heightModel(map.getStyle().sources ?? {});
+    threeDGroup.hidden = threeD.dem === null;
+    setThreeD(threeD.on, false);
   }
 
   // Regions the phone lacks.

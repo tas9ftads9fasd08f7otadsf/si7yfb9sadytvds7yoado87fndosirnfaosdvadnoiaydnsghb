@@ -27,6 +27,16 @@ describe("a record as the core's row", () => {
     expect(row.assets).toEqual(["payload"]);
   });
 
+  // 87 bug: the download URL has a ${f} slot for a file name, which was fetched as it stood
+  it("fills the file-name slot of an asset's download URL", async () => {
+    const asked = vi.fn(async () => new Response("{}"));
+    const record = { recordName: "r", recordType: "CD_SharedMap", fields: { CD_payload_ckAsset: {
+      value: { downloadURL: "https://cvws.icloud-content.com/x/${f}?o=1" }, type: "ASSETID" } } } as unknown as CKRecord;
+    await rowOf(record, where, asked as unknown as typeof fetch);
+    expect(asked).toHaveBeenCalledWith("https://cvws.icloud-content.com/x/payload?o=1");
+    expect(JSON.stringify(account)).toContain("${f}");
+  });
+
   // 84 bug: BYTES came back as base64 where the core reads JSON text
   it("reads the base64 bytes of a payload as the JSON text they hold", async () => {
     const row = await rowOf(history!, where, fetcher);
