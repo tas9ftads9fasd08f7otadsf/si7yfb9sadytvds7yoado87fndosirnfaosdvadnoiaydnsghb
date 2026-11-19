@@ -24,6 +24,13 @@ if [ -e "$work/site/config.php" ]; then
   exit 1
 fi
 
+# A site without the core cannot read a map; only a test address may go without (RIKI_ALLOW_NO_CORE=1).
+if [ ! -f "$work/site/out/riki-core.wasm" ] && [ "${RIKI_ALLOW_NO_CORE:-}" != "1" ]; then
+  echo "web-site.zip has no out/riki-core.wasm: the site cannot read maps without it. Pin rikiCore.ref in package.json" >&2
+  echo "and release again, or deploy to a test address with RIKI_ALLOW_NO_CORE=1" >&2
+  exit 1
+fi
+
 trust=""
 if [ -n "${FTPS_CA_FILE:-}" ]; then trust="set ssl:ca-file \"$FTPS_CA_FILE\";"; fi
 

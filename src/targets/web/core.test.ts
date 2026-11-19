@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import { fakeCoreWasm } from "../../../e2e/fake-core.mjs";
+import { CoreNotReady } from "@/backend/types";
 import { CoreMissing, callJSON, coreOf, forgetCore, loadCore, type CoreExports } from "./core";
 
 // 76 the typed wrapper around the core's exports, and its loading
@@ -48,6 +49,15 @@ describe("the core's wrapper", () => {
       edit: { kind: "name", name: "x" }, author: "Rita", origin: "web" };
     expect(core.apply(ask)).toEqual(ask);
     expect(core.changes([])).toEqual({ rows: [] });
+  });
+
+  // 88 the core may refuse a call whose rules are not in the module yet; the page shows a notice for it
+  it("turns a coreNotReady refusal into a typed error, and leaves a refusal of the rules alone", () => {
+    const exports = echo();
+    expect(() => callJSON(exports, "riki_map", { refused: "coreNotReady", call: "riki_map" })).toThrow(CoreNotReady);
+    expect(() => coreOf(exports).maps([])).not.toThrow();
+    expect(callJSON(exports, "riki_apply", { refused: "Only the owner may do this", status: 403 }))
+      .toEqual({ refused: "Only the owner may do this", status: 403 });
   });
 
   // 86 an address is read in rounds, and a layer is added as an edit is applied

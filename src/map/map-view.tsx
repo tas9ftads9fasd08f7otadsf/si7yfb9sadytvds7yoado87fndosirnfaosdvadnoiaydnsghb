@@ -10,7 +10,7 @@ import { backend } from "@backend";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY } from "@/lib/page";
 import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
-import { away, drawStyle, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
+import { drawStyle, failed, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
 import { heightModel, threeDView } from "./three-d";
 
@@ -278,8 +278,8 @@ export function createMapView(container: HTMLElement): MapControl {
       }
       style = answer.value as StyleSpecification;
       if (asked === lastAsked) useViewer.setState({ undrawn: new Set(undrawnOf(style)) });
-    } catch {
-      if (asked === lastAsked) away();
+    } catch (error) {
+      if (asked === lastAsked) failed(error);
       return;
     }
     if (asked !== lastAsked) return;

@@ -18,23 +18,26 @@ export function siteLeaks(files) {
 }
 
 /**
- * The pinned riki-core.wasm, checked against its .sha256; null with a message while no release is pinned,
- * and a failure once one is pinned but missing or altered.
+ * The riki-core.wasm `npm run build:core` made, checked against its .sha256 and the pin's; null with a message while
+ * no rikimaps commit is pinned, and a failure once one is pinned but the module is missing or altered.
  */
-export async function pinnedCore(pin, dir) {
-  if (!pin?.version) return { wasm: null, said: "riki-core.wasm is not pinned in package.json (rikiCore.version): the site is packed without it and cannot read maps yet" };
+export async function pinnedCore(pin, dir, { optional = false } = {}) {
+  if (!pin?.ref) return { wasm: null, said: "riki-core.wasm is not pinned in package.json (rikiCore.ref): the site is packed without it and cannot read maps yet" };
   const wasm = path.join(dir, "riki-core.wasm");
   let bytes;
   let sums;
   try {
     [bytes, sums] = await Promise.all([readFile(wasm), readFile(`${wasm}.sha256`, "utf8")]);
   } catch {
-    throw new Error(`riki-core.wasm ${pin.version} is pinned but ${wasm} and its .sha256 are not there: download release core-v${pin.version} first`);
+    // CI packs the site for its browser specs, which stand in for the core; a release never does.
+    if (optional) return { wasm: null, said: `riki-core.wasm is pinned to rikimaps ${pin.ref.slice(0, 10)} but was not built: the site is packed without it` };
+    throw new Error(`riki-core.wasm is pinned to rikimaps ${pin.ref} but ${wasm} and its .sha256 are not there: run npm run build:core first`);
   }
   const wanted = sums.trim().split(/\s+/)[0];
   const got = createHash("sha256").update(bytes).digest("hex");
   if (got !== wanted) throw new Error(`riki-core.wasm is ${got}, but its .sha256 says ${wanted}`);
-  return { wasm, said: `riki-core.wasm ${pin.version}` };
+  if (pin.sha256 && got !== pin.sha256) throw new Error(`riki-core.wasm is ${got}, but rikiCore.sha256 in package.json is ${pin.sha256}`);
+  return { wasm, said: `riki-core.wasm from rikimaps ${pin.ref.slice(0, 10)}` };
 }
 
 async function main() {
@@ -59,7 +62,8 @@ async function main() {
   for (const file of SERVER_FILES) await cp(path.join(ROOT, "server", file), path.join(work, file));
 
   const own = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8"));
-  const core = await pinnedCore(own.rikiCore, process.env.RIKI_CORE_DIR || path.join(ROOT, "dist", "riki-core"));
+  const core = await pinnedCore(own.rikiCore, process.env.RIKI_CORE_DIR || path.join(ROOT, "dist", "riki-core"),
+    { optional: process.env.RIKI_PACK_WITHOUT_CORE === "1" });
   if (core.wasm) await cp(core.wasm, path.join(work, "out", "riki-core.wasm"));
   else console.warn(`warning: ${core.said}`);
   const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();

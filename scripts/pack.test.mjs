@@ -74,8 +74,8 @@ describe("the site's core", async () => {
     return dir;
   };
 
-  it("is skipped, with its words, while no release is pinned", async () => {
-    const answer = await pinnedCore({ version: null }, await folder());
+  it("is skipped, with its words, while no rikimaps commit is pinned", async () => {
+    const answer = await pinnedCore({ ref: null, sha256: null }, await folder());
     expect(answer.wasm).toBeNull();
     expect(answer.said).toContain("not pinned");
   });
@@ -83,11 +83,26 @@ describe("the site's core", async () => {
   it("is taken when its sha256 matches", async () => {
     const bytes = Buffer.from("\0asm");
     const dir = await folder(bytes, createHash("sha256").update(bytes).digest("hex"));
-    expect(await pinnedCore({ version: "1.2.0" }, dir)).toEqual({ wasm: path.join(dir, "riki-core.wasm"), said: "riki-core.wasm 1.2.0" });
+    expect(await pinnedCore({ ref: "0123456789abcdef", sha256: null }, dir))
+      .toEqual({ wasm: path.join(dir, "riki-core.wasm"), said: "riki-core.wasm from rikimaps 0123456789" });
+  });
+
+  // 88 the pin's own checksum is the one a build has to reproduce
+  // 88 CI packs the site for the browser specs with no core built; a release has to fail without one
+  it("may be packed without when the pack says it is for the specs", async () => {
+    const answer = await pinnedCore({ ref: "0123456789abcdef" }, await folder(), { optional: true });
+    expect(answer.wasm).toBeNull();
+    expect(answer.said).toContain("packed without it");
+  });
+
+  it("fails when the pin's sha256 is not the module's", async () => {
+    const bytes = Buffer.from("\0asm");
+    const dir = await folder(bytes, createHash("sha256").update(bytes).digest("hex"));
+    await expect(pinnedCore({ ref: "0123456789abcdef", sha256: "0".repeat(64) }, dir)).rejects.toThrow("rikiCore.sha256");
   });
 
   it("fails when a pinned release is not there, and when it was altered", async () => {
-    await expect(pinnedCore({ version: "1.2.0" }, await folder())).rejects.toThrow("core-v1.2.0");
-    await expect(pinnedCore({ version: "1.2.0" }, await folder(Buffer.from("x"), "0".repeat(64)))).rejects.toThrow("its .sha256 says");
+    await expect(pinnedCore({ ref: "0123456789abcdef" }, await folder())).rejects.toThrow("npm run build:core");
+    await expect(pinnedCore({ ref: "0123456789abcdef" }, await folder(Buffer.from("x"), "0".repeat(64)))).rejects.toThrow("its .sha256 says");
   });
 });

@@ -13,6 +13,10 @@ on:
         description: Release to deploy, such as v0.1.42
         type: string
         required: true
+      without_core:
+        description: A test address, which may do without riki-core.wasm; a real site cannot read maps without it
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,6 +40,8 @@ jobs:
       FTPS_PASSWORD: ${{ secrets.FTPS_PASSWORD }}
       FTPS_DIR: ${{ vars.FTPS_DIR }}
       FTPS_PORT: ${{ vars.FTPS_PORT }}
+      # The script refuses a zip without riki-core.wasm; only a run by hand may say it is a test address.
+      RIKI_ALLOW_NO_CORE: ${{ inputs.without_core && '1' || '' }}
     steps:
       - id: ready
         name: Settings and order

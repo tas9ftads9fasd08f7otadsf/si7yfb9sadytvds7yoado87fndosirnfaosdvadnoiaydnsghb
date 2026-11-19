@@ -78,7 +78,10 @@ jobs:
       - run: npm run test:e2e
       - run: npm run pack
       - run: npm run build:web
+      # The browser specs answer riki-core.wasm with a stand-in; the real one is built by core.yml, for the release.
       - run: npm run pack:web
+        env:
+          RIKI_PACK_WITHOUT_CORE: "1"
       - run: npm run test:e2e:web
       - uses: actions/upload-artifact@v4
         with:

@@ -3,7 +3,7 @@ import type { Speeds } from "@/lib/traffic";
 import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
 import { DIRECT_KEY } from "@/lib/page";
-import { NotOnSite, type Answer, type ChangedElsewhere, type Feature, type Saved } from "@/backend/types";
+import { CoreNotReady, NotOnSite, type Answer, type ChangedElsewhere, type Feature, type Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
@@ -135,6 +135,16 @@ export const offers = (feature: Feature) => backend.offers(feature);
 
 /** The phone could not be reached: the page says so until a beat is answered again. */
 export const away = () => setConnected(false);
+
+/** 88 A call that rejected: a core not ready is told as a notice, anything else is a lost connection. */
+export function failed(error: unknown): boolean {
+  if (!(error instanceof CoreNotReady)) {
+    away();
+    return false;
+  }
+  notice(get().words.coreNotReady);
+  return true;
+}
 
 function setConnected(connected: boolean) {
   const was = get().connected;
@@ -359,10 +369,9 @@ export async function readDevice() {
   let device: Device;
   try {
     device = await backend.maps();
-  } catch {
+  } catch (error) {
     if (get().standing !== "admitted") return;
-    away();
-    setTimeout(readDevice, 5000);
+    setTimeout(readDevice, failed(error) ? 30_000 : 5000);
     return;
   }
   set({ device });
@@ -521,7 +530,9 @@ export async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = fal
   try {
     answer = await asking();
   } catch (error) {
-    if (error instanceof NotOnSite) {
+    if (error instanceof CoreNotReady) {
+      if (!quiet) notice(get().words.coreNotReady);
+    } else if (error instanceof NotOnSite) {
       if (!quiet) notice(get().words.notOnSite);
     } else if (!quiet) away();
     return null;
