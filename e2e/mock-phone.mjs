@@ -45,7 +45,7 @@ function freshMaps() {
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
   tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
-    offlineAsks: [], discarded: [],
+    offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares() };
 
 // 59: the High Tatras shared with Rita, who joined; Bratislava with nobody yet.
@@ -123,7 +123,7 @@ function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
     tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
-    offlineAsks: [], discarded: [],
+    offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares() };
 }
 
@@ -1280,6 +1280,37 @@ async function answer(request, response) {
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     return json(response, switches(each));
   }
+  if ((parts[4] === "esri-services" || parts[4] === "esri-service") && parts.length === 5) {
+    // 67: as `PeerWebEsriServices` answers: the services still drawn on, one changed at a time.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (parts[4] === "esri-services") return json(response, esriListing(each));
+    if (method !== "POST") return send(response, 405, "");
+    const service = (each.esri ?? []).find((one) => one.id === url.searchParams.get("service"));
+    if (!service) return send(response, 404, "This change does not fit the map");
+    phone.esriAsks.push(Object.fromEntries(url.searchParams));
+    const number = Number(url.searchParams.get("add") ?? url.searchParams.get("remove"));
+    const published = service.published.find((one) => one.id === number);
+    if (url.searchParams.has("add")) {
+      if (!published || published.refusal || service.taken[number]) {
+        return send(response, 409, "This map cannot draw that layer beside what it draws");
+      }
+      service.taken[number] = randomUUID().toUpperCase();
+      each.layers.push(esriLayer(service.taken[number], published.name, "Esri features", "mappin"));
+    } else if (url.searchParams.has("remove")) {
+      const id = service.taken[number];
+      if (!id) return send(response, 404, "This change does not fit the map");
+      delete service.taken[number];
+      each.layers = each.layers.filter((one) => one.id !== id);
+    } else if (url.searchParams.get("forget") === "1") {
+      each.esri = each.esri.filter((one) => one !== service);
+    } else if (url.searchParams.get("read") === "1") {
+      if (service.url.includes("silent")) return send(response, 502, "The service did not answer");
+      service.readAt = "now";
+    } else return send(response, 400, "");
+    each.revision += 1;
+    return json(response, portable(each));
+  }
   if ((parts[4] === "tile-download" || parts[4] === "discard-stored") && parts.length === 5) {
     // 57: as `PeerWebOffline` answers: the plan for the area asked, the download queued or cancelled.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -1456,6 +1487,26 @@ function live(each, layerID, query, response) {
 
 // MARK: - The phone's side
 
+// 67: Geology, taken as features, with its Rocks on the map and Faults not yet.
+const ESRI_ROCKS = "6F1E2A10-0000-4000-8000-0000000000E5";
+
+function esriLayer(id, name, kind, symbol) {
+  return { id, name, kind, symbol, isEnabled: true };
+}
+
+function esriListing(each) {
+  return { services: (each.esri ?? []).filter((service) => Object.keys(service.taken).length).map((service) => ({
+    id: service.id, name: service.name, subtitle: "gis.example.org · 3 layers · Features",
+    detail: `${Object.keys(service.taken).length} of ${service.published.length} in this map · Features`,
+    url: service.url, take: "Features",
+    readAgain: service.readAt ? "Read it again · last read now" : "Read what it publishes",
+    footnote: "A layer ticked here is added and its features are downloaded in the queue.",
+    style: service.style ?? null,
+    layers: service.published.map((published) => ({ id: published.id, name: published.name, symbol: "mappin",
+      subtitle: published.refusal ?? (service.taken[published.id] ? "Areas · 40" : "Areas · not in this map"),
+      layer: service.taken[published.id] ?? null, refusal: published.refusal ?? null })) })) };
+}
+
 // 57: the Trails download tiles; the Huts were fetched whole, so only their store is deleted.
 function offlineOf(each) {
   each.offline ??= { stored: { "6F1E2A10-0000-4000-8000-0000000000A2": 2000 }, queued: [] };
@@ -1510,6 +1561,15 @@ function testControl(route, query, response) {
     phone.maps[0].start = { kind: "city", latitude: 49.06, longitude: 20.3, name: "Poprad" };
     break;
   case "/__test/one-map": phone.maps = phone.maps.slice(0, 1); break;
+  case "/__test/esri-service":
+    phone.maps[0].layers.push(esriLayer(ESRI_ROCKS, "Rocks", "Esri features", "square.on.square"));
+    phone.maps[0].esri = [{ id: "6F1E2A10-0000-4000-8000-0000000000E6", name: "Geology",
+      url: "https://gis.example.org/arcgis/rest/services/Geology/MapServer", taken: { 0: ESRI_ROCKS },
+      style: "6F1E2A10-0000-4000-8000-0000000000B2",
+      published: [{ id: 0, name: "Rocks" }, { id: 1, name: "Faults" },
+        { id: 2, name: "Shading", refusal: "The service does not let this one be asked" }] }];
+    break;
+  case "/__test/esri-asks": return json(response, phone.esriAsks);
   case "/__test/lock": phone.maps[0].locked = true; break;
   case "/__test/ski-and-rail":
     phone.maps[0].layers.push(

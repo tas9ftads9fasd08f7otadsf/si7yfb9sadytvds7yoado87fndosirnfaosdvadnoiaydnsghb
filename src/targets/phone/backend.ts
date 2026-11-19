@@ -2,7 +2,7 @@ import type { Answer, Backend, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { peopleQueryOf } from "@/lib/people";
 import { startQuery } from "@/lib/places";
-import type { APIAsk, APIRead, OfflineAsk, Portable, SessionAnswer } from "@/lib/types";
+import type { APIAsk, APIRead, EsriChange, OfflineAsk, Portable, SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
 
 let token: () => string | null = () => null;
@@ -87,6 +87,16 @@ export function queryOf(edit: Edit): Record<string, string> {
     case "availability": return { [edit.switch]: edit.shown ? "1" : "0" };
     case "layerOptions":
     case "layerDetails": return edit.fields;
+  }
+}
+
+/** 67 A service's change as `PeerWebEsriServices.asked` reads it. */
+export function esriQueryOf(serviceID: string, asked: EsriChange): Record<string, string> {
+  switch (asked.kind) {
+    case "add": return { service: serviceID, add: String(asked.layer) };
+    case "remove": return { service: serviceID, remove: String(asked.layer) };
+    case "read": return { service: serviceID, read: "1" };
+    case "forget": return { service: serviceID, forget: "1" };
   }
 }
 
@@ -177,6 +187,9 @@ export const backend: Backend = {
 
   addFile: async (mapID, file) =>
     editing(`${ROOT}/maps/${mapID}/add-file?${new URLSearchParams({ file: file.name })}`, "POST", await file.arrayBuffer()),
+  esriServices: (mapID) => editing(`${ROOT}/maps/${mapID}/esri-services`, "GET"),
+  changeEsriService: (mapID, serviceID, asked) =>
+    editing(`${ROOT}/maps/${mapID}/esri-service?${new URLSearchParams(esriQueryOf(serviceID, asked))}`),
   readAddress: (address) => editing(`${ROOT}/read-address?${new URLSearchParams({ address })}`, "GET"),
   addTiles: (mapID, template) => editing(`${ROOT}/maps/${mapID}/add-tiles?${new URLSearchParams({ template })}`),
   addServiceLayers: (mapID, address, picks) => editing(

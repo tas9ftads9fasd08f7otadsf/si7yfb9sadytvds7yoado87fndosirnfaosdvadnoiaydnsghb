@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Edit } from "@/lib/edit";
 import type { Shelving } from "@/lib/edit";
-import { apiAskQuery, backend, offlineQueryOf, queryOf, shelfQueryOf } from "./backend";
+import { apiAskQuery, backend, esriQueryOf, offlineQueryOf, queryOf, shelfQueryOf } from "./backend";
 import { savedName } from "./phone";
 
 // 36 every edit is the query `PeerWebEdit(query:)` reads, as the store sent it before the split
@@ -173,5 +173,15 @@ describe("offlineQueryOf", () => {
     expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: false })).toEqual({ box: "1,2,3,4" });
     expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: true, zoom: 12, layers: ["A", "B"] }))
       .toEqual({ box: "1,2,3,4", chosen: "1", zoom: "12", layers: "A,B" });
+  });
+});
+
+// 67 a service's change as `PeerWebEsriServices.asked` reads it
+describe("esriQueryOf", () => {
+  it("names the service and the one thing asked", () => {
+    expect(esriQueryOf("G", { kind: "add", layer: 2 })).toEqual({ service: "G", add: "2" });
+    expect(esriQueryOf("G", { kind: "remove", layer: 0 })).toEqual({ service: "G", remove: "0" });
+    expect(esriQueryOf("G", { kind: "read" })).toEqual({ service: "G", read: "1" });
+    expect(esriQueryOf("G", { kind: "forget" })).toEqual({ service: "G", forget: "1" });
   });
 });

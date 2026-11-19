@@ -1,6 +1,6 @@
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk } from "@/lib/people";
-import type { APIAsk, APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
+import type { APIAsk, APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing,
   LayerOptions, LayerTest, MapSwitches, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
   SharePeople } from "@/lib/types";
 
@@ -90,6 +90,10 @@ export interface Backend {
   readAPI(address: string, reading?: APIReading | null, ask?: APIAsk): Promise<Answer<APIRead>>;
   addAPI(mapID: string, address: string, reading: APIReading, name: string, ask?: APIAsk): Promise<Answer<Portable>>;
   addFile(mapID: string, file: File): Promise<Answer<Portable>>;
+  /** 67 Edit map's Esri services and each one's page. */
+  esriServices(mapID: string): Promise<Answer<EsriListing>>;
+  /** 67 A layer ticked or taken off, the service read again or forgotten; the map comes back. */
+  changeEsriService(mapID: string, serviceID: string, asked: EsriChange): Promise<Answer<Portable>>;
   readAddress(address: string): Promise<Answer<{ kind: string }>>;
   addTiles(mapID: string, template: string): Promise<Answer<Portable>>;
   addServiceLayers(mapID: string, address: string, picks: string[]): Promise<Answer<Portable>>;
