@@ -170,3 +170,33 @@ export async function recordCoreAsks(page) {
   });
   return () => page.evaluate(() => window.__coreAsks);
 }
+
+/** A 1 px PNG, what a tile host answers. */
+export const TILE = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+
+export const CORS_HOST = "https://cors.example";
+export const CLOSED_HOST = "https://closed.example";
+
+/**
+ * Two service hosts, as a browser meets them: one allows CORS, the other answers without the header, which
+ * a browser reports as a network error, so the route fails the request. `asked(host)` lists the paths each was asked for.
+ */
+export async function mockServiceHosts(page, { cors = {} } = {}) {
+  const seen = { cors: [], closed: [] };
+  await page.route(`${CORS_HOST}/**`, (route) => {
+    const url = new URL(route.request().url());
+    seen.cors.push(url.pathname + url.search);
+    const body = cors[url.pathname];
+    return body === undefined
+      ? route.fulfill({ status: 200, headers: { "access-control-allow-origin": "*" }, contentType: "image/png", body: TILE })
+      : route.fulfill({ status: 200, headers: { "access-control-allow-origin": "*" }, contentType: "application/json",
+        body: JSON.stringify(body) });
+  });
+  await page.route(`${CLOSED_HOST}/**`, (route) => {
+    const url = new URL(route.request().url());
+    seen.closed.push(url.pathname + url.search);
+    // The page's fetch fails as a browser's does when a host did not allow it.
+    return route.abort("failed");
+  });
+  return { asked: (host) => seen[host] };
+}

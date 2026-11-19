@@ -26,3 +26,11 @@ export function drawable(style: StyleSpecification): StyleSpecification {
   if (style.terrain) drawn.terrain = without(style.terrain, FORK_ONLY.terrain);
   return drawn;
 }
+
+/** Set on a style a target cut: the layers, lowercased, whose source a browser cannot fetch. */
+export const UNDRAWN_KEY = "riki:undrawn";
+
+export function undrawnOf(style: StyleSpecification): string[] {
+  const named = (style.metadata as Record<string, unknown> | undefined)?.[UNDRAWN_KEY];
+  return Array.isArray(named) ? named.map(String) : [];
+}

@@ -28,6 +28,7 @@ function LayerRow({ layer, listed, isBase, movable, peers }: RowProps) {
   const sections = useViewer((state) =>
     state.layerOptions?.layers.find((each) => each.id.toUpperCase() === layer.id.toUpperCase())?.sections);
   const isOpen = useViewer((state) => state.optionsOpen.has(layer.id));
+  const isUndrawn = useViewer((state) => state.undrawn.has(layer.id.toLowerCase()));
   const place = peers.indexOf(listed.id);
   const move = (by: -1 | 1) => void change({ kind: "order", layers: movedPast(movable, peers, listed.id, by) });
   return (
@@ -38,6 +39,7 @@ function LayerRow({ layer, listed, isBase, movable, peers }: RowProps) {
           <CommitField type="text" value={layer.name} aria-label={words.rename}
             onCommit={(name) => change({ kind: "layerName", layer: layer.id, name })} />
           <small>{listed.kind}</small>
+          {isUndrawn ? <small className="undrawn">{words.layerUndrawn}</small> : null}
           {isBase ? null : <CommitField type="range" min="0" max="1" step="0.05" value={String(layer.opacity ?? 1)}
             aria-label={words.opacity} title={words.opacity} onCommit={(opacity) => change({ kind: "layerOpacity", layer: layer.id, opacity })} />}
         </div>

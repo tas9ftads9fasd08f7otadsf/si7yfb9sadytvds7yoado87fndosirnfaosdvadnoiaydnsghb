@@ -7,6 +7,8 @@ import { BASE } from "./base";
 import { Cloud } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { loadCore, type Core } from "./core";
+import { createReach, hostOf, type Reach } from "./reach";
+import { drawnHere } from "./undrawn";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
 import type { CoreRow, CoreWrite } from "./records";
 import { changedFields, Conflict, write, type Plan } from "./writes";
@@ -48,6 +50,8 @@ export interface Parts {
   config: () => Promise<SiteConfig>;
   core: () => Promise<Core>;
   keeping: Keeping;
+  /** 85 Which hosts answer a browser; a style leaves out what does not. */
+  reach: Reach;
   author: Author;
   fetcher: typeof fetch;
   base: string;
@@ -237,7 +241,8 @@ export function createBackend(parts: Parts): Backend {
       const [core, read, config] = await Promise.all([parts.core(), rows(), parts.config()]);
       const style = core.style(read, ask.mapID, ask.styleID,
         { tilesBase: config.tilesBase, theme: ask.theme, hidden: ask.hidden, tiles: ask.tiles });
-      return { ok: true, value: style };
+      const own = [hostOf(config.tilesBase), location.origin].filter((each) => each !== null);
+      return { ok: true, value: await drawnHere(style, parts.reach, own) };
     },
 
     change,
@@ -260,7 +265,9 @@ export function createBackend(parts: Parts): Backend {
 
 const language = () => navigator.language.split("-")[0] || "en";
 
+const keeping = indexedKeeping();
+
 export const backend: Backend = createBackend({
-  cloud: new Cloud(), config: readConfig, core: () => loadCore(), keeping: indexedKeeping(), author: storedAuthor(),
+  cloud: new Cloud(), config: readConfig, core: () => loadCore(), keeping, reach: createReach(keeping), author: storedAuthor(),
   fetcher: (...asked) => fetch(...asked), base: BASE, language
 });
