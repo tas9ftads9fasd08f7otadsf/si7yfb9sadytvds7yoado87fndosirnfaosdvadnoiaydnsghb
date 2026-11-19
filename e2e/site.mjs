@@ -1,6 +1,6 @@
 // The site as a deploy serves it: dist/web-site.zip unpacked, under `php -S`, at the root or a path.
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,6 +12,10 @@ const folder = path.join(served, under);
 rmSync(served, { recursive: true, force: true });
 mkdirSync(folder, { recursive: true });
 execFileSync("unzip", ["-q", path.join(ROOT, "dist", "web-site.zip"), "-d", folder]);
+// The deploy's own file, with a token the mock CloudKit takes.
+const config = { container: "iCloud.com.rikimaps.rikimaps.maps", apiToken: "test-token", environment: "development",
+  tilesBase: "https://tiles.example" };
+writeFileSync(path.join(folder, "config.php"), `<?php return json_decode('${JSON.stringify(config)}', true);\n`);
 const php = spawn("php", ["-S", `127.0.0.1:${port}`, "-t", served, path.join(folder, "index.php")], { stdio: "inherit" });
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => php.kill(signal));
 php.on("exit", (code) => process.exit(code ?? 0));

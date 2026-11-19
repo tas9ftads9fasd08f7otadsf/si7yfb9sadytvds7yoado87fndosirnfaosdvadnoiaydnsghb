@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { mockCloud } from "./mock-cloud.mjs";
 
 // 37 the site from its zip, at the root (web) and under /editor/ (web-under-path)
+// 76 the page reads iCloud now, so every page here has the mock CloudKit behind it
+test.beforeEach(({ page }) => mockCloud(page, { signedIn: true }));
+
 const base = (baseURL) => new URL(baseURL).pathname.replace(/\/$/, "");
 
 test("the page and every file it asks for are served, under the site's own path", async ({ page, baseURL }) => {
@@ -9,11 +13,13 @@ test("the page and every file it asks for are served, under the site's own path"
   page.on("requestfailed", (asked) => missing.push(asked.url()));
   await page.goto("./");
   await expect(page.locator("#appName")).toHaveText("Riki Maps");
-  const scripts = await page.locator("script[src]").evaluateAll((all) => all.map((each) => each.getAttribute("src")));
+  const scripts = (await page.locator("script[src]").evaluateAll((all) => all.map((each) => each.getAttribute("src"))))
+    .filter((src) => !src.startsWith("https://cdn.apple-cloudkit.com/"));
   expect(scripts.length).toBeGreaterThan(0);
   for (const src of scripts) expect(src.startsWith(`${base(baseURL)}/_next/static/`)).toBe(true);
   expect((await page.content()).includes("__riki_base__")).toBe(false);
-  expect(missing.filter((url) => !url.endsWith("/config.json"))).toEqual([]);
+  // the words files are made at deploy, so a site without them speaks English
+  expect(missing.filter((url) => !/\/words\/\w+\.json$/.test(url))).toEqual([]);
 });
 
 test("a screen's address opens the page and survives a reload", async ({ page, baseURL }) => {

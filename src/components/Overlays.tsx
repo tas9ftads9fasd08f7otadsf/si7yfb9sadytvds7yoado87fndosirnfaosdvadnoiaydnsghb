@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { backend } from "@backend";
 import { downloadRegion, askToJoin, useViewer } from "@/store/viewer";
 import { filledIn } from "@/lib/words";
 import { Sym } from "./ui/Sym";
@@ -93,11 +94,27 @@ export function Gate() {
   const device = useViewer((state) => state.gateDevice);
   const [asking, setAsking] = useState(false);
   const removed = standing === "removed";
+  const signIn = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (standing === "signedOut" && signIn.current) backend.mountAccount?.("in", signIn.current);
+  }, [standing]);
   const ask = async () => {
     setAsking(true);
     await askToJoin();
     setAsking(false);
   };
+  if (standing === "signedOut") {
+    return (
+      <div id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+        <div className="sheet">
+          <div id="gateMark"><Sym name="person.crop.circle" /></div>
+          <h1 id="gateTitle">{words.signInTitle}</h1>
+          <p id="gateText">{words.signInText}</p>
+          <div id="signIn" ref={signIn} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
       <div className="sheet">

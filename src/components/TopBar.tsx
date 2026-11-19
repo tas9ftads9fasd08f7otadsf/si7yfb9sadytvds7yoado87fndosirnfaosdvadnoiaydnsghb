@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { backend } from "@backend";
 import { pickStyle, shareAddress, shownMapOf, useViewer } from "@/store/viewer";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
@@ -15,6 +17,15 @@ function ShownMap() {
       <span id="mapName">{shown?.name ?? ""}</span>
     </div>
   );
+}
+
+/** 76 Where the site puts its sign-out button; empty on the phone. */
+function Account() {
+  const into = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (into.current) backend.mountAccount?.("out", into.current);
+  }, []);
+  return <span id="account" ref={into} />;
 }
 
 export function TopBar() {
@@ -44,6 +55,7 @@ export function TopBar() {
       </span>
       <button id="shareButton" className="tool round" type="button" title={words.share} aria-label={words.share}
         onClick={() => void shareAddress()}><Sym name="square.and.arrow.up" /></button>
+      <Account />
       <span id="device" hidden={!device}><Sym name="iphone" />
         {connected == null ? null
           : <i id="deviceDot" className={connected ? "dot on" : "dot off"} role="img" title={reach} aria-label={reach} />}

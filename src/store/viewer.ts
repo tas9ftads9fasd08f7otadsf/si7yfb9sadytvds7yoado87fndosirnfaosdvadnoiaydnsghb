@@ -260,6 +260,11 @@ export function startSession(isSmall: boolean) {
   if (busy.sessionStarted || isSmall) return;
   busy.sessionStarted = true;
   void heartbeat();
+  // 76 A change made elsewhere, or a sign-in, is read without waiting for the next beat.
+  backend.onChanged(() => {
+    void heartbeat();
+    void catchUp();
+  });
 }
 
 // MARK: - Reading the phone

@@ -59,3 +59,35 @@ describe("what the site's zip carries", () => {
     expect(SERVER_FILES).not.toContain("config.php");
   });
 });
+
+// 76 the pinned core is taken whole, or the pack says why it is not
+describe("the site's core", async () => {
+  const { mkdtemp, writeFile } = await import("node:fs/promises");
+  const { createHash } = await import("node:crypto");
+  const { tmpdir } = await import("node:os");
+  const path = await import("node:path");
+  const { pinnedCore } = await import("./pack-web.mjs");
+  const folder = async (bytes, sum) => {
+    const dir = await mkdtemp(path.join(tmpdir(), "core-"));
+    if (bytes) await writeFile(path.join(dir, "riki-core.wasm"), bytes);
+    if (sum) await writeFile(path.join(dir, "riki-core.wasm.sha256"), `${sum}  riki-core.wasm\n`);
+    return dir;
+  };
+
+  it("is skipped, with its words, while no release is pinned", async () => {
+    const answer = await pinnedCore({ version: null }, await folder());
+    expect(answer.wasm).toBeNull();
+    expect(answer.said).toContain("not pinned");
+  });
+
+  it("is taken when its sha256 matches", async () => {
+    const bytes = Buffer.from("\0asm");
+    const dir = await folder(bytes, createHash("sha256").update(bytes).digest("hex"));
+    expect(await pinnedCore({ version: "1.2.0" }, dir)).toEqual({ wasm: path.join(dir, "riki-core.wasm"), said: "riki-core.wasm 1.2.0" });
+  });
+
+  it("fails when a pinned release is not there, and when it was altered", async () => {
+    await expect(pinnedCore({ version: "1.2.0" }, await folder())).rejects.toThrow("core-v1.2.0");
+    await expect(pinnedCore({ version: "1.2.0" }, await folder(Buffer.from("x"), "0".repeat(64)))).rejects.toThrow("its .sha256 says");
+  });
+});
