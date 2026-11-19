@@ -35,8 +35,6 @@ export function createMapView(container: HTMLElement): MapControl {
     locale: { "TerrainControl.Enable": words["TerrainControl.Enable"],
       "TerrainControl.Disable": words["TerrainControl.Disable"] }
   });
-  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
-  map.addControl(new maplibregl.FullscreenControl(), "top-right");
   // Among the map's own controls, where a browser's location button is looked for.
   const phoneButton = document.createElement("button");
   phoneButton.id = "phoneButton";
@@ -52,7 +50,10 @@ export function createMapView(container: HTMLElement): MapControl {
   const phoneGroup = document.createElement("div");
   phoneGroup.className = "maplibregl-ctrl maplibregl-ctrl-group";
   phoneGroup.append(phoneButton);
-  map.addControl({ onAdd: () => phoneGroup, onRemove: () => phoneGroup.remove() }, "top-right");
+  // 90 Bottom right, as the design has them, stacked upwards: location, full screen, zoom.
+  map.addControl({ onAdd: () => phoneGroup, onRemove: () => phoneGroup.remove() }, "bottom-right");
+  map.addControl(new maplibregl.FullscreenControl(), "bottom-right");
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 140 }), "bottom-left");
 
   // The zoom on the map, where the app shows it.
@@ -144,7 +145,7 @@ export function createMapView(container: HTMLElement): MapControl {
     }
     if (!dem) return;
     terrainButton = new maplibregl.TerrainControl({ source: dem, exaggeration: 1 });
-    map.addControl(terrainButton, "top-right");
+    map.addControl(terrainButton, "bottom-right");
   }
 
   // Regions the phone lacks.

@@ -25,9 +25,9 @@ test("a computer's screen gets a header, a side bar, the map and a status line",
   // 2916: a browser that may only look gets no layer switches.
   await expect(page.locator("#layerList")).toHaveCount(0);
   await expect(page.getByRole("switch")).toHaveCount(0);
-  // 2945: its styles are the header's switcher only.
-  await expect(page.locator(".chips")).toHaveCount(0);
-  await expect(page.locator("#styleSelect option")).toHaveText(["Summer", "Winter"]);
+  // 2945: it picks among the styles; 90 from the side bar's drop-down.
+  await page.locator("#sideStyle").click();
+  await expect(page.locator("#current [role=option]")).toHaveText(["Summer", "Winter"]);
   // 41 an open map's side bar is the map alone.
   await expect(page.locator("#others")).toHaveCount(0);
   await expect(page.locator(".maplibregl-ctrl-zoom-in")).toBeVisible();
@@ -45,23 +45,43 @@ test("the pointer's place is written in the status line", async ({ page }) => {
   await expect(page.locator("#pointer")).toHaveText(/^-?\d+\.\d{5}, -?\d+\.\d{5}$/);
 });
 
-// 2945: the side bar's chips are an editing browser's.
-test("the style is picked in the header or in the side bar, and the map follows", async ({ page }) => {
+// 90 the style is picked from the side bar's drop-down or the map's switcher, and the map follows.
+test("the style is picked in the side bar or over the map, and the map follows", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
-  const select = page.locator("#styleSelect");
-  await expect(page.locator("#styleLabel")).toBeVisible();
-  await expect(select.locator("option")).toHaveText(["Summer", "Winter"]);
+  await page.locator("#sideStyle").click();
+  await expect(page.getByRole("option")).toHaveText(["Summer", "Winter"]);
 
   const asked = page.waitForRequest((request) => request.url().includes("/style?") && request.url().includes("hide="));
-  await select.selectOption({ label: "Winter" });
+  await page.getByRole("option", { name: "Winter" }).click();
   expect(new URL((await asked).url()).searchParams.get("hide")).toBe("6F1E2A10-0000-4000-8000-0000000000A2");
-  await expect(page.locator(".chips button.picked")).toHaveText("Winter");
+  await expect(page.locator("#sideStyle")).toHaveText("Winter");
+  await expect(page.locator("#switcherButton")).toHaveText("Winter");
   // 30 a style other than the one the map opens on is in the address's path.
   await expect(page).toHaveURL(/\/maps\/[^/]+\/style\/6F1E2A10-0000-4000-8000-0000000000B2#/);
 
-  await page.locator(".chips button", { hasText: "Summer" }).click();
-  await expect(select).toHaveValue("6F1E2A10-0000-4000-8000-0000000000B1");
+  await page.locator("#switcherButton").click();
+  await expect(page.getByRole("dialog", { name: "Layers" })).toBeVisible();
+  await page.locator("#switcherStyle").click();
+  await page.locator("#switcherPanel").getByRole("option", { name: "Summer" }).click();
+  await expect(page.locator("#sideStyle")).toHaveText("Summer");
   await expect(page).not.toHaveURL(/\/style\//);
+  const map = await page.locator("#map").boundingBox();
+  await page.mouse.click(map.x + map.width / 2, map.y + map.height / 2);
+  await expect(page.locator("#switcherPanel")).toHaveCount(0);
+});
+
+// 90 the map's buttons are its glass, bottom right; the style and the layers top right.
+test("the map's buttons sit bottom right and the switcher top right", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  const map = await page.locator("#map").boundingBox();
+  const zoom = await page.locator(".maplibregl-ctrl-zoom-in").boundingBox();
+  const phone = await page.locator("#phoneButton").boundingBox();
+  const switcher = await page.locator("#switcherButton").boundingBox();
+  expect(map.x + map.width - (zoom.x + zoom.width)).toBeLessThan(40);
+  expect(map.y + map.height - (phone.y + phone.height)).toBeLessThan(40);
+  expect(phone.y).toBeGreaterThan(zoom.y);
+  expect(map.x + map.width - (switcher.x + switcher.width)).toBeLessThan(40);
+  expect(switcher.y - map.y).toBeLessThan(40);
 });
 
 // 2916: the switches are an editing browser's.
@@ -95,7 +115,8 @@ test("another map is opened from the Maps screen's list", async ({ page }) => {
   await page.locator("#others .row", { hasText: "Bratislava" }).click();
   await expect(page.locator("#others")).toHaveCount(0);
   await expect(page.locator("#mapName")).toHaveText("Bratislava");
-  await expect(page.locator("#styleLabel")).toBeHidden();
+  // 90 a map of one style offers no drop-down
+  await expect(page.locator("#sideStyle")).toHaveCount(0);
   await expect(page.locator("#current .hero b")).toHaveText("Bratislava");
   // 30 the map's own address
   await expect(page).toHaveURL(/\/maps\/6F1E2A10-0000-4000-8000-000000000002#/);

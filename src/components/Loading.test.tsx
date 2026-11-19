@@ -47,7 +47,8 @@ describe("loading", () => {
     useViewer.setState({ device, mapID: "a", picking: true, route: { screen: "map", map: "a" } });
     const { container } = render(<MapsPage />);
     expect(container.querySelector(".hero")?.className).toBe("hero pending");
-    expect(container.querySelector(".hero .picture.pending")).toBeTruthy();
+    // 90 the picture folds out under the card, no longer inside it
+    expect(container.querySelector("#current > .picture.pending")).toBeTruthy();
     expect(container.querySelector(".hero .mark.pending")).toBeTruthy();
     act(() => useViewer.setState({ picking: false, pictures: new Map([["a", {}]]) }));
     expect(container.querySelector(".hero")?.className).toBe("hero");
