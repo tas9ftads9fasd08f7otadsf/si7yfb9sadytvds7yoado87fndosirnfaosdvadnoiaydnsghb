@@ -9,7 +9,7 @@ const memory = (): Keeping & { kept: Map<string, unknown> } => {
   return { kept, load: async <T,>(key: string) => kept.get(key) as T | undefined, save: async (key, value) => { kept.set(key, value); } };
 };
 
-const answering = (response: () => Response | Promise<Response>) => vi.fn(async (_url?: unknown, _init?: unknown) => response());
+const answering = (response: () => Response | Promise<Response>) => vi.fn<typeof fetch>(async () => response());
 
 describe("a host's reach", () => {
   it("answers true when a CORS request is answered, whatever the status, and asks with mode cors", async () => {
