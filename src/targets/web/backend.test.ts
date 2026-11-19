@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import type { Device, Portable } from "@/lib/types";
-import { Cloud, type CKContainer, type CKRecord, type CKSave, type CKSaved, type CloudKitJS } from "./cloud";
+import { Cloud, type CKBatchResult, type CKContainer, type CKRecord, type CKSave, type CKZoneChanges, type CloudKitJS } from "./cloud";
 import { NotOnSite, type Feature } from "@/backend/types";
 import { CoreMissing, type AddAsk, type AddressRead, type Applied, type Core, type HistoryEntry, type ReadAsk } from "./core";
 import { createBackend } from "./backend";
@@ -26,12 +26,14 @@ interface Options {
   fetching?: (address: string) => Response;
   /** The style the core builds. */
   built?: unknown;
+  /** 91 The browser's languages, most wanted first. */
+  languages?: string[];
   /** The name typed in the account part, if any. */
   typed?: string;
   /** CloudKit gives no name. */
   nameless?: boolean;
   /** Answers the saves; the default applies them to the account, as the server would. */
-  saving?: (records: CKSave[]) => CKSaved | undefined;
+  saving?: (records: CKSave[]) => CKBatchResult | undefined;
 }
 
 function stack(options: Options = {}) {
@@ -39,19 +41,22 @@ function stack(options: Options = {}) {
   let signIn: (identity: unknown) => void = () => {};
   const held = structuredClone(account.zones) as unknown as { private: { zoneID: { zoneName: string }; records: CKRecord[] }[];
     shared: { zoneID: { zoneName: string }; records: CKRecord[] }[] };
-  const changes = vi.fn(async ({ zones }: { zones: { zoneID: { zoneName: string } }[] }) => {
+  // 87 a zone's options, as the library takes them: it builds the `zones` of the request itself
+  const changes = vi.fn(async (options: CKZoneChanges | CKZoneChanges[]) => {
+    const [zone] = [options].flat();
     const mine = held.private[0]!;
-    return { zones: [{ zoneID: zones[0]!.zoneID, syncToken: "t",
-      records: zones[0]!.zoneID.zoneName === mine.zoneID.zoneName ? mine.records : held.shared[0]!.records }] };
+    return { zones: [{ zoneID: zone!.zoneID, syncToken: "t",
+      records: zone!.zoneID.zoneName === mine.zoneID.zoneName ? mine.records : held.shared[0]!.records }] };
   });
   const all = () => [...held.private[0]!.records, ...held.shared[0]!.records];
   let version = 0;
-  const saves = vi.fn<(records: CKSave[], where: unknown) => Promise<CKSaved>>(async (records) => {
+  /** The batch's commit: what it creates and updates, where, and what it deletes with the tags read. */
+  const saves = vi.fn<(records: CKSave[], where: unknown, removals: { recordName: string; recordChangeTag?: string }[]) => Promise<CKBatchResult>>(async (records) => {
     const refused = options.saving?.(records);
     if (refused) return refused;
     const stale = records.find((record) => record.recordChangeTag
       && record.recordChangeTag !== all().find((found) => found.recordName === record.recordName)?.recordChangeTag);
-    if (stale) return { records: [{ recordName: stale.recordName, serverErrorCode: "CONFLICT" }] };
+    if (stale) return { records: [], hasErrors: true, errors: [{ recordName: stale.recordName, ckErrorCode: "CONFLICT", serverErrorCode: "CONFLICT" }] };
     return { records: records.map((record) => {
       let each = all().find((found) => found.recordName === record.recordName);
       if (!each) {
@@ -67,17 +72,30 @@ function stack(options: Options = {}) {
       return { recordName: each.recordName, recordChangeTag: each.recordChangeTag };
     }) };
   });
-  const deletes = vi.fn(async () => ({ records: [] }));
+  const batchOf = (commit: (...asked: Parameters<typeof saves>) => Promise<CKBatchResult>) => (where: unknown) => {
+    const records: CKSave[] = [];
+    const removals: { recordName: string; recordChangeTag?: string }[] = [];
+    const batch = {
+      create: (record: CKSave) => { records.push(record); return batch; },
+      update: (record: CKSave) => { records.push(record); return batch; },
+      delete: (record: { recordName: string; recordChangeTag?: string }) => { removals.push(record); return batch; },
+      commit: () => commit(records, where, removals)
+    };
+    return batch;
+  };
+  const identities = { ...account.identities, rita: { userRecordName: "rita", nameComponents: { givenName: "Rita" } } } as Record<string, unknown>;
+  const database = { fetchRecordZoneChanges: changes, newRecordsBatch: batchOf(saves),
+    saveSubscriptions: vi.fn(async () => ({})), fetchDatabaseChanges: vi.fn(async () => ({ zones: [] })) };
+  const shared = vi.fn<(...asked: Parameters<typeof saves>) => Promise<CKBatchResult>>(async () => ({ records: [{ recordName: "shared-doprava", recordChangeTag: "s2" }] }));
   const container = {
-    setUpAuth: async () => (options.signedIn === false ? false : options.nameless ? {} : account.person),
+    setUpAuth: async () => (options.signedIn === false ? false : account.person),
+    discoverUserIdentityWithUserRecordName: async (name: string) => ({ users: options.nameless ? [] : [identities[name]] }),
     whenUserSignsIn: () => new Promise((resolve) => { signIn = resolve; }),
     whenUserSignsOut: () => new Promise(() => {}),
     registerForNotifications: async () => {},
     addNotificationListener: (listener: (n: unknown) => void) => { notify = listener; },
-    privateCloudDatabase: { fetchRecordZoneChanges: changes, fetchAllRecordZones: async () => ({}),
-      saveRecords: saves, deleteRecords: deletes },
-    sharedCloudDatabase: { fetchRecordZoneChanges: changes, saveRecords: vi.fn(async () => ({ records: [{ recordName: "shared-doprava", recordChangeTag: "s2" }] })),
-      deleteRecords: deletes,
+    privateCloudDatabase: { ...database, fetchAllRecordZones: async () => ({}) },
+    sharedCloudDatabase: { ...database, newRecordsBatch: batchOf(shared),
       fetchAllRecordZones: async () => ({ zones: account.zones.shared.map((each) => ({ zoneID: each.zoneID })) }) }
   } as unknown as CKContainer;
   const cloudkit: CloudKitJS = { configure: () => {}, getDefaultContainer: () => container };
@@ -99,11 +117,14 @@ function stack(options: Options = {}) {
     const address = String(url);
     if (address in assets) return new Response(assets[address]);
     if (options.fetching && address.startsWith("https://")) return options.fetching(address);
-    if (address === "/editor/words/sk.json") return Response.json({ language: "sk", words: { maps: "Mapy" } });
+    if (address === "/editor/words/languages.json") return Response.json(["cs", "en", "sk"]);
+    if (address === "/editor/words/sk.json") return Response.json({ language: "sk", words: { maps: "Mapy", layers: "Vrstvy", noSuchMap: "Taká mapa nie je",
+      nothingToUndo: "Nie je čo vrátiť", signsInApple: "Stránka sa prihlasuje cez Apple ID", changeRefused: "Mapa sa zmenila inde." } });
+    if (address === "/editor/words/en.json") return Response.json({ language: "en", words: { maps: "Maps" } });
     return new Response("", { status: 404 });
   });
   const backend = createBackend({ cloud, config: async () => config, core: options.core ?? (async () => core), keeping, reach: options.reach ?? { answers: async () => true },
-    author: { read: () => options.typed ?? "", keep: () => {} }, fetcher: fetcher as typeof fetch, base: "/editor", language: () => "sk" });
+    author: { read: () => options.typed ?? "", keep: () => {} }, fetcher: fetcher as typeof fetch, base: "/editor", languages: () => options.languages ?? ["sk"] });
   /** Another device wrote this record: a new tag and the fields it set. */
   const elsewhere = (recordName: string, fields: Record<string, { value: unknown; type: string }>) => {
     const each = all().find((found) => found.recordName === recordName)!;
@@ -111,14 +132,14 @@ function stack(options: Options = {}) {
     each.recordChangeTag = `${each.recordChangeTag}x`;
   };
   return { backend, seen, notify: () => notify({}), signIn: (identity: unknown) => signIn(identity), changes, core, saves,
-    shared: container.sharedCloudDatabase.saveRecords as ReturnType<typeof vi.fn>, elsewhere, held };
+    shared, elsewhere, held };
 }
 
 describe("WebBackend's reads", () => {
   it("says signed out, with the sign-in's standing, until an Apple Account is in", async () => {
     const { backend, signIn } = stack({ signedIn: false });
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "signedOut" } });
-    signIn({ nameComponents: { givenName: "Rita" } });
+    signIn({ userRecordName: "rita" });
     await new Promise((resolve) => setTimeout(resolve));
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "admitted", edits: true, token: "icloud", device: "Rita", viewers: null } });
   });
@@ -133,8 +154,37 @@ describe("WebBackend's reads", () => {
     expect(await stack().backend.unlock("x")).toMatchObject({ ok: false, status: 404 });
   });
 
-  it("reads its words from the site's own words files", async () => {
-    expect(await stack().backend.words()).toEqual({ language: "sk", words: { maps: "Mapy" } });
+  it("reads its words from the site's own words files, in the language the browser asks for", async () => {
+    const said = await stack().backend.words() as { language: string; words: Record<string, string> };
+    expect(said.language).toBe("sk");
+    expect(said.words.maps).toBe("Mapy");
+    const other = await stack({ languages: ["fr-CA", "en-GB", "en"] }).backend.words() as { language: string };
+    expect(other.language).toBe("en");
+  });
+
+  // 91 what only the phone made up, the language names and counts, is made in the browser
+  it("makes the language list, their names and the layer counts, as the phone does for itself", async () => {
+    const { words } = await stack().backend.words() as { words: Record<string, string> };
+    expect((words.languages ?? "").split(",").sort()).toEqual(["cs", "en", "sk"]);
+    expect(words["language.cs"]).toMatch(/^[ČC]e[šs]tina|^Česk/);
+    expect(words["layers.1"]).toBe("1 vrstvy");
+    expect(words["layers.99"]).toBe("99 vrstvy");
+  });
+
+  it("says what the site itself refuses with in the language it speaks", async () => {
+    const { backend } = stack();
+    await backend.words();
+    expect(await backend.map("nope").catch((e) => e)).toBeDefined();
+    expect(await backend.undo!("M")).toMatchObject({ ok: false, status: 404, said: "Nie je čo vrátiť" });
+    expect(await backend.unlock("x")).toMatchObject({ said: "Stránka sa prihlasuje cez Apple ID" });
+  });
+
+  it("says them in English before its words are read, and for a map it has not got", async () => {
+    const { backend } = stack();
+    expect(await backend.undo!("M")).toMatchObject({ said: "Nothing to undo" });
+    expect(await backend.change("no-such", null, { kind: "name", name: "x" })).toMatchObject({ status: 404, said: "No such map" });
+    await backend.words();
+    expect(await backend.change("no-such", null, { kind: "name", name: "x" })).toMatchObject({ status: 404, said: "Taká mapa nie je" });
   });
 
   it("answers the maps list from the core, named after the person when the core names none", async () => {
@@ -254,7 +304,7 @@ describe("WebBackend's edits", () => {
     expect(shared).toHaveBeenCalledWith(
       [{ recordName: "shared-doprava", recordType: "CD_SharedMap", recordChangeTag: "s1",
         fields: { CD_name: { value: "Roads", type: "STRING" } } }],
-      { zoneID: { zoneName: "share-doprava", ownerRecordName: "_friki" }, atomic: true });
+      { zoneID: { zoneName: "share-doprava", ownerRecordName: "_friki" }, atomic: true }, []);
   });
 
   it("returns the core's refusal words and writes nothing", async () => {
@@ -299,7 +349,8 @@ describe("WebBackend's edits", () => {
 
   it("refuses after three conflicts, in words that say the map changed elsewhere", async () => {
     const { backend, core, saves } = stack({ saving: (records) =>
-      ({ records: [{ recordName: records[0]!.recordName, serverErrorCode: "CONFLICT" }] }) });
+      ({ records: [], hasErrors: true, errors: [{ recordName: records[0]!.recordName, ckErrorCode: "CONFLICT", serverErrorCode: "CONFLICT" },
+        { recordName: records[1]!.recordName, ckErrorCode: "ATOMIC_ERROR", serverErrorCode: "ATOMIC_ERROR" }] }) });
     const answer = await backend.change(TATRAS, null, rename);
     expect(answer).toEqual({ ok: false, status: 412, said: "The map changed elsewhere. Open it again and repeat the change." });
     expect(core.apply).toHaveBeenCalledTimes(3);
@@ -307,7 +358,8 @@ describe("WebBackend's edits", () => {
   });
 
   it("does not hide any other error of the server", async () => {
-    const { backend } = stack({ saving: () => ({ records: [{ recordName: "r", serverErrorCode: "QUOTA_EXCEEDED", reason: "iCloud is full" }] }) });
+    const { backend } = stack({ saving: () => ({ records: [], hasErrors: true,
+      errors: [{ recordName: "r", ckErrorCode: "QUOTA_EXCEEDED", serverErrorCode: "QUOTA_EXCEEDED", reason: "iCloud is full" }] }) });
     await expect(backend.change(TATRAS, null, rename)).rejects.toThrow("iCloud is full");
   });
 
@@ -342,7 +394,7 @@ describe("WebBackend's edits", () => {
     expect(await backend.undo!(TATRAS)).toMatchObject({ ok: false, status: 412 });
     // the try on the cached rows was refused, and the rows read again hold Peaks
     expect(saves).toHaveBeenCalledTimes(2);
-    await expect(saves.mock.results[1]!.value).resolves.toMatchObject({ records: [{ serverErrorCode: "CONFLICT" }] });
+    await expect(saves.mock.results[1]!.value).resolves.toMatchObject({ errors: [{ ckErrorCode: "CONFLICT" }] });
   });
 });
 

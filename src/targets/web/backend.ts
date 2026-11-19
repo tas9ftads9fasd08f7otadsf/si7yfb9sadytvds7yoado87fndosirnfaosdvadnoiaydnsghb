@@ -1,11 +1,12 @@
 import { NotOnSite, type Answer, type Backend, type ChangedElsewhere, type Feature } from "@/backend/types";
 import type { Edit } from "@/lib/edit";
 import type { Portable, SessionAnswer } from "@/lib/types";
-import { ENGLISH } from "@/lib/words";
+import { ENGLISH, type Words } from "@/lib/words";
 import { storedAuthor, type Author } from "./author";
 import { BASE } from "./base";
 import { Cloud } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
+import { chooseLanguage, codesOf, computedWords } from "./language";
 import { loadCore, type AddressRead, type Adding, type Applied, type Core, type Reply } from "./core";
 import { createReach, hostOf, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
@@ -58,7 +59,8 @@ export interface Parts {
   author: Author;
   fetcher: typeof fetch;
   base: string;
-  language: () => string;
+  /** The browser's languages, most wanted first. */
+  languages: () => readonly string[];
 }
 
 const ownerOf = (row: CoreRow) => (row.entity === "SharedMap" ? row.id : String(row.fields.map ?? ""));
@@ -78,6 +80,9 @@ export function createBackend(parts: Parts): Backend {
   let known: Known | null = null;
   let undoing: Undoing | null = null;
   let telling: Promise<void> = Promise.resolve();
+  /** The words the page was last given, for what the site itself refuses with. */
+  let spoken: Partial<Words> = {};
+  const say = (key: "changeRefused" | "noSuchMap" | "nothingToUndo" | "signsInApple") => spoken[key] ?? ENGLISH[key];
 
   /** The rows as last read; a change elsewhere, or `fresh`, reads them again. */
   const rows = (fresh = false): Promise<CoreRow[]> => {
@@ -127,7 +132,7 @@ export function createBackend(parts: Parts): Backend {
     for (let attempt = 0; attempt < TRIES; attempt += 1) {
       const read = await rows(attempt > 0);
       const home = mapRow(read, mapID);
-      if (!home) return refused("No such map", 404);
+      if (!home) return refused(say("noSuchMap"), 404);
       const planned = plan(core, read);
       if (!("plan" in planned)) return refused(planned.said, planned.status);
       const db = home.database === "shared" ? container.sharedCloudDatabase : container.privateCloudDatabase;
@@ -139,7 +144,7 @@ export function createBackend(parts: Parts): Backend {
         if (!(error instanceof Conflict)) throw error;
       }
     }
-    return refused(ENGLISH.changeRefused, 412);
+    return refused(say("changeRefused"), 412);
   };
 
   /** The rows this site wrote are not news when CloudKit says they changed. */
@@ -243,14 +248,14 @@ export function createBackend(parts: Parts): Backend {
   /** The rows put back as they were, if nothing else has touched them since. */
   const undo = async (mapID: string): Promise<Answer<Portable>> => {
     const last = undoing;
-    if (!last || last.mapID !== mapID) return refused("Nothing to undo", 404);
+    if (!last || last.mapID !== mapID) return refused(say("nothingToUndo"), 404);
     let owner = "";
     return commit(mapID, (_core, read) => {
       owner = mapRow(read, mapID)?.id ?? "";
       const current = (id: string) => read.find((row) => row.id === id);
       const same = last.after.every((each) => Object.entries(each.fields)
         .every(([name, value]) => JSON.stringify(current(each.id)?.fields[name] ?? null) === JSON.stringify(value ?? null)));
-      if (!same) return { said: ENGLISH.changeRefused, status: 412 };
+      if (!same) return { said: say("changeRefused"), status: 412 };
       return { plan: {
         save: [...last.before.map((each) => ({ write: each, row: current(each.id) })),
           ...last.removed.map((row) => ({ write: { entity: row.entity, id: row.id, fields: row.fields,
@@ -274,13 +279,23 @@ export function createBackend(parts: Parts): Backend {
     offers: (feature) => OFFERED.has(feature),
 
     async words() {
-      const answer = await parts.fetcher(`${parts.base}/words/${parts.language()}.json`);
-      if (!answer.ok) throw new Error(`No words for ${parts.language()}`);
-      return answer.json();
+      let codes = ["en"];
+      try {
+        const listing = await parts.fetcher(`${parts.base}/words/languages.json`);
+        if (listing.ok) codes = codesOf(await listing.json());
+      } catch { /* the site was packed with English only */ }
+      const language = chooseLanguage(codes, parts.languages());
+      const answer = await parts.fetcher(`${parts.base}/words/${language}.json`);
+      if (!answer.ok) throw new Error(`No words for ${language}`);
+      const read = await answer.json() as { language?: string; words?: Record<string, string> };
+      const said = { ...ENGLISH, ...read.words } as Words;
+      const made = computedWords(language, codes, said);
+      spoken = { ...said, ...made };
+      return { language: read.language ?? language, words: { ...read.words, ...made } };
     },
     session,
     askToJoin: session,
-    unlock: async () => ({ ok: false, status: 404, said: "The site signs in with an Apple Account" }),
+    unlock: async () => ({ ok: false, status: 404, said: say("signsInApple") }),
     useToken: () => {},
     onChanged(listener) {
       listeners.add(listener);
@@ -328,11 +343,11 @@ export function createBackend(parts: Parts): Backend {
   };
 }
 
-const language = () => navigator.language.split("-")[0] || "en";
+const languages = () => (navigator.languages?.length ? navigator.languages : [navigator.language]);
 
 const keeping = indexedKeeping();
 
 export const backend: Backend = createBackend({
   cloud: new Cloud(), config: readConfig, core: () => loadCore(), keeping, reach: createReach(keeping), author: storedAuthor(),
-  fetcher: (...asked) => fetch(...asked), base: BASE, language
+  fetcher: (...asked) => fetch(...asked), base: BASE, languages
 });

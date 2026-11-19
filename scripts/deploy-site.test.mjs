@@ -9,10 +9,11 @@ const PORT = 2121 + (process.pid % 200) * 25;
 let work, root, server, ca;
 
 /** A release's zip as pack-web lays it out, with the files named. */
-function release(name, version, commit, assets, extra = {}) {
+function release(name, version, commit, assets, extra = {}, { core = true } = {}) {
   const folder = path.join(work, name);
   mkdirSync(path.join(folder, "out", "_next", "static"), { recursive: true });
   writeFileSync(path.join(folder, "out", "index.html"), `<html>${version}</html>`);
+  if (core) writeFileSync(path.join(folder, "out", "riki-core.wasm"), "\0asm");
   for (const asset of assets) writeFileSync(path.join(folder, "out", "_next", "static", asset), asset);
   writeFileSync(path.join(folder, "index.php"), "<?php // page");
   writeFileSync(path.join(folder, "Site.php"), "<?php // site");
@@ -104,6 +105,19 @@ describe("deploying the site over FTPS", () => {
     expect(run.status).not.toBe(0);
     expect(run.stderr).toContain("config.php");
     expect(onServer("config.php")).toBe("<?php return ['apiToken' => 'kept'];");
+  }, 60000);
+
+  // 88 a site without the core cannot read maps, so a real deploy is refused before anything is sent
+  it("refuses a zip without riki-core.wasm, and changes nothing", () => {
+    const run = deploy(release("eight", "0.1.8", "hhh888", ["i.js"], {}, { core: false }));
+    expect(run.status).not.toBe(0);
+    expect(run.stderr).toContain("no out/riki-core.wasm");
+    expect(existsSync(path.join(root, "editor", "out", "_next", "static", "i.js"))).toBe(false);
+  }, 60000);
+
+  it("lets a test address go without the core, when it says so", () => {
+    const run = deploy(release("nine", "0.1.9", "iii999", ["j.js"], {}, { core: false }), { RIKI_ALLOW_NO_CORE: "1" });
+    expect(run.stderr).not.toContain("riki-core.wasm");
   }, 60000);
 
   it("says which setting is missing", () => {

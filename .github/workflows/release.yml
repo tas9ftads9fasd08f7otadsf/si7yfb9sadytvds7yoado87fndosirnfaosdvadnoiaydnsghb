@@ -16,9 +16,18 @@ jobs:
       contents: read
       pull-requests: read
 
+  # The site ships riki-core.wasm, built from the pinned rikimaps commit.
+  core:
+    name: Build the core
+    uses: ./.github/workflows/core.yml
+    secrets:
+      RIKIMAPS_READ_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}
+    permissions:
+      contents: read
+
   release:
     name: Publish the bundle
-    needs: check
+    needs: [check, core]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -34,6 +43,17 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Not there while rikiCore.ref pins no commit: pack:web says so, and the deploy refuses such a zip.
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: riki-core
+          path: dist/riki-core
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: riki-words
+          path: dist/words
       # Two zips: the app takes web-editor.zip, the site's deploy web-site.zip.
       - name: Pack and publish
         id: publish

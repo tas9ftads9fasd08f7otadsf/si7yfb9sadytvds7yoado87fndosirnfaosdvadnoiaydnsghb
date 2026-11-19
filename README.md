@@ -49,8 +49,31 @@ runs PHP 8.1 or later, at a domain's root or under a path, and send every reques
 `composer install --working-dir=server` and `npm run test:php` run its PHPUnit tests, and
 `npm run test:e2e:web` runs the browser specs against the zip at `/` and under `/editor/`, with
 `e2e/mock-cloud.mjs` standing in for CloudKit and `e2e/fake-core.mjs` for `riki-core.wasm`. The site's zip carries the
-core only once `rikiCore.version` in `package.json` pins a release (`dist/riki-core/riki-core.wasm` and its `.sha256`);
-until then `pack:web` says so and packs without it.
+core only once `rikiCore.ref` in `package.json` pins a rikimaps commit: `npm run build:core` builds `riki-core.wasm` from
+it (`RIKIMAPS_DIR` is a checkout of rikimaps at that commit, read only; the build writes `dist/riki-core/` here:
+the module, its `.sha256` and its size). It runs rikimaps' documented swift build
+(`tools/linux-core/wasm/README.md`, Swift 6.2 and its WebAssembly SDK, both checked against their pinned sums),
+`wasm-opt -Oz` from the `binaryen` package, and loads the module as the site does, calling `riki_version`. The order is
+`npm run build:core`, `npm run build:web`, `npm run pack:web`; until a commit is pinned `pack:web` says so and packs
+without a core, and the deploy refuses such a zip unless it is run by hand for a test address (`without_core`). To
+take a newer core, set `rikiCore.ref` to the rikimaps commit and `rikiCore.sha256` to the module's (the build prints
+it, and refuses a module that is not the pinned one). `RIKI_CORE_REF=<sha>` tries a commit before it is pinned.
+The site's words come from the same pin: `npm run build:words` (same `RIKIMAPS_DIR`) reads rikimaps' key list
+(`web-words.json`) and the `<lang>.lproj` tables and writes `dist/words/<lang>.json` and `languages.json`, which `pack:web`
+puts under `out/words/` (English alone, from the page's own sentences, while nothing is pinned; the contract is §2 of
+rikimaps' `.planning/web-icloud.md`). The page takes the language `languages.json` offers for `navigator.languages`:
+exact, then the language alone, `zh-TW`/`zh-HK` as `zh-Hant`, other `zh` as `zh-Hans`, `sr-Latn-*` as `sr-Latn`,
+else English. `scripts/build-words.test.mjs` reproduces rikimaps' old generator's output at `5a7200c4fb` (hash
+`c80d8253675b`) when `RIKIMAPS_WORDS_CHECK_DIR` is a checkout of it.
+CI builds them in `.github/workflows/core.yml`, which `release.yml` calls before it packs; rikimaps is private, so the
+repository secret `RIKIMAPS_READ_TOKEN` (a token that reads it) has to exist. With a commit pinned, `pack:web` fails
+where the module was not built; `RIKI_PACK_WITHOUT_CORE=1` packs without it for the browser specs, which stand in for the
+core (CI does, and `npm run check`).
+
+The API token (CloudKit Console, the container's API Access) needs two settings: **Sign-In Callback** set to
+`postMessage`, and the site's origin (scheme, host and port) in its allowed origins, once per address and
+environment. CloudKit JS keeps the sign-in in a cookie scoped to the page's path, so a site under `/editor/` and
+its nested routes are worth checking in a real browser once, signing in on a nested screen and reloading it.
 
 ### Deploying it
 

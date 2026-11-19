@@ -2,7 +2,7 @@
   "name": "mapeditor-fe",
   "version": "0.1.0",
   "private": true,
-  "rikiCore": { "version": null },
+  "rikiCore": { "ref": "b60e9e4c95a00d747580d89a777fdc34818324ff", "sha256": "a3c9416053dd0df1509d86fc199030dc19e105a0d8d77c8f43bd19aa0fdeced6" },
   "description": "The map editor a sharing phone serves to browsers, built by Next.js and shipped inside the app",
   "type": "module",
   "engines": {
@@ -18,8 +18,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run test:php && npm run build && npm run test:e2e && npm run pack && npm run build:web && npm run pack:web && npm run test:e2e:web",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run test:php && npm run build && npm run test:e2e && npm run pack && npm run build:web && RIKI_PACK_WITHOUT_CORE=1 npm run pack:web && npm run test:e2e:web",
     "build:web": "RIKI_TARGET=web next build",
+    "build:core": "node scripts/build-core.mjs",
+    "build:words": "node scripts/build-words.mjs",
     "pack:web": "node scripts/pack-web.mjs",
     "test:php": "cd server && vendor/bin/phpunit",
     "test:e2e:web": "RIKI_TARGET=web playwright test"
@@ -42,6 +44,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.2.1",
+    "binaryen": "123.0.0",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.5",
     "fake-indexeddb": "6.2.8",

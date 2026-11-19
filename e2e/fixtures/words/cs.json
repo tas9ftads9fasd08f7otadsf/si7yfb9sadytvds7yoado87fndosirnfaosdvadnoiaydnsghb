@@ -1,0 +1,22 @@
+{
+ "language": "cs",
+ "words": {
+  "cancel": "Zrušit",
+  "changeRefused": "Mapa se změnila jinde. Otevřete ji znovu a změnu zopakujte.",
+  "changedAway": "Mapa {map} se změnila na jiném zařízení",
+  "changedBy": "{author} změnil(a) {map}",
+  "done": "Hotovo",
+  "edit": "Upravit mapu",
+  "layers": "Vrstvy",
+  "maps": "Mapy",
+  "name": "Název",
+  "noSuchMap": "Taková mapa neexistuje",
+  "note": "Poznámka",
+  "nothingToUndo": "Není co vrátit zpět",
+  "save": "Uložit",
+  "signInText": "Přihlaste se svým účtem Apple a uvidíte mapy ve svém iCloudu.",
+  "signInTitle": "Přihlaste se k iCloudu",
+  "signsInApple": "Web se přihlašuje účtem Apple",
+  "yourName": "Vaše jméno"
+ }
+}

@@ -1,4 +1,4 @@
-import type { CKContainer, CKReading, CKRecord, ZoneID } from "./cloud";
+import type { CKContainer, CKError, CKReading, CKRecord, ZoneID } from "./cloud";
 import { READ_TYPES, rowOf, type CoreRow } from "./records";
 
 /** The mirror's zone in the person's private database. */
@@ -46,6 +46,10 @@ export function indexedKeeping(name = "riki-site"): Keeping {
   };
 }
 
+/** A sync token the server no longer takes comes back as a bad request that names the token. */
+const isExpired = (error: CKError) =>
+  error.ckErrorCode === "BAD_REQUEST" && /token/i.test(error.reason ?? "");
+
 interface Kept {
   token?: string;
   rows: Record<string, CoreRow>;
@@ -87,10 +91,26 @@ export class Zones {
     const out: CoreRow[] = [];
     for (const zone of zones) {
       const key = zoneKey(database, zone);
-      const kept: Kept = (await this.keeping.load<Kept>(key)) ?? { rows: {} };
+      let kept: Kept = (await this.keeping.load<Kept>(key)) ?? { rows: {} };
       let more = true;
+      let restarted = false;
       while (more) {
-        const answer = await db.fetchRecordZoneChanges({ zones: [{ zoneID: zone, syncToken: kept.token }] });
+        const answer = await db.fetchRecordZoneChanges({ zoneID: zone, ...(kept.token ? { syncToken: kept.token } : {}) });
+        const failed = (answer.errors ?? []).find((each) => each.zoneID?.zoneName === zone.zoneName || !each.zoneID);
+        if (failed) {
+          // No mirror zone yet is no rows; a token the server has forgotten is read again from the start.
+          if (failed.ckErrorCode === "ZONE_NOT_FOUND") {
+            kept = { rows: {} };
+            await this.keeping.save(key, kept);
+            break;
+          }
+          if (kept.token && !restarted && isExpired(failed)) {
+            restarted = true;
+            kept = { rows: {} };
+            continue;
+          }
+          throw new Error(failed.reason ?? failed.ckErrorCode ?? "CloudKit refused the zone");
+        }
         const got = answer.zones?.find((each) => each.zoneID.zoneName === zone.zoneName) ?? answer.zones?.[0];
         for (const record of got?.records ?? []) await this.take(kept, record, { database, zone: zone.zoneName,
           owner: zone.ownerRecordName });
