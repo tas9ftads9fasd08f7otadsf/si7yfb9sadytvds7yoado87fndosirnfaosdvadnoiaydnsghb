@@ -12,10 +12,10 @@ export function EsriServices() {
   const esri = useViewer((state) => state.esri);
   const open = useViewer((state) => state.esriOpen);
   const mapID = useViewer((state) => state.mapID);
-  const revision = useViewer((state) => state.portable?.revision);
+  const layerCount = useViewer((state) => state.portable?.stack?.length);
   useEffect(() => {
     void loadEsri();
-  }, [mapID, revision]);
+  }, [mapID, layerCount]);
   if (!esri?.services.length) return null;
   return (
     <>
