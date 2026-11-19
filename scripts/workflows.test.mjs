@@ -164,6 +164,16 @@ describe("the core's pipeline", () => {
     expect(core.indexOf("npm run build:core")).toBeLessThan(core.indexOf("linux-core-tests.sh"));
   });
 
+  // 91 the words are made from the same checkout, and checked against the generator they replace
+  it("makes the site's words from the same checkout and reproduces the generator's, which the release takes", () => {
+    expect(core).toContain("npm run build:words");
+    expect(core).toContain("ref: 5a7200c4fb");
+    expect(core).toContain("RIKIMAPS_WORDS_CHECK_DIR");
+    expect(core).toContain("name: riki-words");
+    expect(release).toContain("name: riki-words");
+    expect(release.indexOf("name: riki-words")).toBeLessThan(release.indexOf("npm run pack:web"));
+  });
+
   it("lets CI pack the site without the core for its browser specs, and the release not", () => {
     expect(read("ci.yml")).toMatch(/run: npm run pack:web\n\s+env:\n\s+RIKI_PACK_WITHOUT_CORE: "1"/);
     expect(release).not.toContain("RIKI_PACK_WITHOUT_CORE");

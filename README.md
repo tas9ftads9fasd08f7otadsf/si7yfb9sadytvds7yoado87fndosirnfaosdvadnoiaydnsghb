@@ -58,7 +58,14 @@ the module, its `.sha256` and its size). It runs rikimaps' documented swift buil
 without a core, and the deploy refuses such a zip unless it is run by hand for a test address (`without_core`). To
 take a newer core, set `rikiCore.ref` to the rikimaps commit and `rikiCore.sha256` to the module's (the build prints
 it, and refuses a module that is not the pinned one). `RIKI_CORE_REF=<sha>` tries a commit before it is pinned.
-CI builds it in `.github/workflows/core.yml`, which `release.yml` calls before it packs; rikimaps is private, so the
+The site's words come from the same pin: `npm run build:words` (same `RIKIMAPS_DIR`) reads rikimaps' key list
+(`web-words.json`) and the `<lang>.lproj` tables and writes `dist/words/<lang>.json` and `languages.json`, which `pack:web`
+puts under `out/words/` (English alone, from the page's own sentences, while nothing is pinned; the contract is §2 of
+rikimaps' `.planning/web-icloud.md`). The page takes the language `languages.json` offers for `navigator.languages`:
+exact, then the language alone, `zh-TW`/`zh-HK` as `zh-Hant`, other `zh` as `zh-Hans`, `sr-Latn-*` as `sr-Latn`,
+else English. `scripts/build-words.test.mjs` reproduces rikimaps' old generator's output at `5a7200c4fb` (hash
+`c80d8253675b`) when `RIKIMAPS_WORDS_CHECK_DIR` is a checkout of it.
+CI builds them in `.github/workflows/core.yml`, which `release.yml` calls before it packs; rikimaps is private, so the
 repository secret `RIKIMAPS_READ_TOKEN` (a token that reads it) has to exist. With a commit pinned, `pack:web` fails
 where the module was not built; `RIKI_PACK_WITHOUT_CORE=1` packs without it for the browser specs, which stand in for the
 core (CI does, and `npm run check`).

@@ -128,6 +128,7 @@ export const ENGLISH = {
   onlyURLLayers: "Only layers served from a URL can be downloaded.",
   esriServices: "Esri services", esriService: "Service", esriAddress: "Address", takenAs: "Taken as",
   layerUndrawn: "This service doesn't answer browsers. The app draws it.",
+  noSuchMap: "No such map", nothingToUndo: "Nothing to undo", signsInApple: "The site signs in with an Apple Account",
   coreNotReady: "The site's map rules are not ready yet.",
   addRefusesBrowsers: "This service doesn't answer browsers. Add it in the app.",
   addUnreadable: "The site could not read that address.",

@@ -5,6 +5,8 @@ import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PAGE_SEGMENTS } from "../src/lib/segments.ts";
+import { ENGLISH } from "../src/lib/words.ts";
+import { dumps } from "./build-words.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -40,6 +42,26 @@ export async function pinnedCore(pin, dir, { optional = false } = {}) {
   return { wasm, said: `riki-core.wasm from rikimaps ${pin.ref.slice(0, 10)}` };
 }
 
+/**
+ * The site's words: what `npm run build:words` made in dist/words, or English alone, from the page's own sentences,
+ * while no rikimaps commit is pinned. A pinned set that is missing fails, unless the pack says it is for the specs.
+ */
+export async function pinnedWords(pin, dir, { optional = false } = {}) {
+  const english = { "words/en.json": dumps({ language: "en", words: ENGLISH }), "words/languages.json": dumps(["en"]) };
+  if (!pin?.ref) return { files: english, said: "the site's words are not pinned in package.json (rikiCore.ref): the site is packed with English only", englishOnly: true };
+  let names;
+  try {
+    names = (await readdir(dir)).filter((name) => name.endsWith(".json"));
+    if (!names.includes("languages.json") || !names.includes("en.json")) throw new Error("incomplete");
+  } catch {
+    if (optional) return { files: english, said: `the site's words are pinned to rikimaps ${pin.ref.slice(0, 10)} but were not built: the site is packed with English only`, englishOnly: true };
+    throw new Error(`the site's words are pinned to rikimaps ${pin.ref} but ${dir} has no languages.json and en.json: run npm run build:words first`);
+  }
+  const files = {};
+  for (const name of names) files[`words/${name}`] = await readFile(path.join(dir, name), "utf8");
+  return { files, said: `${names.length - 1} languages of words from rikimaps ${pin.ref.slice(0, 10)}` };
+}
+
 async function main() {
   const out = path.join(ROOT, "out");
   const work = path.join(ROOT, "dist", "web-site");
@@ -66,6 +88,13 @@ async function main() {
     { optional: process.env.RIKI_PACK_WITHOUT_CORE === "1" });
   if (core.wasm) await cp(core.wasm, path.join(work, "out", "riki-core.wasm"));
   else console.warn(`warning: ${core.said}`);
+  const optional = process.env.RIKI_PACK_WITHOUT_CORE === "1";
+  const words = await pinnedWords(own.rikiCore, process.env.RIKI_WORDS_DIR || path.join(ROOT, "dist", "words"), { optional });
+  if (words.englishOnly) console.warn(`warning: ${words.said}`);
+  for (const [file, text] of Object.entries(words.files)) {
+    await mkdir(path.dirname(path.join(work, "out", file)), { recursive: true });
+    await writeFile(path.join(work, "out", file), text);
+  }
   const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
   const site = { version: process.env.WEB_EDITOR_VERSION || own.version, commit, pageSegments: PAGE_SEGMENTS };
   await writeFile(path.join(work, "site.json"), `${JSON.stringify(site, null, 2)}\n`);
