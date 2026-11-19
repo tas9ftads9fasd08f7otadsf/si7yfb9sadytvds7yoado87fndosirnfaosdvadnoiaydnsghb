@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useId, useState } from "react";
+import { type CSSProperties, useState } from "react";
 import type { LayerTest, OptionSection } from "@/lib/types";
 import { setDrawn, testLayer, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
@@ -73,19 +73,6 @@ function Values({ section, scoped }: { section: OptionSection; scoped: Scoped })
         </div>
       ))}
     </>
-  );
-}
-
-/** An address, or with `keys` a template whose `{key}` the layer's keys are offered for. */
-function TextField({ section, send }: { section: OptionSection; send: (text: string) => void }) {
-  const keysID = useId();
-  const keys = section.keys;
-  return (
-    <div className="field">
-      <CommitField type={keys ? "text" : "url"} value={section.value ?? ""} aria-label={section.title || section.key}
-        spellCheck={false} autoCapitalize="off" list={keys ? keysID : undefined} onCommit={send} />
-      {keys ? <datalist id={keysID}>{keys.map((one) => <option key={one} value={`{${one}}`} />)}</datalist> : null}
-    </div>
   );
 }
 
@@ -190,7 +177,14 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
   if (section.kind === "headers") return <Headers section={section} scoped={scoped} />;
   if (section.kind === "probe") return <Probe section={section} scoped={scoped} />;
   if (section.kind === "details") return section.layout ? <DetailsLayoutPanel layout={section.layout} scoped={scoped} /> : null;
-  if (section.kind === "text") return <TextField section={section} send={(text) => setDrawn(scoped({ [key]: text }))} />;
+  if (section.kind === "text") {
+    return (
+      <div className="field">
+        <CommitField type="url" value={section.value ?? ""} aria-label={section.title || key} spellCheck={false}
+          autoCapitalize="off" onCommit={(text) => setDrawn(scoped({ [key]: text }))} />
+      </div>
+    );
+  }
   if (section.kind === "symbols") return <MarkSymbols section={section} pick={(name) => setDrawn(scoped({ [key]: name }))} />;
   if (section.kind === "colour") {
     return <ColourSwatches section={section} pick={(hex) => setDrawn(scoped({ [key]: hex }))} />;
