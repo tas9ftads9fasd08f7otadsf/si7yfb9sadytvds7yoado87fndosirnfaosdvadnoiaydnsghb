@@ -3,8 +3,11 @@
 import { type FormEvent, useState } from "react";
 import { movedInFolder, movedOrder, type ShelfItem, shelfOf } from "@/lib/shelf";
 import type { SharedMap } from "@/lib/types";
+import { listed } from "@/lib/words";
 import { openMap, shelve, useViewer } from "@/store/viewer";
 import { FolderPeople, FolderShareButton } from "./FolderSharing";
+import { Swatch } from "./edit/Styling";
+import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
 
@@ -70,6 +73,64 @@ function FolderName({ id, name }: { id: string; name: string }) {
     <input type="text" className="folder-name" aria-label={`${words.rename} · ${name}`} value={typed}
       onChange={(event) => setTyped(event.target.value)} onBlur={commit}
       onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
+  );
+}
+
+type Folder = Extract<ShelfItem, { kind: "folder" }>;
+
+/** 56 A folder's mark and its ground, from the marks and grounds Edit folder offers. */
+function FolderIcon({ folder }: { folder: Folder }) {
+  const words = useViewer((state) => state.words);
+  const symbol = folder.symbol || "square.stack";
+  const tint = (folder.tint ?? "").toUpperCase() || null;
+  const symbols = [...new Set([symbol, ...listed(words.folderSymbols)])];
+  const tints = listed(words.iconTints);
+  if (tint && !tints.includes(tint)) tints.push(tint);
+  const dress = (part: { symbol: string } | { tint: string }) => void shelve("symbol" in part
+    ? { kind: "folderSymbol", folder: folder.id, symbol: part.symbol }
+    : { kind: "folderTint", folder: folder.id, tint: part.tint });
+  return (
+    <div className="card" data-folder-icon={folder.id}>
+      <div className="field"><label>{words.icon}</label></div>
+      <div className="swatches" role="group" aria-label={`${words.icon} ${folder.name}`}>
+        {symbols.map((name) => (
+          <Swatch key={name} label={name} isPicked={name === symbol} tint={tint} data={{ "data-symbol": name }}
+            onPick={() => dress({ symbol: name })}><Sym name={name} /></Swatch>
+        ))}
+      </div>
+      <div className="field"><label>{words.background}</label></div>
+      <div className="swatches" role="group" aria-label={`${words.background} ${folder.name}`}>
+        <CommitField type="color" value={(tint ?? "#8E8E93").toLowerCase()} aria-label={words.pickColour}
+          title={words.pickColour} onCommit={(hex) => dress({ tint: hex.toUpperCase() })} />
+        <Swatch label={words["theme.auto"]} isPicked={!tint} onPick={() => dress({ tint: "" })}>
+          <Sym name="wand.and.stars" /></Swatch>
+        {tints.map((hex) => (
+          <Swatch key={hex} label={hex} isPicked={hex === tint} tint={hex} data={{ "data-hex": hex }}
+            onPick={() => dress({ tint: hex })} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A folder's head: its mark, which opens its icon, its name and its place. */
+function FolderHead({ folder, place, count, move }:
+  { folder: Folder; place: number; count: number; move: (by: number) => void }) {
+  const words = useViewer((state) => state.words);
+  const [isDressing, setDressing] = useState(false);
+  return (
+    <>
+      <div className="shelf-row">
+        <button type="button" className="icon-button" aria-label={`${words.icon} · ${folder.name}`}
+          aria-expanded={isDressing} title={words.icon} onClick={() => setDressing(!isDressing)}>
+          <MarkTile symbol={folder.symbol || "folder"} tint={folder.tint} small /></button>
+        <FolderName key={folder.name} id={folder.id} name={folder.name} />
+        <FolderShareButton id={folder.id} name={folder.name} />
+        <MoveButtons name={folder.name} place={place} count={count} move={move} />
+      </div>
+      {isDressing ? <FolderIcon folder={folder} /> : null}
+      <FolderPeople id={folder.id} />
+    </>
   );
 }
 
@@ -148,13 +209,7 @@ export function MapShelf({ maps }: { maps: SharedMap[] }) {
           </div>
         ) : (
           <div className="folder" key={item.id} data-folder={item.id}>
-            <div className="shelf-row">
-              <Sym name="folder" />
-              <FolderName key={item.name} id={item.id} name={item.name} />
-              <FolderShareButton id={item.id} name={item.name} />
-              <MoveButtons name={item.name} place={place} count={shelf.length} move={(by) => moveItem(place, by)} />
-            </div>
-            <FolderPeople id={item.id} />
+            <FolderHead folder={item} place={place} count={shelf.length} move={(by) => moveItem(place, by)} />
             {item.maps.map((map, inner) => (
               <div className="shelf-row inside" key={map.id} data-map={map.id}>
                 <MapRow shared={map} />

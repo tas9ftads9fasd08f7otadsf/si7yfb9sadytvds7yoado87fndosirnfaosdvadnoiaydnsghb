@@ -74,3 +74,39 @@ describe("the site's deploy", () => {
     expect(read("ci.yml")).toContain("pip install pyftpdlib pyopenssl");
   });
 });
+
+// 63 a draft pull request runs no CI; marking it ready runs it, and so does each later push
+describe("CI on a pull request", () => {
+  const ci = read("ci.yml");
+
+  it("is started when the pull request is marked ready, and by every push to it", () => {
+    const types = /pull_request:\s*\n\s*types:\s*\[([^\]]*)\]/.exec(ci)?.[1].split(",").map((t) => t.trim());
+    expect(types).toEqual(expect.arrayContaining(["opened", "synchronize", "reopened", "ready_for_review"]));
+  });
+
+  it("skips a draft, and the check that needs it, but never a release's call", () => {
+    const changes = ci.slice(ci.indexOf("  changes:"), ci.indexOf("\n  check:"));
+    expect(changes).toContain("if: github.event_name != 'pull_request' || !github.event.pull_request.draft");
+    expect(ci.slice(ci.indexOf("\n  check:"))).toContain("needs: changes");
+  });
+});
+
+// 71 a merge to master left its tests running while a newer merge's started: the old ones stop
+describe("CI's check job", () => {
+  const ci = read("ci.yml");
+  const check = ci.slice(ci.indexOf("\n  check:"));
+
+  it("replaces the check still running for the same branch, or for master", () => {
+    expect(check).toMatch(/concurrency:\s*\n\s*group: check-\$\{\{ github\.head_ref \|\| github\.ref \}\}\s*\n\s*cancel-in-progress: true/);
+  });
+
+  it("leaves the release and the deploy out of any group that cancels", () => {
+    const release = read("release.yml");
+    expect(release).not.toContain("cancel-in-progress: true");
+    expect(release).not.toMatch(/\n  release:[\s\S]*concurrency:/);
+  });
+
+  it("starts the check only for code, so a docs-only merge cancels no tests", () => {
+    expect(check).toContain("if: needs.changes.outputs.code == 'true'");
+  });
+});

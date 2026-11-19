@@ -384,6 +384,10 @@ export function createMapView(container: HTMLElement): MapControl {
       map.once("render", () => map.getCanvas().toBlob(resolve, "image/jpeg", 0.85));
       map.triggerRepaint();
     }),
+    box() {
+      const bounds = map.getBounds();
+      return [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+    },
     camera() {
       const centre = map.getCenter();
       return { lat: centre.lat, lng: centre.lng, zoom: map.getZoom() };
