@@ -11,7 +11,7 @@ import { createReach, hostOf, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
 import type { CoreRow, CoreWrite } from "./records";
-import { changedFields, Conflict, write, type Plan } from "./writes";
+import { changedFields, Conflict, stamped, write, type Plan } from "./writes";
 
 const notYet = (step: number) => () =>
   Promise.reject(new NotOnSite(`The site's backend comes with step ${step} of web-icloud.md`));
@@ -171,7 +171,7 @@ export function createBackend(parts: Parts): Backend {
       const created = applied.write.filter((each) => !rowOf(each.id)).map((each) => each.id);
       tried.owner = mapRow(read, mapID)?.id ?? "";
       tried.undo = { mapID, before, after, created, removed: gone };
-      const saves = [...applied.write, ...(applied.history ? [applied.history] : [])];
+      const saves = [...applied.write, ...(applied.history ? [stamped(applied.history)] : [])];
       return { plan: { save: saves.map((each) => ({ write: each, row: rowOf(each.id) })), remove: gone } };
     }, (plan, tags) => {
       written(plan, tags, tried.owner);

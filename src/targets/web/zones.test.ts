@@ -46,7 +46,8 @@ describe("Zones", () => {
     const { container } = cloud();
     const rows = await new Zones(container, keeping, fetcher).rows();
     expect(rows.map((row) => `${row.database}:${row.entity}:${row.id}`).sort()).toEqual([
-      "private:SharedMap:own-tatras", "private:SharedMapLayer:own-tatras-layer", "shared:SharedMap:shared-doprava"]);
+      "private:SharedMap:own-tatras", "private:SharedMapChange:change-phone-1", "private:SharedMapLayer:own-tatras-layer",
+      "shared:SharedMap:shared-doprava"]);
     expect(rows.find((row) => row.id === "shared-doprava")).toMatchObject({ owner: "_friki", zone: "share-doprava", tag: "s1" });
   });
 
@@ -72,7 +73,7 @@ describe("Zones", () => {
   it("opens a map seen once from what it kept when CloudKit cannot be reached", async () => {
     await new Zones(cloud().container, keeping, fetcher).rows();
     const rows = await new Zones(cloud({ down: true }).container, keeping, fetcher).rows();
-    expect(rows.map((row) => row.id).sort()).toEqual(["own-tatras", "own-tatras-layer", "shared-doprava"]);
+    expect(rows.map((row) => row.id).sort()).toEqual(["change-phone-1", "own-tatras", "own-tatras-layer", "shared-doprava"]);
   });
 
   it("fails when CloudKit cannot be reached and nothing was kept", async () => {

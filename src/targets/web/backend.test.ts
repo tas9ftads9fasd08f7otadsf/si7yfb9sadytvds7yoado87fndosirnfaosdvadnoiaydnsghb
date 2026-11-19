@@ -135,8 +135,8 @@ describe("WebBackend's reads", () => {
     expect(device.name).toBe("Riki Tester");
     expect(device.maps.map((each) => each.name)).toEqual(["High Tatras", "Doprava"]);
     const rows = seen[0] as { entity: string; fields: Record<string, unknown> }[];
-    expect(rows.map((row) => row.entity).sort()).toEqual(["SharedMap", "SharedMap", "SharedMapLayer"]);
-    expect(rows.find((row) => row.fields.name === "High Tatras")?.fields.layersJSON).toBe("[{\"id\":\"L1\",\"name\":\"Trails\"}]");
+    expect(rows.map((row) => row.entity).sort()).toEqual(["SharedMap", "SharedMap", "SharedMapChange", "SharedMapLayer"]);
+    expect(rows.find((row) => row.fields.name === "High Tatras")?.fields.payload).toBe("{\"symbol\":\"mountain.2\"}");
   });
 
   // 76 the first sign-in check must not read as a change, or every map is fetched twice
@@ -203,17 +203,31 @@ describe("WebBackend's edits", () => {
     expect(answer).toEqual({ ok: true, value: account.core.riki_map });
     const ask = vi.mocked(core.apply).mock.calls[0]![0];
     expect(ask).toMatchObject({ mapID: TATRAS, styleID: "B1", edit: rename, author: "Riki Tester", origin: "web" });
-    expect(ask.rows.map((row) => row.entity).sort()).toEqual(["SharedMap", "SharedMap", "SharedMapLayer"]);
+    expect(ask.rows.map((row) => row.entity).sort()).toEqual(["SharedMap", "SharedMap", "SharedMapChange", "SharedMapLayer"]);
     expect(saves).toHaveBeenCalledTimes(1);
     const [records, where] = saves.mock.calls[0]!;
     expect(where).toEqual({ zoneID: { zoneName: "com.apple.coredata.cloudkit.zone" }, atomic: true });
     expect(records).toEqual([
       { recordName: "own-tatras-layer", recordType: "CD_SharedMapLayer", recordChangeTag: "a2",
-        fields: { CD_name: { value: "Ridges", type: "STRING" } } },
+        fields: { CD_layerJSON: { value: "{\"id\":\"L1\",\"name\":\"Ridges\"}", type: "STRING" } } },
       { recordName: "change-web-1", recordType: "CD_SharedMapChange",
         fields: { CD_map: { value: { recordName: "own-tatras", action: "DELETE_SELF" }, type: "REFERENCE" },
-          CD_payload: { value: expect.stringContaining("\"origin\":\"web\""), type: "STRING" } } }
+          CD_payload: { value: expect.any(String), type: "BYTES" }, CD_id: { value: expect.any(String), type: "STRING" },
+          CD_updatedAt: { value: expect.any(Number), type: "TIMESTAMP" }, CD_schemaVersion: { value: 1, type: "INT64" },
+          CD_entityName: { value: "SharedMapChange", type: "STRING" } } }
     ]);
+  });
+
+  // 84 bug: the history row's payload went as a STRING and had no id, time or schema version
+  it("writes the history row as the app's mirror does, its JSON as base64 bytes with an id, a time and a version", async () => {
+    const { backend, saves } = stack();
+    const before = Date.now();
+    await backend.change(TATRAS, "B1", rename);
+    const fields = saves.mock.calls[0]![0]![1]!.fields;
+    expect(atob(fields.CD_payload!.value as string)).toContain("\"origin\":\"web\"");
+    expect(fields.CD_id!.value).toMatch(/^[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}$/);
+    expect(fields.CD_updatedAt!.value as number).toBeGreaterThanOrEqual(before);
+    expect(fields.CD_updatedAt!.value as number).toBeLessThanOrEqual(Date.now());
   });
 
   // 83 the name typed in the account part goes ahead of the one CloudKit gives, else none
@@ -247,10 +261,11 @@ describe("WebBackend's edits", () => {
 
   it("writes a field that was an asset in the field itself and clears the asset", async () => {
     const { backend, saves } = stack({ apply: () => ({ map: account.core.riki_map as never,
-      write: [{ entity: "SharedMap", id: "own-tatras", fields: { layersJSON: "[]" } }] }) });
+      write: [{ entity: "SharedMap", id: "own-tatras", fields: { payload: "{}" } }] }) });
     await backend.change(TATRAS, null, rename);
-    expect(saves.mock.calls[0]![0]![0]!.fields).toEqual({ CD_layersJSON: { value: "[]", type: "STRING" },
-      CD_layersJSON_ckAsset: { value: null } });
+    // 84 the JSON of a BYTES field goes as base64
+    expect(saves.mock.calls[0]![0]![0]!.fields).toEqual({ CD_payload: { value: "e30=", type: "BYTES" },
+      CD_payload_ckAsset: { value: null } });
   });
 
   // 78 a row changed meanwhile: read again, apply again with the new tag
@@ -296,26 +311,26 @@ describe("WebBackend's edits", () => {
     expect(undone.ok).toBe(true);
     expect(saves).toHaveBeenCalledTimes(2);
     expect(saves.mock.calls[1]![0]).toEqual([{ recordName: "own-tatras-layer", recordType: "CD_SharedMapLayer",
-      recordChangeTag: "w1", fields: { CD_name: { value: "Trails", type: "STRING" } } }]);
+      recordChangeTag: "w1", fields: { CD_layerJSON: { value: "{\"id\":\"L1\",\"name\":\"Trails\"}", type: "STRING" } } }]);
   });
 
   it("deletes what the change created and restores what it removed, when it is undone", async () => {
     const { backend, saves, held } = stack({ apply: () => ({ map: account.core.riki_map as never,
-      write: [{ entity: "SharedMapStyle", id: "new-style", fields: { name: "Winter" } }], remove: ["own-tatras-layer"] }) });
+      write: [{ entity: "SharedMapStyle", id: "new-style", fields: { styleJSON: "{}" } }], remove: ["own-tatras-layer"] }) });
     expect((await backend.change(TATRAS, null, { kind: "addStyle", name: "Winter" })).ok).toBe(true);
     held.private[0]!.records = held.private[0]!.records.filter((row) => row.recordName !== "own-tatras-layer");
     expect((await backend.undo!(TATRAS)).ok).toBe(true);
     const restored = saves.mock.calls.at(-1)![0]!;
     expect(restored.map((record) => record.recordName)).toEqual(["own-tatras-layer"]);
     expect(restored[0]!.recordChangeTag).toBeUndefined();
-    expect(restored[0]!.fields.CD_name).toEqual({ value: "Trails", type: "STRING" });
+    expect(restored[0]!.fields.CD_layerJSON).toEqual({ value: "{\"id\":\"L1\",\"name\":\"Trails\"}", type: "STRING" });
   });
 
   it("refuses to undo what someone else changed since, and has nothing to undo before a change", async () => {
     const { backend, saves, elsewhere } = stack();
     expect(await backend.undo!(TATRAS)).toMatchObject({ ok: false, status: 404 });
     await backend.change(TATRAS, null, rename);
-    elsewhere("own-tatras-layer", { CD_name: { value: "Peaks", type: "STRING" } });
+    elsewhere("own-tatras-layer", { CD_layerJSON: { value: "{}", type: "STRING" } });
     expect(await backend.undo!(TATRAS)).toMatchObject({ ok: false, status: 412 });
     // the try on the cached rows was refused, and the rows read again hold Peaks
     expect(saves).toHaveBeenCalledTimes(2);
@@ -345,7 +360,7 @@ describe("WebBackend's notice of a change elsewhere", () => {
   it("names no author when no history row says who", async () => {
     const made = stack();
     const listener = await told(made);
-    made.elsewhere("own-tatras-layer", { CD_name: { value: "Peaks", type: "STRING" } });
+    made.elsewhere("own-tatras-layer", { CD_layerJSON: { value: "{}", type: "STRING" } });
     made.notify();
     await vi.waitFor(() => expect(listener).toHaveBeenCalledWith([{ mapID: TATRAS_ID, name: "High Tatras", author: null }]));
   });
