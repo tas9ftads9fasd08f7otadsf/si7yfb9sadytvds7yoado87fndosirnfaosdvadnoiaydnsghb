@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
-import type { CKContainer, CKReading, CKRecord, CKRecordList } from "./cloud";
+import type { CKContainer, CKError, CKReading, CKRecord, CKRecordList, CKZoneChanges } from "./cloud";
 import { indexedKeeping, MIRROR_ZONE, Zones, type Keeping } from "./zones";
 
 // 76 zone changes by token, private mirror and shared zones, kept for offline
@@ -13,17 +13,29 @@ function memory(): Keeping {
   return { load: async <T,>(key: string) => kept.get(key) as T | undefined, save: async (key, value) => { kept.set(key, structuredClone(value)); } };
 }
 
-function cloud(options: { privateRecords?: CKRecord[][]; down?: boolean } = {}) {
+/** A zone's options as the library takes them; one without a zoneID is the server's bad request, as `{zones}` was. */
+const zoneOf = (options: CKZoneChanges | CKZoneChanges[]): CKZoneChanges => {
+  const [zone] = [options].flat();
+  if (!zone?.zoneID) throw Object.assign(new Error("zoneID is required"), { ckErrorCode: "BAD_REQUEST" });
+  return zone;
+};
+
+function cloud(options: { privateRecords?: CKRecord[][]; down?: boolean; errors?: CKError[][] } = {}) {
   const asked: { syncToken?: string }[] = [];
+  const errors = [...(options.errors ?? [])];
   const pages = [...(options.privateRecords ?? [account.zones.private[0]!.records as unknown as CKRecord[]])];
   const privateDB: CKReading = {
     fetchAllRecordZones: async () => ({}),
-    fetchRecordZoneChanges: async ({ zones }) => {
+    fetchRecordZoneChanges: async (given) => {
       if (options.down) throw new Error("offline");
-      asked.push({ syncToken: zones[0]!.syncToken });
+      const zone = zoneOf(given);
+      asked.push({ syncToken: zone.syncToken });
+      // A zone that failed is in `errors`, not in `zones`, as the library splits the answer.
+      const failed = errors.shift();
+      if (failed) return { zones: [], errors: failed, hasErrors: true } as CKRecordList;
       const records = pages.shift() ?? [];
       const more = pages.length > 0;
-      return { zones: [{ zoneID: zones[0]!.zoneID, records, syncToken: `private-${asked.length}`, moreComing: more }] } as CKRecordList;
+      return { zones: [{ zoneID: zone.zoneID, records, syncToken: `private-${asked.length}`, moreComing: more }] } as CKRecordList;
     }
   };
   const sharedDB: CKReading = {
@@ -31,7 +43,7 @@ function cloud(options: { privateRecords?: CKRecord[][]; down?: boolean } = {}) 
       if (options.down) throw new Error("offline");
       return { zones: account.zones.shared.map((each) => ({ zoneID: each.zoneID })) };
     },
-    fetchRecordZoneChanges: async ({ zones }) => ({ zones: [{ zoneID: zones[0]!.zoneID,
+    fetchRecordZoneChanges: async (given) => ({ zones: [{ zoneID: zoneOf(given).zoneID,
       records: account.zones.shared[0]!.records as unknown as CKRecord[], syncToken: "shared-1" }] })
   };
   const container = { privateCloudDatabase: privateDB, sharedCloudDatabase: sharedDB } as unknown as CKContainer;
@@ -68,6 +80,41 @@ describe("Zones", () => {
     const rows = await new Zones(container, keeping, fetcher).rows();
     expect(asked).toHaveLength(2);
     expect(rows.filter((row) => row.database === "private")).toHaveLength(2);
+  });
+
+  // 87 bug: the site passed `{zones: [...]}`, which the library turns into `{zones: [{}]}` and the server refuses
+  it("asks for a zone with its own options, as the library takes them", async () => {
+    const asked: unknown[] = [];
+    const db: CKReading = { fetchAllRecordZones: async () => ({}), fetchRecordZoneChanges: async (given) => {
+      asked.push(given);
+      return { zones: [{ zoneID: zoneOf(given).zoneID, records: [], syncToken: "t" }] };
+    } };
+    const container = { privateCloudDatabase: db, sharedCloudDatabase: db } as unknown as CKContainer;
+    await new Zones(async () => container, keeping, fetcher).rows();
+    expect(asked[0]).toEqual({ zoneID: { zoneName: MIRROR_ZONE } });
+    expect(asked[0]).not.toHaveProperty("zones");
+  });
+
+  // 87 bug: a zone's failure comes in `errors`, so a missing mirror zone was read as an empty answer by luck
+  it("takes a mirror zone that is not there yet as no rows, not as a failure", async () => {
+    const { container } = cloud({ errors: [[{ ckErrorCode: "ZONE_NOT_FOUND", serverErrorCode: "ZONE_NOT_FOUND",
+      zoneID: { zoneName: MIRROR_ZONE } }]] });
+    const rows = await new Zones(container, keeping, fetcher).rows();
+    expect(rows.filter((row) => row.database === "private")).toEqual([]);
+  });
+
+  it("forgets a token the server no longer takes and reads the zone again from the start", async () => {
+    await new Zones(cloud().container, keeping, fetcher).rows();
+    const second = cloud({ errors: [[{ ckErrorCode: "BAD_REQUEST", serverErrorCode: "BAD_REQUEST", reason: "Invalid sync token",
+      zoneID: { zoneName: MIRROR_ZONE } }]] });
+    const rows = await new Zones(second.container, keeping, fetcher).rows();
+    expect(second.asked.map((each) => each.syncToken)).toEqual(["private-1", undefined]);
+    expect(rows.map((row) => row.id)).toContain("own-tatras");
+  });
+
+  it("does not hide any other error of a zone", async () => {
+    const { container } = cloud({ errors: [[{ ckErrorCode: "QUOTA_EXCEEDED", reason: "iCloud is full", zoneID: { zoneName: MIRROR_ZONE } }]] });
+    await expect(new Zones(container, memory(), fetcher).rows()).rejects.toThrow("iCloud is full");
   });
 
   it("opens a map seen once from what it kept when CloudKit cannot be reached", async () => {

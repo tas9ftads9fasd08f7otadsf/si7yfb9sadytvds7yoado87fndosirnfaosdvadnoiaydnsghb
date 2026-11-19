@@ -1,5 +1,6 @@
 {
-  "person": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } },
+  "person": { "userRecordName": "_me" },
+  "identities": { "_me": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } } },
   "assets": {
     "https://cvws.icloud-content.com/own-tatras/payload": "{\"symbol\":\"mountain.2\"}",
     "https://cvws.icloud-content.com/shared-doprava/payload": "{\"symbol\":\"tram\"}"
@@ -16,7 +17,7 @@
             "CD_name": { "value": "High Tatras", "type": "STRING" },
             "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
             "CD_schemaVersion": { "value": 1, "type": "INT64" },
-            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/own-tatras/payload" }, "type": "ASSETID" }
+            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/own-tatras/${f}" }, "type": "ASSETID" }
           } },
         { "recordName": "own-tatras-layer", "recordType": "CD_SharedMapLayer", "recordChangeTag": "a2",
           "fields": {
@@ -53,7 +54,7 @@
             "CD_name": { "value": "Doprava", "type": "STRING" },
             "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
             "CD_schemaVersion": { "value": 1, "type": "INT64" },
-            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/shared-doprava/payload" }, "type": "ASSETID" }
+            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/shared-doprava/${f}" }, "type": "ASSETID" }
           } }
       ]
     }]

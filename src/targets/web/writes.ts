@@ -1,4 +1,4 @@
-import type { CKDatabase, CKSave, CKSaved, ZoneID } from "./cloud";
+import type { CKBatchResult, CKDatabase, CKError, CKSave, ZoneID } from "./cloud";
 import { bytesOfText, CHANGE_SCHEMA_VERSION, isTextBytes, typeOfField } from "./mirror";
 import type { CoreRow, CoreWrite } from "./records";
 
@@ -15,7 +15,8 @@ export interface Plan {
   remove: CoreRow[];
 }
 
-const CONFLICTS = ["CONFLICT", "BATCH_ERROR"];
+/** A row that changed, or appeared, since it was read; `ATOMIC_ERROR` only says another record of the batch failed. */
+const CONFLICTS = ["CONFLICT", "EXISTS"];
 
 /** A history row as the app writes one: its own id, time and schema version beside the core's fields. */
 export function stamped(history: CoreWrite, now: Date = new Date()): CoreWrite {
@@ -50,44 +51,47 @@ export function recordOf(write: CoreWrite, row: CoreRow | undefined, names: stri
   return { recordName: write.id, recordType: `CD_${write.entity}`, ...(row ? { recordChangeTag: row.tag } : {}), fields };
 }
 
-const refusal = (saved: CKSaved) => saved.records?.find((each) => each.serverErrorCode);
+const codeOf = (error: CKError) => error.ckErrorCode ?? error.serverErrorCode ?? "";
 
-function check(saved: CKSaved) {
-  const refused = refusal(saved);
-  if (!refused) return;
-  if (saved.records?.some((each) => CONFLICTS.includes(each.serverErrorCode ?? ""))) throw new Conflict();
-  throw new Error(refused.reason ?? refused.serverErrorCode);
+/** A batch that failed is a conflict when a record changed meanwhile, else its first real cause. */
+function check(saved: CKBatchResult) {
+  if (!saved.hasErrors && !(saved.errors?.length)) return;
+  const errors = saved.errors ?? [];
+  if (errors.some((each) => CONFLICTS.includes(codeOf(each)))) throw new Conflict();
+  const cause = errors.find((each) => codeOf(each) !== "ATOMIC_ERROR") ?? errors[0];
+  throw new Error(cause?.reason ?? (cause ? codeOf(cause) : "CloudKit refused the change"));
 }
 
-const asked = async (call: () => Promise<CKSaved>): Promise<CKSaved> => {
-  try {
-    return await call();
-  } catch (error) {
-    const code = (error as { ckErrorCode?: string; serverErrorCode?: string }).ckErrorCode
-      ?? (error as { serverErrorCode?: string }).serverErrorCode;
-    if (CONFLICTS.includes(code ?? "")) throw new Conflict();
-    throw error;
-  }
-};
-
 /**
- * Saves the plan to one zone, atomically, with the tags the rows were read at; the new tags by record name.
- * CloudKit JS has no call that saves and deletes together, so the deletes follow the saves.
+ * Saves and deletes the plan in one atomic batch to one zone, with the tags the rows were read at, which the server
+ * checks for deletes as for updates; the new tags by record name.
  */
 export async function write(db: CKDatabase, zone: ZoneID, plan: Plan): Promise<Map<string, string>> {
   const tags = new Map<string, string>();
-  const records = plan.save.flatMap(({ write: each, row }) => {
+  const batch = db.newRecordsBatch({ zoneID: zone, atomic: true });
+  let operations = 0;
+  for (const { write: each, row } of plan.save) {
     const names = changedFields(each, row);
-    return names.length === 0 && row ? [] : [recordOf(each, row, names)];
-  });
-  if (records.length > 0) {
-    const saved = await asked(() => db.saveRecords(records, { zoneID: zone, atomic: true }));
-    check(saved);
-    for (const each of saved.records ?? []) if (each.recordName && each.recordChangeTag) tags.set(each.recordName, each.recordChangeTag);
+    if (names.length === 0 && row) continue;
+    const record = recordOf(each, row, names);
+    if (row) batch.update(record);
+    else batch.create(record);
+    operations += 1;
   }
-  if (plan.remove.length > 0) {
-    check(await asked(() => db.deleteRecords(plan.remove.map((row) => ({ recordName: row.id, recordChangeTag: row.tag })),
-      { zoneID: zone, atomic: true })));
+  for (const row of plan.remove) {
+    batch.delete({ recordName: row.id, recordChangeTag: row.tag });
+    operations += 1;
   }
+  if (operations === 0) return tags;
+  let saved: CKBatchResult;
+  try {
+    saved = await batch.commit();
+  } catch (error) {
+    // A request refused as a whole is a CKError that is thrown.
+    if (CONFLICTS.includes(codeOf(error as CKError))) throw new Conflict();
+    throw error;
+  }
+  check(saved);
+  for (const each of saved.records ?? []) if (each.recordName && each.recordChangeTag) tags.set(each.recordName, each.recordChangeTag);
   return tags;
 }

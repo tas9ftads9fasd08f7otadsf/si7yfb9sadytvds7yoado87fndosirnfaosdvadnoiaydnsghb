@@ -52,6 +52,11 @@ runs PHP 8.1 or later, at a domain's root or under a path, and send every reques
 core only once `rikiCore.version` in `package.json` pins a release (`dist/riki-core/riki-core.wasm` and its `.sha256`);
 until then `pack:web` says so and packs without it.
 
+The API token (CloudKit Console, the container's API Access) needs two settings: **Sign-In Callback** set to
+`postMessage`, and the site's origin (scheme, host and port) in its allowed origins, once per address and
+environment. CloudKit JS keeps the sign-in in a cookie scoped to the page's path, so a site under `/editor/` and
+its nested routes are worth checking in a real browser once, signing in on a nested screen and reloading it.
+
 ### Deploying it
 
 Every merge to `master` runs CI, publishes a release and then deploys that release's
