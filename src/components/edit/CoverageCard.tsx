@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { sideOf, toggled } from "@/lib/coverage";
+import { foldedContinents, shownCountries, sideOf, toggled } from "@/lib/coverage";
 import type { Coverage, CoverageRegion, CoverageSide, Place } from "@/lib/types";
 import { editCoverage, pickCoverageSide, setCoverageOpen, setCoverageQuery, toggleCoverageShown, useViewer }
   from "@/store/viewer";
@@ -90,17 +90,13 @@ function Countries({ here, other }: Sides) {
   for (const region of places.regions.filter((each) => !each.isRange)) {
     byCountry.set(region.country, [...(byCountry.get(region.country) ?? []), region]);
   }
-  const wanted = query.trim().toLowerCase();
   const countryOf = new Map(places.regions.map((region) => [region.id, region.country]));
-  const whole = here.countries ?? [];
-  const fromRegions = [...new Set((here.regions ?? []).map((id) => countryOf.get(id)).filter((code) => code != null))]
-    .filter((code) => !whole.includes(code));
-  const picked = [...whole, ...fromRegions];
-  const rest = places.countries.filter((each) => !picked.includes(each.id) && (!wanted
-    || each.name.toLowerCase().includes(wanted) || each.id.toLowerCase() === wanted));
+  const fromRegions = (side: CoverageSide) => (side.regions ?? []).map((id) => countryOf.get(id))
+    .filter((code) => code != null);
+  const chosen = [...new Set([...(here.countries ?? []), ...fromRegions(here), ...(other.countries ?? []),
+    ...fromRegions(other)])];
   const named = (code: string) => places.countries.find((each) => each.id === code) ?? { id: code, name: code };
-  const ordered = [...picked.map(named), ...rest.filter((each) => byCountry.has(each.id)),
-    ...rest.filter((each) => !byCountry.has(each.id))];
+  const ordered = shownCountries(chosen, places.countries, new Set(byCountry.keys()), query).map(named);
   return (
     <>
       <h2 className="title">{words.countries}</h2>
@@ -122,10 +118,17 @@ function Pickers({ coverage }: { coverage: Coverage }) {
   const side = useViewer((state) => state.coverageSide);
   const places = useViewer((state) => state.coveragePlaces);
   const rangesOpen = useViewer((state) => state.coverageOpen.get("ranges") === true);
+  const continentsOpen = useViewer((state) => state.coverageOpen.get("continents") === true);
   if (!places) return null;
   const here = sideOf(coverage, side);
   const other = sideOf(coverage, side === "include" ? "exclude" : "include");
   const ranges = places.regions.filter((region) => region.isRange);
+  const continents = foldedContinents(places.continents, [...(here.continents ?? []), ...(other.continents ?? [])]);
+  const continentRow = (each: Place) => (
+    <TickRow key={each.id} title={each.name} isTicked={(here.continents ?? []).includes(each.id)}
+      isOther={(other.continents ?? []).includes(each.id)}
+      onPick={() => editCoverage((made) => { made.continents = toggled(each.id, made.continents); })} />
+  );
   return (
     <div className="coverage" id="coveragePickers">
       <div className="chips" role="group" aria-label={words.sideWord}>
@@ -143,11 +146,10 @@ function Pickers({ coverage }: { coverage: Coverage }) {
       {side === "include" ? <div className="foot-note">{words.worldNote}</div> : null}
       <h2 className="title">{words.continents}</h2>
       <div className="list">
-        {places.continents.map((each) => (
-          <TickRow key={each.id} title={each.name} isTicked={(here.continents ?? []).includes(each.id)}
-            isOther={(other.continents ?? []).includes(each.id)}
-            onPick={() => editCoverage((made) => { made.continents = toggled(each.id, made.continents); })} />
-        ))}
+        {continents.inSight.map(continentRow)}
+        <Fold id="coverageContinents" isOpen={continentsOpen}
+          onToggle={() => setCoverageOpen("continents", !continentsOpen)}>{words.showAll}</Fold>
+        {continentsOpen ? continents.folded.map(continentRow) : null}
       </div>
       <h2 className="title">{places.mountains}</h2>
       <div className="list">

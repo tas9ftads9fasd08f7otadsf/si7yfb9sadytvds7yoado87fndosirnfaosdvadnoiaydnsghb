@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { edited, sideOf, toggled } from "./coverage";
+import { edited, foldedContinents, shownCountries, sideOf, toggled } from "./coverage";
 
 describe("sideOf", () => {
   it("reads the include side from the top level, without the exclusion", () => {
@@ -34,5 +34,35 @@ describe("edited", () => {
     const given = { countries: ["SK"] };
     edited(given, "include", (places) => { places.countries = []; });
     expect(given.countries).toEqual(["SK"]);
+  });
+});
+
+const countries = [{ id: "AT", name: "Austria" }, { id: "CZ", name: "Czechia" }, { id: "AF", name: "Afghanistan" },
+  { id: "SK", name: "Slovakia" }];
+const withRegions = new Set(["AT", "CZ", "SK"]);
+
+describe("shownCountries", () => {
+  // 74 TestFlight AK2D: every country of the world stood under the chosen one.
+  it("lists only the chosen countries", () => {
+    expect(shownCountries(["SK"], countries, withRegions, "")).toEqual(["SK"]);
+  });
+  // 74 With nothing chosen, the countries that have regions are offered.
+  it("offers the countries with regions when none is chosen", () => {
+    expect(shownCountries([], countries, withRegions, "")).toEqual(["AT", "CZ", "SK"]);
+  });
+  // 74 A search reaches every country, those with regions first.
+  it("finds any country by a search", () => {
+    expect(shownCountries(["SK"], countries, withRegions, "a")).toEqual(["SK", "AT", "CZ", "AF"]);
+    expect(shownCountries([], countries, withRegions, "afgh")).toEqual(["AF"]);
+  });
+});
+
+describe("foldedContinents", () => {
+  const all = [{ id: "europe", name: "Europe" }, { id: "asia", name: "Asia" }, { id: "africa", name: "Africa" }];
+  // 74 TestFlight AL-i: continents fold as the ranges do, a chosen one above the fold.
+  it("keeps the chosen continents in sight and folds the rest", () => {
+    const folded = foldedContinents(all, ["asia"]);
+    expect(folded.inSight.map((each) => each.id)).toEqual(["asia"]);
+    expect(folded.folded.map((each) => each.id)).toEqual(["europe", "africa"]);
   });
 });
