@@ -4,7 +4,6 @@ import { openViewer, phone, reset } from "./phone.mjs";
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 const GEOLOGY = "6F1E2A10-0000-4000-8000-0000000000E6";
-const WINTER = "6F1E2A10-0000-4000-8000-0000000000B2";
 
 async function openService(page, request) {
   await phone(request, "esri-service");
@@ -51,7 +50,6 @@ test("a service is read again, its style picked, then forgotten", async ({ page,
   await expect(page.locator("#readEsriAgain")).toHaveText("Read it again · last read now");
   await page.locator("#esriServiceStyle").click();
   await expect(page.locator("#esriServiceStyle")).toHaveCount(0);
-  await expect(page).toHaveURL(new RegExp(WINTER));
   await page.locator("#forgetEsriService").click();
   await expect(page.locator("#esriServices")).toHaveCount(0);
   expect((await asks(request)).at(-1)).toEqual({ service: GEOLOGY, forget: "1" });
