@@ -5,6 +5,7 @@ const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
 const BRATISLAVA = "6F1E2A10-0000-4000-8000-000000000002";
 const WINTER = "6F1E2A10-0000-4000-8000-0000000000B2";
 const ZBGIS = "0D5E1F00-0000-4000-8000-000000000002";
+// 73 the address follows a step back a moment later, so it is polled, never read at once
 const path = (page) => new URL(page.url()).pathname;
 
 test.beforeEach(async ({ request }) => { await reset(request); });
@@ -43,11 +44,11 @@ test("every screen's address opens it, and a reload keeps it", async ({ page }) 
   for (const [address, shows] of screens) {
     await openViewer(page, address);
     await shows();
-    expect(path(page)).toBe(address);
+    await expect.poll(() => path(page)).toBe(address);
     await page.reload();
     await page.locator("#current .hero").waitFor();
     await shows();
-    expect(path(page)).toBe(address);
+    await expect.poll(() => path(page)).toBe(address);
   }
 });
 
@@ -64,10 +65,10 @@ test("back and forward walk the screens", async ({ page }) => {
   await expect(page.locator("#mapName")).toHaveText("Bratislava");
 
   await page.goBack();
-  expect(path(page)).toBe("/maps");
+  await expect.poll(() => path(page)).toBe("/maps");
   await page.goBack();
   await expect(page.locator("#mapName")).toHaveText("High Tatras");
-  expect(path(page)).toBe(`/maps/${TATRAS}`);
+  await expect.poll(() => path(page)).toBe(`/maps/${TATRAS}`);
   await page.goBack();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
   await expect(page.locator("#railMap")).toHaveAttribute("aria-current", "page");
@@ -91,14 +92,14 @@ test("the header's only drop-down is the styles; the rail lights the screen show
   await page.locator("#mapName").click();
   await expect(page.locator("#top [role=menu]")).toHaveCount(0);
   await page.locator("#railMaps").click();
-  expect(path(page)).toBe("/maps");
+  await expect.poll(() => path(page)).toBe("/maps");
   await expect(page.locator("#railMaps")).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#railMap")).not.toHaveAttribute("aria-current", /.*/);
   await page.locator("#railServers").click();
-  expect(path(page)).toBe("/servers");
+  await expect.poll(() => path(page)).toBe("/servers");
   await expect(page.locator("#railServers")).toHaveAttribute("aria-current", "page");
   await page.locator("#railMap").click();
-  expect(path(page)).toBe(`/maps/${TATRAS}`);
+  await expect.poll(() => path(page)).toBe(`/maps/${TATRAS}`);
 });
 
 // 31 an old edit link is no address of the page's: it opens the map, not editing.
