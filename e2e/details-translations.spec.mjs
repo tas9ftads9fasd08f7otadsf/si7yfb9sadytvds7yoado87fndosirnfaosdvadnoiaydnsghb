@@ -174,3 +174,11 @@ test("a phone without languages shows no translations", async ({ page, request }
   await expect(panel.locator(".layout-header")).toBeVisible();
   await expect(panel.locator("details.translations")).toHaveCount(0);
 });
+
+// 81: an older phone names languages but sends no `takesTranslations`, so no part is shown.
+test("a phone that names languages but sends no flag shows no translations", async ({ page, request }) => {
+  await phone(request, "takes-no-translations");
+  const panel = await openLayout(page);
+  await expect(panel.locator(".layout-header")).toBeVisible();
+  await expect(panel.locator("details.translations")).toHaveCount(0);
+});

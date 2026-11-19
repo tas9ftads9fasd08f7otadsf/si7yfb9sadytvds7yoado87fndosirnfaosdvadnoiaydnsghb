@@ -209,6 +209,8 @@ export interface DetailsLayout {
   actions?: LayoutActions | null;
   symbols?: string[];
   choices?: Record<string, OptionChoice[]>;
+  /** 81: the phone takes titles in other languages; an older phone sends no flag. */
+  takesTranslations?: boolean;
   /** 79: the layer's points the preview may fill; absent from a phone that sends none. */
   samples?: LayoutSample[];
   /** The phone's words for a layer with no point to show yet. */

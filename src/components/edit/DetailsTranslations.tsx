@@ -8,8 +8,8 @@ import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
 
 /** 81: a Details title in other languages, a field each; a blank text takes the language away. */
-export function Translations({ label, base, held, send }: { label: string; base?: string | null;
-  held?: Record<string, string> | null; send: (language: string, text: string) => void }) {
+export function Translations({ label, base, held, takes, send }: { label: string; base?: string | null;
+  held?: Record<string, string> | null; takes?: boolean; send: (language: string, text: string) => void }) {
   const words = useViewer((state) => state.words);
   const [added, setAdded] = useState<string[]>([]);
   const part = useRef<HTMLDetailsElement>(null);
@@ -19,7 +19,7 @@ export function Translations({ label, base, held, send }: { label: string; base?
   const shown = [...new Set([...Object.keys(kept), ...added])].sort(byName);
   // The phone refuses a translation of a title not written yet, so none is offered.
   const free = base?.trim() ? listed(words.languages).filter((code) => !shown.includes(code)).sort(byName) : [];
-  if (!shown.length && !free.length) return null;
+  if (!takes || (!shown.length && !free.length)) return null;
   const drop = (code: string) => setAdded(added.filter((one) => one !== code));
   const commit = (code: string, text: string) => {
     if (text.trim()) return send(code, text);

@@ -44,7 +44,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"],
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
@@ -168,7 +168,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"],
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
@@ -575,6 +575,7 @@ function detailsSections(layer) {
   return [{ kind: "details", title: "Details", footnote: "What a tapped point's sheet shows.", layerScoped: true,
     layout: { sections: layer.layout.map((section, index) => ({ ...section, name: section.title || `Section ${index + 1}` })),
       used, limit: 10, parts: [], keys: ["line", "note"], offers: [{ id: "text", title: "Text" }],
+      ...(phone.takesTranslations ? { takesTranslations: true } : {}),
       ...(layer.samples ? { samples: layer.samples, sampleNote: "Tap a point on the map first" } : {}),
       words: { ...LAYOUT_WORDS, used: `${used} of 10 content blocks used` },
       header: { title: layer.header?.title ?? null, symbol: layer.header?.symbol ?? null, layerSymbol: layer.symbol,
@@ -1845,6 +1846,7 @@ function testControl(route, query, response) {
         { handle: "t1", kind: "text", name: "Text", value: "{note}", style: "box", counts: true,
           settings: { icon: false, hides: true } }] }] });
     break;
+  case "/__test/takes-no-translations": phone.takesTranslations = false; break;
   case "/__test/forget-language": phone.languages = phone.languages.filter((code) => code !== query.get("code")); break;
   case "/__test/moves-layout":
     // 81: the layout changes on the phone, so the page's handles are stale.

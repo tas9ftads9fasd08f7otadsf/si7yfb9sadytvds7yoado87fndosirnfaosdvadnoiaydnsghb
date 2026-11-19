@@ -16,8 +16,8 @@ const at = ({ section, block }: Place, handle: string) =>
   ({ section: String(section), block: String(block), was: handle });
 
 /** A text block's words, heading and style, or an image block's link, sent once typed. */
-function BlockFields({ block, place, words, send }:
-  { block: LayoutBlock; place: Place; words: Record<string, string>; send: Send }) {
+function BlockFields({ block, place, words, takes, send }:
+  { block: LayoutBlock; place: Place; words: Record<string, string>; takes?: boolean; send: Send }) {
   const edit = (fields: Record<string, string>) => send({
     details: "edit", ...at(place, block.handle), kind: block.kind, value: block.value ?? "",
     title: block.heading ?? "", style: block.style ?? "", ...fields,
@@ -32,7 +32,8 @@ function BlockFields({ block, place, words, send }:
       <CommitField value={block.heading ?? ""} aria-label={words.heading} placeholder={words.heading}
         onCommit={(title) => edit({ title })} />
       <Translations label={`${block.name} ${place.section + 1}.${place.block + 1}`} base={block.heading}
-        held={block.headingTranslations} send={(language, text) => send({ details: "translation", target: "text",
+        held={block.headingTranslations}
+        takes={takes} send={(language, text) => send({ details: "translation", target: "text",
           ...at(place, block.handle), language, text })} />
       <CommitField multiline value={block.value ?? ""} aria-label={words.value} spellCheck={false}
         onCommit={(value) => value.trim() && edit({ value })} />
@@ -110,6 +111,7 @@ export function DetailsLayoutPanel({ layout, scoped }:
             ) : null}
           </div>
           <Translations label={`${words.sectionTitle} ${index + 1}`} base={section.title} held={section.titleTranslations}
+            takes={layout.takesTranslations}
             send={(language, text) => send({ details: "translation", target: "section", section: String(index),
               language, text })} />
           {section.blocks.map((block, place) => {
@@ -130,7 +132,7 @@ export function DetailsLayoutPanel({ layout, scoped }:
                   <button type="button" aria-label={`${shared.remove} ${block.name}`}
                     onClick={() => send({ details: "remove", ...at(here, block.handle) })}><Sym name="minus.circle" /></button>
                 </div>
-                <BlockFields block={block} place={here} words={words} send={send} />
+                <BlockFields block={block} place={here} words={words} takes={layout.takesTranslations} send={send} />
                 <BlockSettingsFields block={block} place={at(here, block.handle)} layout={layout} send={send} />
               </div>
             );

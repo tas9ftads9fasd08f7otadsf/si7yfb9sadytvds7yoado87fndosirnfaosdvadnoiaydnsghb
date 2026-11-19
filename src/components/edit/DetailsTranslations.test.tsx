@@ -25,7 +25,7 @@ const layout = (over: Partial<DetailsLayout> = {}): DetailsLayout => ({
       { handle: "k1", kind: "button", name: "Button", counts: true,
         settings: { button: { ...button, id: "b2", label: "Tickets", labelTranslations: undefined } } }] },
     { title: null, name: "Section 2", blocks: [] }],
-  used: 2, limit: 10, parts: [], keys: [], offers: [], words,
+  used: 2, limit: 10, parts: [], keys: [], offers: [], words, takesTranslations: true,
   header: { title: "{line}", symbol: null, layerSymbol: "tram", titleTranslations: { de: "Linie" } },
   actions: { items: [{ id: "b1", name: "Timetable", note: "Open link", isOn: true, button }], labels: "iconAndLabel",
     highlightsFirst: false },
@@ -174,6 +174,15 @@ describe("Details titles in other languages", () => {
     expect(header.queryByRole("combobox")).toBeNull();
     fireEvent.click(part("Text 1.1").getByRole("button", { name: "Remove · Text 1.1 · Slovak" }));
     expect(query()).toMatchObject({ target: "text", language: "sk", text: "" });
+  });
+
+  // 81: a phone naming languages but sending no `takesTranslations` shows no part, held ones included.
+  it("shows no translations unless the layout says the phone takes them", () => {
+    show(layout({ takesTranslations: undefined }));
+    expect(document.querySelector("details.translations")).toBeNull();
+    document.body.innerHTML = "";
+    show(layout({ takesTranslations: false }));
+    expect(document.querySelector("details.translations")).toBeNull();
   });
 
   // 81: a phone that names no languages and holds no translation shows no such part at all.
