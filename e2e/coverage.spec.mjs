@@ -21,7 +21,8 @@ const country = (page, code) => page.locator(`#coverageCountries [data-country=$
 test("Coverage takes in a country, and the phone's line follows", async ({ page }) => {
   await openCoverage(page);
   await expect(page.locator("#coverageRequired")).toContainText("Its layers require Vysoké Tatry");
-  await expect(page.locator("#coverageCountries [data-country] > .row:first-child .words")).toHaveText(["Slovakia", "Austria", "Czechia"]);
+  // 77 the spec still expected every country of 2957; with none chosen only those with regions are offered (74)
+  await expect(page.locator("#coverageCountries [data-country] > .row:first-child .words")).toHaveText(["Slovakia"]);
 
   const asked = sent(page);
   await country(page, "SK").click();
