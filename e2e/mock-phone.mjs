@@ -44,9 +44,74 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
-    esriAsks: [],
-    legendEverywhere: true, ownsSettings: true };
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
+    offlineAsks: [], discarded: [], esriAsks: [],
+    legendEverywhere: true, ownsSettings: true, shares: freshShares() };
+
+// 59: the High Tatras shared with Rita, who joined; Bratislava with nobody yet.
+function freshShares() {
+  return { "6F1E2A10-0000-4000-8000-000000000001": { role: "owner", linkRole: null,
+    link: "https://www.icloud.com/share/0mockTatras",
+    people: [{ id: "you", name: "Riki (you)", role: "owner", hasAccepted: true, isYou: true },
+      { id: "rita", name: "Rita", role: "reader", hasAccepted: true, isYou: false }] } };
+}
+
+const ROLE_DETAIL = { owner: "Owner", admin: "Edits the map, and says who else may", editor: "Edits the map",
+  reader: "Sees the map as it is" };
+
+// 59: as `PeerWebPeople.roster` writes the share, with what this phone's role may do.
+function roster(id) {
+  const share = phone.shares[id];
+  const role = share?.role ?? "owner";
+  const owns = role === "owner";
+  const people = (share?.people ?? []).map((person) => ({ ...person,
+    line: person.hasAccepted ? ROLE_DETAIL[person.role] : "Invited · hasn’t joined yet",
+    mayChangeRole: (owns || role === "admin") && person.role !== "owner" && !person.isYou,
+    mayRemove: owns && person.role !== "owner" }));
+  const others = people.filter((person) => person.role !== "owner");
+  return { isShared: share != null, role, mayInvite: owns || role === "admin", invitesDirectly: owns, people,
+    tally: others.length ? `${others.filter((person) => person.hasAccepted).length} joined` : "",
+    link: owns ? share?.link ?? null : null, linkRole: share?.linkRole ?? null, mayChangeLink: owns && share != null,
+    heldBy: null, caveat: "Admin is a role this app keeps, not a lock iCloud enforces." };
+}
+
+// 59: as `PeerWebPeople.refusal` and `PeerWebSharing` carry out one ask; null when refused.
+function askPeople(id, query) {
+  const OFFERED = ["reader", "editor", "admin"];
+  const role = phone.shares[id]?.role ?? "owner";
+  const owns = role === "owner";
+  const made = () => (phone.shares[id] ??= { role: "owner", linkRole: null,
+    link: `https://www.icloud.com/share/0mock${id.slice(-4)}`,
+    people: [{ id: "you", name: "Riki (you)", role: "owner", hasAccepted: true, isYou: true }] });
+  const person = (wanted) => phone.shares[id]?.people.find((each) => each.id === wanted);
+  if (query.get("share") === "1") return owns ? made() : null;
+  if (query.has("invite")) {
+    const address = (query.get("invite") || "").trim().toLowerCase();
+    const asked = query.get("role") || "reader";
+    if (!(owns || role === "admin") || !address.includes("@") || !OFFERED.includes(asked)) return null;
+    made().people.push({ id: `invited-${address}`, name: address, role: asked, hasAccepted: false, isYou: false });
+    return true;
+  }
+  if (query.has("person")) {
+    const found = person(query.get("person"));
+    if (!found || found.role === "owner" || !OFFERED.includes(query.get("role")) || !(owns || role === "admin")) return null;
+    found.role = query.get("role");
+    return true;
+  }
+  if (query.has("remove")) {
+    const found = person(query.get("remove"));
+    if (!owns || !found || found.role === "owner") return null;
+    phone.shares[id].people = phone.shares[id].people.filter((each) => each !== found);
+    return true;
+  }
+  if (query.has("link") && owns && phone.shares[id]) {
+    const link = query.get("link");
+    if (link !== "none" && !OFFERED.includes(link)) return null;
+    phone.shares[id].linkRole = link === "none" ? null : link;
+    return true;
+  }
+  return null;
+}
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
@@ -57,9 +122,9 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
-    esriAsks: [],
-    legendEverywhere: true, ownsSettings: true };
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "",
+    offlineAsks: [], discarded: [], esriAsks: [],
+    legendEverywhere: true, ownsSettings: true, shares: freshShares() };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -175,7 +240,9 @@ function catalog() {
       stackID: each.stackID, stackName: each.stackName,
       stackSymbol: each.stackID ? each.stackSymbol ?? "square.stack" : undefined,
       stackIconTintHex: each.stackID ? each.stackIconTintHex : undefined,
-      layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive })) })) };
+      layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive,
+        // 58: as `MapDefinition.origin(of:)` falls back to a layer's kind.
+        origin: { key: `kind:${kind}`, title: kind, symbol } })) })) };
 }
 
 // 2957: as `PeerWebCoverage` answers: the places to pick, and a map's choices said in a line.
@@ -263,14 +330,95 @@ function editFeatures(layer, query, key) {
   layer.shownValues = kept.length === DRAWN_VALUES.length ? undefined : kept;
 }
 
+// 64: Edit layer's Mark rows, as `PeerWebLayerMarks` lists them for a layer whose points the app draws.
+const MARK_KEYS = ["pointMark", "pointIcon", "pointSize", "circlePadding", "pointIconColour"];
+const MARK_ICONS = [["mappin", "Places"], ["house.fill", "Places"], ["tent", "Outdoors"], ["tree", "Outdoors"]];
+
+const markOf = (layer) => (!layer.pointIcon ? "dot" : layer.pointIconAlone ? "alone" : "circled");
+
+function markSections(layer) {
+  const kind = markOf(layer);
+  const found = [{ kind: "choice", title: "Mark", footnote: "", key: "pointMark", layerScoped: true, value: kind,
+    options: [["dot", "Dot"], ["circled", "Icon in circle"], ["alone", "Icon alone"]]
+      .map(([id, title]) => ({ id, title, detail: "" })) }];
+  if (kind !== "dot") {
+    found.push({ kind: "symbols", title: "Icon", footnote: "", key: "pointIcon", layerScoped: true,
+      value: layer.pointIcon, palette: ["mappin", "tent"],
+      options: MARK_ICONS.map(([id, detail]) => ({ id, title: id, detail })) });
+  }
+  found.push({ kind: "slider", title: "Point size", footnote: "", key: "pointSize", layerScoped: true,
+    value: String(layer.pointSizeScale || 1), range: [0.5, 4, 0.25], ends: ["Dot", "Large"] });
+  if (kind !== "alone") {
+    found.push({ kind: "slider", title: "Circle padding", footnote: "", key: "circlePadding", layerScoped: true,
+      value: String(layer.pointCirclePadding || 0), range: [-4, 12, 1], ends: ["Tight", "Roomy"] });
+  }
+  if (kind === "circled") {
+    found.push({ kind: "colour", title: "Icon colour", footnote: "", key: "pointIconColour", layerScoped: true,
+      value: layer.pointIconColourHex || null, automatic: "#FFFFFF", palette: ["#E5533D", "#2E9E5B"] });
+  }
+  return found;
+}
+
+/** As `PeerWebLayerMarks.Marking.make`: false where the mark has no such row. */
+function editMarks(layer, query, key) {
+  const value = query.get(key);
+  const kind = markOf(layer);
+  if (key === "pointMark") {
+    if (!["dot", "circled", "alone"].includes(value)) return false;
+    layer.pointIcon = value === "dot" ? undefined : layer.pointIcon || "mappin";
+    layer.pointIconAlone = value === "alone";
+  } else if (key === "pointIcon") {
+    if (kind === "dot" || !MARK_ICONS.some(([id]) => id === value)) return false;
+    layer.pointIcon = value;
+  } else if (key === "pointSize") {
+    layer.pointSizeScale = Number(value);
+  } else if (key === "circlePadding") {
+    if (kind === "alone") return false;
+    layer.pointCirclePadding = Math.round(Number(value));
+  } else {
+    if (kind !== "circled") return false;
+    layer.pointIconColourHex = value.toUpperCase() || undefined;
+  }
+  if (layer.pointIconAlone) layer.pointCirclePadding = undefined;
+  if (markOf(layer) !== "circled") layer.pointIconColourHex = undefined;
+  return true;
+}
+
 // 2999: Edit layer's Connection, as `PeerWebLayerOptions+Network` lists it for a tile layer.
-const NETWORK_KEYS = ["connectionOverride", "offlineDownload", "connection"];
+const NETWORK_KEYS = ["connectionOverride", "offlineDownload", "connection", "address", "header", "removeHeader",
+  "proxy"];
 const GROUPS = [["layerTiles", "Map tiles", "Tiles as you pan"], ["layerRefresh", "Refreshing", "Live answers"]];
+
+// 60: Network settings' address, Test, headers and proxy, as `PeerWebLayerKeys` lists them; values stay here.
+function keySections(layer) {
+  const keys = layer.keys || {};
+  return [{ kind: "text", title: "URL", footnote: "The URL needs {z}, {x} and {y}.", key: "address", layerScoped: true,
+    value: layer.address || "https://tiles.example/{z}/{x}/{y}.png" },
+  { kind: "probe", title: "", footnote: "", key: "test", label: "Test", layerScoped: true },
+  { kind: "headers", title: "Headers", footnote: "Values stay on the phone's keychain.", key: "header",
+    label: "Add header", layerScoped: true, options: [{ id: "X-API-Key", title: "X-API-Key", detail: "A key" }],
+    items: Object.keys(keys).map((name) => ({ id: name, title: name, light: "", dark: "", isOn: keys[name] !== "",
+      detail: keys[name] !== "" ? "Saved on this device" : "Not set on this device" })) },
+  { kind: "text", title: "Proxy", footnote: "Straight to the address", key: "proxy", layerScoped: true,
+    value: layer.proxy || "" }];
+}
+
+function editKeys(layer, query, key) {
+  const value = query.get(key);
+  if (key === "address") {
+    if (!/\{z\}/.test(value) || !/\{x\}/.test(value) || !/\{y\}/.test(value)) return "Missing {x}, {y}";
+    layer.address = value.trim();
+  }
+  if (key === "header") layer.keys = { ...layer.keys, [value]: query.get("headerValue") ?? layer.keys?.[value] ?? "" };
+  if (key === "removeHeader") { layer.keys = { ...layer.keys }; delete layer.keys[value]; }
+  if (key === "proxy") layer.proxy = value.trim();
+  return null;
+}
 
 function networkSections(layer) {
   const blocked = layer.blocked || [];
   const over = layer.overrides === true;
-  return [{ kind: "switch", title: "Connection", footnote: over ? "On this map, these switches override Settings."
+  return [...keySections(layer), { kind: "switch", title: "Connection", footnote: over ? "On this map, these switches override Settings."
     : "The switches apply to this layer on this map only.", key: "connectionOverride", label: "Override Settings",
   isOn: over, layerScoped: true },
   ...[["wifi", "Wi-Fi"], ["cellular", "Mobile data"]].map(([family, title]) => ({ kind: "connection", title,
@@ -304,27 +452,138 @@ function questionSections(layer) {
     layerScoped: true, value: layer.identifyRequest || "" }];
 }
 
-// 3003: an API answering two vehicles, as `PeerWebAPI` reads one.
-function apiRead(query) {
+// 3397: the form's choices, titled as `PeerWebAPI.Choices` titles them.
+const API_CHOICES = {
+  spellings: [{ value: "decimal", title: "Decimal degrees" }, { value: "degreesMinutesSeconds", title: "Degrees, minutes, seconds" },
+    { value: "position", title: "One key, both numbers" }],
+  orders: [{ value: "latitudeFirst", title: "Latitude first" }, { value: "longitudeFirst", title: "Longitude first" }],
+  refresh: [{ value: "0", title: "On the move" }, { value: "10", title: "10 sec" }, { value: "30", title: "30 sec" },
+    { value: "60", title: "1 min" }, { value: "300", title: "5 min" }],
+  cookieAges: [{ value: "0", title: "As they say" }, { value: "60", title: "1 min" }, { value: "300", title: "5 min" }]
+};
+
+// 3003: an API answering two vehicles, as `PeerWebAPI` reads one; 3397 a cookie is kept, never answered.
+function apiRead(query, cookie) {
   if (!/^https:\/\//.test(query.get("address") || "")) return null;
   const reading = query.has("reading") ? JSON.parse(query.get("reading"))
-    : { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "", nameKey: "line" };
+    : { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "", nameKey: "line",
+      shownKeys: [] };
+  const cookies = query.has("cookies") ? JSON.parse(query.get("cookies")) : null;
+  reading.cookies = cookies?.isOn ? cookies : undefined;
   const keys = reading.itemsPath === "vehicles" ? ["lat", "lon", "line"] : [];
   const points = keys.includes(reading.latitudeKey) && keys.includes(reading.longitudeKey) ? 2 : 0;
-  return { reading, paths: ["vehicles", "stops"], keys, points, name: "buses.example", said: `Answered · ${points} points` };
+  const samples = keys.length ? { lat: "48.15", lon: "17.11", line: "N33" } : {};
+  return { reading, paths: ["vehicles", "stops"], keys, points, name: "buses.example", said: `Answered · ${points} points`,
+    samples, keepsCookie: Boolean(cookie || phone.keptCookie), choices: API_CHOICES };
 }
 
 // 29: a layer's Details layout as `PeerWebLayerOptions+Details` lists it, and its edits.
 const LAYOUT_WORDS = { addContent: "Add content", addSection: "Add section", removeSection: "Remove section",
   sectionTitle: "Title", fromTheApp: "From the app", name: "Name", value: "Value", label: "Label", link: "Link",
-  heading: "Title", plain: "Plain", box: "Box", warning: "Warning", full: "This layout holds 10 content blocks" };
+  heading: "Title", plain: "Plain", box: "Box", warning: "Warning", full: "This layout holds 10 content blocks",
+  header: "Header", icon: "Icon", layerIcon: "As the app shows it", headerTitleNote: "Left empty, the sheet keeps the name.",
+  actions: "Action buttons", addActions: "Add action buttons", removeActions: "Remove from Details",
+  addButton: "Add custom button", buttonsShow: "Buttons show", highlight: "Highlight the first one", look: "Look",
+  whenTapped: "When tapped", subject: "Subject", body: "Message", hidesButton: "Hide when a key is empty",
+  textIcon: "A note icon before the text", hidesText: "Hide when empty", nameAndValue: "Name and value",
+  rowIcons: "A small icon before each row", hidesRows: "Hide empty rows", addRow: "Add a row", liveFor: "Live for",
+  card: "What the card shows", place: "Place", withActions: "With action buttons", belowRows: "Below the rows" };
 
 function detailsSections(layer) {
   const used = layer.layout.flatMap((section) => section.blocks).filter((block) => block.counts).length;
   return [{ kind: "details", title: "Details", footnote: "What a tapped point's sheet shows.", layerScoped: true,
     layout: { sections: layer.layout.map((section, index) => ({ ...section, name: section.title || `Section ${index + 1}` })),
       used, limit: 10, parts: [], keys: ["line", "note"], offers: [{ id: "text", title: "Text" }],
-      words: { ...LAYOUT_WORDS, used: `${used} of 10 content blocks used` } } }];
+      words: { ...LAYOUT_WORDS, used: `${used} of 10 content blocks used` },
+      header: { title: layer.header?.title ?? null, symbol: layer.header?.symbol ?? null, layerSymbol: layer.symbol },
+      actions: layer.actions ? { ...layer.actions, items: [...layer.actions.items,
+        ...BUILT_INS.filter(([id]) => !layer.actions.items.some((item) => item.id === id))
+          .map(([id, name]) => ({ id, name, note: "", isOn: false }))] } : null,
+      symbols: ["tram.fill", "star.fill"], choices: LAYOUT_CHOICES } }];
+}
+
+// 55: the settings `PeerWebDetailsListing` lists beside the blocks, and `PeerWebDetailsSettings` sets.
+const BUILT_INS = [["directions", "Directions"], ["save", "Save"], ["share", "Share"], ["follow", "Follow"],
+  ["copy", "Copy"]];
+const LAYOUT_CHOICES = { labels: [{ id: "iconAndLabel", title: "Icon and label" }, { id: "iconOnly", title: "Icon only" }],
+  buttonKinds: [{ id: "link", title: "Open link", detail: "Link" }, { id: "call", title: "Call", detail: "Number" },
+    { id: "email", title: "Email", detail: "Address" }],
+  buttonLooks: [{ id: "filled", title: "Filled" }, { id: "tinted", title: "Tinted" }, { id: "outline", title: "Outline" }],
+  rowLooks: [{ id: "nameAboveValue", title: "Name above value" }, { id: "sideBySide", title: "Side by side" }],
+  cardParts: [{ id: "delay", title: "Delay in minutes" }, { id: "station", title: "Station" }] };
+
+function settleLayout(layer, query, held) {
+  const op = query.get("details");
+  const on = (key) => query.get(key) === "1";
+  if (op === "header") {
+    layer.header = { title: query.get("title") || null, symbol: query.get("symbol") || null };
+  } else if (op === "addActions") {
+    layer.actions ??= { items: BUILT_INS.slice(0, 4).map(([id, name]) => ({ id, name, note: "", isOn: true })),
+      labels: "iconAndLabel", highlightsFirst: false };
+  } else if (op === "removeActions") {
+    layer.actions = null;
+  } else if (!layer.actions && ["action", "moveAction", "actionsLook", "addButton", "removeButton"].includes(op)) {
+    return false;
+  } else if (op === "action") {
+    const items = layer.actions.items.filter((item) => item.id !== query.get("name"));
+    const named = BUILT_INS.find(([id]) => id === query.get("name"));
+    layer.actions.items = on("on") && named ? [...items, { id: named[0], name: named[1], note: "", isOn: true }] : items;
+  } else if (op === "moveAction") {
+    const items = layer.actions.items;
+    const from = items.findIndex((item) => item.id === query.get("item"));
+    if (from < 0) return false;
+    const [item] = items.splice(from, 1);
+    items.splice(Number(query.get("to")), 0, item);
+  } else if (op === "actionsLook") {
+    Object.assign(layer.actions, { labels: query.get("labels"), highlightsFirst: on("highlight") });
+  } else if (op === "addButton") {
+    const id = `b${Date.now()}`;
+    layer.actions.items.push({ id, name: "Custom button", note: "Open link", isOn: true,
+      button: { id, label: "Custom button", look: "tinted", action: "link", template: null, hides: false } });
+  } else if (op === "removeButton") {
+    layer.actions.items = layer.actions.items.filter((item) => item.id !== query.get("button"));
+  } else if (op === "buttonPlace") {
+    // 55: as `movingActionButtonToRows` and `movingButtonToActions` move it.
+    const item = layer.actions?.items.find((one) => one.id === query.get("button"));
+    if (item) {
+      layer.actions.items = layer.actions.items.filter((one) => one !== item);
+      layer.layout[0].blocks.push({ handle: `h${item.id}`, kind: "button", name: item.name, counts: true,
+        settings: { button: item.button } });
+    } else if (held()?.kind === "button") {
+      const [block] = layer.layout[Number(query.get("section"))].blocks.splice(Number(query.get("block")), 1);
+      layer.actions ??= { items: [], labels: "iconAndLabel", highlightsFirst: false };
+      layer.actions.items.push({ id: block.settings.button.id, name: block.name, note: "Open link", isOn: true,
+        button: block.settings.button });
+    } else {
+      return false;
+    }
+  } else if (op === "button") {
+    const item = layer.actions?.items.find((one) => one.id === query.get("button"));
+    const button = item?.button ?? held()?.settings?.button;
+    if (!button) return false;
+    Object.assign(button, { label: query.get("label"), symbol: query.get("symbol") || null, look: query.get("look"),
+      action: query.get("action"), template: query.get("template") || null, subject: query.get("subject") || null,
+      body: query.get("body") || null, hides: on("hides") });
+    if (item) Object.assign(item, { name: button.label });
+  } else if (op === "blockSettings") {
+    const settings = held()?.settings;
+    if (!settings) return false;
+    for (const key of ["icon", "hides", "icons", "hidesEmpty"]) if (query.has(key)) settings[key] = on(key);
+    if (query.has("look")) settings.look = query.get("look");
+    if (settings.card) for (const { id } of LAYOUT_CHOICES.cardParts) if (query.has(id)) settings.card[id] = query.get(id);
+  } else if (op === "addRow") {
+    const rows = held()?.settings?.rows;
+    if (!rows) return false;
+    rows.push({ index: rows.length, title: query.get("title"), value: query.get("value") });
+  } else if (op === "removeRow") {
+    const rows = held()?.settings?.rows;
+    if (!rows) return false;
+    rows.splice(Number(query.get("row")), 1);
+    rows.forEach((row, index) => { row.index = index; });
+  } else {
+    return false;
+  }
+  return true;
 }
 
 function editLayout(layer, query) {
@@ -332,7 +591,9 @@ function editLayout(layer, query) {
   const number = (key) => Number(query.get(key));
   const held = () => sections[number("section")]?.blocks[number("block")];
   const op = query.get("details");
-  if (["remove", "move", "edit"].includes(op) && held()?.handle !== query.get("was")) return false;
+  const byHandle = ["remove", "move", "edit", "blockSettings", "addRow", "removeRow"].includes(op)
+    || (op === "buttonPlace" && query.has("was"));
+  if (byHandle && held()?.handle !== query.get("was")) return false;
   if (op === "add") {
     sections[number("section")].blocks.splice(number("place"), 0, { handle: `n${Date.now()}`,
       kind: query.get("kind"), name: "Text", value: query.get("value"), style: "box", counts: true });
@@ -352,6 +613,8 @@ function editLayout(layer, query) {
   } else if (op === "edit") {
     Object.assign(held(), { value: query.get("value"), heading: query.get("title") || undefined,
       style: query.get("style") || undefined });
+  } else {
+    return settleLayout(layer, query, held);
   }
   return true;
 }
@@ -374,7 +637,7 @@ function layerOptions(each) {
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
     }
     if (layer.layout) return detailsSections(layer);
-    return layer.drawn ? featureSections(layer) : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
+    return layer.drawn ? [...featureSections(layer), ...markSections(layer)] : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
     .filter((layer) => layer.sections.length) };
@@ -509,7 +772,13 @@ function switches(each) {
     groupingReorders: each.mixedSources === true && !grouped, stylesDisagree: each.stylesDisagree === true,
     differsFromDefault: each.differsFromDefault === true,
     layersWithoutStyle: each.layers.filter((layer) => !each.styles.some((style) => style.name === layer.name)).length,
-    removedStyles: each.removedStyles ?? 0, editedStyles: each.editedStyles ?? [] };
+    removedStyles: each.removedStyles ?? 0, editedStyles: each.editedStyles ?? [], deletion: deletionOf(each) };
+}
+
+// 62: as `PeerWebDeleteMap.offered`: the last map stays, a locked one waits for Face ID.
+function deletionOf(each) {
+  if (phone.maps.length < 2 || each.locked) return undefined;
+  return phone.ownsSettings ? "onlyYou" : "yourList";
 }
 
 const AVAILABILITY = { picker: "hiddenFromPicker", carPlay: "hiddenFromCarPlay", legend: "hidesLegend",
@@ -573,6 +842,7 @@ function edit(each, query, response) {
   const adjust = (change) => each.styles.forEach((style) => { style.adjustments = change({ ...style.adjustments }); });
   const looked = query.has("layer") && LAYER_LOOKS.find((key) => query.has(key));
   const featured = query.has("layer") && FEATURE_KEYS.find((key) => query.has(key));
+  const marked = query.has("layer") && MARK_KEYS.find((key) => query.has(key));
   const asking = query.has("layer") && QUESTION_KEYS.find((key) => query.has(key));
   const networked = query.has("layer") && NETWORK_KEYS.find((key) => query.has(key));
   if (query.has("layer") && query.has("details")) {
@@ -581,6 +851,10 @@ function edit(each, query, response) {
     if (!editLayout(layer, query)) {
       return send(response, 409, "The layout changed on the phone; it is shown again as it is now");
     }
+  } else if (marked) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
+    if (!editMarks(layer, query, marked)) return send(response, 409, "This change does not fit the map");
   } else if (featured) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
@@ -588,6 +862,8 @@ function edit(each, query, response) {
   } else if (networked) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer?.net) return send(response, 404, "This change does not fit the map");
+    const refused = editKeys(layer, query, networked);
+    if (refused) return send(response, 409, refused);
     editNetwork(layer, query, networked);
   } else if (asking) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
@@ -856,7 +1132,7 @@ async function answer(request, response) {
     // 3003: as `PeerWebAPI.read` answers: the vehicles list guessed, or read as the page picked.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
-    const read = apiRead(url.searchParams);
+    const read = apiRead(url.searchParams, request.headers["x-riki-cookie"]);
     return read ? json(response, read) : send(response, 409, "That is not an address this app can ask.");
   }
   if (parts[2] === "read-address" && parts.length === 3) {
@@ -971,6 +1247,15 @@ async function answer(request, response) {
       { layer: "Geology", properties: { name: "Granite", age: "300 Ma" } },
       { layer: "Geology", properties: { name: "Gneiss" } }] : [] });
   }
+  if (parts[4] === "layer-test" && parts.length === 5) {
+    // 60: as `PeerWebLayerKeys.test`: the address asked with the values the phone keeps.
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const layer = each.layers.find((one) => one.id === url.searchParams.get("layer"));
+    if (!layer?.net) return send(response, 404, "");
+    const keyed = Object.values(layer.keys || {}).some(Boolean);
+    return json(response, keyed ? { reachable: true, said: "Tiles reachable · 256 px" }
+      : { reachable: false, said: "Server replied 401" });
+  }
   if (parts[4] === "layer-options" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -980,6 +1265,15 @@ async function answer(request, response) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     return json(response, packages(each));
+  }
+  if (parts[4] === "people" && parts.length === 5) {
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (each.locked) return send(response, 403, "This map is locked on the phone");
+    if (method === "POST" && !askPeople(each.id, url.searchParams)) {
+      return send(response, 403, "Your role on this map does not allow that");
+    }
+    return json(response, roster(each.id));
   }
   if (parts[4] === "switches" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -1017,6 +1311,32 @@ async function answer(request, response) {
     each.revision += 1;
     return json(response, portable(each));
   }
+  if ((parts[4] === "tile-download" || parts[4] === "discard-stored") && parts.length === 5) {
+    // 57: as `PeerWebOffline` answers: the plan for the area asked, the download queued or cancelled.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const held = offlineOf(each);
+    if (parts[4] === "discard-stored") {
+      if (method !== "POST") return send(response, 405, "");
+      const layer = url.searchParams.get("layer");
+      if (!each.layers.some((one) => one.id === layer)) return send(response, 404, "This map has no such layer");
+      delete held.stored[layer];
+      phone.discarded.push(layer);
+      response.writeHead(204);
+      return response.end();
+    }
+    const box = (url.searchParams.get("box") || "").split(",").map(Number);
+    if (box.length !== 4 || box.some((one) => !Number.isFinite(one))) return send(response, 400, "Name the area to download");
+    phone.offlineAsks.push({ method, ...Object.fromEntries(url.searchParams) });
+    const plan = offlinePlan(each, url.searchParams);
+    if (method === "POST") {
+      if (url.searchParams.get("cancel") === "1") held.queued = [];
+      else if (url.searchParams.get("start") === "1") held.queued = plan.rows.filter((row) => row.isIncluded).map((row) => row.id);
+      else return send(response, 400, "");
+      return json(response, offlinePlan(each, url.searchParams));
+    }
+    return json(response, plan);
+  }
   if (method === "POST" && parts[4] === "duplicate" && parts.length === 5) {
     // 50: as `MapCatalogStore.duplicate`: a fresh id for the map and each style, named as a copy.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -1025,6 +1345,19 @@ async function answer(request, response) {
     phone.maps.push({ ...structuredClone(each), id, name: `${each.name} copy`,
       styles: each.styles.map((style) => ({ ...structuredClone(style), id: randomUUID().toUpperCase() })) });
     return json(response, { id });
+  }
+  if (method === "POST" && parts[4] === "delete" && parts.length === 5) {
+    // 62: as `PeerWebDeleteMap.answer`: refused where Delete is not offered or the name differs.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (each.locked) return send(response, 403, "This map is locked on the phone");
+    if (phone.maps.length < 2) return send(response, 403, "The phone keeps at least one map");
+    if ((url.searchParams.get("name") ?? "").trim() !== each.name) {
+      return send(response, 409, "Type the map's name exactly to delete it");
+    }
+    phone.maps = phone.maps.filter((one) => one.id !== each.id);
+    response.writeHead(204, { "Cache-Control": "no-store" });
+    return response.end();
   }
   if (parts[4] === "coverage" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -1061,8 +1394,11 @@ async function answer(request, response) {
     // 3003: as `PeerWebAPI.edit`: nothing is added that would draw no point.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
-    const read = apiRead(url.searchParams);
+    const cookie = request.headers["x-riki-cookie"] || "";
+    const read = apiRead(url.searchParams, cookie);
     if (!read?.points) return send(response, 409, "None of those items had a coordinate this app could read.");
+    if (cookie) phone.keptCookie = cookie;
+    phone.apiAdds.push({ reading: read.reading, tint: url.searchParams.get("tint"), cookie, address: url.href });
     each.layers.push({ id: randomUUID().toUpperCase(), name: url.searchParams.get("name") || read.name,
       kind: "API", symbol: "antenna.radiowaves.left.and.right", isEnabled: true });
     each.revision += 1;
@@ -1076,10 +1412,17 @@ async function answer(request, response) {
     for await (const chunk of request) chunks.push(chunk);
     const body = Buffer.concat(chunks);
     const kind = url.searchParams.get("kind");
-    if (!["icon", "preview"].includes(kind)) return send(response, 409, "That picture could not be read");
+    if (!["icon", "preview", "styleIcon"].includes(kind)) return send(response, 409, "That picture could not be read");
     const isPicture = body.length === 0 || body[0] === 0xff || body[0] === 0x89;
     if (!isPicture) return send(response, 409, "That picture could not be read");
-    each[kind + "Picture"] = body.length ? body.toString("base64") : undefined;
+    const picture = body.length ? body.toString("base64") : undefined;
+    if (kind === "styleIcon") {
+      // 65: as `PeerWebPicture` reads a style's own, the style named or refused.
+      const style = each.styles.find((one) => one.id === url.searchParams.get("style"));
+      if (!url.searchParams.get("style")) return send(response, 409, "That picture could not be read");
+      if (!style) return send(response, 404, "This change does not fit the map");
+      style.iconPicture = picture;
+    } else each[kind + "Picture"] = picture;
     phone.pictureKinds.push(kind + ":" + body.length);
     return json(response, portable(each));
   }
@@ -1164,6 +1507,38 @@ function esriListing(each) {
       layer: service.taken[published.id] ?? null, refusal: published.refusal ?? null })) })) };
 }
 
+// 57: the Trails download tiles; the Huts were fetched whole, so only their store is deleted.
+function offlineOf(each) {
+  each.offline ??= { stored: { "6F1E2A10-0000-4000-8000-0000000000A2": 2000 }, queued: [] };
+  return each.offline;
+}
+
+function offlinePlan(each, query) {
+  const held = offlineOf(each);
+  const zoom = Number(query.get("zoom") || 16);
+  const asked = query.get("layers")?.split(",");
+  const rows = each.layers.map((layer) => {
+    const isDownloadable = layer.kind === "Vector tiles";
+    const stored = held.stored[layer.id] ?? 0;
+    const running = held.queued.includes(layer.id);
+    return { id: layer.id, name: layer.name, isDownloadable,
+      isIncluded: isDownloadable && (asked ? asked.includes(layer.id) : true),
+      detail: isDownloadable ? "https://t.test/{z}/{x}/{y}.pbf" : "Uploaded files · nothing to download",
+      bytes: isDownloadable ? zoom * 1_000_000 : 0, stored, storedLine: stored ? `${stored / 1000} KB stored` : null,
+      job: running ? "0 of 120 tiles" : null, fraction: running ? 0 : null,
+      discard: stored ? { ask: `Delete what ${layer.name} has stored?`,
+        note: `This frees ${stored / 1000} KB. The layer stays on the map and can download again.` } : null };
+  });
+  const ticked = rows.filter((row) => row.isIncluded);
+  const total = ticked.reduce((sum, row) => sum + row.bytes, 0);
+  const queued = ticked.filter((row) => row.job);
+  return { area: query.get("chosen") === "1" ? "120 km²" : "43 km²", box: (query.get("box") || "").split(",").map(Number),
+    minZoom: 8, maxZoom: 19, zoom, zoomLabel: `z ${zoom}`, limits: "",
+    rows, toFetch: `≈ ${ticked.length * 120 * zoom} tiles to fetch`, held: "None of it is here yet", free: "18 MB free",
+    total: `≈ ${total / 1_000_000} MB`, exceedsSpace: total > 18_000_000, isQueued: queued.length > 0,
+    cancel: queued.length ? "Cancel this download" : null };
+}
+
 function testControl(route, query, response) {
   const id = query.get("id");
   switch (route) {
@@ -1195,6 +1570,7 @@ function testControl(route, query, response) {
         { id: 2, name: "Shading", refusal: "The service does not let this one be asked" }] }];
     break;
   case "/__test/esri-asks": return json(response, phone.esriAsks);
+  case "/__test/lock": phone.maps[0].locked = true; break;
   case "/__test/ski-and-rail":
     phone.maps[0].layers.push(
       { id: "6F1E2A10-0000-4000-8000-0000000000F1", name: "Ski & winter", kind: "Riki Maps package",
@@ -1216,17 +1592,24 @@ function testControl(route, query, response) {
     break;
   case "/__test/legend-everywhere": phone.legendEverywhere = query.get("on") === "1"; break;
   case "/__test/reader": phone.ownsSettings = false; break;
+  case "/__test/share-role": phone.shares[query.get("map")].role = query.get("role"); break;
+  case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
+  case "/__test/shares": return json(response, phone.shares);
   case "/__test/laid-out-layer":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000A5", name: "Trams", kind: "API",
       symbol: "tram", isEnabled: true, layout: [{ title: null, blocks: [
-        { handle: "r1", kind: "rows", name: "Info rows", counts: true },
-        { handle: "t1", kind: "text", name: "Text", value: "{note}", style: "box", counts: true }] }] });
+        { handle: "r1", kind: "rows", name: "Info rows", counts: true, settings: { look: "nameAboveValue", icons: true,
+          hidesEmpty: true, rows: [{ index: 0, title: "Speed", value: "{speed}" }] } },
+        { handle: "t1", kind: "text", name: "Text", value: "{note}", style: "box", counts: true,
+          settings: { icon: false, hides: true } }] }] });
     break;
   case "/__test/answers-servers": phone.answersServers = true; break;
   case "/__test/identified": return json(response, phone.identified);
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
   case "/__test/details-asked": return json(response, phone.detailsAsked);
+  case "/__test/offline": return json(response, { asks: phone.offlineAsks, discarded: phone.discarded });
   case "/__test/pictures": return json(response, phone.pictureKinds);
+  case "/__test/api-adds": return json(response, phone.apiAdds);
   case "/__test/land":
     phone.regions.drawn.push(...phone.regions.downloading);
     phone.regions.downloading = [];

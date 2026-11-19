@@ -90,3 +90,23 @@ describe("CI on a pull request", () => {
     expect(ci.slice(ci.indexOf("\n  check:"))).toContain("needs: changes");
   });
 });
+
+// 71 a merge to master left its tests running while a newer merge's started: the old ones stop
+describe("CI's check job", () => {
+  const ci = read("ci.yml");
+  const check = ci.slice(ci.indexOf("\n  check:"));
+
+  it("replaces the check still running for the same branch, or for master", () => {
+    expect(check).toMatch(/concurrency:\s*\n\s*group: check-\$\{\{ github\.head_ref \|\| github\.ref \}\}\s*\n\s*cancel-in-progress: true/);
+  });
+
+  it("leaves the release and the deploy out of any group that cancels", () => {
+    const release = read("release.yml");
+    expect(release).not.toContain("cancel-in-progress: true");
+    expect(release).not.toMatch(/\n  release:[\s\S]*concurrency:/);
+  });
+
+  it("starts the check only for code, so a docs-only merge cancels no tests", () => {
+    expect(check).toContain("if: needs.changes.outputs.code == 'true'");
+  });
+});

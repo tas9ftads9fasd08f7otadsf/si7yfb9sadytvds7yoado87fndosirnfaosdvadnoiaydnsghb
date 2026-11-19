@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { openViewer, phone, reset } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -43,4 +43,52 @@ test("an address the phone cannot read is refused", async ({ page }) => {
   await page.locator("#readAPI").click();
   await expect(page.getByText("That is not an address this app can ask.")).toBeVisible();
   await expect(page.locator("#addAPI")).toHaveCount(0);
+});
+
+// 61: the phone's three parts; a cookie page and a typed cookie, colours and Details rows reach the phone.
+test("cookies, colours and Details rows are set in the form's parts and reach the phone", async ({ page, request }) => {
+  await openAddLayer(page);
+  await page.locator("#apiAddress").fill("https://buses.example/now");
+  await page.locator("#apiCookieCard input[role='switch']").check();
+  await page.locator("#apiCookiePage").fill("https://buses.example/");
+  await page.locator("#apiCookie").fill("session=abc");
+  const read = page.waitForRequest((asked) => asked.url().includes("/read-api?"));
+  await page.locator("#readAPI").click();
+  const asked = await read;
+  expect(asked.url()).not.toContain("abc");
+  expect(asked.headers()["x-riki-cookie"]).toBe("session=abc");
+  expect(JSON.parse(new URL(asked.url()).searchParams.get("cookies"))).toMatchObject({ isOn: true, page: "https://buses.example/" });
+
+  await expect(page.locator("#apiParts [data-part='details']")).toHaveAttribute("aria-selected", "true");
+  await page.locator("#apiColourKey").selectOption("line");
+  await expect(page.locator("#apiColourKey")).toHaveValue("line");
+  await expect(page.locator("[data-shown-key='line'] small")).toHaveText("N33");
+  await page.locator("[data-shown-key='lat'] input[role='switch']").uncheck();
+  await expect(page.locator("[data-shown-key='lat'] input[role='switch']")).not.toBeChecked();
+  await page.locator("#apiAddRow").click();
+  await page.locator("#apiRows input[aria-label='Name']").fill("Line");
+  await page.locator("#apiRows input[aria-label='Value']").fill("{line}");
+  await page.locator("#apiRefresh").selectOption("30");
+
+  await page.locator("#apiParts [data-part='styling']").click();
+  await page.locator("#apiLayerName").fill("Buses");
+  await page.locator("#apiTint").fill("#ff8800");
+  await page.locator("#addAPI").click();
+  await expect(page.locator("#editBody input[value='Buses']")).toHaveCount(1);
+
+  const [added] = await phone(request, "api-adds");
+  expect(added.cookie).toBe("session=abc");
+  expect(added.address).not.toContain("abc");
+  expect(added.tint).toBe("#FF8800");
+  expect(added.reading).toMatchObject({ colourKey: "line", shownKeys: ["lon", "line"], refreshSeconds: 30,
+    cookies: { isOn: true, page: "https://buses.example/" } });
+  expect(added.reading.detailRows).toMatchObject([{ title: "Line", value: "{line}", symbol: "info.circle" }]);
+
+  // 61: the phone keeps the cookie; the next read is told so, never the value.
+  await page.locator("#addLayer").click();
+  await page.locator("#apiAddress").fill("https://buses.example/now");
+  await page.locator("#readAPI").click();
+  await page.locator("#apiParts [data-part='source']").click();
+  await expect(page.locator("#apiCookie")).toHaveValue("");
+  await expect(page.locator("#apiCookie")).toHaveAttribute("placeholder", "Kept on this phone");
 });
