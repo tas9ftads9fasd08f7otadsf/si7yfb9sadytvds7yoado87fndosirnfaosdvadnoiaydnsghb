@@ -1,4 +1,5 @@
 import type { CKSave } from "./cloud";
+import { bytesOfText } from "./mirror";
 
 /** A map's data zone holds plain records, not the mirror's `CD_` ones, as the app's `SharedDataZone` writes them. */
 export const INDEX_TYPE = "MapDataIndex";
@@ -9,12 +10,6 @@ export const CHUNK_BYTES = 45 * 1024 * 1024;
 
 /** How many chunks travel at once: a lost connection loses one, never the store. */
 export const IN_FLIGHT = 3;
-
-/** The field types of the two records, as `SharedDataZone.types` declares them. */
-export const DATA_TYPES = {
-  [INDEX_TYPE]: { bytes: "INT64", manifest: "BYTES", storageKey: "STRING" },
-  [CHUNK_TYPE]: { asset: "ASSET", count: "INT64", index: "INT64", sha: "STRING", storageKey: "STRING" }
-} as const;
 
 /** One file of a store, as the app's `Piece` encodes it. */
 export interface Piece {
@@ -66,12 +61,6 @@ export function sliceOf(piece: Sliceable, index: number, size = CHUNK_BYTES): Bl
   return piece.slice(index * size, Math.min(piece.size, (index + 1) * size));
 }
 
-const base64 = (text: string) => {
-  let bytes = "";
-  for (const byte of new TextEncoder().encode(text)) bytes += String.fromCharCode(byte);
-  return btoa(bytes);
-};
-
 /** The chunk record of a piece, without its asset: the store uploads that with the bytes. */
 export function chunkRecord(entry: Pick<Entry, "storageKey">, piece: Piece, index: number, size = CHUNK_BYTES): CKSave {
   return { recordName: chunkName(piece.sha, index), recordType: CHUNK_TYPE, fields: {
@@ -82,7 +71,7 @@ export function chunkRecord(entry: Pick<Entry, "storageKey">, piece: Piece, inde
 export async function indexRecord(entry: Entry): Promise<CKSave> {
   return { recordName: await indexName(entry.storageKey), recordType: INDEX_TYPE, fields: {
     storageKey: { value: entry.storageKey, type: "STRING" },
-    manifest: { value: base64(JSON.stringify(entry)), type: "BYTES" },
+    manifest: { value: bytesOfText(JSON.stringify(entry)), type: "BYTES" },
     bytes: { value: entry.pieces.reduce((all, piece) => all + piece.bytes, 0), type: "INT64" } } };
 }
 

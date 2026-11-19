@@ -1,9 +1,12 @@
 import types from "./mirror-types.json";
 
 /** The CloudKit type of a field of the app's Core Data mirror. */
-export type FieldType = "STRING" | "INT64" | "DOUBLE" | "TIMESTAMP" | "BYTES" | "REFERENCE";
+export type FieldType = "STRING" | "INT64" | "DOUBLE" | "TIMESTAMP" | "BYTES" | "REFERENCE" | "ASSET";
 
-/** Each entity's fields as CloudKit holds them, taken from the app's `RikiSchema`. */
+/**
+ * Each entity's fields as CloudKit holds them, taken from the app's `RikiSchema`. 86 `MapDataIndex` and `MapDataChunk` are
+ * the data zone's plain records, from `SharedDataZone.types`.
+ */
 export const MIRROR: Readonly<Record<string, Readonly<Record<string, FieldType>>>> = types as never;
 
 /** What `SharedMapChange.schemaVersion` is in the app. */

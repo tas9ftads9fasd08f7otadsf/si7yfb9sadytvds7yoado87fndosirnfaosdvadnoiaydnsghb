@@ -46,8 +46,9 @@ describe("a write as the app's mirror holds it", () => {
   });
 
   it("is accepted, for every field of every entity, by the schema the mock checks", () => {
-    for (const [entity, fields] of Object.entries(MIRROR)) {
-      const sample = { STRING: "x", INT64: 1, DOUBLE: 1.5, TIMESTAMP: 1789000000000, BYTES: "e30=", REFERENCE: "r" } as const;
+    // 86 the data zone's plain records are not mirror rows: they carry no CD_ prefix
+    for (const [entity, fields] of Object.entries(MIRROR).filter(([each]) => !each.startsWith("MapData"))) {
+      const sample = { STRING: "x", INT64: 1, DOUBLE: 1.5, TIMESTAMP: 1789000000000, BYTES: "e30=", REFERENCE: "r", ASSET: {} } as const;
       const write = { entity, id: "r", fields: Object.fromEntries(Object.entries(fields).map(([name, type]) => [name, sample[type]])) };
       expect(schemaRefusal(everything(write))).toBeNull();
     }

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { MIRROR } from "./mirror";
 import { CHUNK_BYTES, CHUNK_TYPE, INDEX_TYPE, chunkCount, chunkName, chunkRecord, indexName, indexRecord, referenceSeconds,
   sendStore, sha256, sliceOf, type DataStore, type Entry, type Sliceable } from "./data";
 
@@ -59,6 +60,15 @@ describe("the records as the app writes them", () => {
     expect(record.fields.bytes).toEqual({ value: 250, type: "INT64" });
     expect(record.fields.manifest!.type).toBe("BYTES");
     expect(JSON.parse(atob(record.fields.manifest!.value as string))).toEqual(entry);
+  });
+
+  // 86 the types are the type table's, as the mirror's are, so a write is checked against the deployed schema
+  it("gives every field the type the table holds for its record", async () => {
+    const records = [chunkRecord(entry, entry.pieces[0]!, 0), await indexRecord(entry)];
+    for (const record of records) {
+      for (const [name, field] of Object.entries(record.fields)) expect(field.type, `${record.recordType}.${name}`).toBe(MIRROR[record.recordType]![name]);
+    }
+    expect(MIRROR[CHUNK_TYPE]!.asset).toBe("ASSET");
   });
 
   it("counts a date as Swift does, from 2001", () => {

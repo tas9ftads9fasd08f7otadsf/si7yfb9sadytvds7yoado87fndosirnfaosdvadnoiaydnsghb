@@ -95,7 +95,7 @@
         "stack": [{ "id": "L1", "name": "Trails", "kind": "Vector tiles" }, { "id": "L2", "name": "Tiles", "kind": "Raster tiles" }]
       },
       "write": [{ "entity": "SharedMapLayer", "id": "own-tatras-layer-2", "refs": ["map"],
-        "fields": { "name": "Tiles", "map": "own-tatras" } }],
+        "fields": { "layerJSON": "{\"id\":\"L2\",\"name\":\"Tiles\"}", "map": "own-tatras" } }],
       "history": { "entity": "SharedMapChange", "id": "change-web-2", "refs": ["map"],
         "fields": { "map": "own-tatras", "payload": "{\"author\":\"Riki Tester\",\"origin\":\"web\",\"lines\":[\"Tiles added\"]}" } }
     },

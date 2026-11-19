@@ -34,7 +34,7 @@ test("a tile template on a host that answers browsers is read and added by the c
   const [asked] = modifies(cloud);
   expect(asked.body.operations.map((each) => [each.operationType, each.record.recordName])).toEqual(
     [["create", "own-tatras-layer-2"], ["create", "change-web-2"]]);
-  expect(cloud.record("own-tatras-layer-2").fields.CD_name.value).toBe("Tiles");
+  expect(cloud.record("own-tatras-layer-2").fields.CD_layerJSON.value).toContain("Tiles");
   const [read, add] = await calls();
   expect(read).toMatchObject({ call: "riki_read_address", request: { address: `${CORS_HOST}/{z}/{x}/{y}.png`, replies: [] } });
   expect(add).toMatchObject({ call: "riki_add_layer", request: { mapID: MAP, author: "Riki Tester", origin: "web",
