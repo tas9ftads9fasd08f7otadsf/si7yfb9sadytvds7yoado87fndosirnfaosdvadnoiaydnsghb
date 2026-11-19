@@ -110,3 +110,29 @@ describe("CI's check job", () => {
     expect(check).toContain("if: needs.changes.outputs.code == 'true'");
   });
 });
+
+// 75 a release that passed CI asks Riki Maps for a pull request taking it into the app
+describe("the app's update", () => {
+  const release = read("release.yml");
+  const update = read("update-app.yml");
+  const job = release.slice(release.indexOf("\n  app:"), release.indexOf("\n  deploy:"));
+
+  it("follows the published release, which follows CI", () => {
+    expect(job).toContain("needs: release");
+    expect(job).toContain("uses: ./.github/workflows/update-app.yml");
+    expect(release).toMatch(/release:[\s\S]*needs: check/);
+  });
+
+  it("runs Riki Maps' own web-editor workflow on its master", () => {
+    expect(update).toContain("gh workflow run web-editor.yml --repo skifahrer/rikimaps --ref master");
+  });
+
+  it("reaches Riki Maps with a secret token, handed on by the release", () => {
+    expect(update).toContain("GH_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN }}");
+    expect(job).toContain("RIKIMAPS_ACTIONS_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN }}");
+  });
+
+  it("gives the called update what it asks for", () => {
+    for (const permission of asked(update)) expect(asked(job)).toContain(permission);
+  });
+});

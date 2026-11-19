@@ -1,0 +1,28 @@
+name: Update the app
+
+# Riki Maps' web-editor workflow opens the pull request moving its bundle to our newest release.
+on:
+  workflow_call:
+    secrets:
+      RIKIMAPS_ACTIONS_TOKEN:
+        required: false
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Ask Riki Maps for a pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # GITHUB_TOKEN cannot reach another repository; this one may run Riki Maps' workflows.
+      GH_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN }}
+    steps:
+      - run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::RIKIMAPS_ACTIONS_TOKEN is not set, so Riki Maps is not asked to update"
+            exit 0
+          fi
+          gh workflow run web-editor.yml --repo skifahrer/rikimaps --ref master
