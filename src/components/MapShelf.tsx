@@ -5,6 +5,7 @@ import { movedInFolder, movedOrder, type ShelfItem, shelfOf } from "@/lib/shelf"
 import type { SharedMap } from "@/lib/types";
 import { listed } from "@/lib/words";
 import { openMap, shelve, useViewer } from "@/store/viewer";
+import { FolderPeople, FolderShareButton } from "./FolderSharing";
 import { Swatch } from "./edit/Styling";
 import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
@@ -124,9 +125,11 @@ function FolderHead({ folder, place, count, move }:
           aria-expanded={isDressing} title={words.icon} onClick={() => setDressing(!isDressing)}>
           <MarkTile symbol={folder.symbol || "folder"} tint={folder.tint} small /></button>
         <FolderName key={folder.name} id={folder.id} name={folder.name} />
+        <FolderShareButton id={folder.id} name={folder.name} />
         <MoveButtons name={folder.name} place={place} count={count} move={move} />
       </div>
       {isDressing ? <FolderIcon folder={folder} /> : null}
+      <FolderPeople id={folder.id} />
     </>
   );
 }

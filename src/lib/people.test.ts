@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAddress, peopleQueryOf } from "./people";
+import { isAddress, peoplePathOf, peopleQueryOf } from "./people";
 
 describe("peopleQueryOf", () => {
   // 59 each ask as `PeerWebPeople.ask` reads it
@@ -24,5 +24,13 @@ describe("isAddress", () => {
     expect(isAddress("eva@.com")).toBe(false);
     expect(isAddress("12345")).toBe(false);
     expect(isAddress("  ")).toBe(false);
+  });
+});
+
+describe("peoplePathOf", () => {
+  // 68 a folder's people are asked at the folder, as `PeerWebFolderSharing` answers
+  it("names a map's and a folder's people apart", () => {
+    expect(peoplePathOf({ kind: "map", id: "M" })).toBe("maps/M/people");
+    expect(peoplePathOf({ kind: "folder", id: "F" })).toBe("folders/F/people");
   });
 });

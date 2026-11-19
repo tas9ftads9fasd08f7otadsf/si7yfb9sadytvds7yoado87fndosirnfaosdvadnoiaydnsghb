@@ -22,7 +22,7 @@ describe("People", () => {
     resetViewer();
     resetPeople();
     useViewer.setState({ mapID: "M", editToken: "t" });
-    usePeople.setState({ mapID: "M" });
+    usePeople.setState({ of: { kind: "map", id: "M" } });
   });
   afterEach(() => vi.unstubAllGlobals());
 

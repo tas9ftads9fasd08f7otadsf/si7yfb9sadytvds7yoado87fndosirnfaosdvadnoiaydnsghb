@@ -129,13 +129,16 @@ describe("the phone backend", () => {
     const fetcher = vi.fn(async () => new Response("{}"));
     vi.stubGlobal("fetch", fetcher);
     backend.useToken(() => "T");
-    await backend.people("M");
-    await backend.askPeople("M", { kind: "invite", address: "eva@example.com", role: "editor" });
+    await backend.people({ kind: "map", id: "M" });
+    await backend.askPeople({ kind: "map", id: "M" }, { kind: "invite", address: "eva@example.com", role: "editor" });
     const [read, readInit] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
     const [asked, askedInit] = fetcher.mock.calls[1] as unknown as [string, RequestInit];
     expect([read, readInit.method]).toEqual(["/riki/v1/maps/M/people", "GET"]);
     expect([asked, askedInit.method]).toEqual(["/riki/v1/maps/M/people?invite=eva%40example.com&role=editor", "POST"]);
     expect(askedInit.headers).toEqual({ Authorization: "Bearer T" });
+    // 68 a folder's share is asked at the folder
+    await backend.askPeople({ kind: "folder", id: "F" }, { kind: "share" });
+    expect((fetcher.mock.calls[2] as unknown as [string])[0]).toBe("/riki/v1/folders/F/people?share=1");
   });
 
   // 36 an unreachable phone rejects, so the store says it is away
