@@ -50,6 +50,13 @@ export function readPin(pin) {
   return { ref: pin?.ref || null, sha256: pin?.sha256 || null };
 }
 
+/** The pin to build: package.json's, or another commit, which has no sum to be held to. */
+export function pinFor(pinned, asked) {
+  const pin = readPin(pinned);
+  if (!asked || (pin.ref && (pin.ref.startsWith(asked) || asked.startsWith(pin.ref)))) return pin;
+  return { ref: asked, sha256: null };
+}
+
 /** Whether the rikimaps checkout is at the pinned commit; an export without git cannot say. */
 export function checkoutProblem(dir, ref, git = (args) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8" }).trim()) {
   if (!existsSync(path.join(dir, CONTRACT.package, "Package.swift"))) {
@@ -182,7 +189,7 @@ export async function build({ dir, pin, out, env = process.env }) {
 
 async function main() {
   const own = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8"));
-  const pin = readPin({ ...own.rikiCore, ...(process.env.RIKI_CORE_REF ? { ref: process.env.RIKI_CORE_REF } : {}) });
+  const pin = pinFor(own.rikiCore, process.env.RIKI_CORE_REF);
   if (!pin.ref) {
     console.warn("riki-core.wasm is not built: rikiCore.ref in package.json pins no rikimaps commit yet");
     return;
