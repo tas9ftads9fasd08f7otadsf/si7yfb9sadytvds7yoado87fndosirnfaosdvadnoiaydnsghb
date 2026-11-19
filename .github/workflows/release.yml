@@ -48,6 +48,15 @@ jobs:
             --target "$GITHUB_SHA" --title "v$version" --generate-notes
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
+  app:
+    name: Update the app
+    needs: release
+    uses: ./.github/workflows/update-app.yml
+    secrets:
+      RIKIMAPS_ACTIONS_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN }}
+    permissions:
+      contents: read
+
   deploy:
     name: Deploy the site
     needs: release
