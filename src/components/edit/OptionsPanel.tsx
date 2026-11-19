@@ -1,10 +1,9 @@
 "use client";
 
-import { type CSSProperties, useEffect, useId, useState } from "react";
-import type { LayerTest, OptionSection, RoadSigns } from "@/lib/types";
-import { iconURL, loadRoadSigns, setDrawn, testLayer, useViewer } from "@/store/viewer";
+import { type CSSProperties, createContext, useContext, useEffect, useId, useState } from "react";
+import type { DetailsLayout, LayerTest, OptionSection, RoadSigns } from "@/lib/types";
+import { go, iconURL, loadRoadSigns, setDrawn, testLayer, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
-import { DetailsLayoutPanel } from "./DetailsLayoutPanel";
 import { MarkSymbols } from "./MarkSymbols";
 import { Switch } from "../ui/Switch";
 import { Sym } from "../ui/Sym";
@@ -224,7 +223,7 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
   if (section.kind === "signKey") return <SignKey section={section} />;
   if (section.kind === "headers") return <Headers section={section} scoped={scoped} />;
   if (section.kind === "probe") return <Probe section={section} scoped={scoped} />;
-  if (section.kind === "details") return section.layout ? <DetailsLayoutPanel layout={section.layout} scoped={scoped} /> : null;
+  if (section.kind === "details") return section.layout ? <OpenDetails layout={section.layout} /> : null;
   if (section.kind === "text") return <TextField section={section} send={(text) => setDrawn(scoped({ [key]: text }))} />;
   if (section.kind === "symbols") return <MarkSymbols section={section} pick={(name) => setDrawn(scoped({ [key]: name }))} />;
   if (section.kind === "colour") {
@@ -242,10 +241,27 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
   ));
 }
 
+/** 95 The layer's Details layout opens as W16's page of its own. */
+function OpenDetails({ layout }: { layout: DetailsLayout }) {
+  const words = useViewer((state) => state.words);
+  const layerID = useContext(PanelLayer);
+  const mapID = useViewer((state) => state.mapID);
+  return (
+    <button type="button" className="row add open-details" data-layer-details={layerID}
+      onClick={() => mapID && go({ screen: "details", map: mapID, layer: layerID })}>
+      <Sym name="rectangle.and.text.magnifyingglass" />
+      <span className="words">{words.details}<small>{layout.words.used}</small></span>
+      <Sym name="chevron.forward" />
+    </button>
+  );
+}
+
+const PanelLayer = createContext("");
+
 /** Edit layer's road, rail, history, name and ski panels, as the phone lists them. */
 export function OptionsPanel({ id, sections }: { id: string; sections: OptionSection[] }) {
   return (
-    <div className="card options" data-options={id}>
+    <PanelLayer.Provider value={id}><div className="card options" data-options={id}>
       {sections.map((section, index) => (
         <div key={index} style={{ display: "contents" }}>
           {section.title ? <div className="field"><label>{section.title}</label></div> : null}
@@ -253,6 +269,6 @@ export function OptionsPanel({ id, sections }: { id: string; sections: OptionSec
           <div className="foot-note">{section.footnote}</div>
         </div>
       ))}
-    </div>
+    </div></PanelLayer.Provider>
   );
 }

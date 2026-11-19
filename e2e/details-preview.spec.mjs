@@ -13,7 +13,10 @@ async function openLayout(page) {
   await page.locator("#editButton").click();
   const row = page.locator("#editBody .layer-item", { has: page.locator("input[value='Trams']") });
   await row.getByRole("button", { name: "Options" }).click();
-  return page.locator(`[data-options='${layer}']`);
+  // 95 the layout opens as W16's page of its own
+  await page.locator(`[data-options='${layer}'] [data-layer-details]`).click();
+  await page.locator("#details .layout-pane").waitFor();
+  return page.locator("#details");
 }
 
 // 79: the layout is drawn filled from a sample point, and Another fills it from the next.
@@ -61,6 +64,6 @@ test("a layer with no sample point shows the phone's note", async ({ page, reque
 // 79: a phone that sends no sample points gives the editor no preview.
 test("a phone that sends no samples gets no preview", async ({ page }) => {
   const panel = await openLayout(page);
-  await expect(panel.locator(".layout-block").first()).toBeVisible();
+  await expect(panel.locator(".layout-pane .layout-item").first()).toBeVisible();
   await expect(panel.getByRole("group", { name: "Preview" })).toHaveCount(0);
 });

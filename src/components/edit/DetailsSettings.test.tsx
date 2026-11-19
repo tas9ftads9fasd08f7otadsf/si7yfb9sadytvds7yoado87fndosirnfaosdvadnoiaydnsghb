@@ -59,6 +59,9 @@ const show = (shown = layout()) => {
   render(<DetailsLayoutPanel layout={shown} scoped={(query) => ({ layer: "L", ...query })} />);
 };
 
+// 95 a part's settings show once its card in the layout is picked
+const pick = (part: string) => fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${part}`) }));
+
 describe("Details settings", () => {
   beforeEach(resetViewer);
   afterEach(() => vi.unstubAllGlobals());
@@ -75,6 +78,7 @@ describe("Details settings", () => {
   it("adds the action buttons", () => {
     const query = asked();
     show();
+    pick("Action buttons");
     expect(screen.queryByRole("checkbox", { name: "Copy" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Add action buttons" }));
     expect(query()).toMatchObject({ details: "addActions" });
@@ -84,6 +88,7 @@ describe("Details settings", () => {
   it("switches a built-in on", () => {
     const query = asked();
     show(layout(row));
+    pick("Action buttons");
     expect(screen.queryByRole("button", { name: "Move up Copy" })).toBeNull();
     fireEvent.click(screen.getByRole("checkbox", { name: "Copy" }));
     expect(query()).toMatchObject({ details: "action", name: "copy", on: "1" });
@@ -93,6 +98,7 @@ describe("Details settings", () => {
   it("moves a custom button up", () => {
     const query = asked();
     show(layout(row));
+    pick("Action buttons");
     expect((screen.getByRole("button", { name: "Move down Timetable" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Move up Timetable" }));
     expect(query()).toMatchObject({ details: "moveAction", item: "b1", to: "0" });
@@ -102,6 +108,7 @@ describe("Details settings", () => {
   it("edits a custom button", () => {
     const query = asked();
     show(layout(row));
+    pick("Action buttons");
     fireEvent.change(screen.getByRole("combobox", { name: "When tapped" }), { target: { value: "email" } });
     expect(query()).toMatchObject({ details: "button", button: "b1", action: "email", label: "Timetable",
       template: "https://t.test/{id}", look: "tinted", hides: "0" });
@@ -111,6 +118,7 @@ describe("Details settings", () => {
   it("moves a custom button below the rows", () => {
     const query = asked();
     show(layout(row));
+    pick("Action buttons");
     fireEvent.change(screen.getByRole("combobox", { name: "Place" }), { target: { value: "belowRows" } });
     expect(query()).toMatchObject({ details: "buttonPlace", button: "b1" });
   });
@@ -119,6 +127,7 @@ describe("Details settings", () => {
   it("highlights the first action button", () => {
     const query = asked();
     show(layout(row));
+    pick("Action buttons");
     fireEvent.click(screen.getByRole("checkbox", { name: "Highlight the first one" }));
     expect(query()).toMatchObject({ details: "actionsLook", labels: "iconAndLabel", highlight: "1" });
   });
@@ -127,6 +136,7 @@ describe("Details settings", () => {
   it("sets a text block's icon", () => {
     const query = asked();
     show();
+    pick("Text");
     fireEvent.click(screen.getByRole("checkbox", { name: "A note icon before the text" }));
     expect(query()).toMatchObject({ details: "blockSettings", section: "0", block: "2", was: "t1", icon: "1" });
   });
@@ -135,6 +145,7 @@ describe("Details settings", () => {
   it("sets a rows block's look", () => {
     const query = asked();
     show();
+    pick("Info rows");
     fireEvent.change(screen.getByRole("combobox", { name: "Name and value" }), { target: { value: "sideBySide" } });
     expect(query()).toMatchObject({ details: "blockSettings", block: "1", was: "r1", look: "sideBySide" });
   });
@@ -143,6 +154,7 @@ describe("Details settings", () => {
   it("adds a row to a rows block", () => {
     const query = asked();
     show();
+    pick("Info rows");
     fireEvent.change(screen.getByRole("textbox", { name: "Add a row Name" }), { target: { value: "Line" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Add a row Value" }), { target: { value: "{line}" } });
     fireEvent.click(screen.getByRole("button", { name: "Add a row" }));
@@ -153,6 +165,7 @@ describe("Details settings", () => {
   it("removes a row by its place", () => {
     const query = asked();
     show();
+    pick("Info rows");
     fireEvent.click(screen.getByRole("button", { name: "Remove Speed" }));
     expect(query()).toMatchObject({ details: "removeRow", was: "r1", row: "0" });
   });
@@ -161,6 +174,7 @@ describe("Details settings", () => {
   it("sets a connection card's key", () => {
     const query = asked();
     show();
+    pick("Connection card");
     const station = screen.getByRole("textbox", { name: "Station" });
     fireEvent.change(station, { target: { value: "{stop}" } });
     expect(query()).toMatchObject({ details: "blockSettings", was: "c1", station: "{stop}" });
@@ -170,6 +184,7 @@ describe("Details settings", () => {
   it("sets a row's icon", () => {
     const query = asked();
     show();
+    pick("Info rows");
     fireEvent.click(screen.getByRole("button", { name: "Icon 1" }));
     fireEvent.click(screen.getByRole("button", { name: "bus.fill" }));
     expect(query()).toMatchObject({ details: "editRow", was: "r1", row: "0", title: "Speed", value: "{speed}",
@@ -180,6 +195,7 @@ describe("Details settings", () => {
   // 80: the mark a row wears is shown first even when no group lists it, and marked as worn.
   it("shows the worn icon first and pressed", () => {
     show();
+    pick("Info rows");
     fireEvent.click(screen.getByRole("button", { name: "Icon 1" }));
     const marks = screen.getAllByRole("button").filter((each) => each.hasAttribute("data-symbol"));
     expect(marks.map((each) => each.getAttribute("data-symbol"))).toEqual(["gauge", "tram.fill", "bus.fill", "leaf.fill"]);
@@ -192,6 +208,7 @@ describe("Details settings", () => {
     const ask = vi.fn((input: RequestInfo | URL) => new Promise<Response>(() => void input));
     vi.stubGlobal("fetch", ask);
     show();
+    pick("Info rows");
     fireEvent.click(screen.getByRole("button", { name: "Icon 1" }));
     fireEvent.click(screen.getByRole("button", { name: "gauge" }));
     expect(ask).not.toHaveBeenCalled();
@@ -201,6 +218,7 @@ describe("Details settings", () => {
   it("adds a row with a picked icon", () => {
     const query = asked();
     show();
+    pick("Info rows");
     fireEvent.change(screen.getByRole("textbox", { name: "Add a row Name" }), { target: { value: "Line" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Add a row Value" }), { target: { value: "{line}" } });
     fireEvent.click(screen.getByRole("button", { name: "Icon" }));
@@ -213,6 +231,7 @@ describe("Details settings", () => {
   it("adds a row without an icon when none is picked", () => {
     const query = asked();
     show();
+    pick("Info rows");
     fireEvent.change(screen.getByRole("textbox", { name: "Add a row Name" }), { target: { value: "Line" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Add a row Value" }), { target: { value: "{line}" } });
     fireEvent.click(screen.getByRole("button", { name: "Add a row" }));
@@ -224,6 +243,7 @@ describe("Details settings", () => {
     const old = layout();
     delete old.symbolGroups;
     show(old);
+    pick("Info rows");
     expect(screen.queryByRole("button", { name: "Icon 1" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Icon" })).toBeNull();
   });
@@ -232,6 +252,7 @@ describe("Details settings", () => {
   it("edits a row's name without sending its icon", () => {
     const query = asked();
     show();
+    pick("Info rows");
     fireEvent.change(screen.getByRole("textbox", { name: "Name 1" }), { target: { value: "Pace" } });
     expect(query()).toMatchObject({ details: "editRow", title: "Pace" });
     expect(query()).not.toHaveProperty("symbol");

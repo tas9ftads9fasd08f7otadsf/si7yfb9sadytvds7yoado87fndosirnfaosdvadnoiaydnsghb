@@ -48,6 +48,9 @@ const show = (shown = layout(), languages = "de,sk") => {
   render(<DetailsLayoutPanel layout={shown} scoped={(query) => ({ layer: "L", ...query })} />);
 };
 
+// 95 a part's settings show once its card is picked
+const pick = (name: string) => fireEvent.click([...document.querySelectorAll<HTMLElement>(".part-card")]
+  .find((card) => card.textContent?.startsWith(name))!);
 const part = (label: string) => within(document.querySelector<HTMLElement>(`[data-translations="${label}"]`)!);
 
 describe("Details titles in other languages", () => {
@@ -124,6 +127,7 @@ describe("Details titles in other languages", () => {
   it("sets a text block heading's translation", () => {
     const query = asked();
     show();
+    pick("Text");
     fireEvent.change(part("Text 1.1").getByRole("textbox", { name: "Text 1.1 · Slovak" }), { target: { value: "Miesto" } });
     expect(query()).toMatchObject({ details: "translation", target: "text", section: "0", block: "0", was: "t1",
       language: "sk", text: "Miesto" });
@@ -133,6 +137,7 @@ describe("Details titles in other languages", () => {
   it("sets an action button label's translation by its id", () => {
     const query = asked();
     show();
+    pick("Action buttons");
     fireEvent.change(part("Timetable").getByRole("textbox", { name: "Timetable · Slovak" }),
       { target: { value: "Cestovný poriadok 2" } });
     const sent = query();
@@ -144,6 +149,7 @@ describe("Details titles in other languages", () => {
   it("sets a button block label's translation by its place", () => {
     const query = asked();
     show();
+    pick("Button");
     const tickets = part("Tickets");
     fireEvent.change(tickets.getByRole("combobox", { name: "Add a language · Tickets" }), { target: { value: "de" } });
     fireEvent.change(tickets.getByRole("textbox", { name: "Tickets · German" }), { target: { value: "Karten" } });
@@ -172,6 +178,7 @@ describe("Details titles in other languages", () => {
     show(layout(), "de");
     const header = part("Header");
     expect(header.queryByRole("combobox")).toBeNull();
+    pick("Text");
     fireEvent.click(part("Text 1.1").getByRole("button", { name: "Remove · Text 1.1 · Slovak" }));
     expect(query()).toMatchObject({ target: "text", language: "sk", text: "" });
   });

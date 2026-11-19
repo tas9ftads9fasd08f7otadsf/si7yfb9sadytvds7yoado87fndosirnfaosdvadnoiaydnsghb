@@ -42,6 +42,8 @@ describe("DetailsLayoutPanel", () => {
   it("moves the last block of a section into the next one", () => {
     const query = asked();
     show();
+    // 95 a block's moves are in its settings, once its card is picked
+    fireEvent.click(screen.getByRole("button", { name: /^Text/ }));
     fireEvent.click(screen.getByRole("button", { name: "Move down Text" }));
     const sent = query();
     expect(sent.get("details")).toBe("move");
@@ -68,9 +70,12 @@ describe("DetailsLayoutPanel", () => {
   it("adds a text block at the foot of the section", () => {
     const query = asked();
     show();
+    // 95 the section's dashed Add content opens the picker under it
+    fireEvent.click(screen.getAllByRole("button", { name: "Add content" })[0]!);
     const [first] = screen.getAllByRole("combobox", { name: "Add content" });
     fireEvent.change(first!, { target: { value: "text" } });
-    const button = screen.getByRole("button", { name: "Add content" }) as HTMLButtonElement;
+    const button = screen.getAllByRole("button", { name: "Add content" })
+      .find((each) => !each.classList.contains("add-content-toggle")) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     // The new block's value offers the layer's keys, which makes it a combobox.
     fireEvent.change(screen.getByRole("combobox", { name: "Value" }), { target: { value: "{speed}" } });
@@ -83,19 +88,36 @@ describe("DetailsLayoutPanel", () => {
   // 29: a full layout offers only the app's parts, which do not count.
   it("offers only the app's parts once the layout is full", () => {
     show(layout(10));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add content" })[0]!);
     const [first] = screen.getAllByRole("combobox", { name: "Add content" });
     const offered = Array.from((first as HTMLSelectElement).options).map((option) => option.value);
     expect(offered).toEqual(["", "app:contact"]);
     expect(screen.getByText("This layout holds 10 content blocks")).toBeTruthy();
   });
 
-  // 79: the preview opens the panel, above the header, when the phone sends sample points.
-  it("puts the preview of a sample point above the layout", () => {
+  // 79: the preview of a sample point; 95 in W16's third pane, beside the layout and its settings.
+  it("puts the preview of a sample point in its own pane", () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
     show({ ...layout(), samples: [{ caption: "Hut · Feature 1 of 1", properties: { note: "Open" } }] });
     const preview = screen.getByRole("group", { name: "Preview" });
     expect(preview.textContent).toContain("Hut · Feature 1 of 1");
-    expect(preview.compareDocumentPosition(screen.getAllByRole("button", { name: "Move down Info rows" })[0]!)
-      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(preview.closest(".preview-pane")).toBeTruthy();
+  });
+
+  // 95 with no point to fill it, the sheet says so in the phone's words
+  it("says so when the layer has no point to preview", () => {
+    show({ ...layout(), sampleNote: "No point yet" });
+    expect(screen.getByText("No point yet").closest(".preview-pane")).toBeTruthy();
+  });
+
+  // 95 a picked card is pressed, and its settings take the middle pane
+  it("shows the picked block's settings beside the layout", () => {
+    show();
+    const text = screen.getByRole("button", { name: /^Text/ });
+    expect(text.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(text);
+    expect(text.getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector(".settings-pane")?.textContent).toContain("Text");
+    expect(screen.getByRole("combobox", { name: "Text" })).toBeTruthy();
   });
 });

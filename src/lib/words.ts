@@ -1,7 +1,7 @@
 /** English, until the phone's own words arrive or if they never do. */
 export const ENGLISH = {
   maps: "Maps", styles: "Styles", style: "Style", layers: "Layers", layersIn: "Layers in {style}",
-  layersOn: "{on} of {all} on", livePreview: "Live preview", newMap: "New map", importMap: "Import",
+  layersOn: "{on} of {all} on", livePreview: "Live preview", details: "Details", settings: "Settings", newMap: "New map", importMap: "Import",
   nothing: "No map here can be shared.", away: "Not serving", app: "Riki Maps", allMaps: "All maps",
   sort: "Sort", nameAZ: "Name A–Z", nameZA: "Name Z–A", newFolder: "New folder", folder: "Folder",
   outOfFolder: "Out of the folder", into: "Into", folderSymbols: "",
