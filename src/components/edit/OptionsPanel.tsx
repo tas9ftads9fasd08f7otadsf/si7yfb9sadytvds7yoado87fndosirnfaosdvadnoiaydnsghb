@@ -1,8 +1,8 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import type { OptionSection } from "@/lib/types";
-import { setDrawn, useViewer } from "@/store/viewer";
+import { type CSSProperties, useEffect, useState } from "react";
+import type { OptionSection, RoadSigns } from "@/lib/types";
+import { iconURL, loadRoadSigns, setDrawn, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { DetailsLayoutPanel } from "./DetailsLayoutPanel";
 import { Switch } from "../ui/Switch";
@@ -75,6 +75,40 @@ function Values({ section, scoped }: { section: OptionSection; scoped: Scoped })
   );
 }
 
+/** 69 The signs' key: one country at a time, found by its name, its signs as the phone draws them. */
+function SignKey({ section }: { section: OptionSection }) {
+  const [country, setCountry] = useState<string | undefined>();
+  const [query, setQuery] = useState("");
+  const [key, setKey] = useState<RoadSigns | null>(null);
+  useEffect(() => {
+    let current = true;
+    void loadRoadSigns({ country, q: query }).then((read) => { if (current && read) setKey(read); });
+    return () => { current = false; };
+  }, [country, query]);
+  return (
+    <div className="sign-key" data-country={key?.country ?? ""}>
+      <div className="field">
+        <input type="search" value={query} placeholder={section.label} aria-label={section.label}
+          onChange={(event) => setQuery(event.target.value)} />
+      </div>
+      <div className="sign-countries" role="group" aria-label={section.title}>
+        {(key?.countries ?? []).map((option) => (
+          <button key={option.id} type="button" className="chip" aria-pressed={option.id === key?.country}
+            data-code={option.id} onClick={() => setCountry(option.id)}>{option.title}</button>
+        ))}
+      </div>
+      <ul className="sign-grid" aria-label={key?.countryName}>
+        {(key?.signs ?? []).map((sign) => (
+          <li key={sign.id} data-sign={sign.id}>
+            <img src={iconURL(sign.id)} alt="" width={24} height={24} loading="lazy" />
+            <span>{sign.title}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }) {
   const key = section.key ?? "";
   if (section.kind === "kinds") {
@@ -117,6 +151,7 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
     return <Slider section={section} send={(value) => setDrawn(scoped({ [key]: value }))} />;
   }
   if (section.kind === "values") return <Values section={section} scoped={scoped} />;
+  if (section.kind === "signKey") return <SignKey section={section} />;
   if (section.kind === "details") return section.layout ? <DetailsLayoutPanel layout={section.layout} scoped={scoped} /> : null;
   if (section.kind === "text") {
     return (

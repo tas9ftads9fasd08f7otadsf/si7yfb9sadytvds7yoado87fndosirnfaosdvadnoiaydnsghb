@@ -124,6 +124,11 @@ export const backend: Backend = {
   setPicture: (mapID, kind, picture) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`, "POST", picture),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),
+  roadSigns(mapID, ask) {
+    const query = new URLSearchParams(Object.entries(ask).filter(([, value]) => value) as [string, string][]);
+    return editing(`${ROOT}/maps/${mapID}/road-signs?${query}`, "GET");
+  },
+  iconURL: (name) => `/web/icons/${encodeURIComponent(name)}`,
   packages: (mapID) => editing(`${ROOT}/maps/${mapID}/packages`, "GET"),
   servers: () => editing(`${ROOT}/servers`, "GET"),
   addServer: (kind, address, name) => editing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`),

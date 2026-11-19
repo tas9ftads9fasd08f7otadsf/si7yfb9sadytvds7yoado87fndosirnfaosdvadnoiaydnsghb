@@ -1,6 +1,6 @@
 import type { Edit, Shelving } from "@/lib/edit";
 import type { APIRead, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
-  LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
+  LayerOptions, MapSwitches, RoadSigns, RoadSignsAsk, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
@@ -70,6 +70,10 @@ export interface Backend {
   setPicture(mapID: string, kind: "icon" | "preview", picture: ArrayBuffer): Promise<Answer<Portable>>;
 
   layerOptions(mapID: string): Promise<Answer<LayerOptions>>;
+  /** 69 The traffic signs' key for one country. */
+  roadSigns(mapID: string, ask: RoadSignsAsk): Promise<Answer<RoadSigns>>;
+  /** 69 Where a picture the phone draws, a sign among them, is fetched from. */
+  iconURL(name: string): string;
   packages(mapID: string): Promise<Answer<Packages>>;
   servers(): Promise<Answer<ServerList>>;
   addServer(kind: string, address: string, name: string): Promise<Answer<ServerList>>;
