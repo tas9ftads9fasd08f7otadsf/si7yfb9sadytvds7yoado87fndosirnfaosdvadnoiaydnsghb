@@ -266,6 +266,12 @@ label.action { cursor: pointer; }
 .layout-row input { flex: 1; }
 .add-row { gap: 6px; }
 .add-row input { flex: 1; }
+.translations { padding: 0 14px 6px; }
+.translations summary { cursor: pointer; color: var(--sub); font-size: 13px; }
+.translations .block-fields { padding: 6px 0 2px; }
+.translation { align-items: center; gap: 6px; }
+.translation small { min-width: 64px; color: var(--sub); }
+.translation input { flex: 1; }
 .layout-header, .layout-actions { border-top: 1px solid var(--line); padding: 4px 0; }
 .field.pictured { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .field.pictured .shown { width: 44px; height: 44px; border-radius: 10px; background: center / cover; }

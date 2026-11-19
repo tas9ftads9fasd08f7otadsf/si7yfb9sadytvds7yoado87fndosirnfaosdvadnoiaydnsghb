@@ -191,9 +191,12 @@ export interface OptionSection {
   keys?: string[];
 }
 
+/** 81: a title in other languages by `.lproj` code; the phone leaves the field out when it has none. */
+export type Translated = Record<string, string>;
+
 /** 29: a layer's Details layout as the phone lists it, each block named by its handle. */
 export interface DetailsLayout {
-  sections: { title?: string | null; name: string; blocks: LayoutBlock[] }[];
+  sections: { title?: string | null; titleTranslations?: Translated; name: string; blocks: LayoutBlock[] }[];
   used: number;
   limit: number;
   /** The app's parts not placed yet, which go in one place each. */
@@ -202,7 +205,7 @@ export interface DetailsLayout {
   offers: OptionChoice[];
   words: Record<string, string>;
   /** 55: the header, the action buttons (none until added) and the choices they offer. */
-  header?: { title?: string | null; symbol?: string | null; layerSymbol: string };
+  header?: { title?: string | null; symbol?: string | null; layerSymbol: string; titleTranslations?: Translated };
   actions?: LayoutActions | null;
   symbols?: string[];
   choices?: Record<string, OptionChoice[]>;
@@ -225,6 +228,7 @@ export interface LayoutButton {
   subject?: string | null;
   body?: string | null;
   hides: boolean;
+  labelTranslations?: Translated;
 }
 
 /** 55: a block's own settings, only those of its kind. */
@@ -247,6 +251,7 @@ export interface LayoutBlock {
   part?: string;
   value?: string;
   heading?: string;
+  headingTranslations?: Translated;
   style?: string;
   counts: boolean;
   settings?: BlockSettings | null;
