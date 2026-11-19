@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { PAGE_SEGMENTS } from "../src/lib/segments.ts";
+import { readRealMap, realStyle, serveReal } from "./real-map.mjs";
 
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -21,6 +22,10 @@ const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; ch
   ".css": "text/css; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".json": "application/json" };
 // One transparent pixel: a symbol the page lays on as a mask.
 const PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+
+// 93 With REAL_MAP=1 the Riki Maps map comes first, over the regions scripts/real-region.mjs downloaded.
+const REAL_ROOT = path.join(HERE, "real");
+const realMaps = () => process.env.REAL_MAP ? [readRealMap(path.join(HERE, "fixtures", "riki-maps.mapson"))] : [];
 
 function freshMaps() {
   const layer = (id, name, kind, symbol) => ({ id, name, kind, symbol, isEnabled: true });
@@ -43,7 +48,7 @@ function freshMaps() {
 }
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
-  maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
+  maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
   tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
@@ -167,7 +172,7 @@ function freshRegions() {
 
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
-    maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
+    maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
     tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
@@ -1296,6 +1301,7 @@ async function answer(request, response) {
   if (route === "/favicon.ico") return send(response, 204, "");
   if (route.startsWith("/web/symbols/")) return send(response, 200, PIXEL, "image/png");
   if (route.startsWith("/riki/v1/relay/mock/")) return send(response, 200, PIXEL, "image/png");
+  if (serveReal(route, request, response, REAL_ROOT)) return;
   if (route === "/web/edit-check") {
     if (method !== "POST") return send(response, 405, "");
     if (!opensEditing(request)) return send(response, 403, "This browser may not change maps");
@@ -1731,6 +1737,10 @@ async function answer(request, response) {
     return edit(each, url.searchParams, response);
   }
   if (parts.length === 4) return json(response, portable(each));
+  if (parts[4] === "style" && each.real) {
+    const hidden = new Set((url.searchParams.get("hide") || "").split(",").filter(Boolean));
+    return json(response, realStyle(each, hidden, url.searchParams.get("theme"), `http://${request.headers.host}`, REAL_ROOT));
+  }
   if (parts[4] === "style") return json(response, style(each, url.searchParams));
   if (parts[4] === "live" && parts.length === 6) return live(each, parts[5], url.searchParams, response);
   return send(response, 404, "");

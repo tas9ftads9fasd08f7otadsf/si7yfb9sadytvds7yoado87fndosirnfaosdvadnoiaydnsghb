@@ -22,7 +22,9 @@
     "build:web": "RIKI_TARGET=web next build",
     "pack:web": "node scripts/pack-web.mjs",
     "test:php": "cd server && vendor/bin/phpunit",
-    "test:e2e:web": "RIKI_TARGET=web playwright test"
+    "test:e2e:web": "RIKI_TARGET=web playwright test",
+    "phone:real": "REAL_MAP=1 node e2e/mock-phone.mjs",
+    "real-region": "node scripts/real-region.mjs"
   },
   "dependencies": {
     "@bjorn3/browser_wasi_shim": "0.4.2",
