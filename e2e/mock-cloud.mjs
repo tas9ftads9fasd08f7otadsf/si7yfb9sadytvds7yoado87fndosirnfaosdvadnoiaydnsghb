@@ -150,3 +150,23 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
     tag: (recordName) => find(recordName).record.recordChangeTag
   };
 }
+
+/** Notes what the page asks of riki_apply; `asks()` answers those requests as the core received them. */
+export async function recordCoreAsks(page) {
+  await page.addInitScript(() => {
+    window.__coreAsks = [];
+    const instantiate = WebAssembly.instantiate.bind(WebAssembly);
+    WebAssembly.instantiate = async (...given) => {
+      const made = await instantiate(...given);
+      const instance = made.instance ?? made;
+      const apply = instance.exports.riki_apply;
+      const exports = { ...instance.exports, riki_apply: (pointer, length) => {
+        const bytes = new Uint8Array(instance.exports.memory.buffer, pointer, length);
+        window.__coreAsks.push(JSON.parse(new TextDecoder().decode(bytes)));
+        return apply(pointer, length);
+      } };
+      return made.instance ? { ...made, instance: { exports } } : { exports };
+    };
+  });
+  return () => page.evaluate(() => window.__coreAsks);
+}
