@@ -1,0 +1,22 @@
+{
+ "language": "en",
+ "words": {
+  "cancel": "Cancel",
+  "changeRefused": "The map changed elsewhere. Open it again and repeat the change.",
+  "changedAway": "{map} was changed on another device",
+  "changedBy": "{map} was changed by {author}",
+  "done": "Done",
+  "edit": "Edit map",
+  "layers": "Layers",
+  "maps": "Maps",
+  "name": "Name",
+  "noSuchMap": "No such map",
+  "note": "Note",
+  "nothingToUndo": "Nothing to undo",
+  "save": "Save",
+  "signInText": "Sign in with your Apple Account to see the maps in your iCloud.",
+  "signInTitle": "Sign in to iCloud",
+  "signsInApple": "The site signs in with an Apple Account",
+  "yourName": "Your name"
+ }
+}

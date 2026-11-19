@@ -1,6 +1,7 @@
 name: Core
 
-# riki-core.wasm, built from the rikimaps commit package.json pins (rikiCore.ref): scripts/build-core.mjs. Release calls
+# riki-core.wasm, and the site's words, made from the rikimaps commit package.json pins (rikiCore.ref):
+# scripts/build-core.mjs and scripts/build-words.mjs. Release calls
 # this before it packs the site; a pull request runs it when the pin or the build changes.
 on:
   pull_request:
@@ -80,4 +81,34 @@ jobs:
         with:
           name: riki-core
           path: dist/riki-core
+          if-no-files-found: ignore
+
+      # The site's words, from the same checkout: the key list and the .lproj tables.
+      - name: Make the site's words
+        if: steps.pin.outputs.ref != ''
+        env:
+          RIKIMAPS_DIR: ${{ github.workspace }}/rikimaps
+        run: npm run build:words
+
+      # The generator the port replaced, at the commit its output is checked against (rikimaps' contract, §2).
+      - name: Check out rikimaps where tools/site-words.py last made the words
+        if: steps.pin.outputs.ref != ''
+        uses: actions/checkout@v5
+        with:
+          repository: skifahrer/rikimaps
+          ref: 5a7200c4fb
+          token: ${{ secrets.RIKIMAPS_READ_TOKEN }}
+          path: rikimaps-words-check
+          persist-credentials: false
+      - name: Reproduce the generator's words
+        if: steps.pin.outputs.ref != ''
+        env:
+          RIKIMAPS_DIR: ${{ github.workspace }}/rikimaps
+          RIKIMAPS_WORDS_CHECK_DIR: ${{ github.workspace }}/rikimaps-words-check
+        run: npx vitest run scripts/build-words.test.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: riki-words
+          path: dist/words
           if-no-files-found: ignore

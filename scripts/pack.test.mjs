@@ -106,3 +106,38 @@ describe("the site's core", async () => {
     await expect(pinnedCore({ ref: "0123456789abcdef" }, await folder(Buffer.from("x"), "0".repeat(64)))).rejects.toThrow("its .sha256 says");
   });
 });
+
+// 91 the site's words are the made files, or English alone while none are pinned
+describe("the site's words", async () => {
+  const { mkdtemp, writeFile } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const path = await import("node:path");
+  const { pinnedWords } = await import("./pack-web.mjs");
+  const made = async (languages) => {
+    const dir = await mkdtemp(path.join(tmpdir(), "words-"));
+    for (const lang of languages) await writeFile(path.join(dir, `${lang}.json`), JSON.stringify({ language: lang, words: { maps: lang } }));
+    await writeFile(path.join(dir, "languages.json"), JSON.stringify(languages));
+    return dir;
+  };
+
+  it("is English alone, from the page's own sentences, while no commit is pinned", async () => {
+    const answer = await pinnedWords({ ref: null }, await made([]));
+    expect(Object.keys(answer.files).sort()).toEqual(["words/en.json", "words/languages.json"]);
+    expect(JSON.parse(answer.files["words/en.json"])).toMatchObject({ language: "en", words: { maps: "Maps" } });
+    expect(JSON.parse(answer.files["words/languages.json"])).toEqual(["en"]);
+    expect(answer.englishOnly).toBe(true);
+  });
+
+  it("is the made files, English, the list and a language that is not English", async () => {
+    const answer = await pinnedWords({ ref: "0123456789abcdef" }, await made(["en", "cs"]));
+    expect(Object.keys(answer.files).sort()).toEqual(["words/cs.json", "words/en.json", "words/languages.json"]);
+    expect(JSON.parse(answer.files["words/cs.json"]).language).toBe("cs");
+    expect(answer.englishOnly).toBeUndefined();
+  });
+
+  it("fails when a pinned set was not made, unless the pack is for the specs", async () => {
+    const empty = await made([]);
+    await expect(pinnedWords({ ref: "0123456789abcdef" }, empty)).rejects.toThrow("npm run build:words");
+    expect((await pinnedWords({ ref: "0123456789abcdef" }, empty, { optional: true })).englishOnly).toBe(true);
+  });
+});
