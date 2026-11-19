@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ArrangeAction } from "@/lib/edit";
 import type { MapSwitches, Portable, PortableStyle } from "@/lib/types";
 import { listed } from "@/lib/words";
-import { change, moveStyle, pickStyle, setStylePicture, useViewer } from "@/store/viewer";
+import { change, moveStyle, offers, pickStyle, setStylePicture, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
 import { Swatch } from "./Styling";
@@ -39,23 +39,27 @@ function StyleOptions({ style }: { style: PortableStyle }) {
             onPick={() => change({ kind: "styleTint", style: style.id, tint: hex })} />
         ))}
       </div>
-      <div className="field"><label>{words.picture}</label></div>
-      <div className="field pictured">
-        {style.iconPicture ? <span className="shown" data-picture="style"
-          style={{ backgroundImage: `url("data:image/jpeg;base64,${style.iconPicture}")` }} /> : null}
-        <label className="action">{words.choosePicture}
-          <input type="file" accept="image/*" hidden aria-label={`${words.choosePicture} · ${style.name}`}
-            data-style-picture={style.id} onChange={(event) => {
-              const picked = event.target.files?.[0];
-              event.target.value = "";
-              if (picked) void setStylePicture(style.id, picked);
-            }} />
-        </label>
-        {style.iconPicture ? (
-          <button type="button" className="action" aria-label={`${words.removePicture} · ${style.name}`}
-            onClick={() => void setStylePicture(style.id)}>{words.removePicture}</button>
-        ) : null}
-      </div>
+      {offers("pictures") ? (
+        <>
+          <div className="field"><label>{words.picture}</label></div>
+          <div className="field pictured">
+            {style.iconPicture ? <span className="shown" data-picture="style"
+              style={{ backgroundImage: `url("data:image/jpeg;base64,${style.iconPicture}")` }} /> : null}
+            <label className="action">{words.choosePicture}
+              <input type="file" accept="image/*" hidden aria-label={`${words.choosePicture} · ${style.name}`}
+                data-style-picture={style.id} onChange={(event) => {
+                  const picked = event.target.files?.[0];
+                  event.target.value = "";
+                  if (picked) void setStylePicture(style.id, picked);
+                }} />
+            </label>
+            {style.iconPicture ? (
+              <button type="button" className="action" aria-label={`${words.removePicture} · ${style.name}`}
+                onClick={() => void setStylePicture(style.id)}>{words.removePicture}</button>
+            ) : null}
+          </div>
+        </>
+      ) : null}
       <div className="field">
         <label>{words.note}</label>
         <CommitField type="text" value={style.notes ?? ""} aria-label={`${words.note} ${style.name}`}

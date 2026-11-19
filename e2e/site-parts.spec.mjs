@@ -1,0 +1,46 @@
+import { test, expect } from "@playwright/test";
+import { mockCloud } from "./mock-cloud.mjs";
+
+// 82 the site leaves out what it does not do yet, and never says "Not connected" for it
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sawOffline = false;
+    new MutationObserver(() => {
+      if (document.querySelector("#offline")) window.sawOffline = true;
+    }).observe(document, { childList: true, subtree: true });
+  });
+});
+
+const stayedConnected = async (page) => {
+  await expect(page.locator("#device #deviceDot")).toHaveAttribute("aria-label", "Connected");
+  expect(await page.evaluate(() => window.sawOffline)).toBe(false);
+};
+
+test("the Maps screen offers no New map, Import, sorting or Servers, and stays connected", async ({ page }) => {
+  await mockCloud(page, { signedIn: true });
+  await page.goto("./");
+  await page.locator("#current .hero").waitFor();
+  await page.locator("#railMaps").click();
+  await expect(page.locator("#others")).toContainText("Doprava");
+  await expect(page.locator("#newMap")).toHaveCount(0);
+  await expect(page.locator("#sortAZ")).toHaveCount(0);
+  await expect(page.locator("#railServers")).toHaveCount(0);
+  await expect(page.locator("#serverCards")).toHaveCount(0);
+  await stayedConnected(page);
+});
+
+test("Edit map offers what the site does and leaves out the rest, staying connected", async ({ page }) => {
+  await mockCloud(page, { signedIn: true });
+  await page.goto("./");
+  await page.locator("#current .hero").waitFor();
+  await page.locator("#editButton").click();
+  await expect(page.locator("#editTitle")).toHaveText("Edit map");
+  await expect(page.getByRole("textbox", { name: "Name" }).first()).toBeVisible();
+  for (const id of ["#addLayer", "#exportMap", "#duplicateMap", "#coverageBox", "#iconPictureFile", "#takePreview"]) {
+    await expect(page.locator(id)).toHaveCount(0);
+  }
+  // Long enough for the beat that used to answer "Connected again".
+  await page.waitForTimeout(1500);
+  await expect(page.locator("#notice")).not.toHaveClass(/shown/);
+  await stayedConnected(page);
+});

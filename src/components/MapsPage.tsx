@@ -4,7 +4,7 @@ import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { checkKey, importMap, makeMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
+import { checkKey, importMap, makeMap, offers, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
 import { DeleteMap } from "./edit/DeleteMap";
 import { MapMark, MapShelf, useLayerCount } from "./MapShelf";
 import { MarkTile } from "./ui/MarkTile";
@@ -121,7 +121,7 @@ function NewMap() {
   const [isNaming, setNaming] = useState(false);
   const [name, setName] = useState("");
   const file = useRef<HTMLInputElement>(null);
-  if (!canEdit) return null;
+  if (!canEdit || !offers("newMap")) return null;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!name.trim() || !(await makeMap(name))) return;

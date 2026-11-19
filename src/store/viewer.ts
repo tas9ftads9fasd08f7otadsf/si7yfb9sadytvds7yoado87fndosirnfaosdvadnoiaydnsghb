@@ -3,7 +3,7 @@ import type { Speeds } from "@/lib/traffic";
 import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
 import { DIRECT_KEY } from "@/lib/page";
-import type { Answer, ChangedElsewhere, Saved } from "@/backend/types";
+import { NotOnSite, type Answer, type ChangedElsewhere, type Feature, type Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
@@ -127,6 +127,9 @@ export function notice(text: string | null) {
   set({ notice: text });
   if (text) busy.notice = setTimeout(() => notice(null), 4000);
 }
+
+/** 82 Whether the page's target answers a part of the page; a screen offers only what it does. */
+export const offers = (feature: Feature) => backend.offers(feature);
 
 /** The phone could not be reached: the page says so until a beat is answered again. */
 export const away = () => setConnected(false);
@@ -515,8 +518,10 @@ export async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = fal
   let answer: Answer<T>;
   try {
     answer = await asking();
-  } catch {
-    if (!quiet) away();
+  } catch (error) {
+    if (error instanceof NotOnSite) {
+      if (!quiet) notice(get().words.notOnSite);
+    } else if (!quiet) away();
     return null;
   }
   if (!answer.ok && answer.status === 401) {
@@ -804,7 +809,7 @@ export async function addPackages(overlays: string[]) {
 }
 
 export async function loadServers() {
-  if (busy.servers) return;
+  if (busy.servers || !offers("servers")) return;
   busy.servers = true;
   const answer = await editing(() => backend.servers());
   busy.servers = false;
@@ -928,7 +933,7 @@ export async function addServiceLayers() {
 
 export async function loadCoverage() {
   const { mapID, coveragePlaces } = get();
-  if (!mapID || busy.coverage === mapID) return;
+  if (!mapID || busy.coverage === mapID || !offers("coverage")) return;
   busy.coverage = mapID;
   const [summary, places] = await Promise.all([
     editing(() => backend.coverage(mapID)),
