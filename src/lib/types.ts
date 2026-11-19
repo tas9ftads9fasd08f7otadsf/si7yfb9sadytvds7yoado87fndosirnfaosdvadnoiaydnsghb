@@ -176,6 +176,8 @@ export interface OptionSection {
   range?: number[];
   ends?: string[];
   layout?: DetailsLayout;
+  /** 70: the keys a `text` section's template may name. */
+  keys?: string[];
 }
 
 /** 29: a layer's Details layout as the phone lists it, each block named by its handle. */
