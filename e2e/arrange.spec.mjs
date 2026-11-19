@@ -1,16 +1,18 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset, showAllMaps } from "./phone.mjs";
+import { editTab, openViewer, phone, reset, showAllMaps } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 const SUMMER = "6F1E2A10-0000-4000-8000-0000000000B1";
 const WINTER = "6F1E2A10-0000-4000-8000-0000000000B2";
 
-async function openEdit(page) {
+// 94 the styles are Styling's tab, Availability and Duplicate General's, the grouping Layers'.
+async function openEdit(page, tab = "General") {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
-  await page.locator("#availability").waitFor();
+  await editTab(page, tab);
+  if (tab === "General") await page.locator("#availability").waitFor();
 }
 
 const sent = (page) => page.waitForRequest((request) => request.url().includes("/edit?"))
@@ -21,7 +23,7 @@ const styleNames = (page) => page.locator("#styleList [data-style] input[type=te
 
 // 50: as the styles' page drags them; the ends move no further.
 test("a style moves down and back up", async ({ page }) => {
-  await openEdit(page);
+  await openEdit(page, "Styling");
   await expect(page.getByRole("button", { name: "Move up Summer" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Move down Winter" })).toBeDisabled();
 
@@ -38,7 +40,7 @@ test("a style moves down and back up", async ({ page }) => {
 
 // 50: offered while a layer has no style of its own, as the styles' page offers it.
 test("a style for each layer is added, and the row goes", async ({ page }) => {
-  await openEdit(page);
+  await openEdit(page, "Styling");
   const asked = sent(page);
   await page.locator("#stylePerLayer").click();
   expect((await asked).arrange).toBe("stylePerLayer");
@@ -48,7 +50,7 @@ test("a style for each layer is added, and the row goes", async ({ page }) => {
 
 // 50: Unite and Reset show only while they would change the order.
 test("the styles' layer order is united, then reset to the default", async ({ page }) => {
-  await openEdit(page);
+  await openEdit(page, "Styling");
   await expect(page.locator("#layerOrderDiffers")).toContainText("Layer order differs between styles");
   let asked = sent(page);
   await page.locator("#uniteLayerOrder").click();
@@ -63,7 +65,7 @@ test("the styles' layer order is united, then reset to the default", async ({ pa
 
 // 50: the styles a built-in map shipped with come back where they were taken out.
 test("the styles the map shipped with are restored", async ({ page }) => {
-  await openEdit(page);
+  await openEdit(page, "Styling");
   const asked = sent(page);
   await page.locator("#restoreStyles").click();
   expect((await asked).arrange).toBe("restoreStyles");
@@ -78,7 +80,7 @@ test("an edited style is reset to published", async ({ page }) => {
   await page.locator("#others .row", { hasText: "Bratislava" }).click();
   await expect(page.locator("#current .hero b")).toHaveText("Bratislava");
   await page.locator("#editButton").click();
-  await page.locator("#availability").waitFor();
+  await editTab(page, "Styling");
   const asked = sent(page);
   await page.locator("#resetStyle").click();
   expect((await asked).resetStyle).toBe("6F1E2A10-0000-4000-8000-0000000000D1");
@@ -87,7 +89,7 @@ test("an edited style is reset to published", async ({ page }) => {
 
 // 50: mixed sources reorder once grouped, so the page asks first, as Edit map does.
 test("grouping by source asks first and is sent once agreed", async ({ page }) => {
-  await openEdit(page);
+  await openEdit(page, "Layers");
   const grouping = page.locator("#groupBySource").getByRole("switch", { name: "Group by source" });
   await expect(grouping).not.toBeChecked();
 

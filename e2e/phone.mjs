@@ -17,3 +17,9 @@ export async function showAllMaps(page) {
   await page.locator("#railMaps").click();
   await page.locator("#others").waitFor();
 }
+
+// 94 Edit map opens on Layers; the rest of it is under its other tabs.
+export async function editTab(page, name) {
+  await page.locator("#editTabs").getByRole("tab", { name, exact: true }).click();
+  await page.locator(`#editTabs [aria-selected=true]`, { hasText: name }).waitFor();
+}

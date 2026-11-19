@@ -88,6 +88,7 @@ export function LayerSwitcher() {
   const canEdit = useViewer((state) => state.editToken != null);
   const styleCount = useViewer((state) => state.portable?.styles?.length ?? 0);
   const name = useStyleName();
+  const editing = useViewer((state) => state.editing);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!isOpen) return;
@@ -97,7 +98,7 @@ export function LayerSwitcher() {
     document.addEventListener("pointerdown", away);
     return () => document.removeEventListener("pointerdown", away);
   }, [isOpen]);
-  if (!shown || (!canEdit && styleCount < 2)) return null;
+  if (!shown || editing || (!canEdit && styleCount < 2)) return null;
   return (
     <div id="switcher" ref={box}>
       <button type="button" id="switcherButton" className="glass" aria-haspopup="dialog" aria-expanded={isOpen}
@@ -126,5 +127,18 @@ function SwitcherPanel({ shared, canEdit }: { shared: SharedMap; canEdit: boolea
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** 94 Over the map while Edit map is open: what it draws is the edit, as it is saved. */
+export function LivePreview() {
+  const words = useViewer((state) => state.words);
+  const editing = useViewer((state) => state.editing);
+  const name = useStyleName();
+  if (!editing) return null;
+  return (
+    <span id="livePreview" className="glass" role="status">
+      <Sym name="eye" />{name ? `${words.livePreview} · ${name}` : words.livePreview}
+    </span>
   );
 }

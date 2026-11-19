@@ -502,3 +502,72 @@ body.gated #gate { display: flex; }
 #switcherPanel .buttons { display: flex; gap: 8px; }
 #switcherPanel .buttons button { flex: 1; height: 42px; border-radius: 21px; border: 0; font-size: 14px; font-weight: 600; }
 #switcherPanel .buttons .tinted { background: var(--cs-water); color: var(--c-water); }
+
+/* 94 Edit map: a wide page of five tabs, the map beside it as the live preview. */
+body.editing { --side: 520px; }
+#livePreview { position: absolute; top: calc(var(--top) + 20px); left: calc(var(--rail) + var(--side) + 20px); z-index: 4;
+  height: 32px; padding: 0 12px; border-radius: 16px; display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600; pointer-events: none; }
+body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
+#editPage { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.edit-head { padding: 22px 28px 0; display: flex; flex-direction: column; gap: 16px; flex: none; }
+.edit-head .bar { padding: 0; gap: 14px; }
+.edit-head .bar > .mark { width: 48px; height: 48px; border-radius: 14px; }
+.edit-head .bar > .mark .sym { font-size: 24px; }
+.edit-head h1 { display: flex; flex-direction: column; gap: 1px; }
+.edit-head h1 small { order: 1; font-size: 13px; font-weight: 400; color: var(--sub); }
+.edit-head h1 span { font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15; }
+.edit-head .done, .head-done { height: 40px; padding: 0 18px; border-radius: 20px; border: 0; background: var(--c-water);
+  color: var(--on-accent); font-size: 15px; font-weight: 700; flex: none; }
+#editTabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 20px;
+  background: var(--card); box-shadow: var(--lift); }
+#editTabs button { height: 36px; border-radius: 16px; border: 0; background: none; color: var(--text); font-size: 14px;
+  font-weight: 600; }
+#editTabs button:hover { background: var(--hover); }
+#editTabs button[aria-selected=true] { background: var(--cs-water); color: var(--c-water); }
+#editBody { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 28px 28px; }
+
+/* 94 The design's grouped lists and fields, wherever a page still uses the older pieces. */
+#editBody h2.title, #serverBody h2.title, #others h2.title { margin: 18px 4px 8px; font-size: 15px; font-weight: 600;
+  text-transform: none; letter-spacing: 0; color: var(--sub); }
+#editBody .title-row .text-button { margin: 18px 4px 8px; font-size: 14px; font-weight: 600; color: var(--link); }
+#editBody .card, #serverBody .card { margin: 0; border: 0; border-radius: 20px; background: var(--card);
+  box-shadow: var(--lift); padding: 4px 0; }
+#editBody .list, #serverBody .list { margin: 0; background: var(--card); border-radius: 20px; box-shadow: var(--lift);
+  overflow: hidden; padding: 4px 0; }
+#editBody .row, #serverBody .row { min-height: 52px; padding: 6px 14px; border-radius: 0; gap: 12px; }
+#editBody .row .mark.small, #serverBody .row .mark.small { width: 34px; height: 34px; border-radius: 10px; }
+#editBody .row .mark.small .sym { font-size: 17px; }
+#editBody .row .words { font-size: 15px; }
+#editBody .field label { font-size: 13px; font-weight: 600; color: var(--sub); margin-bottom: 4px; }
+#editBody .field input[type=text], #editBody .field textarea { font-size: 15px; }
+#editBody .action, #serverBody .action { margin: 12px 0 0; width: 100%; height: 48px; border: 0; border-radius: 24px;
+  background: var(--cs-water); color: var(--c-water); font-size: 15px; font-weight: 600; }
+#editBody .action.danger, #serverBody .action.danger { background: var(--cs-red); color: var(--danger); }
+#editBody .action:disabled { background: var(--inset); color: var(--tertiary); }
+#editBody .foot-note { margin: 8px 4px; font-size: 13px; }
+#editBody .chips { padding: 8px 0 0; }
+#editBody .chips button { height: 28px; padding: 0 11px; border: 0; box-shadow: inset 0 0 0 1px var(--sep);
+  font-size: 13px; font-weight: 600; }
+#editBody .chips button.picked { background: var(--cs-water); color: var(--c-water); box-shadow: none; }
+#editBody .swatches button { width: 36px; height: 36px; border-radius: 12px; border: 0; }
+#editBody .icon-button { width: 32px; height: 32px; border-radius: 16px; align-items: center; justify-content: center;
+  padding: 0; }
+#editBody .icon-button:not(.danger) { background: var(--inset); color: var(--text); }
+#editBody select { height: 36px; border-radius: 12px; border: 0; background: var(--inset); padding: 0 10px; }
+/* 94 A layer's row: the handle, the layer and its switch, its settings folding out under it. */
+#editBody .layer-item + .layer-item, #editBody .layer-item + .row { box-shadow: inset 0 1px 0 var(--sep); }
+#editBody .layer-item .row { padding: 6px 14px 6px 8px; }
+#editBody .layer-item .handle { width: 22px; display: flex; justify-content: center; color: var(--sub); cursor: grab; }
+#editBody .layer-item .handle .sym { font-size: 15px; }
+#editBody .layer-item .words input[type=text] { font-weight: 600; padding: 0 6px; }
+#editBody .layer-settings { display: flex; flex-direction: column; gap: 10px; padding: 4px 14px 14px 72px; }
+#editBody .layer-settings .opacity { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--sub); }
+#editBody .layer-settings .opacity input { flex: 1; accent-color: var(--accent); }
+#editBody .layer-settings .buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+#editBody .layer-settings .pill { height: 32px; padding: 0 12px 0 10px; font-size: 13px; }
+#editBody .layer-settings .pill:disabled { background: var(--inset); color: var(--tertiary); }
+#editBody .layer-settings .pill.danger { background: var(--cs-red); color: var(--danger); }
+#editBody .layer-settings .card.options { margin: 0; box-shadow: none; background: var(--inset); }
+#editBody .list > .row + .row, #editBody .card > .row + .row, #serverBody .list > .row + .row {
+  box-shadow: inset 0 1px 0 var(--sep); }

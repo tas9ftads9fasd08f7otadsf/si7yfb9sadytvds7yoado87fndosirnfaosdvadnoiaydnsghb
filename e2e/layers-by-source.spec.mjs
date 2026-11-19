@@ -16,7 +16,7 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
 async function openGrouped(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  await page.locator("#availability").waitFor();
+  await page.locator("#groupBySource").waitFor();
   page.once("dialog", (dialog) => void dialog.accept());
   await page.locator("#groupBySource").getByRole("switch").click();
   await expect(page.locator(PACKAGES)).toBeVisible();
@@ -44,11 +44,14 @@ test("a layer is switched and moved within its group", async ({ page }) => {
   await openGrouped(page);
   await page.locator(PACKAGES).click();
   const rail = page.locator(`[data-layer="${RAIL}"]`);
+  // 94 a row's moves are in its settings
+  await rail.getByRole("button", { name: "Options" }).click();
+  await page.locator(`[data-layer="${SKI}"]`).getByRole("button", { name: "Options" }).click();
   await expect(rail.getByRole("button", { name: "Move up" })).toBeDisabled();
   await expect(page.locator(`[data-layer="${SKI}"]`).getByRole("button", { name: "Move down" })).toBeDisabled();
 
   let asked = sent(page);
-  await rail.getByRole("switch").click();
+  await rail.getByRole("switch", { name: "Railways", exact: true }).click();
   expect((await asked).layer).toBe(RAIL);
   await expect(page.locator(PACKAGES)).toContainText("1 of 2 on");
 

@@ -7,7 +7,7 @@ import { NotOnSite, type Answer, type ChangedElsewhere, type Feature, type Saved
 import type { Edit, Shelving } from "@/lib/edit";
 import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
-import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
+import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
@@ -461,6 +461,12 @@ export function showSide(sideShown: boolean) {
 }
 
 export const toggleSide = () => showSide(!get().sideShown);
+
+/** 94 One of Edit map's tabs, in the address as the design's routes have it. */
+export function showEditTab(tab: EditTab) {
+  const { mapID } = get();
+  if (mapID) go({ screen: "edit", map: mapID, tab });
+}
 
 export const showSwitcher = (switcherOpen: boolean) => set({ switcherOpen });
 export const toggleMapCard = () => set({ mapCardOpen: !get().mapCardOpen });

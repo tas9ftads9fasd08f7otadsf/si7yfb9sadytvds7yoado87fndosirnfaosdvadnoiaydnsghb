@@ -9,7 +9,7 @@ test.beforeEach(async ({ request }) => {
 async function openOptions(page, layerName) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const row = page.locator("#editBody .row", { has: page.locator(`input[value='${layerName}']`) });
+  const row = page.locator("#editBody .layer-item", { has: page.locator(`input[value='${layerName}']`) });
   await row.getByRole("button", { name: "Options" }).click();
   return row;
 }
@@ -17,11 +17,19 @@ async function openOptions(page, layerName) {
 const sent = (page) => page.waitForRequest((request) => request.url().includes("/edit?"))
   .then((request) => Object.fromEntries(new URL(request.url()).searchParams));
 
-// 2960: only a layer with Edit layer panels offers them; plain ones have no button.
+// 2960: only a layer with Edit layer panels shows them; 94 every row opens its own settings.
 test("only the layers with panels offer Options", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  await expect(page.getByRole("button", { name: "Options", exact: true })).toHaveCount(2);
+  await expect(page.locator("#editBody .layer-item")).toHaveCount(4);
+  await expect(page.locator("#editBody .layer-item .settings")).toHaveCount(4);
+  const trails = page.locator("#editBody .layer-item", { has: page.locator("input[value='Trails']") });
+  await trails.getByRole("button", { name: "Options Trails" }).click();
+  await expect(trails.getByRole("button", { name: "Delete layer" })).toBeVisible();
+  await expect(trails.locator("[data-options]")).toHaveCount(0);
+  const rail = page.locator("#editBody .layer-item", { has: page.locator("input[value='Railways']") });
+  await rail.getByRole("button", { name: "Options Railways" }).click();
+  await expect(rail.locator("[data-options]")).toBeVisible();
 });
 
 // 2960: a ski kind switched off is written into every style, and the switch reads it back.

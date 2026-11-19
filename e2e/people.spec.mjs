@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset, showAllMaps } from "./phone.mjs";
+import { openViewer, phone, reset, showAllMaps, editTab } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -14,6 +14,7 @@ async function openEdit(page, other = null) {
   }
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
+  await editTab(page, "Sharing");
   await page.locator("#people").waitFor();
 }
 

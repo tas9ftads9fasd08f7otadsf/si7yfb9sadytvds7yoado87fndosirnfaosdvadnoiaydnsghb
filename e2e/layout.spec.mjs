@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset, showAllMaps } from "./phone.mjs";
+import { openViewer, reset, showAllMaps, editTab } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -144,6 +144,7 @@ test("a page opened from the editing address edits the map in the side bar", asy
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
+  await editTab(page, "General");
   const name = page.getByRole("textbox", { name: "Name", exact: true });
   await name.fill("Tatras in summer");
   await name.press("Enter");
@@ -202,4 +203,29 @@ test("the zoom is written on the map's top left and follows it", async ({ page }
   // 2917: both follow an eased zoom; one read of the status line mid-way caught a stale value.
   await expect.poll(async () => (await badge.textContent()) === (await page.locator("#zoom").textContent()))
     .toBe(true);
+});
+
+// 94 Edit map is W5–W9's page of tabs beside the live map; a tab is an address that a reload keeps.
+test("Edit map's tabs are addresses, beside the map as its live preview", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await page.locator("#editButton").click();
+  await expect(page.getByRole("tab", { name: "Layers" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#livePreview")).toHaveText("Live preview · Summer");
+  await expect(page.locator("#switcherButton")).toHaveCount(0);
+  const side = await page.locator("#side").boundingBox();
+  expect(side.width).toBeGreaterThanOrEqual(500);
+  await expect.poll(async () => (await page.locator("#map").boundingBox()).x)
+    .toBeGreaterThanOrEqual(side.x + side.width - 1);
+
+  await page.getByRole("tab", { name: "Sharing" }).click();
+  await expect(page).toHaveURL(/\/maps\/[^/]+\/edit\/sharing#/);
+  await expect(page.locator("#people")).toBeVisible();
+  await expect(page.locator("#editBody [data-layer]")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Sharing" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#people")).toBeVisible();
+
+  await page.locator("#editDone").click();
+  await expect(page.locator("#livePreview")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/maps\/[^/]+#/);
 });
