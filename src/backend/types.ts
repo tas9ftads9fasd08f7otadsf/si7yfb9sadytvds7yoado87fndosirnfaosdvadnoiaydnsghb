@@ -1,6 +1,8 @@
 import type { Edit, Shelving } from "@/lib/edit";
-import type { APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, FoundPlace, IdentifyListing,
-  LayerOptions, MapSwitches, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer } from "@/lib/types";
+import type { PeopleAsk } from "@/lib/people";
+import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing,
+  LayerOptions, LayerTest, MapSwitches, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
+  SharePeople } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
@@ -63,23 +65,36 @@ export interface Backend {
   exportMap(id: string): Promise<Answer<Saved>>;
   /** 50 A copy of the map, shared at once as a new map is. */
   duplicateMap(id: string): Promise<Answer<{ id: string }>>;
+  /** 62 The map deleted as the Maps sheet deletes it, its name typed to confirm. */
+  deleteMap(id: string, name: string): Promise<Answer<null>>;
   /** 52 The Maps list's order, sort and folders; the phone answers with the list again. */
   shelve(shelving: Shelving): Promise<Answer<Device>>;
   /** 50 What Availability and the Styles card's rows read, which the portable copy leaves out. */
   switches(mapID: string): Promise<Answer<MapSwitches>>;
-  setPicture(mapID: string, kind: "icon" | "preview", picture: ArrayBuffer): Promise<Answer<Portable>>;
+  /** 65 `styleIcon` is the picture of the style named, as its style page sets one. */
+  setPicture(mapID: string, kind: "icon" | "preview" | "styleIcon", picture: ArrayBuffer, style?: string): Promise<Answer<Portable>>;
+  /** 59 Who the map is shared with, read off the phone's share. */
+  people(mapID: string): Promise<Answer<SharePeople>>;
+  /** 59 One change to the share, carried out by the phone; it answers with the people again. */
+  askPeople(mapID: string, ask: PeopleAsk): Promise<Answer<SharePeople>>;
 
   layerOptions(mapID: string): Promise<Answer<LayerOptions>>;
+  /** 60 The layer's address asked as the phone's Test asks it. */
+  testLayer(mapID: string, layerID: string): Promise<Answer<LayerTest>>;
   packages(mapID: string): Promise<Answer<Packages>>;
   servers(): Promise<Answer<ServerList>>;
   addServer(kind: string, address: string, name: string): Promise<Answer<ServerList>>;
   importServers(file: Blob): Promise<Answer<ServerList>>;
   exportServers(id?: string): Promise<Answer<Saved>>;
   addServerLayers(mapID: string, picks: ServerPick[]): Promise<Answer<Portable>>;
-  readAPI(address: string, reading?: APIReading | null): Promise<Answer<APIRead>>;
-  addAPI(mapID: string, address: string, reading: APIReading, name: string): Promise<Answer<Portable>>;
+  readAPI(address: string, reading?: APIReading | null, ask?: APIAsk): Promise<Answer<APIRead>>;
+  addAPI(mapID: string, address: string, reading: APIReading, name: string, ask?: APIAsk): Promise<Answer<Portable>>;
   addFile(mapID: string, file: File, system?: string): Promise<Answer<Portable>>;
   readDXF(mapID: string, file: File): Promise<Answer<DXFReading>>;
+  /** 67 Edit map's Esri services and each one's page. */
+  esriServices(mapID: string): Promise<Answer<EsriListing>>;
+  /** 67 A layer ticked or taken off, the service read again or forgotten; the map comes back. */
+  changeEsriService(mapID: string, serviceID: string, asked: EsriChange): Promise<Answer<Portable>>;
   readAddress(address: string): Promise<Answer<{ kind: string }>>;
   addTiles(mapID: string, template: string): Promise<Answer<Portable>>;
   addServiceLayers(mapID: string, address: string, picks: string[]): Promise<Answer<Portable>>;
@@ -89,6 +104,12 @@ export interface Backend {
   startPlaces(kind: string, query: string): Promise<Answer<FoundPlace[]>>;
   regions(mapID: string): Promise<RegionList>;
   downloadRegion(mapID: string, regionID: string): Promise<Answer<null>>;
+  /** 57 Download tiles for the whole map, as the phone counts it for this area. */
+  offlinePlan(mapID: string, ask: OfflineAsk): Promise<Answer<OfflinePlan>>;
+  /** 57 Queues the ticked layers, or cancels them; the plan comes back as it now stands. */
+  offlineDownload(mapID: string, ask: OfflineAsk, action: "start" | "cancel"): Promise<Answer<OfflinePlan>>;
+  /** 57 Deletes what a layer has stored, as Edit map's Delete does. */
+  discardStored(mapID: string, layerID: string): Promise<Answer<null>>;
 
   live(mapID: string, layerID: string, box: string): Promise<unknown>;
   identify(mapID: string, ask: AddressAsk): Promise<IdentifyListing>;

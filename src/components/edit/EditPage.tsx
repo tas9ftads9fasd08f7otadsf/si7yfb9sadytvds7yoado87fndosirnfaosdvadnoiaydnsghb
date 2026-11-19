@@ -7,10 +7,14 @@ import { Sym } from "../ui/Sym";
 import { AddLayer } from "./AddLayer";
 import { Availability } from "./Availability";
 import { CoverageCard } from "./CoverageCard";
+import { DeleteMap } from "./DeleteMap";
+import { EsriServices } from "./EsriServices";
 import { Languages } from "./Languages";
 import { Layers } from "./Layers";
 import { MinimumVersion } from "./MinimumVersion";
+import { Offline } from "./Offline";
 import { OpensAt } from "./OpensAt";
+import { People } from "./People";
 import { Styles } from "./Styles";
 import { Styling } from "./Styling";
 
@@ -57,15 +61,19 @@ function EditFields() {
       <MinimumVersion />
       <Styles portable={portable} />
       <Layers portable={portable} />
+      <EsriServices />
       {adding ? <AddLayer /> : null}
       {portable.styles?.length ? <div className="foot-note">{words.layerCap}</div> : null}
       {switches ? <Availability switches={switches} /> : null}
+      <People />
+      <Offline />
       <button type="button" className="action" id="exportMap" onClick={exportMap}>
         <Sym name="square.and.arrow.up" />{words.export}
       </button>
       <button type="button" className="action" id="duplicateMap" onClick={() => void duplicateMap()}>
         <Sym name="plus.square.on.square" />{words.duplicateMap}
       </button>
+      <DeleteMap place="edit" />
     </>
   );
 }

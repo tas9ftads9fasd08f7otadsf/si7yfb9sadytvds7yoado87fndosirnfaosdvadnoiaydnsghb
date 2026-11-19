@@ -44,3 +44,50 @@ test("a layer's offline download is switched off", async ({ page }) => {
   expect(await asked).toMatchObject({ layer, offlineDownload: "0" });
   await expect(panel.getByRole("switch", { name: "Allow offline download" })).not.toBeChecked();
 });
+
+// 60: a key typed here goes to the phone, which says only that one is set; Test then answers.
+test("a layer's header is set on the phone and its address tested", async ({ page }) => {
+  const panel = await openConnection(page);
+  await expect(panel.getByRole("button", { name: "Test" })).toBeVisible();
+  await panel.getByRole("button", { name: "Test" }).click();
+  await expect(panel.getByText("Server replied 401")).toBeVisible();
+
+  let asked = sent(page);
+  await panel.getByLabel("Header", { exact: true }).fill("X-API-Key");
+  await panel.getByLabel("Value", { exact: true }).fill("sk_live_secret");
+  await panel.getByRole("button", { name: "Add header" }).click();
+  expect(await asked).toMatchObject({ layer, header: "X-API-Key", headerValue: "sk_live_secret" });
+  await expect(panel.locator("[data-header='X-API-Key']")).toContainText("Saved on this device");
+  await expect(panel).not.toContainText("sk_live_secret");
+  await expect(panel.getByLabel("X-API-Key Value")).toHaveValue("");
+
+  await panel.getByRole("button", { name: "Test" }).click();
+  await expect(panel.getByText("Tiles reachable · 256 px")).toBeVisible();
+
+  asked = sent(page);
+  await panel.getByRole("button", { name: "Remove X-API-Key" }).click();
+  expect(await asked).toMatchObject({ layer, removeHeader: "X-API-Key" });
+  await expect(panel.locator("[data-header]")).toHaveCount(0);
+});
+
+// 60: the address and the proxy are sent once typing is over; a broken address is refused aloud.
+test("a layer's address and proxy are written, a broken address refused", async ({ page }) => {
+  const panel = await openConnection(page);
+  const address = panel.getByLabel("URL");
+  let asked = sent(page);
+  await address.fill("https://other.example/{z}/{x}/{y}.jpg");
+  await address.blur();
+  expect(await asked).toMatchObject({ layer, address: "https://other.example/{z}/{x}/{y}.jpg" });
+
+  asked = sent(page);
+  await address.fill("https://other.example/{z}/{x}.jpg");
+  await address.blur();
+  expect(await asked).toMatchObject({ address: "https://other.example/{z}/{x}.jpg" });
+  await expect(page.getByText("Missing {x}, {y}")).toBeVisible();
+
+  asked = sent(page);
+  const proxy = panel.getByLabel("Proxy");
+  await proxy.fill("https://proxy.example/proxy.ashx");
+  await proxy.blur();
+  expect(await asked).toMatchObject({ layer, proxy: "https://proxy.example/proxy.ashx" });
+});
