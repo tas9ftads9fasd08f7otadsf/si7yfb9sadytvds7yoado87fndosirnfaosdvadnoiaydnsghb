@@ -5,7 +5,7 @@ import { type MapControl, setMapControl } from "@/map/control";
 import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
   from "@/store/viewer";
 import { NavRail } from "./NavRail";
-import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar } from "./Overlays";
+import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar, UndrawnNote } from "./Overlays";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
 import { Boot, LoadingBar } from "./Overlays";
@@ -79,6 +79,7 @@ export function AppShell() {
       <div id="map" ref={mapBox} />
       <LoadingBar />
       <RegionOffer />
+      <UndrawnNote />
       <StatusBar />
       <Notice />
       <Offline />
