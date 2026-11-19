@@ -64,6 +64,20 @@
         "fields": { "map": "own-tatras", "payload": "{\"author\":\"Riki Tester\",\"origin\":\"web\",\"lines\":[\"Trails renamed to Ridges\"]}" } }
     },
     "riki_changes": [],
+    "riki_read_address": {
+      "read": { "kind": "tiles", "probe": "https://cors.example/0/0/0.png" }
+    },
+    "riki_add_layer": {
+      "map": {
+        "id": "6F1E2A10-0000-4000-8000-000000000001", "name": "High Tatras", "symbol": "mountain.2",
+        "styles": [{ "id": "B1", "name": "Summer", "arrangement": { "hidden": [] } }], "selectedStyleID": "B1",
+        "stack": [{ "id": "L1", "name": "Trails", "kind": "Vector tiles" }, { "id": "L2", "name": "Tiles", "kind": "Raster tiles" }]
+      },
+      "write": [{ "entity": "SharedMapLayer", "id": "own-tatras-layer-2", "refs": ["map"],
+        "fields": { "name": "Tiles", "map": "own-tatras" } }],
+      "history": { "entity": "SharedMapChange", "id": "change-web-2", "refs": ["map"],
+        "fields": { "map": "own-tatras", "payload": "{\"author\":\"Riki Tester\",\"origin\":\"web\",\"lines\":[\"Tiles added\"]}" } }
+    },
     "riki_style": {
       "version": 8, "sources": {},
       "layers": [{ "id": "ground", "type": "background", "paint": { "background-color": "#ddd" } }]

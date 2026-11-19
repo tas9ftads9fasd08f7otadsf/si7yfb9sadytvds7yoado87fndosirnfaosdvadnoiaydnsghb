@@ -6,7 +6,7 @@ import { storedAuthor, type Author } from "./author";
 import { BASE } from "./base";
 import { Cloud } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
-import { loadCore, type Core } from "./core";
+import { loadCore, type AddressRead, type Adding, type Applied, type Core, type Reply } from "./core";
 import { createReach, hostOf, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
@@ -18,8 +18,11 @@ const notYet = (step: number) => () =>
 const editing = notYet(4);
 const adding = notYet(5);
 
-/** What the site answers so far; the page offers no more. */
-const OFFERED: ReadonlySet<Feature> = new Set<Feature>();
+/** What the site answers so far; the page offers no more. Packages, files, API layers and servers wait. */
+const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer"]);
+
+/** 86 How many rounds of fetching the core may ask of one address. */
+const ROUNDS = 4;
 
 /** How often a change is tried, on freshly read rows after a conflict. */
 const TRIES = 3;
@@ -150,11 +153,13 @@ export function createBackend(parts: Parts): Backend {
     for (const row of plan.remove) known?.rows.delete(row.id);
   };
 
-  const change = async (mapID: string, styleID: string | null, edit: Edit): Promise<Answer<Portable>> => {
+  /** Asks the core for rows to write, and saves them; both a change and an added layer go this way. */
+  const through = async (mapID: string, styleID: string | null,
+    ask: (core: Core, rows: CoreRow[], author: string | null) => Applied): Promise<Answer<Portable>> => {
     const author = parts.author.read() || (await parts.cloud.start())?.name || null;
     const tried: { owner: string; undo: Undoing | null } = { owner: "", undo: null };
     return commit(mapID, (core, read) => {
-      const applied = core.apply({ rows: read, mapID, styleID, edit, author, origin: "web" });
+      const applied = ask(core, read, author);
       if ("refused" in applied) return { said: applied.refused, status: applied.status ?? 400 };
       const rowOf = (id: string) => read.find((row) => row.id === id);
       const gone = (applied.remove ?? []).flatMap((id) => rowOf(id) ?? []);
@@ -177,6 +182,62 @@ export function createBackend(parts: Parts): Backend {
       written(plan, tags, tried.owner);
       undoing = tried.undo;
     });
+  };
+
+  const change = (mapID: string, styleID: string | null, edit: Edit) =>
+    through(mapID, styleID, (core, read, author) => core.apply({ rows: read, mapID, styleID, edit, author, origin: "web" }));
+
+  const reply = async (url: string): Promise<Reply | null> => {
+    if ((await parts.reach.answers(url)) === false) return null;
+    try {
+      const answer = await parts.fetcher(url, { mode: "cors", credentials: "omit" });
+      return { url, status: answer.status, contentType: answer.headers.get("content-type") ?? "", text: await answer.text() };
+    } catch {
+      return { url, status: 0, contentType: "", text: "" };
+    }
+  };
+
+  /** What an address is: the core says which addresses it needs, the browser fetches them if their hosts answer it. */
+  const readOf = async (address: string): Promise<Answer<{ read: Extract<AddressRead, { read: unknown }>["read"]; replies: Reply[] }>> => {
+    const core = await parts.core();
+    const replies: Reply[] = [];
+    for (let round = 0; round < ROUNDS; round += 1) {
+      const said = core.readAddress({ address, replies });
+      if ("refused" in said) return refused(said.refused, said.status ?? 400);
+      if ("read" in said) {
+        if (said.read.probe && (await parts.reach.answers(said.read.probe)) === false) return refused(ENGLISH.addRefusesBrowsers);
+        return { ok: true, value: { read: said.read, replies } };
+      }
+      for (const url of said.fetch.filter((each) => !replies.some((had) => had.url === each))) {
+        const got = await reply(url);
+        if (!got) return refused(ENGLISH.addRefusesBrowsers);
+        replies.push(got);
+      }
+    }
+    return refused(ENGLISH.addUnreadable);
+  };
+
+  /** What the last address read fetched, so adding it asks the host no more than reading did. */
+  let lastRead: { address: string; replies: Reply[] } | null = null;
+
+  const readAddress = async (address: string) => {
+    const got = await readOf(address);
+    if (!got.ok) return got;
+    lastRead = { address, replies: got.value.replies };
+    return { ok: true as const, value: got.value.read };
+  };
+
+  const repliesOf = async (address: string): Promise<Answer<Reply[]>> => {
+    if (lastRead?.address === address) return { ok: true, value: lastRead.replies };
+    const got = await readOf(address);
+    return got.ok ? { ok: true, value: got.value.replies } : got;
+  };
+
+  const addLayer = async (mapID: string, address: string, add: (replies: Reply[]) => Adding): Promise<Answer<Portable>> => {
+    const replies = await repliesOf(address);
+    if (!replies.ok) return replies;
+    return through(mapID, null, (core, read, author) =>
+      core.addLayer({ rows: read, mapID, styleID: null, add: add(replies.value), author, origin: "web" }));
   };
 
   /** The rows put back as they were, if nothing else has touched them since. */
@@ -251,9 +312,13 @@ export function createBackend(parts: Parts): Backend {
     newMap: editing, importMap: editing, exportMap: editing, duplicateMap: editing,
     deleteMap: editing, shelve: editing, switches: editing, people: editing, askPeople: editing, setPicture: editing,
     layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
+    readAddress,
+    addTiles: (mapID, template) => addLayer(mapID, template, (replies) => ({ kind: "tiles", address: template, replies })),
+    addServiceLayers: (mapID, address, picks) =>
+      addLayer(mapID, address, (replies) => ({ kind: "service", address, replies, picks })),
     addServer: adding, importServers: adding, exportServers: adding, addServerLayers: adding, readAPI: adding,
-    addAPI: adding, addFile: adding, readDXF: adding, readAddress: adding, esriServices: adding,
-    changeEsriService: adding, addTiles: adding, addServiceLayers: adding, coverage: adding, coveragePlaces: adding,
+    addAPI: adding, addFile: adding, readDXF: adding, esriServices: adding,
+    changeEsriService: adding, coverage: adding, coveragePlaces: adding,
     startPlaces: adding, downloadRegion: adding, offlinePlan: adding, offlineDownload: adding, discardStored: adding,
     live: adding, identify: adding, details: adding, phoneLocation: adding,
     iconURL: () => "",

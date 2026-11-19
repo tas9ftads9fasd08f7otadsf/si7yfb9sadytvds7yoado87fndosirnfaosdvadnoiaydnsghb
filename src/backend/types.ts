@@ -10,8 +10,9 @@ export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; sa
 /** 82 A call the target does not do yet: the page says so, and the connection is not lost. */
 export class NotOnSite extends Error {}
 
-/** 82 The parts of the page a target may not answer yet; a screen offers only what it does. */
-export type Feature = "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "servers" | "coverage";
+/** 82 The parts of the page a target may not answer yet; a screen offers only what it does. 86 `addLayer` is the panel
+ * with a tile address and a service's layers; its packages, files, API layers and servers are offered apart. */
+export type Feature = "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "coverage";
 
 /** 78 A map whose rows another device changed, and the author its history names, if any. */
 export interface ChangedElsewhere {

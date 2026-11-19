@@ -200,3 +200,26 @@ export async function mockServiceHosts(page, { cors = {} } = {}) {
   });
   return { asked: (host) => seen[host] };
 }
+
+/** The requests the page makes of the named core functions, in order, as the core received them. */
+export async function recordCoreCalls(page, names) {
+  await page.addInitScript((recorded) => {
+    window.__coreCalls = [];
+    const instantiate = WebAssembly.instantiate.bind(WebAssembly);
+    WebAssembly.instantiate = async (...given) => {
+      const made = await instantiate(...given);
+      const instance = made.instance ?? made;
+      const exports = { ...instance.exports };
+      for (const name of recorded) {
+        const call = instance.exports[name];
+        exports[name] = (pointer, length) => {
+          const bytes = new Uint8Array(instance.exports.memory.buffer, pointer, length);
+          window.__coreCalls.push({ call: name, request: JSON.parse(new TextDecoder().decode(bytes)) });
+          return call(pointer, length);
+        };
+      }
+      return made.instance ? { ...made, instance: { exports } } : { exports };
+    };
+  }, names);
+  return () => page.evaluate(() => window.__coreCalls);
+}
