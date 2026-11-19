@@ -365,10 +365,8 @@ label.action { cursor: pointer; }
 .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* 90 Where the pointer is and the zoom, small on the map's bottom left beside its scale. */
-#status { position: absolute; left: calc(var(--rail) + var(--side) + 180px); bottom: 14px; z-index: 2; display: flex;
-  align-items: center; gap: 12px; pointer-events: none; font-size: 11px; color: var(--sub);
-  font-variant-numeric: tabular-nums; transition: left 0.2s; }
-body.side-hidden #status { left: calc(var(--rail) + 180px); }
+#status { position: absolute; right: 84px; bottom: 14px; z-index: 2; display: flex; align-items: center; gap: 12px;
+  pointer-events: none; font-size: 11px; color: var(--sub); font-variant-numeric: tabular-nums; }
 #regionOffer { position: absolute; left: calc(var(--rail) + var(--side)); right: 0; bottom: calc(var(--status) + 28px); z-index: 2;
   display: none; justify-content: center; pointer-events: none; transition: left 0.2s; }
 body.side-hidden #regionOffer { left: var(--rail); }
@@ -475,10 +473,12 @@ body.gated #gate { display: flex; }
 .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { border-radius: 22px; overflow: hidden; }
 .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button { width: 44px; height: 44px; background-color: transparent; }
 .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button + button { border-top: 1px solid var(--sep); }
-.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib { order: -1; }
-.maplibregl-ctrl-bottom-left { left: 20px; bottom: 14px; }
+.maplibregl-ctrl-bottom-left { left: 20px; bottom: 14px; display: flex; align-items: flex-end; gap: 12px; }
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib { margin: 0; padding: 0; background: none; font-size: 11px;
+  color: var(--sub); max-width: 520px; }
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib a { color: inherit; }
 .maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale { margin: 0; background: none; border-color: var(--text);
-  border-width: 0 1.5px 1.5px; color: var(--sub); font-size: 11px; }
+  border-width: 0 1.5px 1.5px; color: var(--sub); font-size: 11px; order: -1; }
 :root[data-theme=dark] .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme=light]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
