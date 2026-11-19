@@ -11,7 +11,7 @@ export const ENGLISH = {
   languages: "", opacity: "Opacity", rename: "Rename", newStyle: "New style", delete: "Delete",
   tilesVia: "Load tiles", viaPhone: "Through the phone", viaSource: "From their source",
   viaSourceNote: "Layers that need the phone's keys still come through it.",
-  moveUp: "Move up", moveDown: "Move down", show: "Show", hide: "Hide", north: "N",
+  another: "Another", sheetPreview: "Preview", moveUp: "Move up", moveDown: "Move down", show: "Show", hide: "Hide", north: "N",
   allLayersOn: "All on", allLayersOff: "All off",
   locate: "Locate, pointing north", layerCap: "A style draws up to 12 layers. Switch one off first.",
   close: "Close", viewing: "Browsers viewing", connected: "Connected", notConnected: "Not connected",
