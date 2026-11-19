@@ -30,7 +30,7 @@ export function createMapView(container: HTMLElement): MapControl {
   let framed = /^#\d/.test(location.hash);
   const map = new maplibregl.Map({
     container, style: { version: 8, sources: {}, layers: [] },
-    center: OPENING.center, zoom: OPENING.zoom, hash: true, validateStyle: false, attributionControl: { compact: true },
+    center: OPENING.center, zoom: OPENING.zoom, hash: true, validateStyle: false, attributionControl: false,
     maxPitch: 85,
     locale: { "TerrainControl.Enable": words["TerrainControl.Enable"],
       "TerrainControl.Disable": words["TerrainControl.Disable"] }
@@ -55,6 +55,8 @@ export function createMapView(container: HTMLElement): MapControl {
   map.addControl(new maplibregl.FullscreenControl(), "bottom-right");
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 140 }), "bottom-left");
+  // 90 The credits beside the scale, in a line as the design writes them.
+  map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-left");
 
   // The zoom on the map, where the app shows it.
   const badge = document.createElement("div");

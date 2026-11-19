@@ -82,6 +82,10 @@ test("the map's buttons sit bottom right and the switcher top right", async ({ p
   expect(phone.y).toBeGreaterThan(zoom.y);
   expect(map.x + map.width - (switcher.x + switcher.width)).toBeLessThan(40);
   expect(switcher.y - map.y).toBeLessThan(40);
+  // 90 the credits are a line beside the scale, bottom left, not a button among the map's
+  await expect(page.locator(".maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib:not(.maplibregl-compact)"))
+    .toHaveCount(1);
+  await expect(page.locator(".maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib")).toHaveCount(0);
 });
 
 // 2916: the switches are an editing browser's.
