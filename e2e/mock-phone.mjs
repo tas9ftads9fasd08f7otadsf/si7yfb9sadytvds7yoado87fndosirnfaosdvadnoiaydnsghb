@@ -44,7 +44,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", droppedSymbols: new Set(), listsRowIcons: true,
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
@@ -168,7 +168,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", droppedSymbols: new Set(), listsRowIcons: true,
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
@@ -575,9 +575,11 @@ function detailsSections(layer) {
   return [{ kind: "details", title: "Details", footnote: "What a tapped point's sheet shows.", layerScoped: true,
     layout: { sections: layer.layout.map((section, index) => ({ ...section, name: section.title || `Section ${index + 1}` })),
       used, limit: 10, parts: [], keys: ["line", "note"], offers: [{ id: "text", title: "Text" }],
+      ...(phone.takesTranslations ? { takesTranslations: true } : {}),
       ...(layer.samples ? { samples: layer.samples, sampleNote: "Tap a point on the map first" } : {}),
       words: { ...LAYOUT_WORDS, used: `${used} of 10 content blocks used` },
-      header: { title: layer.header?.title ?? null, symbol: layer.header?.symbol ?? null, layerSymbol: layer.symbol },
+      header: { title: layer.header?.title ?? null, symbol: layer.header?.symbol ?? null, layerSymbol: layer.symbol,
+        ...(layer.header?.titleTranslations ? { titleTranslations: layer.header.titleTranslations } : {}) },
       actions: layer.actions ? { ...layer.actions, items: [...layer.actions.items,
         ...BUILT_INS.filter(([id]) => !layer.actions.items.some((item) => item.id === id))
           .map(([id, name]) => ({ id, name, note: "", isOn: false }))] } : null,
@@ -635,7 +637,7 @@ function settleLayout(layer, query, held) {
   const op = query.get("details");
   const on = (key) => query.get(key) === "1";
   if (op === "header") {
-    layer.header = { title: query.get("title") || null, symbol: query.get("symbol") || null };
+    layer.header = { ...layer.header, title: query.get("title") || null, symbol: query.get("symbol") || null };
   } else if (op === "addActions") {
     layer.actions ??= { items: BUILT_INS.slice(0, 4).map(([id, name]) => ({ id, name, note: "", isOn: true })),
       labels: "iconAndLabel", highlightsFirst: false };
@@ -713,6 +715,54 @@ function settleLayout(layer, query, held) {
 const CANNOT_TAKE = "This map cannot draw that layer beside what it draws";
 const refusal = (status, text) => [status, text];
 
+// 81: as `PeerWebDetailsTranslation` finds the title a translation belongs to.
+function translated(layer, query, held) {
+  const target = query.get("target");
+  const number = (key) => Number(query.get(key));
+  const moved = refusal(409, "The layout changed on the phone; it is shown again as it is now");
+  const by = (owner, base, key) => ({ base: owner?.[base], held: owner?.[key],
+    store: (kept) => { if (kept) owner[key] = kept; else delete owner[key]; } });
+  if (target === "header") return layer.header ? by(layer.header, "title", "titleTranslations") : "untitled";
+  if (target === "section") {
+    const section = layer.layout[number("section")];
+    return section ? by(section, "title", "titleTranslations") : moved;
+  }
+  if (target === "text" || (target === "button" && !query.has("button"))) {
+    if (held()?.handle !== query.get("was")) return moved;
+    const block = held();
+    if (block.kind !== (target === "text" ? "text" : "button")) return refusal(409, CANNOT_TAKE);
+    return target === "text" ? by(block, "heading", "headingTranslations")
+      : by(block.settings.button, "label", "labelTranslations");
+  }
+  const item = layer.actions?.items.find((one) => one.id === query.get("button") && one.button);
+  return item ? by(item.button, "label", "labelTranslations") : moved;
+}
+
+function translate(layer, query, held) {
+  const language = query.get("language")?.trim();
+  const text = query.get("text");
+  if (!language || text === null || !["header", "section", "text", "button"].includes(query.get("target"))) {
+    return refusal(409, "This change does not fit the map");
+  }
+  const title = translated(layer, query, held);
+  if (Array.isArray(title)) return title;
+  const removes = text.trim() === "";
+  if (title === "untitled") {
+    if (removes) return true;
+    return phone.languages.includes(language) ? refusal(409, CANNOT_TAKE) : refusal(404, NO_LANGUAGE);
+  }
+  if (!phone.languages.includes(language) && !(removes && title.held?.[language] !== undefined)) {
+    return refusal(404, NO_LANGUAGE);
+  }
+  if (!removes && !title.base?.trim()) return refusal(409, CANNOT_TAKE);
+  const kept = { ...title.held };
+  if (removes) delete kept[language]; else kept[language] = text.trim();
+  title.store(Object.keys(kept).length ? kept : undefined);
+  return true;
+}
+
+const NO_LANGUAGE = "The app has no such language";
+
 // 80: the icon is judged before the handle, as the phone judges it.
 function refusedSymbol(held, query) {
   const op = query.get("details");
@@ -729,6 +779,7 @@ function editLayout(layer, query) {
   const op = query.get("details");
   const byHandle = ["remove", "move", "edit", "blockSettings", "addRow", "editRow", "removeRow"].includes(op)
     || (op === "buttonPlace" && query.has("was"));
+  if (op === "translation") return translate(layer, query, held);
   const refused = refusedSymbol(held(), query);
   if (refused) return refused;
   if (byHandle && held()?.handle !== query.get("was")) return false;
@@ -1252,7 +1303,10 @@ async function answer(request, response) {
     phone.tokens.add(token);
     return json(response, { token, expiresIn: 43200 });
   }
-  if (route === "/web/words") return send(response, 200, JSON.stringify(WORDS), TYPES[".json"]);
+  if (route === "/web/words") {
+    const spoken = { ...WORDS, words: { ...WORDS.words, languages: phone.languages.join(",") } };
+    return send(response, 200, JSON.stringify(spoken), TYPES[".json"]);
+  }
   if (route.startsWith(FILES_PREFIX)) {
     const file = await buildFile(decodeURIComponent(route.slice(FILES_PREFIX.length)));
     if (!file) return send(response, 404, "");
@@ -1824,12 +1878,24 @@ function testControl(route, query, response) {
         { handle: "t1", kind: "text", name: "Text", value: "{note}", style: "box", counts: true,
           settings: { icon: false, hides: true } }] }] });
     break;
+  case "/__test/takes-no-translations": phone.takesTranslations = false; break;
+  case "/__test/forget-language": phone.languages = phone.languages.filter((code) => code !== query.get("code")); break;
   case "/__test/forget-symbol": phone.droppedSymbols.add(query.get("symbol")); break;
   case "/__test/lists-no-row-icons": phone.listsRowIcons = false; break;
   case "/__test/moves-layout":
     // 80: the layout changes on the phone, so the page's handles are stale.
     for (const block of phone.maps[0].layers.flatMap((layer) => layer.layout?.flatMap((one) => one.blocks) ?? [])) {
       block.handle += "x";
+    }
+    break;
+  case "/__test/blanks-titles":
+    // 81: every title written on the phone is taken away, the translations kept.
+    for (const layer of phone.maps[0].layers.filter((one) => one.layout)) {
+      if (layer.header) layer.header.title = null;
+      for (const section of layer.layout) {
+        section.title = null;
+        for (const block of section.blocks) delete block.heading;
+      }
     }
     break;
   case "/__test/layer-samples": {

@@ -38,6 +38,14 @@ const EDITS: [Edit, Record<string, string>][] = [
   [{ kind: "groupByOrigin", groups: true }, { groupByOrigin: "1" }],
   [{ kind: "availability", switch: "carPlay", shown: false }, { carPlay: "0" }],
   [{ kind: "availability", switch: "world", shown: true }, { world: "1" }],
+  // 81 a title's translation is the layout change `details=translation`, text always sent
+  [{ kind: "layerDetails", fields: { layer: "L", details: "translation", target: "text", section: "0", block: "1",
+    was: "t1", language: "sk", text: "O mieste" } },
+  { layer: "L", details: "translation", target: "text", section: "0", block: "1", was: "t1", language: "sk",
+    text: "O mieste" }],
+  [{ kind: "layerDetails", fields: { layer: "L", details: "translation", target: "button", button: "b1",
+    language: "de", text: "" } },
+  { layer: "L", details: "translation", target: "button", button: "b1", language: "de", text: "" }],
   // 80 a row's icon goes in the layout change as `symbol=`, kept when none is sent
   [{ kind: "layerDetails", fields: { layer: "L", details: "editRow", section: "0", block: "1", was: "r1", row: "0",
     title: "Speed", value: "{speed}", symbol: "bus.fill" } },
@@ -100,6 +108,15 @@ describe("the phone backend", () => {
     const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/riki/v1/maps/M/edit?name=&styleID=S");
     expect(init.headers).toEqual({ Authorization: "Bearer second" });
+  });
+
+  // 81 a language the app does not speak is refused with its status and words
+  it("keeps the words of a refused translation", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("The app has no such language", { status: 404 })));
+    backend.useToken(() => "t");
+    const fields = { layer: "L", details: "translation", target: "header", language: "xx", text: "Linie" };
+    expect(await backend.change("M", null, { kind: "layerDetails", fields }))
+      .toEqual({ ok: false, status: 404, said: "The app has no such language" });
   });
 
   // 80 an icon the phone does not offer is refused with its status and words

@@ -5,6 +5,7 @@ import type { DetailsLayout, LayoutBlock, LayoutButton } from "@/lib/types";
 import { useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
+import { Translations } from "./DetailsTranslations";
 
 type Send = (query: Record<string, string>) => void;
 type Place = Record<string, string>;
@@ -82,6 +83,9 @@ export function HeaderFields({ layout, send }: { layout: DetailsLayout; send: Se
       <span className="words">{words.header}</span>
       <CommitField value={header.title ?? ""} aria-label={`${words.header} ${words.heading}`}
         placeholder={words.layerIcon} spellCheck={false} onCommit={(title) => set({ title })} />
+      <Translations label={words.header ?? ""} base={header.title} held={header.titleTranslations}
+        takes={layout.takesTranslations}
+        send={(language, text) => send({ details: "translation", target: "header", language, text })} />
       <SymbolChoice label={`${words.header} ${words.icon}`} value={header.symbol} layout={layout}
         none={words.layerIcon ?? ""} onPick={(symbol) => set({ symbol })} />
       <small>{words.headerTitleNote}</small>
@@ -105,6 +109,9 @@ export function ButtonFields({ button, place, layout, send }:
     <div className="block-fields button-fields" data-button={button.id}>
       <CommitField value={button.label} aria-label={words.label} placeholder={words.label}
         onCommit={(label) => label.trim() && set({ label })} />
+      <Translations label={button.label || words.label || ""} base={button.label} held={button.labelTranslations}
+        takes={layout.takesTranslations}
+        send={(language, text) => send({ details: "translation", target: "button", ...place, language, text })} />
       <SymbolChoice label={words.icon ?? ""} value={button.symbol} layout={layout} none="link"
         onPick={(symbol) => set({ symbol })} />
       <Choice label={words.look ?? ""} value={button.look} options={choices.buttonLooks ?? []}
