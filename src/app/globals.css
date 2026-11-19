@@ -255,6 +255,9 @@ label.action { cursor: pointer; }
 .row.value .swatches { padding: 0; }
 .details-layout input, .details-layout textarea, .details-layout select { font: inherit; padding: 5px 8px;
   border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; min-width: 0; }
+.details-preview { margin: 4px 0 8px; }
+.details-preview .feature { padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--fill); }
 .layout-section { border-top: 1px solid var(--line); padding: 4px 0; }
 .layout-section > .row input { flex: 1; }
 .layout-block .row button { border: 0; background: none; color: var(--accent); padding: 4px; }
@@ -272,6 +275,10 @@ label.action { cursor: pointer; }
 .translation { align-items: center; gap: 6px; }
 .translation small { min-width: 64px; color: var(--sub); }
 .translation input { flex: 1; }
+.row-icon { position: relative; }
+.row-icon-groups { position: absolute; z-index: 5; top: 100%; left: 0; width: 280px; max-height: 260px; overflow: auto;
+  padding: 6px 0; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 16px var(--shadow); border-radius: 8px; }
+.row-icon-groups small { padding: 0 14px; color: var(--sub); }
 .layout-header, .layout-actions { border-top: 1px solid var(--line); padding: 4px 0; }
 .field.pictured { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .field.pictured .shown { width: 44px; height: 44px; border-radius: 10px; background: center / cover; }

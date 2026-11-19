@@ -19,19 +19,21 @@ const words = { addContent: "Add content", addSection: "Add section", removeSect
 const button = { id: "b1", label: "Timetable", look: "tinted", action: "link", template: "https://t.test/{id}",
   hides: false };
 
-const layout = (actions: DetailsLayout["actions"] = null): DetailsLayout => ({
+const groups = [{ title: "Transport", symbols: ["tram.fill", "bus.fill"] }, { title: "Nature", symbols: ["leaf.fill"] }];
+
+const layout = (actions: DetailsLayout["actions"] = null, symbolGroups = groups): DetailsLayout => ({
   sections: [{ name: "Section 1", blocks: [
     { handle: "c1", kind: "connectionCard", name: "Connection card", counts: true,
       settings: { card: { delay: "{delay}" }, live: null } },
     { handle: "r1", kind: "rows", name: "Info rows", counts: true,
       settings: { look: "nameAboveValue", icons: true, hidesEmpty: true,
-        rows: [{ index: 0, title: "Speed", value: "{speed}" }] } },
+        rows: [{ index: 0, title: "Speed", value: "{speed}", symbol: "gauge" }] } },
     { handle: "t1", kind: "text", name: "Text", value: "{note}", style: "box", counts: true,
       settings: { icon: false, hides: true } }] }],
   used: 3, limit: 10, parts: [], keys: ["speed"], offers: [], words,
   header: { title: null, symbol: null, layerSymbol: "tram" },
   actions,
-  symbols: ["tram.fill", "star.fill"],
+  symbols: ["tram.fill", "star.fill"], symbolGroups,
   choices: { labels: [{ id: "iconAndLabel", title: "Icon and label" }, { id: "iconOnly", title: "Icon only" }],
     buttonKinds: [{ id: "link", title: "Open link", detail: "Link" }, { id: "email", title: "Email", detail: "Address" }],
     buttonLooks: [{ id: "filled", title: "Filled" }, { id: "tinted", title: "Tinted" }],
@@ -162,5 +164,76 @@ describe("Details settings", () => {
     const station = screen.getByRole("textbox", { name: "Station" });
     fireEvent.change(station, { target: { value: "{stop}" } });
     expect(query()).toMatchObject({ details: "blockSettings", was: "c1", station: "{stop}" });
+  });
+
+  // 80: a row's icon is picked among the phone's groups and sent with its name and value.
+  it("sets a row's icon", () => {
+    const query = asked();
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Icon 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "bus.fill" }));
+    expect(query()).toMatchObject({ details: "editRow", was: "r1", row: "0", title: "Speed", value: "{speed}",
+      symbol: "bus.fill" });
+    expect(screen.queryByRole("group", { name: "Transport" })).toBeNull();
+  });
+
+  // 80: the mark a row wears is shown first even when no group lists it, and marked as worn.
+  it("shows the worn icon first and pressed", () => {
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Icon 1" }));
+    const marks = screen.getAllByRole("button").filter((each) => each.hasAttribute("data-symbol"));
+    expect(marks.map((each) => each.getAttribute("data-symbol"))).toEqual(["gauge", "tram.fill", "bus.fill", "leaf.fill"]);
+    expect(marks[0]?.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("group", { name: "Nature" })).toBeTruthy();
+  });
+
+  // 80: picking the mark already worn changes nothing, so nothing is sent.
+  it("sends nothing for the icon already worn", () => {
+    const ask = vi.fn((input: RequestInfo | URL) => new Promise<Response>(() => void input));
+    vi.stubGlobal("fetch", ask);
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Icon 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "gauge" }));
+    expect(ask).not.toHaveBeenCalled();
+  });
+
+  // 80: a new row takes the icon picked before it is added, else leaves the phone's own.
+  it("adds a row with a picked icon", () => {
+    const query = asked();
+    show();
+    fireEvent.change(screen.getByRole("textbox", { name: "Add a row Name" }), { target: { value: "Line" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Add a row Value" }), { target: { value: "{line}" } });
+    fireEvent.click(screen.getByRole("button", { name: "Icon" }));
+    fireEvent.click(screen.getByRole("button", { name: "leaf.fill" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add a row" }));
+    expect(query()).toMatchObject({ details: "addRow", title: "Line", symbol: "leaf.fill" });
+  });
+
+  // 80
+  it("adds a row without an icon when none is picked", () => {
+    const query = asked();
+    show();
+    fireEvent.change(screen.getByRole("textbox", { name: "Add a row Name" }), { target: { value: "Line" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Add a row Value" }), { target: { value: "{line}" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add a row" }));
+    expect(query()).not.toHaveProperty("symbol");
+  });
+
+  // 80: a phone from before row icons lists no groups, so the page offers no picker.
+  it("offers no row icon from an older phone", () => {
+    const old = layout();
+    delete old.symbolGroups;
+    show(old);
+    expect(screen.queryByRole("button", { name: "Icon 1" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Icon" })).toBeNull();
+  });
+
+  // 80: the row's name and value still go without an icon, which the phone then keeps.
+  it("edits a row's name without sending its icon", () => {
+    const query = asked();
+    show();
+    fireEvent.change(screen.getByRole("textbox", { name: "Name 1" }), { target: { value: "Pace" } });
+    expect(query()).toMatchObject({ details: "editRow", title: "Pace" });
+    expect(query()).not.toHaveProperty("symbol");
   });
 });

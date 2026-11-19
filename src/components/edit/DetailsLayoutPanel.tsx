@@ -5,6 +5,7 @@ import type { DetailsLayout, LayoutBlock } from "@/lib/types";
 import { setLayout, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
+import { DetailsPreview } from "./DetailsPreview";
 import { ActionsFields, BlockSettingsFields, HeaderFields } from "./DetailsSettings";
 import { Translations } from "./DetailsTranslations";
 
@@ -95,6 +96,7 @@ export function DetailsLayoutPanel({ layout, scoped }:
     send({ details: "move", ...at(place, handle), toSection: String(to.section), toPlace: String(to.block) });
   return (
     <div className="details-layout">
+      <DetailsPreview layout={layout} layer={scoped({}).layer ?? ""} />
       <HeaderFields layout={layout} send={send} />
       <ActionsFields layout={layout} send={send} />
       {sections.map((section, index) => (
