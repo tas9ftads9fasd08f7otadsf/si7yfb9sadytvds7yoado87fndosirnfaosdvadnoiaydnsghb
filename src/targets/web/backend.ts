@@ -1,4 +1,4 @@
-import type { Answer, Backend, ChangedElsewhere } from "@/backend/types";
+import { NotOnSite, type Answer, type Backend, type ChangedElsewhere, type Feature } from "@/backend/types";
 import type { Edit } from "@/lib/edit";
 import type { Portable, SessionAnswer } from "@/lib/types";
 import { ENGLISH } from "@/lib/words";
@@ -12,9 +12,12 @@ import type { CoreRow, CoreWrite } from "./records";
 import { changedFields, Conflict, write, type Plan } from "./writes";
 
 const notYet = (step: number) => () =>
-  Promise.reject(new Error(`The site's backend comes with step ${step} of web-icloud.md`));
+  Promise.reject(new NotOnSite(`The site's backend comes with step ${step} of web-icloud.md`));
 const editing = notYet(4);
 const adding = notYet(5);
+
+/** What the site answers so far; the page offers no more. */
+const OFFERED: ReadonlySet<Feature> = new Set<Feature>();
 
 /** How often a change is tried, on freshly read rows after a conflict. */
 const TRIES = 3;
@@ -203,6 +206,7 @@ export function createBackend(parts: Parts): Backend {
 
   return {
     target: "web",
+    offers: (feature) => OFFERED.has(feature),
 
     async words() {
       const answer = await parts.fetcher(`${parts.base}/words/${parts.language()}.json`);

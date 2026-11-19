@@ -4,7 +4,7 @@ import { type FormEvent, useState } from "react";
 import { movedInFolder, movedOrder, type ShelfItem, shelfOf } from "@/lib/shelf";
 import type { SharedMap } from "@/lib/types";
 import { listed } from "@/lib/words";
-import { openMap, shelve, useViewer } from "@/store/viewer";
+import { offers, openMap, shelve, useViewer } from "@/store/viewer";
 import { FolderPeople, FolderShareButton } from "./FolderSharing";
 import { Swatch } from "./edit/Styling";
 import { CommitField } from "./ui/CommitField";
@@ -189,7 +189,7 @@ export function MapShelf({ maps }: { maps: SharedMap[] }) {
     const order = movedInFolder(shelf, folder, place, by);
     if (order) void shelve({ kind: "order", maps: order });
   };
-  if (!canEdit) {
+  if (!canEdit || !offers("shelf")) {
     return <div className="list" id="mapList">{maps.map((each) => <MapRow key={each.id} shared={each} />)}</div>;
   }
   return (

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import type { Device, Portable } from "@/lib/types";
 import { Cloud, type CKContainer, type CKRecord, type CKSave, type CKSaved, type CloudKitJS } from "./cloud";
+import { NotOnSite, type Feature } from "@/backend/types";
 import { CoreMissing, type Applied, type Core, type HistoryEntry } from "./core";
 import { createBackend } from "./backend";
 import type { Keeping } from "./zones";
@@ -344,5 +345,17 @@ describe("WebBackend's notice of a change elsewhere", () => {
     await made.backend.change(TATRAS_ID, null, { kind: "layerName", layer: "L1", name: "Ridges" });
     made.notify();
     await vi.waitFor(() => expect(listener).toHaveBeenCalledWith([]));
+  });
+});
+
+describe("WebBackend's parts not built yet", () => {
+  // 82 the site said "Not connected" for a write it refuses as not done yet
+  it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
+    const { backend } = stack();
+    const parts: Feature[] = ["newMap", "shelf", "exportMap", "duplicateMap", "pictures", "addLayer", "servers", "coverage"];
+    expect(parts.filter((part) => backend.offers(part))).toEqual([]);
+    await expect(backend.newMap("Alps")).rejects.toBeInstanceOf(NotOnSite);
+    await expect(backend.servers()).rejects.toBeInstanceOf(NotOnSite);
+    await expect(backend.addTiles("M", "https://t/{z}/{x}/{y}.pbf")).rejects.toBeInstanceOf(NotOnSite);
   });
 });

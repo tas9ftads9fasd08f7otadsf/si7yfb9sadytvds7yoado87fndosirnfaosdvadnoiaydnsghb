@@ -7,6 +7,12 @@ import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageS
 /** What was asked for, or why not: the status and the words that came with it. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
 
+/** 82 A call the target does not do yet: the page says so, and the connection is not lost. */
+export class NotOnSite extends Error {}
+
+/** 82 The parts of the page a target may not answer yet; a screen offers only what it does. */
+export type Feature = "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "servers" | "coverage";
+
 /** 78 A map whose rows another device changed, and the author its history names, if any. */
 export interface ChangedElsewhere {
   mapID: string;
@@ -54,6 +60,8 @@ export interface AddressAsk {
  */
 export interface Backend {
   readonly target: "phone" | "web";
+  /** 82 Whether this target answers the calls behind a part of the page. */
+  offers(feature: Feature): boolean;
 
   words(): Promise<unknown>;
   session(): Promise<Answer<SessionAnswer>>;
