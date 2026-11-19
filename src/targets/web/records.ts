@@ -10,10 +10,22 @@ export interface CoreRow {
   /** The `recordChangeTag` a write must carry back. */
   tag: string;
   fields: Record<string, unknown>;
+  /** Fields held as references or as `_ckAsset`, so a write sends them back alike. */
+  refs?: string[];
+  assets?: string[];
+}
+
+/** What the core asks to be written; an existing row's tag comes from what was read. */
+export interface CoreWrite {
+  entity: string;
+  id: string;
+  fields: Record<string, unknown>;
+  refs?: string[];
 }
 
 /** The record types the site reads; `CD_LayerSecrets` is encrypted and stays unread. */
-export const READ_TYPES = ["CD_SharedMap", "CD_SharedMapLayer", "CD_SharedMapStyle", "CD_ServerRecord"];
+export const READ_TYPES = ["CD_SharedMap", "CD_SharedMapLayer", "CD_SharedMapStyle", "CD_SharedMapChange",
+  "CD_ServerRecord"];
 
 const ASSET_SUFFIX = "_ckAsset";
 
@@ -27,18 +39,24 @@ interface AssetValue {
 export async function rowOf(record: CKRecord, where: Pick<CoreRow, "database" | "zone" | "owner">,
   fetcher: typeof fetch = fetch): Promise<CoreRow> {
   const fields: Record<string, unknown> = {};
+  const refs: string[] = [];
+  const assets: string[] = [];
   await Promise.all(Object.entries(record.fields ?? {}).map(async ([name, field]) => {
     if (name.endsWith(ASSET_SUFFIX)) {
       const url = (field.value as AssetValue | null)?.downloadURL;
       if (!url) return;
       const answer = await fetcher(url);
       if (!answer.ok) throw new Error(`An asset of ${record.recordName} answered ${answer.status}`);
-      fields[bare(name.slice(0, -ASSET_SUFFIX.length))] = await answer.text();
+      const own = bare(name.slice(0, -ASSET_SUFFIX.length));
+      fields[own] = await answer.text();
+      assets.push(own);
     } else if (field.type === "REFERENCE") {
       fields[bare(name)] = (field.value as { recordName?: string } | null)?.recordName ?? null;
+      refs.push(bare(name));
     } else {
       fields[bare(name)] = field.value;
     }
   }));
-  return { entity: bare(record.recordType ?? ""), id: record.recordName, tag: record.recordChangeTag ?? "", fields, ...where };
+  return { entity: bare(record.recordType ?? ""), id: record.recordName, tag: record.recordChangeTag ?? "", fields,
+    ...(refs.length ? { refs: refs.sort() } : {}), ...(assets.length ? { assets: assets.sort() } : {}), ...where };
 }

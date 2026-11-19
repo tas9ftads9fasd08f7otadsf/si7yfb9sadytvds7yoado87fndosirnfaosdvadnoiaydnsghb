@@ -1,6 +1,6 @@
 // CloudKit's web services as a browser test sees them: Playwright routes api.apple-cloudkit.com here and
 // serves cloudkit.js from a stand-in. It holds a fixture account with its own and a shared map, and
-// change tags a zone's token counts.
+// change tags a zone's token counts; it answers record modifies with conflicts.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,6 +49,49 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
     const text = account.assets[route.request().url()];
     return text === undefined ? route.fulfill({ status: 404, headers: CORS }) : route.fulfill({ status: 200, headers: CORS, body: text });
   });
+  let conflicts = 0;
+
+  /** One atomic modify: a stale change tag is a CONFLICT, and then nothing is applied. */
+  function modify(database, { zoneID, operations }) {
+    const zone = account.zones.find((each) => each.database === database && each.zoneID.zoneName === zoneID.zoneName);
+    const bump = (record) => { zone.version += 1; record.changedAt = zone.version; };
+    if (conflicts > 0) {
+      conflicts -= 1;
+      // Another device wrote first: the row the page holds is now an older version.
+      const target = zone.records.find((each) => each.recordName === operations[0]?.record.recordName);
+      if (target) { bump(target); target.recordChangeTag = `${target.recordChangeTag}x${zone.version}`; }
+    }
+    const errors = operations.map(({ operationType, record }) => {
+      const held = zone.records.find((each) => each.recordName === record.recordName);
+      if (operationType === "create") return held ? "ALREADY_EXISTS" : null;
+      if (!held) return "NOT_FOUND";
+      return record.recordChangeTag && record.recordChangeTag !== held.recordChangeTag ? "CONFLICT" : null;
+    });
+    if (errors.some(Boolean)) {
+      return operations.map(({ record }, index) => ({ recordName: record.recordName,
+        serverErrorCode: errors[index] ?? "BATCH_ERROR", reason: errors[index] ?? "atomic batch failed" }));
+    }
+    return operations.map(({ operationType, record }) => {
+      let held = zone.records.find((each) => each.recordName === record.recordName);
+      if (operationType === "delete") {
+        zone.records.splice(zone.records.indexOf(held), 1);
+        zone.version += 1;
+        return { recordName: record.recordName, deleted: true };
+      }
+      if (!held) {
+        held = { recordName: record.recordName, recordType: record.recordType, fields: {} };
+        zone.records.push(held);
+      }
+      for (const [name, field] of Object.entries(record.fields ?? {})) {
+        if (field.value === null) delete held.fields[name];
+        else held.fields[name] = field;
+      }
+      bump(held);
+      held.recordChangeTag = `w${zone.version}`;
+      return { recordName: held.recordName, recordType: held.recordType, recordChangeTag: held.recordChangeTag, fields: held.fields };
+    });
+  }
+
   await page.route(`${API}**`, async (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
@@ -76,6 +119,7 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
       });
       return reply(route, 200, { zones: answered });
     }
+    if (endpoint === "records/modify") return reply(route, 200, { records: modify(database, body) });
     return reply(route, 404, { serverErrorCode: "NOT_FOUND", reason: endpoint });
   });
 
@@ -91,6 +135,16 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
       record.recordChangeTag = `${record.recordChangeTag}x${zone.version}`;
       Object.assign(record.fields, fields);
     },
+    /** A record another device creates, as its change would arrive. */
+    add(database, zoneName, record) {
+      const zone = account.zones.find((each) => each.database === database && each.zoneID.zoneName === zoneName);
+      zone.version += 1;
+      zone.records.push({ recordChangeTag: `n${zone.version}`, ...structuredClone(record), changedAt: zone.version });
+    },
+    /** The next `count` modifies find their first row already changed by another device. */
+    conflictNext(count) { conflicts = count; },
+    /** The record as the account holds it now. */
+    record: (recordName) => find(recordName)?.record,
     /** What Apple's push does: the page is told, and reads again. */
     push: () => page.evaluate(() => window.__mockCloudPush()),
     tag: (recordName) => find(recordName).record.recordChangeTag

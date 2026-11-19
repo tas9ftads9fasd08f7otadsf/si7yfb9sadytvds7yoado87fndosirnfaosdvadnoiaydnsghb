@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
-import type { CKContainer, CKDatabase, CKRecord, CKRecordList } from "./cloud";
+import type { CKContainer, CKReading, CKRecord, CKRecordList } from "./cloud";
 import { indexedKeeping, MIRROR_ZONE, Zones, type Keeping } from "./zones";
 
 // 76 zone changes by token, private mirror and shared zones, kept for offline
@@ -16,7 +16,7 @@ function memory(): Keeping {
 function cloud(options: { privateRecords?: CKRecord[][]; down?: boolean } = {}) {
   const asked: { syncToken?: string }[] = [];
   const pages = [...(options.privateRecords ?? [account.zones.private[0]!.records as unknown as CKRecord[]])];
-  const privateDB: CKDatabase = {
+  const privateDB: CKReading = {
     fetchAllRecordZones: async () => ({}),
     fetchRecordZoneChanges: async ({ zones }) => {
       if (options.down) throw new Error("offline");
@@ -26,7 +26,7 @@ function cloud(options: { privateRecords?: CKRecord[][]; down?: boolean } = {}) 
       return { zones: [{ zoneID: zones[0]!.zoneID, records, syncToken: `private-${asked.length}`, moreComing: more }] } as CKRecordList;
     }
   };
-  const sharedDB: CKDatabase = {
+  const sharedDB: CKReading = {
     fetchAllRecordZones: async () => {
       if (options.down) throw new Error("offline");
       return { zones: account.zones.shared.map((each) => ({ zoneID: each.zoneID })) };

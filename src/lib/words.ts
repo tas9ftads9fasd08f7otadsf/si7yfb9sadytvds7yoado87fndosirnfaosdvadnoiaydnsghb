@@ -18,6 +18,8 @@ export const ENGLISH = {
   reconnecting: "Trying to reconnect…", connectedAgain: "Connected again", waiting: "Waiting to be let in",
   waitingText: "The phone sharing these maps has been asked to let this browser in.",
   signInTitle: "Sign in to iCloud", signInText: "Sign in with your Apple Account to see the maps in your iCloud.",
+  changedBy: "{map} was changed by {author}", changedAway: "{map} was changed on another device",
+  changeRefused: "The map changed elsewhere. Open it again and repeat the change.",
   removedTitle: "Removed from these maps",
   removedText: "The phone sharing these maps removed this browser. Ask to join, and it can let you in again.",
   askToJoin: "Ask to join", smallTitle: "Made for a computer's screen",
