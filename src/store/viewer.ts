@@ -10,7 +10,7 @@ import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, LayerTest, MapSwitches, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
+  LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
@@ -720,6 +720,19 @@ async function rereadLayerOptions() {
 export async function setDrawn(fields: Record<string, string>) {
   if (await change({ kind: "layerOptions", fields })) await rereadLayerOptions();
 }
+
+/** 69 The signs' key, the phone picking the country under the view unless one is asked. */
+export async function loadRoadSigns(ask: RoadSignsAsk): Promise<RoadSigns | null> {
+  const { mapID } = get();
+  if (!mapID) return null;
+  const camera = mapControl()?.camera();
+  const near = camera ? `${camera.lng.toFixed(4)},${camera.lat.toFixed(4)}` : undefined;
+  const answer = await editing(() => backend.roadSigns(mapID, { near, ...ask }), { quiet: true });
+  return answer?.ok ? answer.value : null;
+}
+
+/** 69 A picture the phone draws, a road sign among them. */
+export const iconURL = (name: string) => backend.iconURL(name);
 
 /** 60 Test on a layer's Network settings: the phone asks the address and says what came back. */
 export async function testLayer(layerID: string): Promise<LayerTest | null> {

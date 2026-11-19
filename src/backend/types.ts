@@ -1,7 +1,7 @@
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk, Sharer } from "@/lib/people";
 import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing,
-  LayerOptions, LayerTest, MapSwitches, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
+  LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
   SharePeople } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
@@ -79,6 +79,10 @@ export interface Backend {
   askPeople(of: Sharer, ask: PeopleAsk): Promise<Answer<SharePeople>>;
 
   layerOptions(mapID: string): Promise<Answer<LayerOptions>>;
+  /** 69 The traffic signs' key for one country. */
+  roadSigns(mapID: string, ask: RoadSignsAsk): Promise<Answer<RoadSigns>>;
+  /** 69 Where a picture the phone draws, a sign among them, is fetched from. */
+  iconURL(name: string): string;
   /** 60 The layer's address asked as the phone's Test asks it. */
   testLayer(mapID: string, layerID: string): Promise<Answer<LayerTest>>;
   packages(mapID: string): Promise<Answer<Packages>>;

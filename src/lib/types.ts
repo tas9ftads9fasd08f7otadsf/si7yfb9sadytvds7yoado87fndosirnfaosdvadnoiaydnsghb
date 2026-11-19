@@ -167,7 +167,7 @@ export interface OptionChoice {
 
 export interface OptionSection {
   kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values"
-    | "details" | "headers" | "probe" | "symbols";
+    | "details" | "headers" | "probe" | "symbols" | "signKey";
   title?: string;
   footnote?: string;
   layerScoped?: boolean;
@@ -347,6 +347,21 @@ export interface APIAsk {
 export interface LayerTest {
   reachable: boolean;
   said: string;
+}
+
+/** 69: one country's traffic signs, as the phone's Traffic signs key lists them. */
+export interface RoadSigns {
+  country: string | null;
+  countryName: string;
+  countries: OptionChoice[];
+  signs: { id: string; title: string }[];
+}
+
+/** 69: what the key asks: a country picked, the search typed and the view's centre. */
+export interface RoadSignsAsk {
+  country?: string;
+  q?: string;
+  near?: string;
 }
 
 export interface LayerOptions {

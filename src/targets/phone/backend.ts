@@ -163,6 +163,11 @@ export const backend: Backend = {
   askPeople: (of, ask) => editing(`${ROOT}/${peoplePathOf(of)}?${new URLSearchParams(peopleQueryOf(ask))}`),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),
+  roadSigns(mapID, ask) {
+    const query = new URLSearchParams(Object.entries(ask).filter(([, value]) => value) as [string, string][]);
+    return editing(`${ROOT}/maps/${mapID}/road-signs?${query}`, "GET");
+  },
+  iconURL: (name) => `/web/icons/${encodeURIComponent(name)}`,
   testLayer: (mapID, layerID) =>
     editing(`${ROOT}/maps/${mapID}/layer-test?${new URLSearchParams({ layer: layerID })}`, "GET"),
   packages: (mapID) => editing(`${ROOT}/maps/${mapID}/packages`, "GET"),
