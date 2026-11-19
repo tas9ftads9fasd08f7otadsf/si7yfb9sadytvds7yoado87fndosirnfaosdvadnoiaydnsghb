@@ -7,6 +7,13 @@ import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageS
 /** What was asked for, or why not: the status and the words that came with it. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
 
+/** 78 A map whose rows another device changed, and the author its history names, if any. */
+export interface ChangedElsewhere {
+  mapID: string;
+  name: string;
+  author: string | null;
+}
+
 /** A file to hand the person, named as it was sent. */
 export interface Saved {
   blob: Blob;
@@ -56,7 +63,7 @@ export interface Backend {
   /** The token later calls carry, read when each is made. */
   useToken(token: () => string | null): void;
   /** 76 Told when the maps changed elsewhere, or the person signed in or out; returns how to stop. */
-  onChanged(listener: () => void): () => void;
+  onChanged(listener: (changed?: ChangedElsewhere[]) => void): () => void;
   /** 76 The site's Sign in with Apple or sign-out button, put in this element; the phone has none. */
   mountAccount?(button: "in" | "out", into: HTMLElement): void;
 
@@ -64,6 +71,8 @@ export interface Backend {
   map(id: string): Promise<Portable>;
   style(ask: StyleAsk): Promise<Answer<unknown>>;
   change(mapID: string, styleID: string | null, edit: Edit): Promise<Answer<Portable>>;
+  /** 78 The last change put back, while nothing else has touched its rows; the site only. */
+  undo?(mapID: string): Promise<Answer<Portable>>;
   newMap(name: string): Promise<Answer<{ id: string }>>;
   importMap(file: Blob): Promise<Answer<{ id: string }>>;
   exportMap(id: string): Promise<Answer<Saved>>;

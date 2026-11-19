@@ -1,4 +1,4 @@
-import type { CKContainer, CKDatabase, CKRecord, ZoneID } from "./cloud";
+import type { CKContainer, CKReading, CKRecord, ZoneID } from "./cloud";
 import { READ_TYPES, rowOf, type CoreRow } from "./records";
 
 /** The mirror's zone in the person's private database. */
@@ -83,7 +83,7 @@ export class Zones {
     return all.flatMap((each) => Object.values(each?.rows ?? {}));
   }
 
-  private async sync(database: "private" | "shared", db: CKDatabase, zones: ZoneID[]): Promise<CoreRow[]> {
+  private async sync(database: "private" | "shared", db: CKReading, zones: ZoneID[]): Promise<CoreRow[]> {
     const out: CoreRow[] = [];
     for (const zone of zones) {
       const key = zoneKey(database, zone);

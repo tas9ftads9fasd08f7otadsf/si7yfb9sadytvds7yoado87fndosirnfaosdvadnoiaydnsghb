@@ -45,7 +45,12 @@
     });
   };
 
+  const operate = (name, kind, records, { zoneID, atomic }) => call(name, "records/modify",
+    { zoneID, atomic, operations: records.map((record) => ({ operationType: kind(record), record: { ...record, zoneID } })) });
+
   const database = (name) => ({
+    saveRecords: (records, options) => operate(name, (record) => (record.recordChangeTag ? "update" : "create"), records, options),
+    deleteRecords: (records, options) => operate(name, () => "delete", records, options),
     fetchRecordZoneChanges: (options) => call(name, "changes/zone", options),
     fetchAllRecordZones: () => call(name, "zones/list")
   });

@@ -22,7 +22,7 @@ describe("the core's wrapper", () => {
     };
     const alloc = (length: number) => { const at = top; top += length; return at; };
     return { memory, riki_alloc: alloc, riki_free: (p, l) => { freed.push([p, l]); }, freed,
-      riki_maps: respond, riki_map: respond, riki_apply: respond, riki_style: respond };
+      riki_maps: respond, riki_map: respond, riki_apply: respond, riki_style: respond, riki_changes: respond };
   }
 
   it("writes the request as JSON, reads the answer back and frees both buffers", () => {
@@ -39,12 +39,26 @@ describe("the core's wrapper", () => {
       .toEqual({ rows: [], mapID: "M", styleID: "S", catalog: { tilesBase: "t", theme: "dark", hidden: ["h"], tiles: "2x2" } });
   });
 
+  // 78 the edit is asked with the rows and who writes it; the core's answer is read back whole
+  it("asks riki_apply with the edit and the author, and riki_changes with the rows", () => {
+    const exports = echo();
+    const core = coreOf(exports);
+    const ask: Parameters<typeof core.apply>[0] = { rows: [], mapID: "M", styleID: null,
+      edit: { kind: "name", name: "x" }, author: "Rita", origin: "web" };
+    expect(core.apply(ask)).toEqual(ask);
+    expect(core.changes([])).toEqual({ rows: [] });
+  });
+
   it("loads a module through the WASI shim and answers what it recorded", async () => {
     const bytes = fakeCoreWasm(account.core);
     const fetcher = async () => new Response(bytes.slice().buffer as ArrayBuffer, { status: 200 });
     const core = await loadCore(fetcher as typeof fetch, "/editor");
     expect(core.maps([]).maps.map((each) => each.name)).toEqual(["High Tatras", "Doprava"]);
     expect(core.map([], "x").name).toBe("High Tatras");
+    // 78 the stand-in holds the edit's answer and the history's too
+    expect(core.apply({ rows: [], mapID: "x", styleID: null, edit: { kind: "name", name: "n" }, author: null, origin: "web" }))
+      .toMatchObject({ write: [{ id: "own-tatras-layer" }] });
+    expect(core.changes([])).toEqual([]);
     expect(await loadCore(fetcher as typeof fetch, "/editor")).toBe(core);
   });
 

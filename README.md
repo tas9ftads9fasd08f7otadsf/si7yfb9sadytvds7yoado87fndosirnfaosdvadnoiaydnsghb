@@ -80,7 +80,8 @@ deploy by hand.
 - `src/store/viewer.ts`: all state; it asks `@backend`, never `fetch`.
 - `src/backend/types.ts`: the `Backend` every target answers; `src/lib/edit.ts`, the edits it takes.
 - `src/targets/phone`: today's calls to the phone. `src/targets/web`: the site's: `config.ts`, `cloud.ts` (CloudKit JS, sign-in), `zones.ts` and
-  `records.ts` (the zones' rows, kept in IndexedDB), `core.ts` (`riki-core.wasm`) and `backend.ts`. It reads; writes wait for step 4.
+  `records.ts` (the zones' rows, kept in IndexedDB), `writes.ts` (a change saved with its change tags), `core.ts`
+  (`riki-core.wasm`) and `backend.ts`. It reads and edits a map; the other writes wait for later steps.
 - `server`: the site's `index.php`, `Site.php` and their PHPUnit tests.
 - `src/map`: MapLibre, loaded on the client after the phone's words.
 - `src/lib`: logic with no framework in it.

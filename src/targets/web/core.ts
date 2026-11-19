@@ -1,7 +1,8 @@
 import { WASI } from "@bjorn3/browser_wasi_shim";
+import type { Edit } from "@/lib/edit";
 import type { Device, Portable } from "@/lib/types";
 import { BASE } from "./base";
-import type { CoreRow } from "./records";
+import type { CoreRow, CoreWrite } from "./records";
 
 /** What the style is built for: the theme, the layers hidden and where the pipeline's files are. */
 export interface StyleCatalog {
@@ -11,11 +12,38 @@ export interface StyleCatalog {
   tiles: string;
 }
 
+/** What an edit is asked with: the rows, the edit and who it is written as. */
+export interface ApplyAsk {
+  rows: CoreRow[];
+  mapID: string;
+  styleID: string | null;
+  edit: Edit;
+  author: string | null;
+  origin: "web";
+}
+
+/** The core's answer to an edit: rows to write and the map as it stands, or a refusal. */
+export type Applied =
+  | { map: Portable; write: CoreWrite[]; remove?: string[]; history?: CoreWrite | null }
+  | { refused: string; status?: number };
+
+/** One line of a map's history, newest first, as the core decodes its row. */
+export interface HistoryEntry {
+  id: string;
+  /** The record name of the map it belongs to. */
+  map: string;
+  author: string | null;
+  origin?: string | null;
+  lines: string[];
+}
+
 /** The rules of the maps, as `riki-core.wasm` answers them; none of them is written again here. */
 export interface Core {
   maps(rows: CoreRow[]): Device;
   map(rows: CoreRow[], id: string): Portable;
   style(rows: CoreRow[], mapID: string, styleID: string | null, catalog: StyleCatalog): unknown;
+  apply(ask: ApplyAsk): Applied;
+  changes(rows: CoreRow[]): HistoryEntry[];
 }
 
 /** The release asset is not in the site yet; the site cannot read a map without it. */
@@ -34,9 +62,10 @@ export interface CoreExports {
   riki_map(pointer: number, length: number): number;
   riki_apply(pointer: number, length: number): number;
   riki_style(pointer: number, length: number): number;
+  riki_changes(pointer: number, length: number): number;
 }
 
-type Call = "riki_maps" | "riki_map" | "riki_apply" | "riki_style";
+type Call = "riki_maps" | "riki_map" | "riki_apply" | "riki_style" | "riki_changes";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -59,7 +88,9 @@ export function coreOf(exports: CoreExports): Core {
   return {
     maps: (rows) => callJSON(exports, "riki_maps", { rows }),
     map: (rows, id) => callJSON(exports, "riki_map", { rows, id }),
-    style: (rows, mapID, styleID, catalog) => callJSON(exports, "riki_style", { rows, mapID, styleID, catalog })
+    style: (rows, mapID, styleID, catalog) => callJSON(exports, "riki_style", { rows, mapID, styleID, catalog }),
+    apply: (ask) => callJSON(exports, "riki_apply", ask),
+    changes: (rows) => callJSON(exports, "riki_changes", { rows })
   };
 }
 

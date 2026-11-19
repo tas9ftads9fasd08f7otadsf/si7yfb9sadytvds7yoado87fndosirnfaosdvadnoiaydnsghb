@@ -24,9 +24,29 @@ export interface CKRecord {
   zoneID?: ZoneID;
 }
 
-export interface CKDatabase {
+/** A record to save: with a `recordChangeTag` it updates, without one it creates. */
+export interface CKSave {
+  recordName: string;
+  recordType: string;
+  recordChangeTag?: string;
+  fields: Record<string, { value: unknown; type?: string }>;
+}
+
+/** Each record as the server answered it; one refused carries `serverErrorCode`. */
+export interface CKSaved {
+  records?: (Partial<CKRecord> & { serverErrorCode?: string; reason?: string })[];
+}
+
+/** What reading a zone takes. */
+export interface CKReading {
   fetchRecordZoneChanges(options: { zones: { zoneID: ZoneID; syncToken?: string }[] }): Promise<CKRecordList>;
   fetchAllRecordZones(): Promise<{ zones?: { zoneID: ZoneID }[] }>;
+}
+
+export interface CKDatabase extends CKReading {
+  saveRecords(records: CKSave[], options: { zoneID: ZoneID; atomic: boolean }): Promise<CKSaved>;
+  deleteRecords(records: { recordName: string; recordChangeTag?: string }[],
+    options: { zoneID: ZoneID; atomic: boolean }): Promise<CKSaved>;
 }
 
 export interface CKIdentity {

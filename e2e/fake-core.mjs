@@ -11,9 +11,9 @@ const FIRST_ANSWER = 1024;
 const HEAP = 1 << 18;
 const PAGES = 16;
 
-/** The module's bytes, `answers` being what riki_maps, riki_map and riki_style return, and riki_apply's refusal. */
+/** The module's bytes: `answers` holds what each export returns; a call with none refuses. */
 export function fakeCoreWasm(answers) {
-  const names = ["riki_maps", "riki_map", "riki_apply", "riki_style"];
+  const names = ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes"];
   const bodies = names.map((name) => {
     const bytes = [...new TextEncoder().encode(JSON.stringify(answers[name] ?? { refused: `${name} has no recorded answer` }))];
     const length = new Uint8Array(4);
@@ -27,7 +27,7 @@ export function fakeCoreWasm(answers) {
 
   const types = section(1, vec([[0x60, ...vec([[0x7f]]), ...vec([[0x7f]])], [0x60, ...vec([[0x7f], [0x7f]]), 0x00],
     [0x60, ...vec([[0x7f], [0x7f]]), ...vec([[0x7f]])]]));
-  const functions = section(3, vec([[0], [1], [2], [2], [2], [2]]));
+  const functions = section(3, vec([[0], [1], ...names.map(() => [2])]));
   const memory = section(5, vec([[0x00, ...u(PAGES)]]));
   const globals = section(6, vec([[0x7f, 0x01, 0x41, ...s(HEAP), 0x0b]]));
   const exported = [["memory", 0x02, 0], ["riki_alloc", 0x00, 0], ["riki_free", 0x00, 1],

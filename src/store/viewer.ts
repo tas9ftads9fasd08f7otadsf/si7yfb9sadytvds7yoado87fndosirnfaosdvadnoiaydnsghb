@@ -3,7 +3,7 @@ import type { Speeds } from "@/lib/traffic";
 import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
 import { DIRECT_KEY } from "@/lib/page";
-import type { Answer, Saved } from "@/backend/types";
+import type { Answer, ChangedElsewhere, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
@@ -12,7 +12,7 @@ import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
-import { ENGLISH, type Words, readPhoneWords } from "@/lib/words";
+import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
 
 export type Theme = "auto" | "light" | "dark";
@@ -243,6 +243,7 @@ export function applySession(answer: SessionAnswer) {
   const edits = answer.edits === true;
   set({ standing: answer.standing, edits, viewers: typeof answer.viewers === "number" ? answer.viewers : null });
   if (!edits && get().editToken) keepToken(null);
+  else if (edits && answer.token && get().editToken !== answer.token) keepToken(answer.token);
   if (answer.device) set({ gateDevice: answer.device });
   set({ directAllowed: answer.direct === true });
   if (answer.standing !== "admitted") {
@@ -261,10 +262,27 @@ export function startSession(isSmall: boolean) {
   busy.sessionStarted = true;
   void heartbeat();
   // 76 A change made elsewhere, or a sign-in, is read without waiting for the next beat.
-  backend.onChanged(() => {
-    void heartbeat();
+  backend.onChanged((changed) => {
+    const beat = heartbeat();
     void catchUp();
+    // After the beat, which may say "Connected again" over it.
+    if (changed?.length) void beat.then(() => tellChanged(changed));
   });
+}
+
+/** 78 Names the maps changed elsewhere, reads the shown one and puts the open tab back. */
+async function tellChanged(changed: ChangedElsewhere[]) {
+  const { words, mapID } = get();
+  notice(changed.map((each) => each.author
+    ? filledIn(filledIn(words.changedBy, "map", each.name), "author", each.author)
+    : filledIn(words.changedAway, "map", each.name)).join(" "));
+  if (!mapID || !changed.some((each) => each.mapID === mapID)) return;
+  try {
+    const portable = await backend.map(mapID);
+    if (mapID !== get().mapID) return;
+    set({ portable });
+    if (get().editing) set({ editEpoch: get().editEpoch + 1 });
+  } catch { /* the next change reads it again */ }
 }
 
 // MARK: - Reading the phone
@@ -533,7 +551,8 @@ export async function change(edit: Edit): Promise<boolean> {
   const answer = await editing(() => backend.change(mapID, styleID, edit));
   if (!answer) return false;
   if (!answer.ok) {
-    notice(answer.status === 409 && /layers/i.test(answer.said) ? get().words.layerCap : answer.said);
+    notice(answer.status === 409 && /layers/i.test(answer.said) ? get().words.layerCap
+      : answer.status === 412 ? get().words.changeRefused : answer.said);
     set({ editEpoch: get().editEpoch + 1 });
     return false;
   }

@@ -438,6 +438,8 @@ export interface SessionAnswer {
   edits?: boolean;
   device?: string;
   viewers?: number | null;
+  /** 78 The site's editor: signed in to iCloud is the permission, so no password is traded. */
+  token?: string;
   /** The phone lets a browser load tiles from their source. */
   direct?: boolean;
 }
