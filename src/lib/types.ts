@@ -208,6 +208,8 @@ export interface DetailsLayout {
   header?: { title?: string | null; symbol?: string | null; layerSymbol: string; titleTranslations?: Translated };
   actions?: LayoutActions | null;
   symbols?: string[];
+  /** 80: the icon picker's groups for a row's mark; none from a phone that cannot set it. */
+  symbolGroups?: { title: string; symbols: string[] }[];
   choices?: Record<string, OptionChoice[]>;
   /** 81: the phone takes titles in other languages; an older phone sends no flag. */
   takesTranslations?: boolean;
@@ -250,7 +252,7 @@ export interface BlockSettings {
   look?: string;
   icons?: boolean;
   hidesEmpty?: boolean;
-  rows?: { index: number; title: string; value: string }[];
+  rows?: { index: number; title: string; value: string; symbol?: string }[];
   button?: LayoutButton;
   card?: Record<string, string>;
   live?: number | null;

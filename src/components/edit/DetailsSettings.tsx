@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DetailsLayout, LayoutBlock, LayoutButton } from "@/lib/types";
 import { useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
@@ -41,6 +41,34 @@ function SymbolChoice({ label, value, layout, none, onPick }:
   const symbols = [...new Set([...(value ? [value] : []), ...(layout.symbols ?? [])])];
   return <Choice label={label} value={value ?? ""} onPick={onPick}
     options={[{ id: "", title: none }, ...symbols.map((symbol) => ({ id: symbol, title: symbol }))]} />;
+}
+
+/** 80: a row's mark among the phone's groups, the one worn first when no group lists it. */
+function RowIcon({ label, worn, groups, onPick }:
+  { label: string; worn?: string; groups: NonNullable<DetailsLayout["symbolGroups"]>; onPick: (symbol: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const swatch = (name: string) => (
+    <button key={name} type="button" aria-label={name} title={name} aria-pressed={name === worn} data-symbol={name}
+      onClick={() => { setOpen(false); if (name !== worn) onPick(name); }}><Sym name={name} /></button>
+  );
+  const listed = groups.some((group) => group.symbols.includes(worn ?? ""));
+  return (
+    <div className="row-icon">
+      <button type="button" className="icon-button" aria-label={label} title={label} aria-expanded={open}
+        onClick={() => setOpen(!open)}><Sym name={worn || "info.circle"} /></button>
+      {open ? (
+        <div className="row-icon-groups" role="group" aria-label={label}>
+          {worn && !listed ? <div className="swatches">{swatch(worn)}</div> : null}
+          {groups.map((group) => (
+            <div key={group.title}>
+              <small>{group.title}</small>
+              <div className="swatches" role="group" aria-label={group.title}>{group.symbols.map(swatch)}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 /** The header's title template and icon, both sent each time as the phone stores both. */
@@ -173,6 +201,7 @@ export function BlockSettingsFields({ block, place, layout, send }:
   const shared = useViewer((state) => state.words);
   const { words } = layout;
   const settings = block.settings;
+  const groups = layout.symbolGroups?.length ? layout.symbolGroups : undefined;
   if (!settings) return null;
   const set = (fields: Record<string, string>) => send({ details: "blockSettings", ...place, ...fields });
   if (block.kind === "text") {
@@ -188,6 +217,9 @@ export function BlockSettingsFields({ block, place, layout, send }:
       <div className="block-fields">
         {(settings.rows ?? []).map((row) => (
           <div className="row layout-row" key={row.index} data-row={row.index}>
+            {groups ? <RowIcon label={`${words.icon} ${row.index + 1}`} worn={row.symbol} groups={groups}
+              onPick={(symbol) => send({ details: "editRow", ...place, row: String(row.index), title: row.title,
+                value: row.value, symbol })} /> : null}
             <CommitField value={row.title} aria-label={`${words.name} ${row.index + 1}`}
               onCommit={(title) => title.trim() && send({ details: "editRow", ...place, row: String(row.index),
                 title, value: row.value })} />
@@ -199,8 +231,8 @@ export function BlockSettingsFields({ block, place, layout, send }:
               <Sym name="minus.circle" /></button>
           </div>
         ))}
-        <AddRow words={words} keys={layout.keys} onAdd={(title, value) => send({ details: "addRow", ...place,
-          title, value })} />
+        <AddRow words={words} keys={layout.keys} groups={groups} onAdd={(title, value, symbol) => send({
+          details: "addRow", ...place, title, value, ...(symbol ? { symbol } : {}) })} />
         <Choice label={words.nameAndValue ?? ""} value={settings.look ?? "nameAboveValue"}
           options={layout.choices?.rowLooks ?? []} onPick={(look) => set({ look })} />
         <Check label={words.rowIcons ?? ""} isOn={settings.icons !== false} onChange={(on) => set({ icons: flag(on) })} />
@@ -229,18 +261,22 @@ export function BlockSettingsFields({ block, place, layout, send }:
   return null;
 }
 
-function AddRow({ words, keys, onAdd }:
-  { words: Record<string, string>; keys: string[]; onAdd: (title: string, value: string) => void }) {
+function AddRow({ words, keys, groups, onAdd }: { words: Record<string, string>; keys: string[];
+  groups?: DetailsLayout["symbolGroups"]; onAdd: (title: string, value: string, symbol: string) => void }) {
+  const [symbol, setSymbol] = useState("");
   const submit = (form: HTMLFormElement) => {
     const data = new FormData(form);
     const title = String(data.get("title") ?? "").trim();
     const value = String(data.get("value") ?? "").trim();
     if (!title || !value) return;
-    onAdd(title, value);
+    onAdd(title, value, symbol);
+    setSymbol("");
     form.reset();
   };
   return (
     <form className="row add-row" onSubmit={(event) => { event.preventDefault(); submit(event.currentTarget); }}>
+      {groups ? <RowIcon label={words.icon ?? ""} worn={symbol || undefined} groups={groups}
+        onPick={setSymbol} /> : null}
       <input name="title" aria-label={`${words.addRow} ${words.name}`} placeholder={words.name} />
       <input name="value" aria-label={`${words.addRow} ${words.value}`} placeholder={keys[0] ? `{${keys[0]}}` : ""}
         spellCheck={false} autoCapitalize="off" />

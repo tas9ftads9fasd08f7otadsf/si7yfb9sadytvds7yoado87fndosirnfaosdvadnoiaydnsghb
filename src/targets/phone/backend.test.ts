@@ -46,6 +46,13 @@ const EDITS: [Edit, Record<string, string>][] = [
   [{ kind: "layerDetails", fields: { layer: "L", details: "translation", target: "button", button: "b1",
     language: "de", text: "" } },
   { layer: "L", details: "translation", target: "button", button: "b1", language: "de", text: "" }],
+  // 80 a row's icon goes in the layout change as `symbol=`, kept when none is sent
+  [{ kind: "layerDetails", fields: { layer: "L", details: "editRow", section: "0", block: "1", was: "r1", row: "0",
+    title: "Speed", value: "{speed}", symbol: "bus.fill" } },
+  { layer: "L", details: "editRow", section: "0", block: "1", was: "r1", row: "0", title: "Speed", value: "{speed}",
+    symbol: "bus.fill" }],
+  [{ kind: "layerDetails", fields: { layer: "L", details: "addRow", was: "r1", title: "Line", value: "{line}" } },
+  { layer: "L", details: "addRow", was: "r1", title: "Line", value: "{line}" }],
   // 53
   [{ kind: "resetStyle", style: "S" }, { resetStyle: "S" }]
 ];
@@ -110,6 +117,15 @@ describe("the phone backend", () => {
     const fields = { layer: "L", details: "translation", target: "header", language: "xx", text: "Linie" };
     expect(await backend.change("M", null, { kind: "layerDetails", fields }))
       .toEqual({ ok: false, status: 404, said: "The app has no such language" });
+  });
+
+  // 80 an icon the phone does not offer is refused with its status and words
+  it("keeps the words of a refused row icon", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("Edit map offers no such icon", { status: 404 })));
+    backend.useToken(() => "t");
+    const fields = { layer: "L", details: "editRow", row: "0", title: "Speed", value: "{speed}", symbol: "nope" };
+    expect(await backend.change("M", null, { kind: "layerDetails", fields }))
+      .toEqual({ ok: false, status: 404, said: "Edit map offers no such icon" });
   });
 
   // 62 a delete posts the typed name with the token and reads no body back

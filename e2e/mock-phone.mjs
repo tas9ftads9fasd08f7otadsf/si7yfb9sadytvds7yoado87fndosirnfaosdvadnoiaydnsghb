@@ -44,7 +44,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], takesTranslations: true,
+  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
@@ -168,7 +168,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], takesTranslations: true,
+    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
@@ -583,7 +583,23 @@ function detailsSections(layer) {
       actions: layer.actions ? { ...layer.actions, items: [...layer.actions.items,
         ...BUILT_INS.filter(([id]) => !layer.actions.items.some((item) => item.id === id))
           .map(([id, name]) => ({ id, name, note: "", isOn: false }))] } : null,
-      symbols: ["tram.fill", "star.fill"], choices: LAYOUT_CHOICES } }];
+      symbols: ["tram.fill", "star.fill"], choices: LAYOUT_CHOICES,
+      // 80: an older phone sends none of the groups, so the page offers no row icon.
+      ...(phone.listsRowIcons === false ? {} : { symbolGroups: SYMBOL_GROUPS.map(({ title, symbols }) => ({ title,
+        symbols: symbols.filter((symbol) => !phone.droppedSymbols.has(symbol)) })) }) } }];
+}
+
+// 80: the icon picker's groups and the marks a row may wear, as `PeerWebDetailsSettings` allows them.
+const SYMBOL_GROUPS = [{ title: "Transport", symbols: ["tram.fill", "bus.fill", "car.fill"] },
+  { title: "Nature", symbols: ["leaf.fill", "mountain.2.fill"] }];
+const SUGGESTED_SYMBOLS = ["tram.fill", "star.fill"];
+const FIRST_ROW_SYMBOL = "info.circle";
+
+function allowsRowSymbol(symbol, worn) {
+  if (!symbol) return false;
+  if (symbol === worn) return true;
+  return !phone.droppedSymbols.has(symbol)
+    && [...SYMBOL_GROUPS.flatMap((group) => group.symbols), ...SUGGESTED_SYMBOLS].includes(symbol);
 }
 
 // 79: stands in for `LayerDetails.filled(from:)`: a `{key}` read from the point, empty ones dropped.
@@ -679,7 +695,12 @@ function settleLayout(layer, query, held) {
   } else if (op === "addRow") {
     const rows = held()?.settings?.rows;
     if (!rows) return false;
-    rows.push({ index: rows.length, title: query.get("title"), value: query.get("value") });
+    rows.push({ index: rows.length, title: query.get("title"), value: query.get("value"),
+      symbol: query.get("symbol") ?? FIRST_ROW_SYMBOL });
+  } else if (op === "editRow") {
+    const row = held()?.settings?.rows?.[Number(query.get("row"))];
+    if (!row) return refusal(409, CANNOT_TAKE);
+    Object.assign(row, { title: query.get("title"), value: query.get("value"), symbol: query.get("symbol") ?? row.symbol });
   } else if (op === "removeRow") {
     const rows = held()?.settings?.rows;
     if (!rows) return false;
@@ -742,14 +763,25 @@ function translate(layer, query, held) {
 
 const NO_LANGUAGE = "The app has no such language";
 
+// 80: the icon is judged before the handle, as the phone judges it.
+function refusedSymbol(held, query) {
+  const op = query.get("details");
+  if (!["addRow", "editRow"].includes(op) || (op === "addRow" && !query.has("symbol"))) return null;
+  const worn = op === "addRow" ? FIRST_ROW_SYMBOL : held?.settings?.rows?.[Number(query.get("row"))]?.symbol;
+  if (op === "editRow" && !query.has("symbol")) return null;
+  return allowsRowSymbol(query.get("symbol")?.trim(), worn) ? null : refusal(404, "Edit map offers no such icon");
+}
+
 function editLayout(layer, query) {
   const sections = layer.layout;
   const number = (key) => Number(query.get(key));
   const held = () => sections[number("section")]?.blocks[number("block")];
   const op = query.get("details");
-  const byHandle = ["remove", "move", "edit", "blockSettings", "addRow", "removeRow"].includes(op)
+  const byHandle = ["remove", "move", "edit", "blockSettings", "addRow", "editRow", "removeRow"].includes(op)
     || (op === "buttonPlace" && query.has("was"));
   if (op === "translation") return translate(layer, query, held);
+  const refused = refusedSymbol(held(), query);
+  if (refused) return refused;
   if (byHandle && held()?.handle !== query.get("was")) return false;
   if (op === "add") {
     sections[number("section")].blocks.splice(number("place"), 0, { handle: `n${Date.now()}`,
@@ -1842,14 +1874,16 @@ function testControl(route, query, response) {
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000A5", name: "Trams", kind: "API",
       symbol: "tram", isEnabled: true, layout: [{ title: null, blocks: [
         { handle: "r1", kind: "rows", name: "Info rows", counts: true, settings: { look: "nameAboveValue", icons: true,
-          hidesEmpty: true, rows: [{ index: 0, title: "Speed", value: "{speed}" }] } },
+          hidesEmpty: true, rows: [{ index: 0, title: "Speed", value: "{speed}", symbol: "gauge" }] } },
         { handle: "t1", kind: "text", name: "Text", value: "{note}", style: "box", counts: true,
           settings: { icon: false, hides: true } }] }] });
     break;
   case "/__test/takes-no-translations": phone.takesTranslations = false; break;
   case "/__test/forget-language": phone.languages = phone.languages.filter((code) => code !== query.get("code")); break;
+  case "/__test/forget-symbol": phone.droppedSymbols.add(query.get("symbol")); break;
+  case "/__test/lists-no-row-icons": phone.listsRowIcons = false; break;
   case "/__test/moves-layout":
-    // 81: the layout changes on the phone, so the page's handles are stale.
+    // 80: the layout changes on the phone, so the page's handles are stale.
     for (const block of phone.maps[0].layers.flatMap((layer) => layer.layout?.flatMap((one) => one.blocks) ?? [])) {
       block.handle += "x";
     }
