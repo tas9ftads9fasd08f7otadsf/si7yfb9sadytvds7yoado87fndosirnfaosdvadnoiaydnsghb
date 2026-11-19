@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Feature } from "@/backend/types";
 import type { SharedMap } from "@/lib/types";
 import { resetViewer, useViewer } from "@/store/viewer";
+import { AddLayer } from "./edit/AddLayer";
 import { Layers } from "./edit/Layers";
 import { Styling } from "./edit/Styling";
 import { MapShelf } from "./MapShelf";
@@ -50,6 +51,18 @@ describe("the parts a target does not answer", () => {
   it("leaves out Add layer", () => {
     render(<Layers portable={{ id: "a", name: "Alps", stack: [] }} />);
     expect(screen.queryByRole("button", { name: /Add layer/ })).toBeNull();
+  });
+
+  // 86 the site adds a tile address; its packages, files, API layers and servers stay off until it answers them
+  it("shows Add layer with only what the target answers", () => {
+    fake.offered = new Set(["addLayer"]);
+    render(<AddLayer />);
+    expect(document.querySelector("#tileAddress")).toBeTruthy();
+    for (const id of ["#packages", "#addPackages", "#layerFile", "#serverAddress", "#addServer", "#exportServers"]) {
+      expect(document.querySelector(id)).toBeNull();
+    }
+    expect(screen.queryByText("Files")).toBeNull();
+    expect(screen.queryByText("API layers")).toBeNull();
   });
 
   it("leaves out the pictures", () => {

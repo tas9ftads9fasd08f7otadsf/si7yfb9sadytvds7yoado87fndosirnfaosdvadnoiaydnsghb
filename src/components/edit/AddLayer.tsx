@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DXFReading, PackageRow, ServerRow } from "@/lib/types";
 import { FILE_KINDS, SERVER_KINDS, addFile, isDXF, readDXF, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
-  exportServers, importServers, loadPackages, loadServers, tickPackage, tickServerRow, tickServiceLayer,
+  exportServers, importServers, loadPackages, loadServers, offers, tickPackage, tickServerRow, tickServiceLayer,
   useViewer } from "@/store/viewer";
 import { Skeleton } from "../Overlays";
 import { APILayer } from "./APILayer";
@@ -235,32 +235,36 @@ function Servers() {
   );
 }
 
-/** Add layer: the Riki packages, a tile address, a file, and the phone's saved servers. */
+/** Add layer: a tile address always; the Riki packages, files, API layers and servers where the target answers them. */
 export function AddLayer() {
   const words = useViewer((state) => state.words);
   const packages = useViewer((state) => state.packages);
   const ticks = useViewer((state) => state.packageTicks);
   const hasRead = useViewer((state) => state.serviceRead != null);
+  const hasPackages = offers("addPackages");
   useEffect(() => {
-    if (!packages) void loadPackages();
-  }, [packages]);
-  if (!packages) return <Skeleton />;
-  const adding = [...ticks].filter((overlay) => !packages.rows.some((row) => row.overlay === overlay && row.isDrawn));
+    if (hasPackages && !packages) void loadPackages();
+  }, [hasPackages, packages]);
+  if (hasPackages && !packages) return <Skeleton />;
+  const adding = packages ? [...ticks].filter((overlay) => !packages.rows.some((row) => row.overlay === overlay && row.isDrawn)) : [];
   return (
     <>
-      <h2 className="title">{words.whichPackages}</h2>
-      <div className="list" id="packages">
-        {packages.rows.map((row, index) => <PackageLine key={row.overlay ?? index} row={row} />)}
-      </div>
-      <div className="foot-note">{words.tickPackages}</div>
-      <button type="button" className="action" id="addPackages" disabled={adding.length === 0}
-        onClick={() => addPackages(adding)}><Sym name="plus" />{words.add}</button>
+      {packages ? (
+        <>
+          <h2 className="title">{words.whichPackages}</h2>
+          <div className="list" id="packages">
+            {packages.rows.map((row, index) => <PackageLine key={row.overlay ?? index} row={row} />)}
+          </div>
+          <div className="foot-note">{words.tickPackages}</div>
+          <button type="button" className="action" id="addPackages" disabled={adding.length === 0}
+            onClick={() => addPackages(adding)}><Sym name="plus" />{words.add}</button>
+        </>
+      ) : null}
       <TileAddress />
-      <FileLayer />
-      <APILayer />
+      {offers("addFile") ? <FileLayer /> : null}
+      {offers("addAPI") ? <APILayer /> : null}
       {hasRead ? <ServiceLayers /> : null}
-      <Servers />
-      <NewServer />
+      {offers("servers") ? <><Servers /><NewServer /></> : null}
     </>
   );
 }

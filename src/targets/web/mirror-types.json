@@ -23,5 +23,7 @@
   "ServerRecord": {
     "entityName": "STRING", "id": "STRING", "updatedAt": "TIMESTAMP", "schemaVersion": "INT64",
     "payload": "BYTES", "rank": "STRING", "moveReceipt": "BYTES"
-  }
+  },
+  "MapDataIndex": { "bytes": "INT64", "manifest": "BYTES", "storageKey": "STRING" },
+  "MapDataChunk": { "asset": "ASSET", "count": "INT64", "index": "INT64", "sha": "STRING", "storageKey": "STRING" }
 }
