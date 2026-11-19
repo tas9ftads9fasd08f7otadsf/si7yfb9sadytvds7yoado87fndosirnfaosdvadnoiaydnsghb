@@ -120,7 +120,11 @@ export const ENGLISH = {
   estimated: "Estimated download", download: "Download", queued: "Queued",
   fetchedStay: "Fetched tiles stay on the device and the map draws them.",
   noSpace: "Not enough free space for this selection.",
-  onlyURLLayers: "Only layers served from a URL can be downloaded."
+  onlyURLLayers: "Only layers served from a URL can be downloaded.",
+  esriServices: "Esri services", esriService: "Service", esriAddress: "Address", takenAs: "Taken as",
+  noLayerList: "This service published no layer list the last time it was read.",
+  forgetService: "Forget this service", takeOffAsk: "Take {name} off the map?", takeOff: "Take it off",
+  comesOff: "{name} comes off this map. Its downloads stay on this device.", drawOnMap: "Draw {name} on this map"
 };
 
 export type Words = typeof ENGLISH & Record<string, string>;

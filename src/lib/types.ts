@@ -514,3 +514,36 @@ export interface OfflinePlan {
   isQueued: boolean;
   cancel?: string | null;
 }
+
+/** 67 One layer an Esri service publishes, as `PeerWebEsriServices.Layer` writes it. */
+export interface EsriLayer {
+  id: number;
+  name: string;
+  symbol: string;
+  subtitle: string;
+  /** The map's layer drawing it, when the map holds it. */
+  layer?: string | null;
+  refusal?: string | null;
+}
+
+/** 67 A service Edit map lists, with its page's rows. */
+export interface EsriService {
+  id: string;
+  name: string;
+  subtitle: string;
+  detail: string;
+  url: string;
+  take: string;
+  readAgain: string;
+  footnote: string;
+  /** The style drawing this service alone, when the map has one. */
+  style?: string | null;
+  layers: EsriLayer[];
+}
+
+export interface EsriListing {
+  services: EsriService[];
+}
+
+/** 67 One thing a service's page does, as `PeerWebEsriServices.asked` reads it. */
+export type EsriChange = { kind: "add" | "remove"; layer: number } | { kind: "read" } | { kind: "forget" };

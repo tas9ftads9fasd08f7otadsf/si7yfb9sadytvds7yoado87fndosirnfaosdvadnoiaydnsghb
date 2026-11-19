@@ -10,7 +10,7 @@ export const backend: Backend = {
   duplicateMap: notYet, deleteMap: notYet, shelve: notYet, switches: notYet, people: notYet, askPeople: notYet,
   setPicture: notYet, layerOptions: notYet, testLayer: notYet, packages: notYet, servers: notYet, addServer: notYet,
   importServers: notYet, exportServers: notYet, addServerLayers: notYet, readAPI: notYet, addAPI: notYet,
-  addFile: notYet, readAddress: notYet, addTiles: notYet, addServiceLayers: notYet, coverage: notYet,
+  addFile: notYet, readAddress: notYet, esriServices: notYet, changeEsriService: notYet, addTiles: notYet, addServiceLayers: notYet, coverage: notYet,
   coveragePlaces: notYet, startPlaces: notYet, regions: notYet, downloadRegion: notYet, offlinePlan: notYet,
   offlineDownload: notYet, discardStored: notYet, live: notYet,
   identify: notYet, details: notYet, phoneLocation: notYet, icon: notYet,
