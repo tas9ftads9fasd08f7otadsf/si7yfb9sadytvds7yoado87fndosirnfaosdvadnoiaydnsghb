@@ -2,6 +2,7 @@ import { NotOnSite, type Answer, type Backend, type ChangedElsewhere, type Featu
 import type { Edit } from "@/lib/edit";
 import type { Portable, SessionAnswer } from "@/lib/types";
 import { ENGLISH } from "@/lib/words";
+import { storedAuthor, type Author } from "./author";
 import { BASE } from "./base";
 import { Cloud } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
@@ -47,6 +48,7 @@ export interface Parts {
   config: () => Promise<SiteConfig>;
   core: () => Promise<Core>;
   keeping: Keeping;
+  author: Author;
   fetcher: typeof fetch;
   base: string;
   language: () => string;
@@ -145,7 +147,7 @@ export function createBackend(parts: Parts): Backend {
   };
 
   const change = async (mapID: string, styleID: string | null, edit: Edit): Promise<Answer<Portable>> => {
-    const author = (await parts.cloud.start())?.name || null;
+    const author = parts.author.read() || (await parts.cloud.start())?.name || null;
     const tried: { owner: string; undo: Undoing | null } = { owner: "", undo: null };
     return commit(mapID, (core, read) => {
       const applied = core.apply({ rows: read, mapID, styleID, edit, author, origin: "web" });
@@ -220,6 +222,7 @@ export function createBackend(parts: Parts): Backend {
       return () => listeners.delete(listener);
     },
     mountAccount: (button, into) => parts.cloud.mount(button, into),
+    author: parts.author,
 
     async maps() {
       const [core, read, person] = await Promise.all([parts.core(), rows(true), parts.cloud.start()]);
@@ -258,6 +261,6 @@ export function createBackend(parts: Parts): Backend {
 const language = () => navigator.language.split("-")[0] || "en";
 
 export const backend: Backend = createBackend({
-  cloud: new Cloud(), config: readConfig, core: () => loadCore(), keeping: indexedKeeping(),
+  cloud: new Cloud(), config: readConfig, core: () => loadCore(), keeping: indexedKeeping(), author: storedAuthor(),
   fetcher: (...asked) => fetch(...asked), base: BASE, language
 });

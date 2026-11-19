@@ -19,6 +19,7 @@ export const ENGLISH = {
   waitingText: "The phone sharing these maps has been asked to let this browser in.",
   signInTitle: "Sign in to iCloud", signInText: "Sign in with your Apple Account to see the maps in your iCloud.",
   changedBy: "{map} was changed by {author}", changedAway: "{map} was changed on another device",
+  yourName: "Your name",
   notOnSite: "The site cannot do this yet.",
   changeRefused: "The map changed elsewhere. Open it again and repeat the change.",
   removedTitle: "Removed from these maps",
