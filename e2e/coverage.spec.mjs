@@ -30,6 +30,9 @@ test("Coverage takes in a country, and the phone's line follows", async ({ page 
   await expect(country(page, "SK")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#coverageCountries [data-country=SK] button").first().click();
   await expect(page.locator("#coverageCountries button.region[data-id=kosicky]")).toBeDisabled();
+  // 74 TestFlight AK2D: the chosen country alone is listed; a search finds the others.
+  await expect(page.locator("#coverageCountries [data-country] > .row:first-child .words")).toHaveText(["Slovakia"]);
+  await page.getByRole("searchbox", { name: "Search countries" }).fill("aus");
   await expect(page.locator("#coverageCountries [data-country=AT] > span.row")).toHaveText("Austria");
 });
 
@@ -73,9 +76,15 @@ test("leaving out what a layer requires, or everything, is warned of", async ({ 
 // 2957: continents and the mountains are picked as on the phone; the search narrows the countries.
 test("a continent and every range are taken in, and the countries are searched", async ({ page }) => {
   await openCoverage(page);
+  // 74 TestFlight AL-i: the continents wait behind a fold, as the ranges do.
+  await expect(page.locator("#coveragePickers button.row", { hasText: "Europe" })).toHaveCount(0);
+  await page.locator("#coverageContinents").click();
   let asked = sent(page);
   await page.locator("#coveragePickers button.row", { hasText: "Europe" }).click();
   expect(await asked).toEqual({ continents: ["europe"] });
+  await page.locator("#coverageContinents").click();
+  await expect(page.locator("#coveragePickers button.row", { hasText: "Europe" })).toBeVisible();
+  await expect(page.locator("#coveragePickers button.row", { hasText: "Asia" })).toHaveCount(0);
   asked = sent(page);
   await page.locator("#coveragePickers button.row", { hasText: "Every mountain range" }).click();
   expect(await asked).toEqual({ continents: ["europe"], mountains: true });

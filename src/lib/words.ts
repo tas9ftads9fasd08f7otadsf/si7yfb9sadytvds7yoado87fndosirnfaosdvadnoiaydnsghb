@@ -44,7 +44,7 @@ export const ENGLISH = {
   excludeNote: "What the map leaves out of that. The more specific choice wins: excluding the world and including "
     + "the mountains leaves only the mountains.",
   world: "Whole world", worldNote: "For a map whose layers are drawn everywhere, as OpenStreetMap's are.",
-  continents: "Continents", everyRange: "Every mountain range", ranges: "Ranges", countries: "Countries",
+  continents: "Continents", allContinents: "All continents", everyRange: "Every mountain range", ranges: "Ranges", countries: "Countries",
   excludedRow: "Excluded", includedRow: "Included", opensDownloaded: "The map opens once these are downloaded.",
   "search.state": "Search states", "search.city": "Search cities", foundAppleMaps: "Found with Apple Maps.",
   appearance: "Appearance", "theme.auto": "Automatic", "theme.light": "Light", "theme.dark": "Dark",

@@ -1,4 +1,4 @@
-import type { Coverage, CoverageSide, CoverageSideKey } from "./types";
+import type { Coverage, CoverageSide, CoverageSideKey, Place } from "./types";
 
 export const SIDE_KEYS = ["world", "continents", "mountains", "countries", "regions"] as const;
 
@@ -23,4 +23,20 @@ export function edited(coverage: Coverage, side: CoverageSideKey, changeSide: (p
     made.exclude = SIDE_KEYS.some((key) => places[key] != null) ? places : undefined;
   }
   return made;
+}
+
+/** TestFlight AK2D: the chosen countries, or those with regions; a search finds the rest. */
+export function shownCountries(chosen: string[], countries: Place[], withRegions: Set<string>, query: string): string[] {
+  const wanted = query.trim().toLowerCase();
+  if (wanted) {
+    const found = countries.filter((each) => !chosen.includes(each.id)
+      && (each.name.toLowerCase().includes(wanted) || each.id.toLowerCase() === wanted)).map((each) => each.id);
+    return [...chosen, ...found.filter((code) => withRegions.has(code)), ...found.filter((code) => !withRegions.has(code))];
+  }
+  return chosen.length ? chosen : countries.map((each) => each.id).filter((code) => withRegions.has(code));
+}
+
+/** TestFlight AL-i: continents fold as ranges do; a chosen one stays above the fold. */
+export function foldedContinents<T extends Place>(all: T[], chosen: string[]): { inSight: T[]; folded: T[] } {
+  return { inSight: all.filter((each) => chosen.includes(each.id)), folded: all.filter((each) => !chosen.includes(each.id)) };
 }
