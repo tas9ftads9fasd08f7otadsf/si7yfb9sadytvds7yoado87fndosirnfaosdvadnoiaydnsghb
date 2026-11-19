@@ -1,4 +1,5 @@
 import type { CKRecord } from "./cloud";
+import { isTextBytes, textOfBytes } from "./mirror";
 
 /** What the core reads: one record of the mirror, its `CD_` prefixes taken off. */
 export interface CoreRow {
@@ -53,6 +54,8 @@ export async function rowOf(record: CKRecord, where: Pick<CoreRow, "database" | 
     } else if (field.type === "REFERENCE") {
       fields[bare(name)] = (field.value as { recordName?: string } | null)?.recordName ?? null;
       refs.push(bare(name));
+    } else if (field.type === "BYTES" && typeof field.value === "string" && isTextBytes(bare(name))) {
+      fields[bare(name)] = textOfBytes(field.value);
     } else {
       fields[bare(name)] = field.value;
     }
