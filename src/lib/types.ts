@@ -12,6 +12,14 @@ export interface SharedLayer {
   kind: string;
   symbol?: string;
   isLive?: boolean;
+  /** 58 The source Edit map folds it under; older phones leave it out. */
+  origin?: LayerOrigin;
+}
+
+export interface LayerOrigin {
+  key: string;
+  title: string;
+  symbol: string;
 }
 
 export interface SharedMap {
@@ -44,6 +52,8 @@ export interface PortableStyle {
   iconTintHex?: string | null;
   notes?: string;
   nameTranslations?: Record<string, string>;
+  /** 65 Worn in place of its symbol, base64. */
+  iconPicture?: string | null;
   arrangement?: { hidden?: string[] };
 }
 
@@ -157,7 +167,7 @@ export interface OptionChoice {
 
 export interface OptionSection {
   kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values"
-    | "details";
+    | "details" | "headers" | "probe" | "symbols";
   title?: string;
   footnote?: string;
   layerScoped?: boolean;
@@ -190,6 +200,43 @@ export interface DetailsLayout {
   keys: string[];
   offers: OptionChoice[];
   words: Record<string, string>;
+  /** 55: the header, the action buttons (none until added) and the choices they offer. */
+  header?: { title?: string | null; symbol?: string | null; layerSymbol: string };
+  actions?: LayoutActions | null;
+  symbols?: string[];
+  choices?: Record<string, OptionChoice[]>;
+}
+
+/** 55: the placed buttons in the sheet's order, then the app's own left off. */
+export interface LayoutActions {
+  items: { id: string; name: string; note: string; isOn: boolean; button?: LayoutButton }[];
+  labels: string;
+  highlightsFirst: boolean;
+}
+
+export interface LayoutButton {
+  id: string;
+  label: string;
+  symbol?: string | null;
+  look: string;
+  action: string;
+  template?: string | null;
+  subject?: string | null;
+  body?: string | null;
+  hides: boolean;
+}
+
+/** 55: a block's own settings, only those of its kind. */
+export interface BlockSettings {
+  icon?: boolean;
+  hides?: boolean;
+  look?: string;
+  icons?: boolean;
+  hidesEmpty?: boolean;
+  rows?: { index: number; title: string; value: string }[];
+  button?: LayoutButton;
+  card?: Record<string, string>;
+  live?: number | null;
 }
 
 export interface LayoutBlock {
@@ -201,6 +248,7 @@ export interface LayoutBlock {
   heading?: string;
   style?: string;
   counts: boolean;
+  settings?: BlockSettings | null;
 }
 
 /** 21: a layer's Details layout, filled and worded by the phone. */
@@ -233,7 +281,37 @@ export interface APIReading {
   longitudeKey: string;
   positionKey: string;
   nameKey?: string | null;
+  positionOrder?: string | null;
+  colourKey?: string | null;
+  imageKey?: string | null;
+  shownKeys?: string[];
+  refreshSeconds?: number | null;
+  detailRows?: APIDetailRow[] | null;
+  cookies?: CookiePreflight | null;
   [other: string]: unknown;
+}
+
+/** 3397: a page asked for cookies before the address, as `CookiePreflight` is written. */
+export interface CookiePreflight {
+  isOn: boolean;
+  page: string;
+  seconds: number;
+}
+
+/** 3397: a row of the sheet's Details card, as `APIDetailRow` is written. */
+export interface APIDetailRow {
+  id: string;
+  title: string;
+  symbol: string;
+  value: string;
+  isCoordinates?: boolean | null;
+  isHidden?: boolean | null;
+}
+
+export interface APIChoice {
+  value: string;
+  title: string;
+  detail?: string | null;
 }
 
 /** 3003: what the phone read of an API, and the reading it would add. */
@@ -243,6 +321,22 @@ export interface APIRead {
   keys: string[];
   points: number;
   name: string;
+  said: string;
+  samples?: Record<string, string>;
+  keepsCookie?: boolean;
+  choices?: { spellings: APIChoice[]; orders: APIChoice[]; refresh: APIChoice[]; cookieAges: APIChoice[] };
+}
+
+/** 3397: how the phone asks beyond the reading: its cookie page, a typed cookie, the colour. */
+export interface APIAsk {
+  cookies?: CookiePreflight | null;
+  cookie?: string;
+  tint?: string | null;
+}
+
+/** 60: what the phone's Test or Read said about a layer's address. */
+export interface LayerTest {
+  reachable: boolean;
   said: string;
 }
 
@@ -342,4 +436,79 @@ export interface MapSwitches {
   removedStyles: number;
   /** 53 The styles edited away from what was published; older phones leave it out. */
   editedStyles?: string[];
+  /** 62 Who loses the map deleted, as the Maps sheet asks; absent where it offers no Delete. */
+  deletion?: "onlyYou" | "everyone" | "yourList";
+}
+
+/** 59 A role on a shared map, as `MapShareRole` names it. */
+export type ShareRole = "owner" | "admin" | "editor" | "reader";
+
+/** 59 One person on the share, as `PeerWebPeople.Person` writes them. */
+export interface SharePerson {
+  id: string;
+  name: string;
+  role: ShareRole;
+  line: string;
+  hasAccepted: boolean;
+  isYou: boolean;
+  mayChangeRole: boolean;
+  mayRemove: boolean;
+}
+
+/** 59 Edit map's People card, as `PeerWebPeople.Roster` writes it. */
+export interface SharePeople {
+  isShared: boolean;
+  role: ShareRole;
+  mayInvite: boolean;
+  invitesDirectly: boolean;
+  people: SharePerson[];
+  tally: string;
+  link?: string | null;
+  linkRole?: ShareRole | null;
+  mayChangeLink: boolean;
+  heldBy?: string | null;
+  caveat: string;
+}
+
+/** 57 What the page asks Download tiles for: its view, or the view chosen on the map. */
+export interface OfflineAsk {
+  box: number[];
+  chosen: boolean;
+  zoom?: number;
+  layers?: string[];
+}
+
+/** 57 One layer of Download tiles, as `PeerWebOffline.Row` writes it. */
+export interface OfflineRow {
+  id: string;
+  name: string;
+  isDownloadable: boolean;
+  isIncluded: boolean;
+  detail: string;
+  bytes: number;
+  stored: number;
+  storedLine?: string | null;
+  job?: string | null;
+  fraction?: number | null;
+  /** Edit map's question, offered only where the phone would delete. */
+  discard?: { ask: string; note: string } | null;
+}
+
+/** 57 Download tiles for the whole map, counted by the phone, as `PeerWebOffline.Plan` writes it. */
+export interface OfflinePlan {
+  area: string;
+  box: number[];
+  minZoom: number;
+  maxZoom: number;
+  zoom: number;
+  zoomLabel: string;
+  limits: string;
+  rows: OfflineRow[];
+  toFetch: string;
+  held: string;
+  free: string;
+  total: string;
+  exceedsSpace: boolean;
+  isQueued: boolean;
+  cancel?: string | null;
 }
