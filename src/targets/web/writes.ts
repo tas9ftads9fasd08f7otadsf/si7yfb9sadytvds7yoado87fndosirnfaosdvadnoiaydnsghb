@@ -1,4 +1,5 @@
 import type { CKDatabase, CKSave, CKSaved, ZoneID } from "./cloud";
+import { bytesOfText, CHANGE_SCHEMA_VERSION, isTextBytes, typeOfField } from "./mirror";
 import type { CoreRow, CoreWrite } from "./records";
 
 /** A row was changed on the server since it was read: its change tag no longer fits. */
@@ -16,8 +17,18 @@ export interface Plan {
 
 const CONFLICTS = ["CONFLICT", "BATCH_ERROR"];
 
-const typeOf = (value: unknown): "STRING" | "INT64" | "DOUBLE" =>
-  typeof value === "string" ? "STRING" : typeof value === "boolean" || Number.isInteger(value) ? "INT64" : "DOUBLE";
+/** A history row as the app writes one: its own id, time and schema version beside the core's fields. */
+export function stamped(history: CoreWrite, now: Date = new Date()): CoreWrite {
+  return { ...history, fields: { id: crypto.randomUUID().toUpperCase(), updatedAt: now.getTime(),
+    schemaVersion: CHANGE_SCHEMA_VERSION, ...history.fields } };
+}
+
+/** The value as CloudKit holds a field of this type: text in BYTES is base64, a Bool is 0 or 1. */
+function valueOf(name: string, type: string, value: unknown) {
+  if (type === "BYTES") return typeof value === "string" && isTextBytes(name) ? bytesOfText(value) : value;
+  if (type === "REFERENCE") return { recordName: String(value), action: "DELETE_SELF" };
+  return typeof value === "boolean" ? Number(value) : value;
+}
 
 /** The fields a write changes; the rest of a row is left as the server has it. */
 export function changedFields(write: CoreWrite, row?: CoreRow): string[] {
@@ -25,19 +36,17 @@ export function changedFields(write: CoreWrite, row?: CoreRow): string[] {
     !row || JSON.stringify(write.fields[name] ?? null) !== JSON.stringify(row.fields[name] ?? null));
 }
 
-/** A write as a CloudKit record: `CD_` names, references as such, assets cleared. */
+/** A write as a CloudKit record: `CD_` names, each field in its type, assets cleared. */
 export function recordOf(write: CoreWrite, row: CoreRow | undefined, names: string[]): CKSave {
   const fields: CKSave["fields"] = {};
   for (const name of names) {
+    const type = typeOfField(write.entity, name);
+    if (!type) throw new Error(`The mirror has no field ${name} on ${write.entity}`);
     const value = write.fields[name] ?? null;
-    if (value === null) fields[`CD_${name}`] = { value: null };
-    else if (write.refs?.includes(name) || row?.refs?.includes(name)) {
-      fields[`CD_${name}`] = { value: { recordName: String(value), action: "DELETE_SELF" }, type: "REFERENCE" };
-    } else {
-      fields[`CD_${name}`] = { value: typeof value === "boolean" ? Number(value) : value, type: typeOf(value) };
-    }
+    fields[`CD_${name}`] = value === null ? { value: null } : { value: valueOf(name, type, value), type };
     if (row?.assets?.includes(name)) fields[`CD_${name}_ckAsset`] = { value: null };
   }
+  if (!row) fields.CD_entityName = { value: write.entity, type: "STRING" };
   return { recordName: write.id, recordType: `CD_${write.entity}`, ...(row ? { recordChangeTag: row.tag } : {}), fields };
 }
 
