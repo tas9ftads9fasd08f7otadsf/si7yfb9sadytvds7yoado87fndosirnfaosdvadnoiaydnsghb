@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { type MapControl, setMapControl } from "@/map/control";
 import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
   from "@/store/viewer";
+import { LayerSwitcher } from "./MapLayers";
 import { NavRail } from "./NavRail";
 import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar, UndrawnNote } from "./Overlays";
 import { SideBar } from "./SideBar";
@@ -77,6 +78,7 @@ export function AppShell() {
       <NavRail />
       <SideBar />
       <div id="map" ref={mapBox} />
+      <LayerSwitcher />
       <LoadingBar />
       <RegionOffer />
       <UndrawnNote />

@@ -2,21 +2,42 @@
 
 import { useEffect, useRef, useState } from "react";
 import { backend } from "@backend";
-import { pickStyle, shareAddress, shownMapOf, useViewer } from "@/store/viewer";
+import { go, nameNewMap, offers, shareAddress, showSide, shownMapOf, useViewer } from "@/store/viewer";
 import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
 import { Traffic } from "./Traffic";
 
-/** 47 The map on screen, named; the style switcher is the header's only drop-down. */
+/** 90 The map on screen, named; it opens the maps to pick another. */
 function ShownMap() {
+  const words = useViewer((state) => state.words);
   const shown = useViewer(shownMapOf);
   const icon = useViewer((state) => (shown ? state.pictures.get(shown.id)?.icon : null));
   return (
-    <div id="mapPicker" hidden={!shown}>
+    <button type="button" id="mapPicker" hidden={!shown} title={words.allMaps}
+      onClick={() => {
+        go({ screen: "maps" });
+        showSide(true);
+      }}>
       <MarkTile symbol={shown?.symbol} tint={shown?.iconTintHex} picture={icon} />
       <span id="mapName">{shown?.name ?? ""}</span>
-    </div>
+      <Sym name="chevron.down" className="chevron" />
+    </button>
+  );
+}
+
+/** 90 New map, for a browser that may make one; the maps screen names it. */
+function NewMapButton() {
+  const words = useViewer((state) => state.words);
+  const canEdit = useViewer((state) => state.editToken != null);
+  if (!canEdit || !offers("newMap")) return null;
+  return (
+    <button type="button" id="topNewMap" className="tool tinted"
+      onClick={() => {
+        go({ screen: "maps" });
+        showSide(true);
+        nameNewMap(true);
+      }}><Sym name="plus" />{words.newMap}</button>
   );
 }
 
@@ -55,36 +76,32 @@ function Account() {
 export function TopBar() {
   const words = useViewer((state) => state.words);
   const device = useViewer((state) => state.device);
-  const styles = useViewer((state) => state.portable?.styles);
-  const styleID = useViewer((state) => state.styleID);
   const viewers = useViewer((state) => state.viewers);
   const connected = useViewer((state) => state.connected);
   const viewing = `${words.viewing}: ${viewers ?? ""}`;
   const reach = connected ? words.connected : words.notConnected;
   return (
     <header id="top">
-      <div id="brand"><span className="tile"><Sym name="map" /></span><b id="appName">{words.app}</b></div>
-      <ShownMap />
-      <span className="spacer" />
-      <label id="styleLabel" style={{ display: (styles?.length ?? 0) > 1 ? "flex" : "none" }}>
-        <span id="styleWord">{words.styles}</span>
-        <select id="styleSelect" value={styleID ?? ""} onChange={(event) => pickStyle(event.target.value)}>
-          {(styles ?? []).map((each) => <option key={each.id} value={each.id}>{each.name}</option>)}
-        </select>
-      </label>
-      <Traffic />
-      <span id="viewers" role="status" title={viewing} aria-label={viewing}
-        style={{ display: viewers == null ? "none" : "inline-flex" }}>
-        <Sym name="desktopcomputer" /><span id="viewerCount">{viewers}</span>
-      </span>
-      <button id="shareButton" className="tool round" type="button" title={words.share} aria-label={words.share}
-        onClick={() => void shareAddress()}><Sym name="square.and.arrow.up" /></button>
-      <Account />
-      <span id="device" hidden={!device}><Sym name="iphone" />
-        {connected == null ? null
-          : <i id="deviceDot" className={connected ? "dot on" : "dot off"} role="img" title={reach} aria-label={reach} />}
-        {device?.name}
-      </span>
+      <div className="start">
+        <div id="brand"><span className="tile" aria-hidden="true">R</span><b id="appName">{words.app}</b></div>
+        <ShownMap />
+      </div>
+      <div className="end">
+        <Traffic />
+        <span id="viewers" role="status" title={viewing} aria-label={viewing}
+          style={{ display: viewers == null ? "none" : "inline-flex" }}>
+          <Sym name="desktopcomputer" /><span id="viewerCount">{viewers}</span>
+        </span>
+        <NewMapButton />
+        <button id="shareButton" className="tool round" type="button" title={words.share} aria-label={words.share}
+          onClick={() => void shareAddress()}><Sym name="square.and.arrow.up" /></button>
+        <Account />
+        <span id="device" hidden={!device}><Sym name="iphone" />
+          {connected == null ? null
+            : <i id="deviceDot" className={connected ? "dot on" : "dot off"} role="img" title={reach} aria-label={reach} />}
+          {device?.name}
+        </span>
+      </div>
     </header>
   );
 }

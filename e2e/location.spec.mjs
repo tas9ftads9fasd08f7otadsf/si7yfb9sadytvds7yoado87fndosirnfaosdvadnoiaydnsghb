@@ -19,7 +19,7 @@ test("a phone sharing its location is a dot on the map, and its button goes ther
 test("a phone that does not share its location shows no dot, and its button says where to share", async ({ page }) => {
   await openViewer(page);
   await expect(page.locator(".phone-dot")).toHaveCount(0);
-  const button = page.locator(".maplibregl-ctrl-top-right #phoneButton");
+  const button = page.locator(".maplibregl-ctrl-bottom-right #phoneButton");
   await expect(button).toBeVisible();
   await button.click();
   await expect(page.getByText("Share this phone's location")).toBeVisible();

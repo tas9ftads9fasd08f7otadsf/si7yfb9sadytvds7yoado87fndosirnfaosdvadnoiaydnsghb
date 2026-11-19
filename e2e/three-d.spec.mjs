@@ -8,7 +8,8 @@ test("the 3D button raises the relief and tilts the map, and turns both off agai
   await openViewer(page);
   await page.waitForFunction(() => __riki.map.isStyleLoaded() && __riki.map.getLayer("relief") !== undefined,
     null, { timeout: 15000 });
-  const button = page.locator(".maplibregl-ctrl-top-right #threeDButton");
+  // 90 with the other map buttons, bottom right.
+  const button = page.locator(".maplibregl-ctrl-bottom-right #threeDButton");
   await expect(button).toBeVisible();
   await expect(button).toHaveAttribute("aria-pressed", "false");
   await button.click();
