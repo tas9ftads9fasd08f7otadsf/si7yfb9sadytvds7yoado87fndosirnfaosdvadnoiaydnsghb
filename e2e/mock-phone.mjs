@@ -346,7 +346,29 @@ function lookSections(layer) {
 
 // 2998: Edit layer's feature styling, as `PeerWebLayerOptions+Features` lists it for a drawn file.
 const FEATURE_SWITCHES = ["distinctColours", "grouping"];
-const FEATURE_KEYS = [...FEATURE_SWITCHES, "lineWidth", "valueShown", "allValuesShown", "valueTint"];
+const FEATURE_KEYS = [...FEATURE_SWITCHES, "lineWidth", "valueShown", "allValuesShown", "valueTint",
+  "pointLabel", "pointInnerText", "colourMode", "colourKey"];
+const API_KEYS = ["line", "status", "colour"];
+
+// 70: an API layer's Colour and Text rows, as `PeerWebLayerOptions+Features` lists them.
+function apiPointSections(layer) {
+  const mode = layer.colourKey ? "fromKey" : layer.tintKey ? "byValue" : "fixed";
+  const colour = { kind: "colour", title: mode === "byValue" ? "Otherwise" : "", footnote: "", key: "tint",
+    layerScoped: true, value: layer.tint || null, automatic: "#0A84FF", palette: ["#E5533D", "#2E9E5B"] };
+  const keyed = (title, held) => ({ kind: "text", title, footnote: "", key: "colourKey", layerScoped: true,
+    value: `{${held}}`, keys: API_KEYS });
+  return [{ kind: "choice", title: "Colour", footnote: "", key: "colourMode", layerScoped: true, value: mode,
+    options: [["fixed", "Static"], ["fromKey", "From key"], ["byValue", "By value"]]
+      .map(([id, title]) => ({ id, title, detail: "" })) },
+  ...(mode === "fixed" ? [colour] : mode === "fromKey" ? [keyed("Colour key", layer.colourKey)]
+    : [keyed("Value key", layer.tintKey), colour]),
+  { kind: "text", title: "Text above points", footnote: "A {key} becomes that feature's value.", key: "pointLabel",
+    layerScoped: true, value: layer.pointLabel || "", keys: API_KEYS },
+  { kind: "text", title: "Text inside points", footnote: "Written in white on the dot.", key: "pointInnerText",
+    layerScoped: true, value: layer.pointInnerText || "", keys: API_KEYS }];
+}
+
+const bare = (written) => (written || "").trim().replace(/^\{/, "").replace(/\}$/, "").trim() || undefined;
 const DRAWN_VALUES = ["Hiking", "Skiing"];
 
 function featureSections(layer) {
@@ -366,6 +388,15 @@ function featureSections(layer) {
 
 function editFeatures(layer, query, key) {
   const value = query.get(key);
+  if (key === "pointLabel" || key === "pointInnerText") layer[key] = value.trim() || undefined;
+  if (key === "colourMode") {
+    const held = layer.colourKey || layer.tintKey || (value === "fromKey" ? "colour" : "line");
+    layer.colourKey = value === "fromKey" ? held : undefined;
+    layer.tintKey = value === "byValue" ? held : undefined;
+  }
+  if (key === "colourKey") {
+    if (layer.tintKey) layer.tintKey = bare(value); else layer.colourKey = bare(value);
+  }
   if (FEATURE_SWITCHES.includes(key)) layer[key] = value === "1";
   if (key === "lineWidth") layer.lineWidthScale = Number(value);
   if (key === "valueTint") layer.valueTints = { ...layer.valueTints, [value]: query.get("ink") || undefined };
@@ -687,6 +718,7 @@ function layerOptions(each) {
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
     }
     if (layer.layout) return detailsSections(layer);
+    if (layer.apiPoints) return apiPointSections(layer);
     return layer.drawn ? [...featureSections(layer), ...markSections(layer)] : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
@@ -1654,6 +1686,10 @@ function testControl(route, query, response) {
         symbol: "figure.skiing.downhill", isEnabled: true, overlay: "ski" },
       { id: "6F1E2A10-0000-4000-8000-0000000000F2", name: "Railways", kind: "Riki Maps package",
         symbol: "tram", isEnabled: true, overlay: "railways" });
+    break;
+  case "/__test/api-points":
+    phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000B7", name: "Buses", kind: "API",
+      symbol: "bus", isEnabled: true, drawn: true, apiPoints: true });
     break;
   case "/__test/drawn-file":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000D1", name: "Trails", kind: "GeoJSON",
