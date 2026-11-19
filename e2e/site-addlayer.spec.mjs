@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { addFrom } from "./phone.mjs";
 import { CLOSED_HOST, CORS_HOST, loadAccount, mockCloud, mockServiceHosts, recordCoreCalls } from "./mock-cloud.mjs";
 
 // 86 the site adds a tile address through the core, when its host answers browsers, and nothing else yet
@@ -11,6 +12,7 @@ async function openAdd(page) {
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
   await page.locator("#addLayer").click();
+  await addFrom(page, "tile");
   await expect(page.locator("#tileAddress")).toBeVisible();
 }
 

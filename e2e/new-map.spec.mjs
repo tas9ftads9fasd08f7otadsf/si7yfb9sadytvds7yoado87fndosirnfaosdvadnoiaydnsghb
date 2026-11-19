@@ -6,16 +6,31 @@ test.beforeEach(async ({ request }) => { await reset(request); });
 const named = (page, name) => page.locator("#current .hero", { hasText: name });
 
 // 2978: the phone makes it and shares it, and the page opens it. 41 from the Maps screen.
+// 97 W10's window at /new, from the Maps screen or the top bar; Create and edit opens Edit map.
 test("New map makes a blank map and opens it", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await expect(page.locator("#newMap")).toHaveCount(0);
   await showAllMaps(page);
   await page.locator("#newMapButton").click();
+  await expect(page.getByRole("dialog", { name: "New map" })).toBeVisible();
+  await expect(page).toHaveURL(/\/new#/);
+  await expect(page.locator("#newMapSave")).toBeDisabled();
   await page.locator("#newMapName").fill("Low Tatras");
   await page.locator("#newMapSave").click();
-  await expect(named(page, "Low Tatras")).toBeVisible();
+  await expect(page.locator("#editSub")).toHaveText("Low Tatras");
+  await expect(page).toHaveURL(/\/maps\/[^/#]+\/edit\/layers#/);
+  await expect(page.getByRole("dialog", { name: "New map" })).toHaveCount(0);
+});
+
+// 97 the top bar's New map opens the same window; Escape leaves the map as it was
+test("the top bar's New map opens its window, and Escape closes it", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await page.locator("#topNewMap").click();
+  await expect(page.getByRole("dialog", { name: "New map" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "New map" })).toHaveCount(0);
   await expect(page).toHaveURL(/\/maps\/[^/#]+#/);
-  await expect(page.locator("#others")).toHaveCount(0);
+  await expect(page.locator("#mapName")).toHaveText("High Tatras");
 });
 
 test("Import makes a map from a .mapson", async ({ page }) => {

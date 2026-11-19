@@ -229,3 +229,17 @@ test("Edit map's tabs are addresses, beside the map as its live preview", async 
   await expect(page.locator("#livePreview")).toHaveCount(0);
   await expect(page).toHaveURL(/\/maps\/[^/]+#/);
 });
+
+// 97 W11: the side bar's Add layer opens the window of sources over the map, the first one picked.
+test("Add layer opens its window of sources from the side bar", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await page.locator("#current .add-layer").click();
+  const dialog = page.getByRole("dialog", { name: "Add layer" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".sources [aria-pressed=true]")).toHaveId("addFrom-builtin");
+  await expect(dialog).toContainText("Into High Tatras · Summer");
+  await dialog.locator("#addFrom-tile").click();
+  await expect(dialog.locator("#tileAddress")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+});

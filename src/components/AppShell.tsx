@@ -4,9 +4,11 @@ import { useEffect, useRef } from "react";
 import { type MapControl, setMapControl } from "@/map/control";
 import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
   from "@/store/viewer";
+import { AddLayerModal } from "./edit/AddLayerModal";
 import { DetailsScreen } from "./edit/DetailsScreen";
 import { LayerSwitcher, LivePreview } from "./MapLayers";
 import { NavRail } from "./NavRail";
+import { NewMapModal } from "./NewMapModal";
 import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar, UndrawnNote } from "./Overlays";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
@@ -87,6 +89,8 @@ export function AppShell() {
       <LayerSwitcher />
       <LivePreview />
       <DetailsScreen />
+      <NewMapModal />
+      <AddLayerModal />
       <LoadingBar />
       <RegionOffer />
       <UndrawnNote />

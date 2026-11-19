@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { backend } from "@backend";
-import { go, nameNewMap, offers, shareAddress, showSide, shownMapOf, useViewer } from "@/store/viewer";
+import { go, offers, openNewMap, shareAddress, showSide, shownMapOf, useViewer } from "@/store/viewer";
 import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
@@ -26,18 +26,14 @@ function ShownMap() {
   );
 }
 
-/** 90 New map, for a browser that may make one; the maps screen names it. */
+/** 90 New map, for a browser that may make one; 97 its window names it. */
 function NewMapButton() {
   const words = useViewer((state) => state.words);
   const canEdit = useViewer((state) => state.editToken != null);
   if (!canEdit || !offers("newMap")) return null;
   return (
     <button type="button" id="topNewMap" className="tool tinted"
-      onClick={() => {
-        go({ screen: "maps" });
-        showSide(true);
-        nameNewMap(true);
-      }}><Sym name="plus" />{words.newMap}</button>
+      onClick={openNewMap}><Sym name="plus" />{words.newMap}</button>
   );
 }
 

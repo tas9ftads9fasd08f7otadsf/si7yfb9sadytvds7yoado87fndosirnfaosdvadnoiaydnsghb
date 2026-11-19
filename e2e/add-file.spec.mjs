@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset } from "./phone.mjs";
+import { addFrom, openViewer, phone, reset } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -10,6 +10,7 @@ async function openAddLayer(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await page.locator("#addLayer").click();
+  await addFrom(page, "file");
   await expect(page.locator("#layerFile")).toBeAttached();
 }
 

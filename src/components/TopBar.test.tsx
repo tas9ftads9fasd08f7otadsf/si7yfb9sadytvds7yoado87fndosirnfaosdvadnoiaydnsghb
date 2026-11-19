@@ -34,15 +34,15 @@ describe("TopBar", () => {
     expect(useViewer.getState().sideShown).toBe(true);
   });
 
-  // 90 New map is offered only to a browser that may edit, and opens its name field
-  it("offers New map to an editing browser and opens its name", () => {
+  // 90 New map is offered only to a browser that may edit; 97 it opens its window at /new
+  it("offers New map to an editing browser and opens its window", () => {
     const { rerender } = render(<TopBar />);
     expect(screen.queryByRole("button", { name: "New map" })).toBeNull();
     act(() => useViewer.setState({ editToken: "t" }));
     rerender(<TopBar />);
     fireEvent.click(screen.getByRole("button", { name: "New map" }));
-    expect(useViewer.getState().namingMap).toBe(true);
-    expect(useViewer.getState().route).toEqual({ screen: "maps" });
+    expect(useViewer.getState().route).toEqual({ screen: "map", map: "a", modal: { kind: "new" } });
+    expect(location.pathname).toBe("/new");
   });
 
   // 40 no dot until the phone has been asked, green once it answers, red when it does not
