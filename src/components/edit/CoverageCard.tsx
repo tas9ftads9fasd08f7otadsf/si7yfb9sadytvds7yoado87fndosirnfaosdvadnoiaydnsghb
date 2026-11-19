@@ -148,7 +148,7 @@ function Pickers({ coverage }: { coverage: Coverage }) {
       <div className="list">
         {continents.inSight.map(continentRow)}
         <Fold id="coverageContinents" isOpen={continentsOpen}
-          onToggle={() => setCoverageOpen("continents", !continentsOpen)}>{words.allContinents}</Fold>
+          onToggle={() => setCoverageOpen("continents", !continentsOpen)}>{words.showAll}</Fold>
         {continentsOpen ? continents.folded.map(continentRow) : null}
       </div>
       <h2 className="title">{places.mountains}</h2>
