@@ -9,8 +9,8 @@ import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/
 import { BY_NAME } from "@/lib/places";
 import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
-import type { APIRead, APIReading, Coverage, CoveragePlaces, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, MapSwitches, RoadSigns, RoadSignsAsk, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
+import type { APIAsk, APIRead, APIReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
+  LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
@@ -73,7 +73,16 @@ export interface ViewerState {
   serviceRead: ServiceRead | null;
   layerOptions: LayerOptions | null;
   optionsOpen: Set<string>;
+  /** 58 The sources whose layers are folded open; each opening of Edit map starts closed, as the app's. */
+  originsOpen: Set<string>;
   switches: MapSwitches | null;
+  /** 67 Edit map's Esri services as the phone last listed them, and the one opened. */
+  esri: EsriListing | null;
+  esriOpen: string | null;
+  /** 57 Download tiles as the phone last counted it, and what it was asked for. */
+  offline: OfflinePlan | null;
+  offlineAsk: OfflineAsk | null;
+  offlineOpen: boolean;
 }
 
 const firstState = (): ViewerState => ({
@@ -86,7 +95,7 @@ const firstState = (): ViewerState => ({
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
-  switches: null
+  switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -98,11 +107,13 @@ const set = useViewer.setState;
 const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof setTimeout> | undefined,
   notice: undefined as ReturnType<typeof setTimeout> | undefined, layerOptions: null as string | null,
   packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
-  coverageEdits: Promise.resolve(), optionsAsked: 0 };
+  coverageEdits: Promise.resolve(), optionsAsked: 0,
+  offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0 };
 
 export function resetViewer() {
   clearTimeout(busy.heartbeat);
   clearTimeout(busy.notice);
+  clearTimeout(busy.offline);
   Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, servers: false, coverage: null,
     addressKey: null, coverageEdits: Promise.resolve() });
   set(firstState(), true);
@@ -367,8 +378,10 @@ export async function pickMap(id: string, styleID: string | null) {
     localStorage.setItem(LAST_MAP_KEY, id);
   } catch { /* the first map next time */ }
   set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
-    coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, serverPicks: new Map(), serviceRead: null,
-    layerOptions: null, optionsOpen: new Set() });
+    coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, offline: null, offlineAsk: null, offlineOpen: false, esri: null,
+    esriOpen: null,
+    serverPicks: new Map(), serviceRead: null,
+    layerOptions: null, optionsOpen: new Set(), originsOpen: new Set() });
   let portable: Portable | null = null;
   try {
     portable = await backend.map(id);
@@ -419,6 +432,7 @@ export const toggleSide = () => showSide(!get().sideShown);
 export function showEdit(editing: boolean) {
   const { mapID, route } = get();
   if (editing) {
+    set({ originsOpen: new Set() });
     if (mapID) go({ screen: "edit", map: mapID, tab: "layers" });
     showSide(true);
     return;
@@ -474,7 +488,7 @@ backend.useToken(() => get().editToken);
  * Asks something that needs the edit password: null when the phone can't be reached or the
  * token went stale, which sends the browser back to the password.
  */
-async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = {}): Promise<Answer<T> | null> {
+export async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = {}): Promise<Answer<T> | null> {
   let answer: Answer<T>;
   try {
     answer = await asking();
@@ -492,7 +506,7 @@ async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = false } = 
 }
 
 /** The value, or null once the phone's words for a refusal are shown. */
-function told<T>(answer: Answer<T> | null): T | null {
+export function told<T>(answer: Answer<T> | null): T | null {
   if (!answer) return null;
   if (answer.ok) return answer.value;
   notice(answer.said);
@@ -584,6 +598,22 @@ export const importMap = (file: File) => madeBy(() => backend.importMap(file));
 /** 50 Edit map's Duplicate: the copy opens, as a new map does. */
 export const duplicateMap = () => madeBy(() => backend.duplicateMap(get().mapID ?? ""));
 
+/** 62 The Maps sheet's Delete, the name typed; the page goes back to the Maps list. */
+export async function deleteMap(name: string): Promise<boolean> {
+  const { editToken, mapID } = get();
+  if (!editToken || !mapID) return false;
+  const answer = await editing(() => backend.deleteMap(mapID, name));
+  if (!answer) return false;
+  if (!answer.ok) {
+    notice(answer.said);
+    return false;
+  }
+  set({ mapID: null, styleID: null, portable: null, switches: null, layerOptions: null, coverage: null });
+  await refreshDevice();
+  go({ screen: "maps" });
+  return true;
+}
+
 export const exportMap = () => saveFrom(() => backend.exportMap(get().mapID ?? ""));
 
 /** 2997 The phone's servers as Share servers writes them, keys left on the phone. */
@@ -609,14 +639,16 @@ export function showServerPart(part: ServerPart) {
 }
 
 /** The address, camera and all, copied for whoever it is sent to. */
-export async function shareAddress() {
-  const address = location.href;
+export const shareAddress = () => copyText(location.href);
+
+/** 59 Copied, and said so, as the page copies its own address. */
+export async function copyText(text: string) {
   try {
-    await navigator.clipboard.writeText(address);
+    await navigator.clipboard.writeText(text);
   } catch {
     // A phone's plain address is no secure context, so there is no clipboard API.
     const field = document.createElement("textarea");
-    field.value = address;
+    field.value = text;
     document.body.append(field);
     field.select();
     document.execCommand("copy");
@@ -663,6 +695,12 @@ export async function loadLayerOptions() {
   busy.layerOptions = null;
 }
 
+export function toggleOrigin(key: string) {
+  const originsOpen = new Set(get().originsOpen);
+  if (!originsOpen.delete(key)) originsOpen.add(key);
+  set({ originsOpen });
+}
+
 export function toggleOptions(id: string) {
   const optionsOpen = new Set(get().optionsOpen);
   if (!optionsOpen.delete(id)) optionsOpen.add(id);
@@ -695,6 +733,15 @@ export async function loadRoadSigns(ask: RoadSignsAsk): Promise<RoadSigns | null
 
 /** 69 A picture the phone draws, a road sign among them. */
 export const iconURL = (name: string) => backend.iconURL(name);
+
+/** 60 Test on a layer's Network settings: the phone asks the address and says what came back. */
+export async function testLayer(layerID: string): Promise<LayerTest | null> {
+  const { mapID } = get();
+  if (!mapID) return null;
+  const answer = await editing(() => backend.testLayer(mapID, layerID));
+  if (!answer) return null;
+  return answer.ok ? answer.value : { reachable: false, said: answer.said };
+}
 
 /** A refused layout change reads the layout again: the phone's may have moved on. */
 export async function setLayout(fields: Record<string, string>) {
@@ -778,18 +825,24 @@ export async function setPicture(kind: "icon" | "preview", picture?: Blob | null
   if (await addedBy((id) => backend.setPicture(id, kind, body))) keepPictures(mapID, picturesOf(get().portable));
 }
 
+/** 65 A style's own picture, squared on the phone as its style page squares one; none takes it away. */
+export async function setStylePicture(style: string, picture?: Blob | null) {
+  const body = picture ? await picture.arrayBuffer() : new ArrayBuffer(0);
+  await addedBy((id) => backend.setPicture(id, "styleIcon", body, style));
+}
+
 export async function takePreview() {
   const shot = await mapControl()?.snapshot();
   if (shot) await setPicture("preview", shot);
 }
 
 /** 3003: the phone reads the API and guesses its keys, or reads them as the page picked. */
-export async function readAPI(address: string, reading?: APIReading | null): Promise<APIRead | null> {
-  return told(await editing(() => backend.readAPI(address, reading)));
+export async function readAPI(address: string, reading?: APIReading | null, ask?: APIAsk): Promise<APIRead | null> {
+  return told(await editing(() => backend.readAPI(address, reading, ask)));
 }
 
-export const addAPI = (address: string, reading: APIReading, name: string) =>
-  addedBy((mapID) => backend.addAPI(mapID, address, reading, name));
+export const addAPI = (address: string, reading: APIReading, name: string, ask?: APIAsk) =>
+  addedBy((mapID) => backend.addAPI(mapID, address, reading, name, ask));
 
 export async function addServerLayers() {
   const picks = [...get().serverPicks.values()];
@@ -914,4 +967,127 @@ export async function downloadRegion(region: Region) {
   const answer = await editing(() => backend.downloadRegion(mapID, region.id));
   if (answer?.ok) mapControl()?.readRegions();
   else if (answer) notice(answer.said);
+}
+
+// MARK: - 67 Esri services
+
+export async function loadEsri() {
+  const { mapID } = get();
+  if (!mapID) return;
+  const answer = await editing(() => backend.esriServices(mapID), { quiet: true });
+  if (answer?.ok && mapID === get().mapID) set({ esri: answer.value });
+}
+
+export const openEsri = (esriOpen: string | null) => set({ esriOpen });
+
+/** As the service's page: taking a layer off asks first, in its words. */
+export async function changeEsri(serviceID: string, asked: EsriChange) {
+  const { mapID, words, esri } = get();
+  if (!mapID) return;
+  if (asked.kind === "remove") {
+    const name = esri?.services.find((one) => one.id === serviceID)?.layers.find((one) => one.id === asked.layer)?.name ?? "";
+    if (!confirm(`${words.takeOffAsk.replace("{name}", name)}\n\n${words.comesOff.replace("{name}", name)}`)) {
+      set({ editEpoch: get().editEpoch + 1 });
+      return;
+    }
+  }
+  const answer = await editing(() => backend.changeEsriService(mapID, serviceID, asked));
+  const portable = told(answer);
+  if (!portable) {
+    set({ editEpoch: get().editEpoch + 1 });
+    return;
+  }
+  set({ portable });
+  if (asked.kind === "forget") set({ esriOpen: null });
+  await refreshDevice();
+  const stands = (portable.styles ?? []).some((style) => style.id === get().styleID);
+  pickStyle(stands ? get().styleID : (portable.selectedStyleID ?? null));
+  await loadEsri();
+}
+
+// MARK: - 57 Download tiles and what a layer has stored
+
+/** How often a running download's progress is read again while the card is open. */
+export const OFFLINE_EVERY = 3000;
+
+/** The plan for the view now, or for what the page last asked, read again until nothing runs. */
+export async function loadOffline(ask?: OfflineAsk) {
+  const { mapID } = get();
+  const asked = ask ?? get().offlineAsk ?? viewAsk(false);
+  if (!mapID || !asked) return;
+  const round = ++busy.offlineAsked;
+  const answer = await editing(() => backend.offlinePlan(mapID, asked), { quiet: true });
+  if (round !== busy.offlineAsked || mapID !== get().mapID) return;
+  if (answer?.ok) set({ offline: answer.value, offlineAsk: asked });
+  else if (answer && ask) notice(answer.said);
+  followOffline();
+}
+
+function followOffline() {
+  clearTimeout(busy.offline);
+  if (get().offline?.isQueued) busy.offline = setTimeout(() => void loadOffline(), OFFLINE_EVERY);
+}
+
+export function stopOffline() {
+  clearTimeout(busy.offline);
+  busy.offlineAsked++;
+}
+
+function viewAsk(chosen: boolean): OfflineAsk | null {
+  const box = mapControl()?.box();
+  return box && box.length === 4 ? { box, chosen } : null;
+}
+
+export const openOffline = (offlineOpen: boolean) => set({ offlineOpen });
+
+/** As the phone's area picker: what the browser frames now is the area. */
+export function chooseOfflineArea() {
+  const view = viewAsk(true);
+  if (view) void loadOffline({ ...get().offlineAsk, ...view });
+}
+
+export function setOfflineZoom(zoom: number) {
+  const { offlineAsk, offline } = get();
+  if (offlineAsk && offline) void loadOffline({ ...offlineAsk, box: offline.box, chosen: true, zoom });
+}
+
+export function tickOfflineLayer(id: string) {
+  const { offlineAsk, offline } = get();
+  if (!offlineAsk || !offline) return;
+  const ticked = new Set(offline.rows.filter((row) => row.isIncluded).map((row) => row.id));
+  if (!ticked.delete(id)) ticked.add(id);
+  void loadOffline({ ...offlineAsk, box: offline.box, chosen: true, zoom: offline.zoom, layers: [...ticked] });
+}
+
+/** The screen's Download and Cancel, for what the plan last showed. */
+export async function offlineDownload(action: "start" | "cancel") {
+  const { mapID, offlineAsk, offline } = get();
+  if (!mapID || !offlineAsk || !offline) return;
+  const ask: OfflineAsk = { ...offlineAsk, box: offline.box, chosen: true, zoom: offline.zoom,
+    layers: offline.rows.filter((row) => row.isIncluded).map((row) => row.id) };
+  const answer = await editing(() => backend.offlineDownload(mapID, ask, action));
+  const plan = told(answer);
+  if (!plan || mapID !== get().mapID) return;
+  busy.offlineAsked++;
+  set({ offline: plan, offlineAsk: ask });
+  followOffline();
+}
+
+/** Edit map's Delete, asked first in its words; the map is drawn again without what went. */
+export async function discardStored(layerID: string) {
+  const { mapID, offline } = get();
+  const discard = offline?.rows.find((row) => row.id === layerID)?.discard;
+  if (!mapID || !discard || !confirm(`${discard.ask}\n\n${discard.note}`)) return;
+  const answer = await editing(() => backend.discardStored(mapID, layerID));
+  if (!answer) return;
+  if (!answer.ok) {
+    notice(answer.said);
+    return;
+  }
+  try {
+    const portable = await backend.map(mapID);
+    if (mapID === get().mapID) set({ portable });
+  } catch { /* the plan below still says what went */ }
+  mapControl()?.draw();
+  await loadOffline();
 }

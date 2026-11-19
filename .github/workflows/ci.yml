@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 
-# A pull request's new push replaces its last run; each merge's release runs to the end.
+# A pull request's new push replaces its last run; a merge's run is only cut short in `check`.
 concurrency:
   group: ci-${{ github.head_ref || github.sha }}-${{ github.workflow }}
   cancel-in-progress: true
@@ -52,6 +52,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     name: Lint, test and build
+    # 71 A newer merge to master takes over from the tests still running; the release is not cut.
+    concurrency:
+      group: check-${{ github.head_ref || github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

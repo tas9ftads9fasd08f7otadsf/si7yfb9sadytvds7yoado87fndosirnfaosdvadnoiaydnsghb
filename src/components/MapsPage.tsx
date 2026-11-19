@@ -5,6 +5,7 @@ import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
 import { checkKey, importMap, makeMap, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
+import { DeleteMap } from "./edit/DeleteMap";
 import { MapMark, MapShelf, useLayerCount } from "./MapShelf";
 import { MarkTile } from "./ui/MarkTile";
 import { railItemOf } from "./NavRail";
@@ -108,6 +109,7 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
           <Sym name="slider.horizontal.3" />{words.edit}
         </button>
       ) : edits ? <PasswordForm /> : null}
+      <DeleteMap place="card" />
     </>
   );
 }

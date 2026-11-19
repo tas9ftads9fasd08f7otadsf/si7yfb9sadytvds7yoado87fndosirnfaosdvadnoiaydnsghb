@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Edit } from "@/lib/edit";
 import type { Shelving } from "@/lib/edit";
-import { backend, queryOf, shelfQueryOf } from "./backend";
+import { apiAskQuery, backend, esriQueryOf, offlineQueryOf, queryOf, shelfQueryOf } from "./backend";
 import { savedName } from "./phone";
 
 // 36 every edit is the query `PeerWebEdit(query:)` reads, as the store sent it before the split
@@ -95,6 +95,17 @@ describe("the phone backend", () => {
     expect(init.headers).toEqual({ Authorization: "Bearer second" });
   });
 
+  // 62 a delete posts the typed name with the token and reads no body back
+  it("posts a delete with the typed name", async () => {
+    const fetcher = vi.fn(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetcher);
+    backend.useToken(() => "t");
+    expect(await backend.deleteMap("M", "High Tatras")).toEqual({ ok: true, value: null });
+    const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/riki/v1/maps/M/delete?name=High+Tatras");
+    expect(init.method).toBe("POST");
+  });
+
   // 43 the style is asked with direct=1 only by a browser loading tiles from their source
   it("asks for a style with direct=1 only when loading from the source", async () => {
     const fetcher = vi.fn(async () => new Response("{}"));
@@ -113,6 +124,20 @@ describe("the phone backend", () => {
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "admitted", viewers: null } });
   });
 
+  // 59 the People card reads with GET and changes with one POST each, carrying the token
+  it("reads and changes a map's people at its people address", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    backend.useToken(() => "T");
+    await backend.people("M");
+    await backend.askPeople("M", { kind: "invite", address: "eva@example.com", role: "editor" });
+    const [read, readInit] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    const [asked, askedInit] = fetcher.mock.calls[1] as unknown as [string, RequestInit];
+    expect([read, readInit.method]).toEqual(["/riki/v1/maps/M/people", "GET"]);
+    expect([asked, askedInit.method]).toEqual(["/riki/v1/maps/M/people?invite=eva%40example.com&role=editor", "POST"]);
+    expect(askedInit.headers).toEqual({ Authorization: "Bearer T" });
+  });
+
   // 36 an unreachable phone rejects, so the store says it is away
   it("rejects when the phone cannot be reached", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
@@ -123,5 +148,40 @@ describe("the phone backend", () => {
     expect(savedName(`attachment; filename="a.mapson"; filename*=UTF-8''Pre%C5%A1ov.mapson`)).toBe("Prešov.mapson");
     expect(savedName(`attachment; filename="a.mapson"`)).toBe("a.mapson");
     expect(savedName("")).toBe("Map.mapson");
+  });
+
+  // 61 a typed cookie travels in a header, never in the address; the page and colour in the query
+  it("sends an API layer's cookie in a header and its page and colour in the query", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    const cookies = { isOn: true, page: "https://buses.example/", seconds: 300 };
+    const reading = { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "" };
+    await backend.addAPI("M", "https://buses.example/now", reading, "Buses", { cookies, cookie: " s=1 ", tint: "#FF8800" });
+    const [path, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    const query = new URL(path, "http://phone").searchParams;
+    expect(JSON.parse(query.get("cookies") ?? "")).toEqual(cookies);
+    expect(query.get("tint")).toBe("#FF8800");
+    expect(path).not.toContain("s=1");
+    expect((init.headers as Record<string, string>)["X-Riki-Cookie"]).toBe("s=1");
+    expect(apiAskQuery({ cookies: { ...cookies, isOn: false }, cookie: "s=1" })).toEqual({});
+  });
+});
+
+// 57 the area, the zoom and the ticked layers as `PeerWebOffline.Asked` reads them
+describe("offlineQueryOf", () => {
+  it("writes the view, and what was chosen only when it was", () => {
+    expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: false })).toEqual({ box: "1,2,3,4" });
+    expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: true, zoom: 12, layers: ["A", "B"] }))
+      .toEqual({ box: "1,2,3,4", chosen: "1", zoom: "12", layers: "A,B" });
+  });
+});
+
+// 67 a service's change as `PeerWebEsriServices.asked` reads it
+describe("esriQueryOf", () => {
+  it("names the service and the one thing asked", () => {
+    expect(esriQueryOf("G", { kind: "add", layer: 2 })).toEqual({ service: "G", add: "2" });
+    expect(esriQueryOf("G", { kind: "remove", layer: 0 })).toEqual({ service: "G", remove: "0" });
+    expect(esriQueryOf("G", { kind: "read" })).toEqual({ service: "G", read: "1" });
+    expect(esriQueryOf("G", { kind: "forget" })).toEqual({ service: "G", forget: "1" });
   });
 });

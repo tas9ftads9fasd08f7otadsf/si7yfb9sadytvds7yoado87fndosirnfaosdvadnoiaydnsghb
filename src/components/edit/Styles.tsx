@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ArrangeAction } from "@/lib/edit";
 import type { MapSwitches, Portable, PortableStyle } from "@/lib/types";
 import { listed } from "@/lib/words";
-import { change, moveStyle, pickStyle, useViewer } from "@/store/viewer";
+import { change, moveStyle, pickStyle, setStylePicture, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
 import { Swatch } from "./Styling";
@@ -22,7 +22,8 @@ function StyleOptions({ style }: { style: PortableStyle }) {
       <div className="field"><label>{words.icon}</label></div>
       <div className="swatches" role="group" aria-label={`${words.icon} ${style.name}`}>
         {symbols.map((name) => (
-          <Swatch key={name} label={name} isPicked={name === symbol} tint={tint} data={{ "data-symbol": name }}
+          <Swatch key={name} label={name} isPicked={name === symbol && !style.iconPicture} tint={tint}
+            data={{ "data-symbol": name }}
             onPick={() => change({ kind: "styleSymbol", style: style.id, symbol: name })}><Sym name={name} /></Swatch>
         ))}
       </div>
@@ -37,6 +38,23 @@ function StyleOptions({ style }: { style: PortableStyle }) {
           <Swatch key={hex} label={hex} isPicked={hex === tint} tint={hex} data={{ "data-hex": hex }}
             onPick={() => change({ kind: "styleTint", style: style.id, tint: hex })} />
         ))}
+      </div>
+      <div className="field"><label>{words.picture}</label></div>
+      <div className="field pictured">
+        {style.iconPicture ? <span className="shown" data-picture="style"
+          style={{ backgroundImage: `url("data:image/jpeg;base64,${style.iconPicture}")` }} /> : null}
+        <label className="action">{words.choosePicture}
+          <input type="file" accept="image/*" hidden aria-label={`${words.choosePicture} · ${style.name}`}
+            data-style-picture={style.id} onChange={(event) => {
+              const picked = event.target.files?.[0];
+              event.target.value = "";
+              if (picked) void setStylePicture(style.id, picked);
+            }} />
+        </label>
+        {style.iconPicture ? (
+          <button type="button" className="action" aria-label={`${words.removePicture} · ${style.name}`}
+            onClick={() => void setStylePicture(style.id)}>{words.removePicture}</button>
+        ) : null}
       </div>
       <div className="field">
         <label>{words.note}</label>

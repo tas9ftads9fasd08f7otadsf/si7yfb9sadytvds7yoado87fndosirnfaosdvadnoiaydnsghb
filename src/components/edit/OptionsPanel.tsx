@@ -1,10 +1,11 @@
 "use client";
 
 import { type CSSProperties, useEffect, useState } from "react";
-import type { OptionSection, RoadSigns } from "@/lib/types";
-import { iconURL, loadRoadSigns, setDrawn, useViewer } from "@/store/viewer";
+import type { LayerTest, OptionSection, RoadSigns } from "@/lib/types";
+import { iconURL, loadRoadSigns, setDrawn, testLayer, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { DetailsLayoutPanel } from "./DetailsLayoutPanel";
+import { MarkSymbols } from "./MarkSymbols";
 import { Switch } from "../ui/Switch";
 import { Sym } from "../ui/Sym";
 import { ground } from "../ui/ground";
@@ -109,6 +110,62 @@ function SignKey({ section }: { section: OptionSection }) {
   );
 }
 
+/** 60 The headers a layer sends: a value is set here, never read back, as the phone keeps keys. */
+function Headers({ section, scoped }: { section: OptionSection; scoped: Scoped }) {
+  const words = useViewer((state) => state.words);
+  const [name, setName] = useState("");
+  const [value, setValue] = useState("");
+  const listID = `headers-${scoped({}).layer ?? ""}`;
+  const add = async () => {
+    if (!name.trim()) return;
+    await setDrawn(scoped({ header: name.trim(), headerValue: value }));
+    setName("");
+    setValue("");
+  };
+  return (
+    <>
+      {(section.items ?? []).map((item) => (
+        <div className="row header" key={item.id} data-header={item.id} data-set={item.isOn ? "" : undefined}>
+          <span className="words">{item.title}<small>{item.detail}</small></span>
+          <CommitField type="password" value="" autoComplete="off" placeholder={words.headerValue}
+            aria-label={`${item.title} ${words.headerValue}`}
+            onCommit={(text) => setDrawn(scoped({ header: item.id, headerValue: text }))} />
+          <button type="button" className="link" aria-label={`${words.remove} ${item.title}`}
+            onClick={() => setDrawn(scoped({ removeHeader: item.id }))}>{words.remove}</button>
+        </div>
+      ))}
+      <div className="row header-add">
+        <input list={listID} value={name} placeholder={words.headerName} aria-label={words.headerName}
+          autoCapitalize="off" spellCheck={false} onChange={(event) => setName(event.target.value)} />
+        <datalist id={listID}>
+          {(section.options ?? []).map((option) => <option key={option.id} value={option.id}>{option.detail}</option>)}
+        </datalist>
+        <input type="password" value={value} autoComplete="off" placeholder={words.headerValue}
+          aria-label={words.headerValue} onChange={(event) => setValue(event.target.value)} />
+        <button type="button" className="link" disabled={!name.trim()} onClick={() => void add()}>{section.label}</button>
+      </div>
+    </>
+  );
+}
+
+/** 60 Test or Read: the phone asks the address with its keys; the answer is said beside the button. */
+function Probe({ section, scoped }: { section: OptionSection; scoped: Scoped }) {
+  const words = useViewer((state) => state.words);
+  const [asking, setAsking] = useState(false);
+  const [tested, setTested] = useState<LayerTest | null>(null);
+  const test = async () => {
+    setAsking(true);
+    setTested(await testLayer(scoped({}).layer ?? ""));
+    setAsking(false);
+  };
+  return (
+    <div className="row probe" data-reachable={tested ? String(tested.reachable) : undefined}>
+      <span className="words" role="status">{asking ? words.testing : tested?.said ?? ""}</span>
+      <button type="button" className="link" disabled={asking} onClick={() => void test()}>{section.label}</button>
+    </div>
+  );
+}
+
 function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }) {
   const key = section.key ?? "";
   if (section.kind === "kinds") {
@@ -152,6 +209,8 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
   }
   if (section.kind === "values") return <Values section={section} scoped={scoped} />;
   if (section.kind === "signKey") return <SignKey section={section} />;
+  if (section.kind === "headers") return <Headers section={section} scoped={scoped} />;
+  if (section.kind === "probe") return <Probe section={section} scoped={scoped} />;
   if (section.kind === "details") return section.layout ? <DetailsLayoutPanel layout={section.layout} scoped={scoped} /> : null;
   if (section.kind === "text") {
     return (
@@ -161,6 +220,7 @@ function Section({ section, scoped }: { section: OptionSection; scoped: Scoped }
       </div>
     );
   }
+  if (section.kind === "symbols") return <MarkSymbols section={section} pick={(name) => setDrawn(scoped({ [key]: name }))} />;
   if (section.kind === "colour") {
     return <ColourSwatches section={section} pick={(hex) => setDrawn(scoped({ [key]: hex }))} />;
   }

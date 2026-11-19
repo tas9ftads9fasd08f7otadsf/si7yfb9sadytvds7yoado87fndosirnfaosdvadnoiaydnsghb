@@ -180,6 +180,8 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 button.row { width: 100%; border: 0; background: none; text-align: left; }
 button.row.picked { background: var(--fill); }
 button.row.part { padding-left: 28px; }
+button.row.origin { font-weight: 600; }
+button.row.origin small { color: var(--secondary); font-size: 12px; font-weight: 400; white-space: nowrap; }
 button.row:disabled { opacity: 0.6; cursor: default; }
 .row.dimmed { color: var(--secondary); }
 .card.options { margin: 0 8px 8px; }
@@ -214,6 +216,12 @@ label.action { cursor: pointer; }
 .icon-button:hover:not(:disabled) { background: var(--hover); }
 .icon-button:disabled { color: var(--tertiary); cursor: default; }
 .icon-button.danger { color: var(--danger); }
+.action.danger { color: var(--danger); }
+.action:disabled { color: var(--tertiary); cursor: default; }
+.confirm-delete { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); }
+.confirm-delete .reach, .confirm-delete span { font-size: 13px; color: var(--secondary); }
+.confirm-delete input { text-transform: none; letter-spacing: normal; }
+.confirm-delete .buttons { display: flex; gap: 8px; }
 .icon-button .sym { font-size: 15px; }
 .card { margin: 0 16px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; padding: 4px 0; }
 .field { padding: 8px 14px; }
@@ -232,6 +240,11 @@ label.action { cursor: pointer; }
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; }
 .card.options .sign-grid li { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .card.options .sign-grid .sign { flex: none; width: 24px; height: 24px; background: center / contain no-repeat; }
+.card.options .row.header input, .card.options .row.header-add input { min-width: 0; flex: 1; font: inherit;
+  padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; }
+.card.options .row.header-add { gap: 6px; }
+.card.options .row.probe[data-reachable=true] .words { color: var(--on, inherit); }
+.card.options .row.probe[data-reachable=false] .words { color: var(--danger); }
 .field select { width: 100%; font: inherit; padding: 5px 4px; border-radius: 6px; border: 1px solid var(--line);
   background: var(--panel); color: inherit; }
 .field input[aria-invalid=true] { border-color: var(--danger); }
@@ -248,6 +261,12 @@ label.action { cursor: pointer; }
 .layout-block .row button:disabled { color: var(--secondary); opacity: 0.4; }
 .block-fields, .add-content { display: flex; flex-direction: column; gap: 6px; padding: 2px 14px 8px; }
 .add-content button { align-self: flex-start; }
+.block-fields .check { display: flex; gap: 6px; align-items: center; }
+.block-fields > button.link { align-self: flex-start; }
+.layout-row input { flex: 1; }
+.add-row { gap: 6px; }
+.add-row input { flex: 1; }
+.layout-header, .layout-actions { border-top: 1px solid var(--line); padding: 4px 0; }
 .field.pictured { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .field.pictured .shown { width: 44px; height: 44px; border-radius: 10px; background: center / cover; }
 .field.pictured.preview .shown { width: 100%; height: auto; aspect-ratio: 4 / 3; }
@@ -361,3 +380,6 @@ body.gated #gate { display: flex; }
 .feature-note.warning { background: color-mix(in srgb, orange 18%, transparent); }
 .feature-link { display: inline-block; margin: 4px 0; padding: 6px 12px; border-radius: 999px; background: var(--fill); color: var(--accent); text-decoration: none; }
 .feature-image { aspect-ratio: 4 / 3; margin: 6px 0; border-radius: 10px; background: var(--fill) center / cover no-repeat; }
+/* 59 The share's link is long; the row keeps its Copy button in view. */
+.link-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#peopleInvited .text-button { display: block; margin: 10px auto 6px; }

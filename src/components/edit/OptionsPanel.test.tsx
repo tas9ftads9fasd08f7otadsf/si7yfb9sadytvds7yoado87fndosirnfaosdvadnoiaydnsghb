@@ -4,11 +4,80 @@ import type { OptionSection, RoadSigns } from "@/lib/types";
 import { resetViewer, useViewer } from "@/store/viewer";
 import { OptionsPanel } from "./OptionsPanel";
 
+const headers: OptionSection = { kind: "headers", title: "Headers", footnote: "Values stay on the phone.",
+  key: "header", label: "Add header", layerScoped: true,
+  options: [{ id: "Authorization", title: "Authorization", detail: "Bearer or Basic" }],
+  items: [{ id: "X-API-Key", title: "X-API-Key", light: "", dark: "", isOn: true, detail: "Saved on this device" }] };
+
+const probe: OptionSection = { kind: "probe", title: "", footnote: "", key: "test", label: "Test", layerScoped: true };
+
+const asked = (answer: () => Promise<Response> = () => new Promise<Response>(() => {})) => {
+  const ask = vi.fn((input: RequestInfo | URL) => (void input, answer()));
+  vi.stubGlobal("fetch", ask);
+  return () => String(ask.mock.calls[0]?.[0]);
+};
+
+const show = (sections: OptionSection[]) => {
+  useViewer.setState({ mapID: "a", editToken: "t" });
+  render(<OptionsPanel id="L" sections={sections} />);
+};
+
+describe("OptionsPanel", () => {
+  beforeEach(resetViewer);
+  afterEach(() => vi.unstubAllGlobals());
+
+  // 60: a set header says so and shows no value; typing one sends it, never reading it back.
+  it("sets a header's value without showing the one kept", () => {
+    const sent = asked();
+    show([headers]);
+    expect(screen.getByText("Saved on this device")).toBeTruthy();
+    const field = screen.getByLabelText("X-API-Key Value") as HTMLInputElement;
+    expect(field.value).toBe("");
+    expect(field.type).toBe("password");
+    field.value = "sk_new";
+    fireEvent.change(field);
+    const query = new URLSearchParams(sent().split("?")[1]);
+    expect(Object.fromEntries(query)).toMatchObject({ layer: "L", header: "X-API-Key", headerValue: "sk_new" });
+  });
+
+  // 60: a header is removed by its name.
+  it("removes a header", () => {
+    const sent = asked();
+    show([headers]);
+    fireEvent.click(screen.getByRole("button", { name: "Remove X-API-Key" }));
+    expect(sent()).toContain("removeHeader=X-API-Key");
+  });
+
+  // 60: a new header goes with its name and value at once; no name, nothing to add.
+  it("adds a named header with its value", () => {
+    const sent = asked();
+    show([headers]);
+    const add = screen.getByRole("button", { name: "Add header" }) as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Header"), { target: { value: "Authorization" } });
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "Bearer abc" } });
+    fireEvent.click(add);
+    const query = new URLSearchParams(sent().split("?")[1]);
+    expect(Object.fromEntries(query)).toMatchObject({ header: "Authorization", headerValue: "Bearer abc" });
+  });
+
+  // 60: Test asks the phone and says what it answered.
+  it("tests the address on the phone", async () => {
+    const sent = asked(() => Promise.resolve(new Response(JSON.stringify({ reachable: false, said: "Server replied 404" }))));
+    show([probe]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Test" }));
+    });
+    expect(sent()).toContain("/maps/a/layer-test?layer=L");
+    expect(await screen.findByText("Server replied 404")).toBeTruthy();
+  });
+});
+
 const signKey: OptionSection = { kind: "signKey", title: "Country", footnote: "", label: "Search countries" };
 
 const countries = [{ id: "at", title: "Austria" }, { id: "sk", title: "Slovakia" }];
 
-/** As `PeerWebRoadSigns` answers: the country asked, else the first, filtered by `q`. */
+/** As `PeerWebRoadSigns` answers: the country askedSigns, else the first, filtered by `q`. */
 function phoneKey(url: string): RoadSigns {
   const query = new URLSearchParams(url.split("?")[1]);
   const country = query.get("country") ?? "sk";
@@ -18,7 +87,7 @@ function phoneKey(url: string): RoadSigns {
     signs: country === "sk" ? [{ id: "sk.ts.202", title: "Stop" }] : [{ id: "at.ts.1", title: "Vorrang geben" }] };
 }
 
-const asked = () => {
+const askedSigns = () => {
   const ask = vi.fn((input: RequestInfo | URL) => String(input).includes("/road-signs")
     ? Promise.resolve(new Response(JSON.stringify(phoneKey(String(input)))))
     : new Promise<Response>(() => {}));
@@ -26,7 +95,7 @@ const asked = () => {
   return () => ask.mock.calls.map((call) => String(call[0]));
 };
 
-const show = async (sections: OptionSection[]) => {
+const showSigns = async (sections: OptionSection[]) => {
   useViewer.setState({ mapID: "a", editToken: "t" });
   await act(async () => {
     render(<OptionsPanel id="L" sections={sections} />);
@@ -39,8 +108,8 @@ describe("OptionsPanel's signs key", () => {
 
   // 69: one country's signs, each drawn by the phone, the country listed among the rest.
   it("lists one country's signs with the phone's pictures", async () => {
-    const urls = asked();
-    await show([signKey]);
+    const urls = askedSigns();
+    await showSigns([signKey]);
     expect(urls()[0]).toContain("/maps/a/road-signs");
     expect(await screen.findByText("Stop")).toBeTruthy();
     const picture = document.querySelector("[data-sign='sk.ts.202'] .sign") as HTMLElement;
@@ -50,8 +119,8 @@ describe("OptionsPanel's signs key", () => {
 
   // 69: a country is picked from the list, and the search asks the phone for the names that fit.
   it("picks another country and searches by name", async () => {
-    const urls = asked();
-    await show([signKey]);
+    const urls = askedSigns();
+    await showSigns([signKey]);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Austria" }));
     });
@@ -66,8 +135,8 @@ describe("OptionsPanel's signs key", () => {
 
   // 69: road numbers are a choice of the phone's, sent without a layer.
   it("sets road numbers for the phone", async () => {
-    const urls = asked();
-    await show([{ kind: "choice", title: "Road numbers", footnote: "Every map follows this.", key: "roadShields",
+    const urls = askedSigns();
+    await showSigns([{ kind: "choice", title: "Road numbers", footnote: "Every map follows this.", key: "roadShields",
       value: "country", options: [{ id: "country", title: "Country shields" }, { id: "classic", title: "One per road class" }] }]);
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Road numbers"), { target: { value: "classic" } });
