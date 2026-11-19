@@ -45,7 +45,7 @@ function freshMaps() {
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
   tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
-    legendEverywhere: true, ownsSettings: true, shares: freshShares() };
+    legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
 // 59: the High Tatras shared with Rita, who joined; Bratislava with nobody yet.
 function freshShares() {
@@ -112,6 +112,52 @@ function askPeople(id, query) {
   return null;
 }
 
+// 68: as `PeerWebFolderSharing.roster`: no removal or link choice, and what travels in the share.
+function folderRoster(id) {
+  const share = phone.folderShares[id];
+  const inside = phone.maps.filter((each) => each.stackID === id);
+  const carried = inside.filter((each) => share?.carried.includes(each.id)).length;
+  const saved = phone.shares;
+  phone.shares = { [id]: share };
+  const made = roster(id);
+  phone.shares = saved;
+  const owns = made.role === "owner";
+  return { ...made, isShared: share != null, mayInvite: owns, mayChangeLink: false, linkRole: null,
+    people: made.people.map((person) => ({ ...person, mayRemove: false })),
+    folderLine: share ? `${carried} of ${inside.length} maps travel in this share`
+      : `${inside.length} maps would travel in this share`,
+    addsMore: owns && share != null && carried < inside.length };
+}
+
+// 68: as `PeerWebFolderSharing.carryOut`: the folder's maps move in, then the share is made or used.
+function askFolderPeople(id, query) {
+  const share = phone.folderShares[id];
+  const owns = (share?.role ?? "owner") === "owner";
+  const inside = phone.maps.filter((each) => each.stackID === id).map((each) => each.id);
+  const made = () => {
+    phone.folderShares[id] ??= { role: "owner", linkRole: null, link: `https://www.icloud.com/share/0folder${id.slice(-4)}`,
+      people: [{ id: "you", name: "Riki (you)", role: "owner", hasAccepted: true, isYou: true }], carried: [] };
+    phone.folderShares[id].carried = inside;
+    return phone.folderShares[id];
+  };
+  if (query.has("remove") || query.has("link")) return null;
+  if (query.get("share") === "1") return owns ? made() : null;
+  if (query.has("invite")) {
+    const address = (query.get("invite") || "").trim().toLowerCase();
+    if (!owns || !address.includes("@")) return null;
+    made().people.push({ id: `invited-${address}`, name: address, role: query.get("role") || "reader",
+      hasAccepted: false, isYou: false });
+    return true;
+  }
+  if (query.has("person")) {
+    const found = share?.people.find((each) => each.id === query.get("person"));
+    if (!found || found.role === "owner") return null;
+    found.role = query.get("role");
+    return true;
+  }
+  return null;
+}
+
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
   return { drawn: [{ id: "vysoke_tatry", name: "Vysoké Tatry", box: [19.9, 49.09, 20.32, 49.32] }],
@@ -122,7 +168,7 @@ function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
     tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], detailsAsked: [], laysOutDetails: false,
-    legendEverywhere: true, ownsSettings: true, shares: freshShares() };
+    legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
 
 // MARK: - The guest book, as `PeerWebGuestBook` keeps it
@@ -976,6 +1022,15 @@ async function answer(request, response) {
   if (parts[2] === "location" && parts.length === 3) {
     return phone.location ? json(response, phone.location) : send(response, 404, "This phone does not share its location");
   }
+  if (parts[2] === "folders" && parts[4] === "people" && parts.length === 5) {
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (!phone.maps.some((each) => each.stackID === parts[3])) return send(response, 404, "No such folder");
+    if (method === "POST" && !askFolderPeople(parts[3], url.searchParams)) {
+      return send(response, 403, "Your role on this map does not allow that");
+    }
+    return json(response, folderRoster(parts[3]));
+  }
   if (parts[2] !== "maps") return send(response, 404, "");
   const each = phone.maps.find((one) => one.id === parts[3]);
   if (!each) return send(response, 404, "");
@@ -1214,6 +1269,10 @@ function testControl(route, query, response) {
   case "/__test/share-role": phone.shares[query.get("map")].role = query.get("role"); break;
   case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
   case "/__test/shares": return json(response, phone.shares);
+  case "/__test/folder":
+    for (const each of phone.maps) Object.assign(each, { stackID: "F01DE500-0000-4000-8000-000000000001", stackName: "Hills" });
+    break;
+  case "/__test/folder-shares": return json(response, phone.folderShares);
   case "/__test/laid-out-layer":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000A5", name: "Trams", kind: "API",
       symbol: "tram", isEnabled: true, layout: [{ title: null, blocks: [
