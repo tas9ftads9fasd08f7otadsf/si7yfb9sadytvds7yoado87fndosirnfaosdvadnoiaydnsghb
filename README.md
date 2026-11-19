@@ -59,7 +59,9 @@ without a core, and the deploy refuses such a zip unless it is run by hand for a
 take a newer core, set `rikiCore.ref` to the rikimaps commit and `rikiCore.sha256` to the module's (the build prints
 it, and refuses a module that is not the pinned one). `RIKI_CORE_REF=<sha>` tries a commit before it is pinned.
 CI builds it in `.github/workflows/core.yml`, which `release.yml` calls before it packs; rikimaps is private, so the
-repository secret `RIKIMAPS_READ_TOKEN` (a token that reads it) has to exist.
+repository secret `RIKIMAPS_READ_TOKEN` (a token that reads it) has to exist. With a commit pinned, `pack:web` fails
+where the module was not built; `RIKI_PACK_WITHOUT_CORE=1` packs without it for the browser specs, which stand in for the
+core (CI does, and `npm run check`).
 
 ### Deploying it
 

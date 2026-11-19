@@ -158,6 +158,17 @@ describe("the core's pipeline", () => {
     expect(core).toMatch(/workflow_call:/);
   });
 
+  it("runs rikimaps' own core tests, which its CI no longer does, with the toolchain it built with", () => {
+    expect(core).toContain("rikimaps/tools/linux-core-tests.sh");
+    expect(core).toContain("SWIFT:");
+    expect(core.indexOf("npm run build:core")).toBeLessThan(core.indexOf("linux-core-tests.sh"));
+  });
+
+  it("lets CI pack the site without the core for its browser specs, and the release not", () => {
+    expect(read("ci.yml")).toMatch(/run: npm run pack:web\n\s+env:\n\s+RIKI_PACK_WITHOUT_CORE: "1"/);
+    expect(release).not.toContain("RIKI_PACK_WITHOUT_CORE");
+  });
+
   it("is built by the release before the site is packed, with the secret handed on", () => {
     expect(release).toMatch(/\n  core:[\s\S]*uses: \.\/\.github\/workflows\/core\.yml/);
     expect(release).toContain("RIKIMAPS_READ_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}");

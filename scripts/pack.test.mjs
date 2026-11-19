@@ -88,6 +88,13 @@ describe("the site's core", async () => {
   });
 
   // 88 the pin's own checksum is the one a build has to reproduce
+  // 88 CI packs the site for the browser specs with no core built; a release has to fail without one
+  it("may be packed without when the pack says it is for the specs", async () => {
+    const answer = await pinnedCore({ ref: "0123456789abcdef" }, await folder(), { optional: true });
+    expect(answer.wasm).toBeNull();
+    expect(answer.said).toContain("packed without it");
+  });
+
   it("fails when the pin's sha256 is not the module's", async () => {
     const bytes = Buffer.from("\0asm");
     const dir = await folder(bytes, createHash("sha256").update(bytes).digest("hex"));

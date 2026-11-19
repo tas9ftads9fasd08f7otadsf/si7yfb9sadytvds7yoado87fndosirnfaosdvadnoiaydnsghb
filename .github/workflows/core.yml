@@ -68,6 +68,14 @@ jobs:
           RIKIMAPS_DIR: ${{ github.workspace }}/rikimaps
         run: npm run build:core
 
+      # rikimaps runs none of these in its own CI: the core's Foundation-only files and the module's ABI tests.
+      - name: Test the core at the pinned commit
+        if: steps.pin.outputs.ref != ''
+        env:
+          SWIFT: ~/.cache/riki-swift/swift-6.2-RELEASE-ubuntu24.04/usr/bin/swift
+        run: |
+          SWIFT="${SWIFT/#\~/$HOME}" rikimaps/tools/linux-core-tests.sh
+
       - uses: actions/upload-artifact@v4
         with:
           name: riki-core

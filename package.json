@@ -2,7 +2,7 @@
   "name": "mapeditor-fe",
   "version": "0.1.0",
   "private": true,
-  "rikiCore": { "ref": null, "sha256": null },
+  "rikiCore": { "ref": "b60e9e4c95a00d747580d89a777fdc34818324ff", "sha256": "a3c9416053dd0df1509d86fc199030dc19e105a0d8d77c8f43bd19aa0fdeced6" },
   "description": "The map editor a sharing phone serves to browsers, built by Next.js and shipped inside the app",
   "type": "module",
   "engines": {
@@ -18,7 +18,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run test:php && npm run build && npm run test:e2e && npm run pack && npm run build:web && npm run pack:web && npm run test:e2e:web",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run test:php && npm run build && npm run test:e2e && npm run pack && npm run build:web && RIKI_PACK_WITHOUT_CORE=1 npm run pack:web && npm run test:e2e:web",
     "build:web": "RIKI_TARGET=web next build",
     "build:core": "node scripts/build-core.mjs",
     "pack:web": "node scripts/pack-web.mjs",
