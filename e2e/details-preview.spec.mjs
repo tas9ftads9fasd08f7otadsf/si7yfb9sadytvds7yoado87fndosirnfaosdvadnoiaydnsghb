@@ -34,7 +34,7 @@ test("the Details editor previews the layout from a sample point", async ({ page
 
   const asked = await phone(request, "details-asked");
   expect(asked.at(-1)).toMatchObject({ layer, values: { line: "9", speed: "25" } });
-  await page.screenshot({ path: "test-results/details-preview.png", fullPage: true });
+  await panel.screenshot({ path: "test-results/details-preview.png" });
 });
 
 // 79: a change to the layout fills the preview again from the same point.
