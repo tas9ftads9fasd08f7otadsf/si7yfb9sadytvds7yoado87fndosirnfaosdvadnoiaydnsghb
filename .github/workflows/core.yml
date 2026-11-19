@@ -1,0 +1,75 @@
+name: Core
+
+# riki-core.wasm, built from the rikimaps commit package.json pins (rikiCore.ref): scripts/build-core.mjs. Release calls
+# this before it packs the site; a pull request runs it when the pin or the build changes.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - package.json
+      - scripts/build-core.mjs
+      - .github/workflows/core.yml
+  workflow_call:
+    secrets:
+      RIKIMAPS_READ_TOKEN:
+        description: A token that reads skifahrer/rikimaps, which is private
+        required: false
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-${{ github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Build riki-core.wasm
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - id: pin
+        name: Read the pinned commit
+        run: echo "ref=$(node -p "require('./package.json').rikiCore.ref || ''")" >> "$GITHUB_OUTPUT"
+
+      # Private: the token is the repository secret RIKIMAPS_READ_TOKEN, which skifahrer creates.
+      - name: Check out rikimaps at the pinned commit
+        if: steps.pin.outputs.ref != ''
+        uses: actions/checkout@v5
+        with:
+          repository: skifahrer/rikimaps
+          ref: ${{ steps.pin.outputs.ref }}
+          token: ${{ secrets.RIKIMAPS_READ_TOKEN }}
+          path: rikimaps
+          persist-credentials: false
+
+      - name: Cache the Swift toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/riki-swift
+          key: riki-swift-6.2-RELEASE-ubuntu24.04-8e3d63a3
+      - name: Cache the WebAssembly SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.swiftpm/swift-sdks
+          key: riki-swift-wasm-sdk-6.2-RELEASE-fe4e8648
+
+      - name: Build, optimise and load it
+        env:
+          RIKIMAPS_DIR: ${{ github.workspace }}/rikimaps
+        run: npm run build:core
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: riki-core
+          path: dist/riki-core
+          if-no-files-found: ignore

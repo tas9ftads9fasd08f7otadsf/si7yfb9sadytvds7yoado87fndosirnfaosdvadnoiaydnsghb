@@ -46,7 +46,7 @@ describe("the site's deploy", () => {
     expect(job).toContain("needs: release");
     expect(job).toContain("uses: ./.github/workflows/deploy-site.yml");
     expect(job).toContain("tag: ${{ needs.release.outputs.tag }}");
-    expect(release).toMatch(/release:[\s\S]*needs: check/);
+    expect(release).toMatch(/release:[\s\S]*needs: \[check, core\]/);
     expect(release).toContain('echo "tag=v$version" >> "$GITHUB_OUTPUT"');
   });
 
@@ -120,7 +120,7 @@ describe("the app's update", () => {
   it("follows the published release, which follows CI", () => {
     expect(job).toContain("needs: release");
     expect(job).toContain("uses: ./.github/workflows/update-app.yml");
-    expect(release).toMatch(/release:[\s\S]*needs: check/);
+    expect(release).toMatch(/release:[\s\S]*needs: \[check, core\]/);
   });
 
   it("runs Riki Maps' own web-editor workflow on its master", () => {
@@ -134,5 +134,41 @@ describe("the app's update", () => {
 
   it("gives the called update what it asks for", () => {
     for (const permission of asked(update)) expect(asked(job)).toContain(permission);
+  });
+});
+
+// 88 the core is built from a pinned rikimaps commit, before the site is packed, and a deploy needs it
+describe("the core's pipeline", () => {
+  const core = read("core.yml");
+  const release = read("release.yml");
+  const deploy = read("deploy-site.yml");
+
+  it("checks out the private rikimaps at the pinned commit with a secret token", () => {
+    expect(core).toContain("repository: skifahrer/rikimaps");
+    expect(core).toContain("ref: ${{ steps.pin.outputs.ref }}");
+    expect(core).toContain("token: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
+    expect(core).toContain("rikiCore.ref");
+    expect(core).not.toMatch(/token:\s*["']?[^$\s"']/);
+  });
+
+  it("caches the toolchain and the SDK, and builds with the script", () => {
+    expect(core).toContain("~/.cache/riki-swift");
+    expect(core).toContain("~/.swiftpm/swift-sdks");
+    expect(core).toContain("npm run build:core");
+    expect(core).toMatch(/workflow_call:/);
+  });
+
+  it("is built by the release before the site is packed, with the secret handed on", () => {
+    expect(release).toMatch(/\n  core:[\s\S]*uses: \.\/\.github\/workflows\/core\.yml/);
+    expect(release).toContain("RIKIMAPS_READ_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
+    expect(release).toMatch(/release:[\s\S]*needs: \[check, core\]/);
+    expect(release.indexOf("name: riki-core")).toBeGreaterThan(-1);
+    expect(release.indexOf("name: riki-core")).toBeLessThan(release.indexOf("npm run pack:web"));
+  });
+
+  it("refuses a deploy without the core unless a run by hand says it is a test address", () => {
+    expect(deploy).toMatch(/workflow_dispatch:[\s\S]*without_core:[\s\S]*type: boolean[\s\S]*default: false/);
+    expect(deploy).toContain("RIKI_ALLOW_NO_CORE: ${{ inputs.without_core && '1' || '' }}");
+    expect(read("../../scripts/deploy-site.sh")).toContain("out/riki-core.wasm");
   });
 });

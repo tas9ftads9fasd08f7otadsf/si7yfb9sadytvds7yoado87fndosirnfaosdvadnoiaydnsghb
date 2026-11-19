@@ -49,8 +49,17 @@ runs PHP 8.1 or later, at a domain's root or under a path, and send every reques
 `composer install --working-dir=server` and `npm run test:php` run its PHPUnit tests, and
 `npm run test:e2e:web` runs the browser specs against the zip at `/` and under `/editor/`, with
 `e2e/mock-cloud.mjs` standing in for CloudKit and `e2e/fake-core.mjs` for `riki-core.wasm`. The site's zip carries the
-core only once `rikiCore.version` in `package.json` pins a release (`dist/riki-core/riki-core.wasm` and its `.sha256`);
-until then `pack:web` says so and packs without it.
+core only once `rikiCore.ref` in `package.json` pins a rikimaps commit: `npm run build:core` builds `riki-core.wasm` from
+it (`RIKIMAPS_DIR` is a checkout of rikimaps at that commit, read only; the build writes `dist/riki-core/` here:
+the module, its `.sha256` and its size). It runs rikimaps' documented swift build
+(`tools/linux-core/wasm/README.md`, Swift 6.2 and its WebAssembly SDK, both checked against their pinned sums),
+`wasm-opt -Oz` from the `binaryen` package, and loads the module as the site does, calling `riki_version`. The order is
+`npm run build:core`, `npm run build:web`, `npm run pack:web`; until a commit is pinned `pack:web` says so and packs
+without a core, and the deploy refuses such a zip unless it is run by hand for a test address (`without_core`). To
+take a newer core, set `rikiCore.ref` to the rikimaps commit and `rikiCore.sha256` to the module's (the build prints
+it, and refuses a module that is not the pinned one). `RIKI_CORE_REF=<sha>` tries a commit before it is pinned.
+CI builds it in `.github/workflows/core.yml`, which `release.yml` calls before it packs; rikimaps is private, so the
+repository secret `RIKIMAPS_READ_TOKEN` (a token that reads it) has to exist.
 
 ### Deploying it
 

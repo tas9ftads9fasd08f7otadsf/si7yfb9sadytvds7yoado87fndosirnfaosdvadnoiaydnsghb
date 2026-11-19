@@ -10,6 +10,9 @@ export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; sa
 /** 82 A call the target does not do yet: the page says so, and the connection is not lost. */
 export class NotOnSite extends Error {}
 
+/** 88 The core's rules are not all in the module yet: the page says so, and the connection is not lost. */
+export class CoreNotReady extends NotOnSite {}
+
 /** 82 The parts of the page a target may not answer yet; a screen offers only what it does. */
 export type Feature = "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "servers" | "coverage";
 
