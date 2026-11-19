@@ -6,6 +6,7 @@ import { Cloud, type CKContainer, type CKRecord, type CKSave, type CKSaved, type
 import { NotOnSite, type Feature } from "@/backend/types";
 import { CoreMissing, type Applied, type Core, type HistoryEntry } from "./core";
 import { createBackend } from "./backend";
+import type { Reach } from "./reach";
 import type { Keeping } from "./zones";
 
 // 76 WebBackend reads against recorded CloudKit answers and a fake core
@@ -16,6 +17,14 @@ interface Options {
   core?: () => Promise<Core>;
   apply?: (ask: Parameters<Core["apply"]>[0]) => Applied;
   changes?: () => HistoryEntry[];
+  /** 85 Which hosts answer a browser; every one does by default. */
+  reach?: Reach;
+  /** The style the core builds. */
+  built?: unknown;
+  /** The name typed in the account part, if any. */
+  typed?: string;
+  /** CloudKit gives no name. */
+  nameless?: boolean;
   /** Answers the saves; the default applies them to the account, as the server would. */
   saving?: (records: CKSave[]) => CKSaved | undefined;
 }
@@ -55,7 +64,7 @@ function stack(options: Options = {}) {
   });
   const deletes = vi.fn(async () => ({ records: [] }));
   const container = {
-    setUpAuth: async () => (options.signedIn === false ? false : account.person),
+    setUpAuth: async () => (options.signedIn === false ? false : options.nameless ? {} : account.person),
     whenUserSignsIn: () => new Promise((resolve) => { signIn = resolve; }),
     whenUserSignsOut: () => new Promise(() => {}),
     registerForNotifications: async () => {},
@@ -73,7 +82,7 @@ function stack(options: Options = {}) {
   const core: Core = {
     maps: (rows) => { seen.push(rows); return account.core.riki_maps as unknown as Device; },
     map: (rows, id) => { seen.push([id, rows.length]); return account.core.riki_map as unknown as Portable; },
-    style: (rows, mapID, styleID, catalog) => { seen.push([mapID, styleID, catalog]); return account.core.riki_style; },
+    style: (rows, mapID, styleID, catalog) => { seen.push([mapID, styleID, catalog]); return options.built ?? account.core.riki_style; },
     apply: vi.fn((ask) => options.apply?.(ask) ?? (account.core.riki_apply as unknown as Applied)),
     changes: () => options.changes?.() ?? []
   };
@@ -85,8 +94,8 @@ function stack(options: Options = {}) {
     if (address === "/editor/words/sk.json") return Response.json({ language: "sk", words: { maps: "Mapy" } });
     return new Response("", { status: 404 });
   });
-  const backend = createBackend({ cloud, config: async () => config, core: options.core ?? (async () => core), keeping,
-    fetcher: fetcher as typeof fetch, base: "/editor", language: () => "sk" });
+  const backend = createBackend({ cloud, config: async () => config, core: options.core ?? (async () => core), keeping, reach: options.reach ?? { answers: async () => true },
+    author: { read: () => options.typed ?? "", keep: () => {} }, fetcher: fetcher as typeof fetch, base: "/editor", language: () => "sk" });
   /** Another device wrote this record: a new tag and the fields it set. */
   const elsewhere = (recordName: string, fields: Record<string, { value: unknown; type: string }>) => {
     const each = all().find((found) => found.recordName === recordName)!;
@@ -140,6 +149,19 @@ describe("WebBackend's reads", () => {
     expect(style).toEqual({ ok: true, value: account.core.riki_style });
     expect(seen.at(-1)).toEqual(["M", "B1", { tilesBase: "https://tiles.example", theme: "dark", hidden: ["L2"], tiles: "3x2" }]);
     expect(changes.mock.calls.length).toBe(reads);
+  });
+
+  // 85 a layer on a host that refuses browsers is not drawn on the site, and its layer is named
+  it("leaves a layer on a host that refuses browsers out of its style and names it", async () => {
+    const built = { version: 8, sources: { "riki-custom-l1": { type: "raster", tiles: ["https://closed.example/{z}/{x}/{y}.png"] },
+      "riki-base": { type: "vector", url: "pmtiles://https://tiles.example/a.pmtiles" } },
+      layers: [{ id: "l1", type: "raster", source: "riki-custom-l1" }] };
+    const asked = vi.fn(async (address: string) => !address.startsWith("https://closed.example"));
+    const { backend } = stack({ built, reach: { answers: asked } });
+    const style = await backend.style({ mapID: "M", styleID: null, hidden: [], theme: "light", tiles: "1" });
+    expect(style).toMatchObject({ ok: true, value: { sources: { "riki-base": {} }, layers: [],
+      metadata: { "riki:undrawn": ["l1"] } } });
+    expect(asked).not.toHaveBeenCalledWith("pmtiles://https://tiles.example/a.pmtiles");
   });
 
   it("reads again after CloudKit says a map changed, and tells the page", async () => {
@@ -206,6 +228,15 @@ describe("WebBackend's edits", () => {
     expect(fields.CD_id!.value).toMatch(/^[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}$/);
     expect(fields.CD_updatedAt!.value as number).toBeGreaterThanOrEqual(before);
     expect(fields.CD_updatedAt!.value as number).toBeLessThanOrEqual(Date.now());
+  });
+
+  // 83 the name typed in the account part goes ahead of the one CloudKit gives, else none
+  it("makes a change under the typed name, else CloudKit's, else none", async () => {
+    for (const [options, author] of [[{ typed: "Friki" }, "Friki"], [{}, "Riki Tester"], [{ nameless: true }, null]] as const) {
+      const { backend, core } = stack(options);
+      await backend.change(TATRAS, null, rename);
+      expect(vi.mocked(core.apply).mock.calls[0]![0].author).toBe(author);
+    }
   });
 
   it("sends a shared map's edit to the shared database, in the share's zone", async () => {

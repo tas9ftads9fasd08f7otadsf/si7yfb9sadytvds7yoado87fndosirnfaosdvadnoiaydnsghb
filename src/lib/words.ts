@@ -19,6 +19,7 @@ export const ENGLISH = {
   waitingText: "The phone sharing these maps has been asked to let this browser in.",
   signInTitle: "Sign in to iCloud", signInText: "Sign in with your Apple Account to see the maps in your iCloud.",
   changedBy: "{map} was changed by {author}", changedAway: "{map} was changed on another device",
+  yourName: "Your name",
   notOnSite: "The site cannot do this yet.",
   changeRefused: "The map changed elsewhere. Open it again and repeat the change.",
   removedTitle: "Removed from these maps",
@@ -126,6 +127,7 @@ export const ENGLISH = {
   noSpace: "Not enough free space for this selection.",
   onlyURLLayers: "Only layers served from a URL can be downloaded.",
   esriServices: "Esri services", esriService: "Service", esriAddress: "Address", takenAs: "Taken as",
+  layerUndrawn: "This service doesn't answer browsers. The app draws it.",
   noLayerList: "This service published no layer list the last time it was read.",
   forgetService: "Forget this service", takeOffAsk: "Take {name} off the map?", takeOff: "Take it off",
   comesOff: "{name} comes off this map. Its downloads stay on this device.", drawOnMap: "Draw {name} on this map"

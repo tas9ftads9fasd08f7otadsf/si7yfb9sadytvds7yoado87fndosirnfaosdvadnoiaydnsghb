@@ -4,7 +4,7 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { FeatureCard } from "@/components/FeatureCard";
 import { leftOpening, OPENING } from "@/lib/camera";
-import { drawable } from "@/lib/drawable";
+import { drawable, undrawnOf } from "@/lib/drawable";
 import { watchTraffic, workerCounter } from "@/lib/traffic";
 import { backend } from "@backend";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY } from "@/lib/page";
@@ -261,6 +261,7 @@ export function createMapView(container: HTMLElement): MapControl {
         return;
       }
       style = answer.value as StyleSpecification;
+      if (asked === lastAsked) useViewer.setState({ undrawn: new Set(undrawnOf(style)) });
     } catch {
       if (asked === lastAsked) away();
       return;
