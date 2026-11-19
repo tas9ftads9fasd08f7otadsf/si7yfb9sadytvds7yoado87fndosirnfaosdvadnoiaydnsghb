@@ -88,4 +88,14 @@ describe("DetailsLayoutPanel", () => {
     expect(offered).toEqual(["", "app:contact"]);
     expect(screen.getByText("This layout holds 10 content blocks")).toBeTruthy();
   });
+
+  // 79: the preview opens the panel, above the header, when the phone sends sample points.
+  it("puts the preview of a sample point above the layout", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
+    show({ ...layout(), samples: [{ caption: "Hut · Feature 1 of 1", properties: { note: "Open" } }] });
+    const preview = screen.getByRole("group", { name: "Preview" });
+    expect(preview.textContent).toContain("Hut · Feature 1 of 1");
+    expect(preview.compareDocumentPosition(screen.getAllByRole("button", { name: "Move down Info rows" })[0]!)
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
