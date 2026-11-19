@@ -1,5 +1,6 @@
 {
-  "person": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } },
+  "person": { "userRecordName": "_me" },
+  "identities": { "_me": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } } },
   "assets": {
     "https://cvws.icloud-content.com/own-tatras/payload": "{\"symbol\":\"mountain.2\"}",
     "https://cvws.icloud-content.com/shared-doprava/payload": "{\"symbol\":\"tram\"}"
@@ -16,7 +17,7 @@
             "CD_name": { "value": "High Tatras", "type": "STRING" },
             "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
             "CD_schemaVersion": { "value": 1, "type": "INT64" },
-            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/own-tatras/payload" }, "type": "ASSETID" }
+            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/own-tatras/${f}" }, "type": "ASSETID" }
           } },
         { "recordName": "own-tatras-layer", "recordType": "CD_SharedMapLayer", "recordChangeTag": "a2",
           "fields": {
@@ -53,7 +54,7 @@
             "CD_name": { "value": "Doprava", "type": "STRING" },
             "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
             "CD_schemaVersion": { "value": 1, "type": "INT64" },
-            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/shared-doprava/payload" }, "type": "ASSETID" }
+            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/shared-doprava/${f}" }, "type": "ASSETID" }
           } }
       ]
     }]
@@ -89,6 +90,20 @@
       "version": "0.1.0",
       "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer"],
       "ready": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer"]
+    },
+    "riki_read_address": {
+      "read": { "kind": "tiles", "probe": "https://cors.example/0/0/0.png" }
+    },
+    "riki_add_layer": {
+      "map": {
+        "id": "6F1E2A10-0000-4000-8000-000000000001", "name": "High Tatras", "symbol": "mountain.2",
+        "styles": [{ "id": "B1", "name": "Summer", "arrangement": { "hidden": [] } }], "selectedStyleID": "B1",
+        "stack": [{ "id": "L1", "name": "Trails", "kind": "Vector tiles" }, { "id": "L2", "name": "Tiles", "kind": "Raster tiles" }]
+      },
+      "write": [{ "entity": "SharedMapLayer", "id": "own-tatras-layer-2", "refs": ["map"],
+        "fields": { "layerJSON": "{\"id\":\"L2\",\"name\":\"Tiles\"}", "map": "own-tatras" } }],
+      "history": { "entity": "SharedMapChange", "id": "change-web-2", "refs": ["map"],
+        "fields": { "map": "own-tatras", "payload": "{\"author\":\"Riki Tester\",\"origin\":\"web\",\"lines\":[\"Tiles added\"]}" } }
     },
     "riki_style": {
       "version": 8, "sources": {},

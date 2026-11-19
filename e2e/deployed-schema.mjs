@@ -14,7 +14,8 @@ const fits = {
   DOUBLE: (value) => typeof value === "number",
   TIMESTAMP: (value) => Number.isFinite(value),
   BYTES: (value) => typeof value === "string" && BASE64.test(value),
-  REFERENCE: (value) => typeof value?.recordName === "string"
+  REFERENCE: (value) => typeof value?.recordName === "string",
+  ASSET: (value) => typeof value === "object" && value !== null
 };
 
 /** Why the schema refuses this record to be saved, or null. */

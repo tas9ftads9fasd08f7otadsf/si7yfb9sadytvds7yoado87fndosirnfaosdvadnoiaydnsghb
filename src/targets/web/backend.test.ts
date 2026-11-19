@@ -2,9 +2,9 @@ import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import type { Device, Portable } from "@/lib/types";
-import { Cloud, type CKContainer, type CKRecord, type CKSave, type CKSaved, type CloudKitJS } from "./cloud";
+import { Cloud, type CKBatchResult, type CKContainer, type CKRecord, type CKSave, type CKZoneChanges, type CloudKitJS } from "./cloud";
 import { NotOnSite, type Feature } from "@/backend/types";
-import { CoreMissing, type Applied, type Core, type HistoryEntry } from "./core";
+import { CoreMissing, type AddAsk, type AddressRead, type Applied, type Core, type HistoryEntry, type ReadAsk } from "./core";
 import { createBackend } from "./backend";
 import type { Reach } from "./reach";
 import type { Keeping } from "./zones";
@@ -19,6 +19,11 @@ interface Options {
   changes?: () => HistoryEntry[];
   /** 85 Which hosts answer a browser; every one does by default. */
   reach?: Reach;
+  /** 86 What the core reads an address as, by round; the recorded answer by default. */
+  reads?: (ask: ReadAsk) => AddressRead;
+  adds?: (ask: AddAsk) => Applied;
+  /** 86 What the browser's fetch answers for an address the core asked for. */
+  fetching?: (address: string) => Response;
   /** The style the core builds. */
   built?: unknown;
   /** 91 The browser's languages, most wanted first. */
@@ -28,7 +33,7 @@ interface Options {
   /** CloudKit gives no name. */
   nameless?: boolean;
   /** Answers the saves; the default applies them to the account, as the server would. */
-  saving?: (records: CKSave[]) => CKSaved | undefined;
+  saving?: (records: CKSave[]) => CKBatchResult | undefined;
 }
 
 function stack(options: Options = {}) {
@@ -36,19 +41,22 @@ function stack(options: Options = {}) {
   let signIn: (identity: unknown) => void = () => {};
   const held = structuredClone(account.zones) as unknown as { private: { zoneID: { zoneName: string }; records: CKRecord[] }[];
     shared: { zoneID: { zoneName: string }; records: CKRecord[] }[] };
-  const changes = vi.fn(async ({ zones }: { zones: { zoneID: { zoneName: string } }[] }) => {
+  // 87 a zone's options, as the library takes them: it builds the `zones` of the request itself
+  const changes = vi.fn(async (options: CKZoneChanges | CKZoneChanges[]) => {
+    const [zone] = [options].flat();
     const mine = held.private[0]!;
-    return { zones: [{ zoneID: zones[0]!.zoneID, syncToken: "t",
-      records: zones[0]!.zoneID.zoneName === mine.zoneID.zoneName ? mine.records : held.shared[0]!.records }] };
+    return { zones: [{ zoneID: zone!.zoneID, syncToken: "t",
+      records: zone!.zoneID.zoneName === mine.zoneID.zoneName ? mine.records : held.shared[0]!.records }] };
   });
   const all = () => [...held.private[0]!.records, ...held.shared[0]!.records];
   let version = 0;
-  const saves = vi.fn<(records: CKSave[], where: unknown) => Promise<CKSaved>>(async (records) => {
+  /** The batch's commit: what it creates and updates, where, and what it deletes with the tags read. */
+  const saves = vi.fn<(records: CKSave[], where: unknown, removals: { recordName: string; recordChangeTag?: string }[]) => Promise<CKBatchResult>>(async (records) => {
     const refused = options.saving?.(records);
     if (refused) return refused;
     const stale = records.find((record) => record.recordChangeTag
       && record.recordChangeTag !== all().find((found) => found.recordName === record.recordName)?.recordChangeTag);
-    if (stale) return { records: [{ recordName: stale.recordName, serverErrorCode: "CONFLICT" }] };
+    if (stale) return { records: [], hasErrors: true, errors: [{ recordName: stale.recordName, ckErrorCode: "CONFLICT", serverErrorCode: "CONFLICT" }] };
     return { records: records.map((record) => {
       let each = all().find((found) => found.recordName === record.recordName);
       if (!each) {
@@ -64,17 +72,30 @@ function stack(options: Options = {}) {
       return { recordName: each.recordName, recordChangeTag: each.recordChangeTag };
     }) };
   });
-  const deletes = vi.fn(async () => ({ records: [] }));
+  const batchOf = (commit: (...asked: Parameters<typeof saves>) => Promise<CKBatchResult>) => (where: unknown) => {
+    const records: CKSave[] = [];
+    const removals: { recordName: string; recordChangeTag?: string }[] = [];
+    const batch = {
+      create: (record: CKSave) => { records.push(record); return batch; },
+      update: (record: CKSave) => { records.push(record); return batch; },
+      delete: (record: { recordName: string; recordChangeTag?: string }) => { removals.push(record); return batch; },
+      commit: () => commit(records, where, removals)
+    };
+    return batch;
+  };
+  const identities = { ...account.identities, rita: { userRecordName: "rita", nameComponents: { givenName: "Rita" } } } as Record<string, unknown>;
+  const database = { fetchRecordZoneChanges: changes, newRecordsBatch: batchOf(saves),
+    saveSubscriptions: vi.fn(async () => ({})), fetchDatabaseChanges: vi.fn(async () => ({ zones: [] })) };
+  const shared = vi.fn<(...asked: Parameters<typeof saves>) => Promise<CKBatchResult>>(async () => ({ records: [{ recordName: "shared-doprava", recordChangeTag: "s2" }] }));
   const container = {
-    setUpAuth: async () => (options.signedIn === false ? false : options.nameless ? {} : account.person),
+    setUpAuth: async () => (options.signedIn === false ? false : account.person),
+    discoverUserIdentityWithUserRecordName: async (name: string) => ({ users: options.nameless ? [] : [identities[name]] }),
     whenUserSignsIn: () => new Promise((resolve) => { signIn = resolve; }),
     whenUserSignsOut: () => new Promise(() => {}),
     registerForNotifications: async () => {},
     addNotificationListener: (listener: (n: unknown) => void) => { notify = listener; },
-    privateCloudDatabase: { fetchRecordZoneChanges: changes, fetchAllRecordZones: async () => ({}),
-      saveRecords: saves, deleteRecords: deletes },
-    sharedCloudDatabase: { fetchRecordZoneChanges: changes, saveRecords: vi.fn(async () => ({ records: [{ recordName: "shared-doprava", recordChangeTag: "s2" }] })),
-      deleteRecords: deletes,
+    privateCloudDatabase: { ...database, fetchAllRecordZones: async () => ({}) },
+    sharedCloudDatabase: { ...database, newRecordsBatch: batchOf(shared),
       fetchAllRecordZones: async () => ({ zones: account.zones.shared.map((each) => ({ zoneID: each.zoneID })) }) }
   } as unknown as CKContainer;
   const cloudkit: CloudKitJS = { configure: () => {}, getDefaultContainer: () => container };
@@ -86,6 +107,8 @@ function stack(options: Options = {}) {
     map: (rows, id) => { seen.push([id, rows.length]); return account.core.riki_map as unknown as Portable; },
     style: (rows, mapID, styleID, catalog) => { seen.push([mapID, styleID, catalog]); return options.built ?? account.core.riki_style; },
     apply: vi.fn((ask) => options.apply?.(ask) ?? (account.core.riki_apply as unknown as Applied)),
+    readAddress: (ask) => options.reads?.(ask) ?? (account.core.riki_read_address as unknown as AddressRead),
+    addLayer: vi.fn((ask) => options.adds?.(ask) ?? (account.core.riki_add_layer as unknown as Applied)),
     changes: () => options.changes?.() ?? []
   };
   const kept = new Map<string, unknown>();
@@ -93,6 +116,7 @@ function stack(options: Options = {}) {
   const fetcher = vi.fn(async (url: string | URL | Request) => {
     const address = String(url);
     if (address in assets) return new Response(assets[address]);
+    if (options.fetching && address.startsWith("https://")) return options.fetching(address);
     if (address === "/editor/words/languages.json") return Response.json(["cs", "en", "sk"]);
     if (address === "/editor/words/sk.json") return Response.json({ language: "sk", words: { maps: "Mapy", layers: "Vrstvy", noSuchMap: "Taká mapa nie je",
       nothingToUndo: "Nie je čo vrátiť", signsInApple: "Stránka sa prihlasuje cez Apple ID", changeRefused: "Mapa sa zmenila inde." } });
@@ -108,14 +132,14 @@ function stack(options: Options = {}) {
     each.recordChangeTag = `${each.recordChangeTag}x`;
   };
   return { backend, seen, notify: () => notify({}), signIn: (identity: unknown) => signIn(identity), changes, core, saves,
-    shared: container.sharedCloudDatabase.saveRecords as ReturnType<typeof vi.fn>, elsewhere, held };
+    shared, elsewhere, held };
 }
 
 describe("WebBackend's reads", () => {
   it("says signed out, with the sign-in's standing, until an Apple Account is in", async () => {
     const { backend, signIn } = stack({ signedIn: false });
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "signedOut" } });
-    signIn({ nameComponents: { givenName: "Rita" } });
+    signIn({ userRecordName: "rita" });
     await new Promise((resolve) => setTimeout(resolve));
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "admitted", edits: true, token: "icloud", device: "Rita", viewers: null } });
   });
@@ -221,7 +245,7 @@ describe("WebBackend's reads", () => {
   it("keeps rejecting the writes of later steps", async () => {
     const { backend } = stack();
     await expect(backend.newMap("x")).rejects.toThrow("step 4");
-    await expect(backend.addTiles("M", "x")).rejects.toThrow("step 5");
+    await expect(backend.addFile("M", new File([], "a.gpx"))).rejects.toThrow("step 5");
   });
 });
 
@@ -280,7 +304,7 @@ describe("WebBackend's edits", () => {
     expect(shared).toHaveBeenCalledWith(
       [{ recordName: "shared-doprava", recordType: "CD_SharedMap", recordChangeTag: "s1",
         fields: { CD_name: { value: "Roads", type: "STRING" } } }],
-      { zoneID: { zoneName: "share-doprava", ownerRecordName: "_friki" }, atomic: true });
+      { zoneID: { zoneName: "share-doprava", ownerRecordName: "_friki" }, atomic: true }, []);
   });
 
   it("returns the core's refusal words and writes nothing", async () => {
@@ -325,7 +349,8 @@ describe("WebBackend's edits", () => {
 
   it("refuses after three conflicts, in words that say the map changed elsewhere", async () => {
     const { backend, core, saves } = stack({ saving: (records) =>
-      ({ records: [{ recordName: records[0]!.recordName, serverErrorCode: "CONFLICT" }] }) });
+      ({ records: [], hasErrors: true, errors: [{ recordName: records[0]!.recordName, ckErrorCode: "CONFLICT", serverErrorCode: "CONFLICT" },
+        { recordName: records[1]!.recordName, ckErrorCode: "ATOMIC_ERROR", serverErrorCode: "ATOMIC_ERROR" }] }) });
     const answer = await backend.change(TATRAS, null, rename);
     expect(answer).toEqual({ ok: false, status: 412, said: "The map changed elsewhere. Open it again and repeat the change." });
     expect(core.apply).toHaveBeenCalledTimes(3);
@@ -333,7 +358,8 @@ describe("WebBackend's edits", () => {
   });
 
   it("does not hide any other error of the server", async () => {
-    const { backend } = stack({ saving: () => ({ records: [{ recordName: "r", serverErrorCode: "QUOTA_EXCEEDED", reason: "iCloud is full" }] }) });
+    const { backend } = stack({ saving: () => ({ records: [], hasErrors: true,
+      errors: [{ recordName: "r", ckErrorCode: "QUOTA_EXCEEDED", serverErrorCode: "QUOTA_EXCEEDED", reason: "iCloud is full" }] }) });
     await expect(backend.change(TATRAS, null, rename)).rejects.toThrow("iCloud is full");
   });
 
@@ -368,7 +394,7 @@ describe("WebBackend's edits", () => {
     expect(await backend.undo!(TATRAS)).toMatchObject({ ok: false, status: 412 });
     // the try on the cached rows was refused, and the rows read again hold Peaks
     expect(saves).toHaveBeenCalledTimes(2);
-    await expect(saves.mock.results[1]!.value).resolves.toMatchObject({ records: [{ serverErrorCode: "CONFLICT" }] });
+    await expect(saves.mock.results[1]!.value).resolves.toMatchObject({ errors: [{ ckErrorCode: "CONFLICT" }] });
   });
 });
 
@@ -419,10 +445,86 @@ describe("WebBackend's parts not built yet", () => {
   // 82 the site said "Not connected" for a write it refuses as not done yet
   it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
     const { backend } = stack();
-    const parts: Feature[] = ["newMap", "shelf", "exportMap", "duplicateMap", "pictures", "addLayer", "servers", "coverage"];
+    const parts: Feature[] = ["newMap", "shelf", "exportMap", "duplicateMap", "pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
     expect(parts.filter((part) => backend.offers(part))).toEqual([]);
+    // 86 only the tile address and a service's layers are added from the site so far
+    expect(backend.offers("addLayer")).toBe(true);
     await expect(backend.newMap("Alps")).rejects.toBeInstanceOf(NotOnSite);
     await expect(backend.servers()).rejects.toBeInstanceOf(NotOnSite);
-    await expect(backend.addTiles("M", "https://t/{z}/{x}/{y}.pbf")).rejects.toBeInstanceOf(NotOnSite);
+    await expect(backend.addAPI("M", "https://t/x", { kind: "x" } as never, "n")).rejects.toBeInstanceOf(NotOnSite);
+  });
+});
+
+describe("WebBackend's added layers", () => {
+  const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
+  const template = "https://cors.example/{z}/{x}/{y}.png";
+  const hosts = (refusing: string[] = []): Reach => ({ answers: vi.fn(async (address: string) => !refusing.some((host) => address.startsWith(host))) });
+
+  // 86 the core reads the address and builds the rows; the site only fetches and writes them
+  it("reads a tile template as the core says and writes the rows the core adds, with their history row", async () => {
+    const { backend, core, saves } = stack({ reach: hosts() });
+    expect(await backend.readAddress(template)).toEqual({ ok: true, value: { kind: "tiles", probe: "https://cors.example/0/0/0.png" } });
+    expect(await backend.addTiles(TATRAS, template)).toEqual({ ok: true, value: account.core.riki_map });
+    const ask = vi.mocked(core.addLayer).mock.calls[0]![0];
+    expect(ask).toMatchObject({ mapID: TATRAS, add: { kind: "tiles", address: template, replies: [] }, author: "Riki Tester", origin: "web" });
+    const [records, where] = saves.mock.calls[0]!;
+    expect(where).toEqual({ zoneID: { zoneName: "com.apple.coredata.cloudkit.zone" }, atomic: true });
+    expect((records as { recordName: string; recordChangeTag?: string }[]).map((record) => record.recordName))
+      .toEqual(["own-tatras-layer-2", "change-web-2"]);
+    expect((records as { recordChangeTag?: string }[])[0]!.recordChangeTag).toBeUndefined();
+  });
+
+  it("fetches the addresses the core asks for, in rounds, and gives the core every reply", async () => {
+    const rounds: ReadAsk[] = [];
+    const { backend, core } = stack({ reach: hosts(), fetching: () => new Response("{\"tiles\":[]}", { headers: { "content-type": "application/json" } }),
+      reads: (ask) => {
+        rounds.push(structuredClone(ask));
+        return ask.replies.length === 0 ? { fetch: ["https://cors.example/tiles.json"] } : { read: { kind: "tilejson" } };
+      } });
+    expect(await backend.readAddress("https://cors.example/tiles.json")).toEqual({ ok: true, value: { kind: "tilejson" } });
+    expect(rounds[1]!.replies).toEqual([{ url: "https://cors.example/tiles.json", status: 200, contentType: "application/json", text: "{\"tiles\":[]}" }]);
+    await backend.addTiles(TATRAS, "https://cors.example/tiles.json");
+    // adding it asks the host no more than reading did
+    expect(rounds).toHaveLength(2);
+    expect(vi.mocked(core.addLayer).mock.calls[0]![0].add).toMatchObject({ kind: "tiles", replies: [{ url: "https://cors.example/tiles.json" }] });
+  });
+
+  it("adds a service's ticked layers from what its capabilities answered", async () => {
+    const { backend, core } = stack({ reach: hosts(), fetching: () => new Response("<WMS_Capabilities/>"),
+      reads: (ask) => ask.replies.length ? { read: { kind: "layers", rows: [] } } : { fetch: ["https://cors.example/wms?REQUEST=GetCapabilities"] } });
+    await backend.addServiceLayers(TATRAS, "https://cors.example/wms", ["roads", "rails"]);
+    expect(vi.mocked(core.addLayer).mock.calls[0]![0].add).toMatchObject({ kind: "service", address: "https://cors.example/wms", picks: ["roads", "rails"] });
+  });
+
+  it("refuses an address on a host that does not answer browsers, in the words of the notice, and writes nothing", async () => {
+    const { backend, core, saves } = stack({ reach: hosts(["https://closed.example"]),
+      reads: (ask) => ask.replies.length ? { read: { kind: "layers" } } : { fetch: ["https://closed.example/wms"] } });
+    const answer = { ok: false, status: 400, said: "This service doesn't answer browsers. Add it in the app." };
+    expect(await backend.readAddress("https://closed.example/wms")).toEqual(answer);
+    expect(await backend.addServiceLayers(TATRAS, "https://closed.example/wms", ["a"])).toEqual(answer);
+    expect(core.addLayer).not.toHaveBeenCalled();
+    expect(saves).not.toHaveBeenCalled();
+  });
+
+  it("refuses a tile template whose probe host refuses browsers, though the core read it", async () => {
+    const { backend } = stack({ reach: hosts(["https://cors.example"]) });
+    expect(await backend.readAddress(template)).toMatchObject({ ok: false, said: expect.stringContaining("doesn't answer browsers") });
+  });
+
+  it("says what the core refused, and stops asking after four rounds", async () => {
+    const refusing = stack({ reads: () => ({ refused: "Not a tile address", status: 422 }) });
+    expect(await refusing.backend.readAddress("x")).toEqual({ ok: false, status: 422, said: "Not a tile address" });
+    let asked = 0;
+    const endless = stack({ reach: hosts(), fetching: () => new Response("x"), reads: () => ({ fetch: [`https://cors.example/${asked++}`] }) });
+    expect(await endless.backend.readAddress("x")).toMatchObject({ ok: false, said: "The site could not read that address." });
+    expect(asked).toBe(4);
+  });
+
+  it("passes a failed fetch to the core as status 0", async () => {
+    const seen: ReadAsk[] = [];
+    const { backend } = stack({ reach: hosts(), fetching: () => { throw new TypeError("Failed to fetch"); },
+      reads: (ask) => { seen.push(structuredClone(ask)); return ask.replies.length ? { read: { kind: "tiles" } } : { fetch: ["https://cors.example/a"] }; } });
+    await backend.readAddress("x");
+    expect(seen[1]!.replies).toEqual([{ url: "https://cors.example/a", status: 0, contentType: "", text: "" }]);
   });
 });
