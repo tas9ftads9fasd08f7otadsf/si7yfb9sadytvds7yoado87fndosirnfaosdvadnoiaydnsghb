@@ -51,9 +51,15 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
     return text === undefined ? route.fulfill({ status: 404, headers: CORS }) : route.fulfill({ status: 200, headers: CORS, body: text });
   });
   let conflicts = 0;
+  let expired = 0;
+  const subscriptions = new Set();
+  const gone = new Set();
+  const badRequest = (reason) => Object.assign(new Error(reason), { serverErrorCode: "BAD_REQUEST", reason });
 
   /** One atomic modify: a stale change tag is a CONFLICT, and then nothing is applied. */
   function modify(database, { zoneID, operations }) {
+    // The library puts the zone at the top of the request only.
+    if (operations.some(({ record }) => record.zoneID)) throw badRequest("A record carries its own zoneID");
     const zone = account.zones.find((each) => each.database === database && each.zoneID.zoneName === zoneID.zoneName);
     const bump = (record) => { zone.version += 1; record.changedAt = zone.version; };
     if (conflicts > 0) {
@@ -64,19 +70,22 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
     }
     const errors = operations.map(({ operationType, record }) => {
       const held = zone.records.find((each) => each.recordName === record.recordName);
-      if (operationType !== "delete" && schemaRefusal(record)) return "BAD_REQUEST";
-      if (operationType === "create") return held ? "ALREADY_EXISTS" : null;
+      if (operationType !== "delete" && operationType !== "forceDelete" && schemaRefusal(record)) return "BAD_REQUEST";
+      if (operationType === "create") return held ? "EXISTS" : null;
       if (!held) return "NOT_FOUND";
+      // delete checks the tag as update does; forceDelete, which deleteRecords sends, does not.
+      if (operationType === "forceDelete") return null;
       return record.recordChangeTag && record.recordChangeTag !== held.recordChangeTag ? "CONFLICT" : null;
     });
     if (errors.some(Boolean)) {
+      // An atomic batch names the cause, and each record that was only caught in it is ATOMIC_ERROR.
       return operations.map(({ record }, index) => ({ recordName: record.recordName,
-        serverErrorCode: errors[index] ?? "BATCH_ERROR",
+        serverErrorCode: errors[index] ?? "ATOMIC_ERROR",
         reason: (errors[index] === "BAD_REQUEST" && schemaRefusal(record)) || errors[index] || "atomic batch failed" }));
     }
     return operations.map(({ operationType, record }) => {
       let held = zone.records.find((each) => each.recordName === record.recordName);
-      if (operationType === "delete") {
+      if (operationType === "delete" || operationType === "forceDelete") {
         zone.records.splice(zone.records.indexOf(held), 1);
         zone.version += 1;
         return { recordName: record.recordName, deleted: true };
@@ -106,15 +115,28 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
     if (request.headers()["x-mock-signed-in"] !== "1") {
       return reply(route, 421, { serverErrorCode: "AUTHENTICATION_REQUIRED", reason: "Sign in" });
     }
+    // The caller is a record name only; the name is found by asking for the person.
     if (endpoint === "users/caller") return reply(route, 200, account.person);
+    if (endpoint === "users/discover") {
+      return reply(route, 200, { users: body.lookupInfos.map(({ userRecordName }) => account.identities[userRecordName]
+        ?? { serverErrorCode: "NOT_FOUND", reason: "no such user" }) });
+    }
     if (endpoint === "zones/list") {
       return reply(route, 200, { zones: account.zones.filter((zone) => zone.database === "shared" && database === "shared")
         .map(({ zoneID }) => ({ zoneID })) });
     }
     if (endpoint === "changes/zone") {
+      // What the library builds from a zone's options; a zone without its id is a bad request as a whole.
+      if (!Array.isArray(body.zones) || body.zones.some((each) => !each.zoneID)) {
+        return reply(route, 400, { serverErrorCode: "BAD_REQUEST", reason: "zoneID is required" });
+      }
       const answered = body.zones.map(({ zoneID, syncToken }) => {
         const zone = account.zones.find((each) => each.database === database && each.zoneID.zoneName === zoneID.zoneName);
-        if (!zone) return { zoneID, serverErrorCode: "ZONE_NOT_FOUND", reason: "no such zone" };
+        if (!zone || gone.has(`${database}/${zoneID.zoneName}`)) return { zoneID, serverErrorCode: "ZONE_NOT_FOUND", reason: "no such zone" };
+        if (syncToken && expired > 0) {
+          expired -= 1;
+          return { zoneID, serverErrorCode: "BAD_REQUEST", reason: "Invalid sync token" };
+        }
         const since = Number(String(syncToken ?? "").split("-").pop()) || 0;
         const records = zone.records.filter((record) => record.changedAt > since)
           .map((record) => ({ ...record, changedAt: undefined, zoneID }));
@@ -122,7 +144,28 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
       });
       return reply(route, 200, { zones: answered });
     }
-    if (endpoint === "records/modify") return reply(route, 200, { records: modify(database, body) });
+    if (endpoint === "changes/database") {
+      const since = Number(String(body.syncToken ?? "").split("-").pop()) || 0;
+      const changed = account.zones.filter((zone) => zone.database === database && zone.version > since);
+      const version = Math.max(0, ...account.zones.filter((zone) => zone.database === database).map((zone) => zone.version));
+      return reply(route, 200, { zones: changed.map(({ zoneID }) => ({ zoneID })), syncToken: `${database}-${version}`, moreComing: false });
+    }
+    if (endpoint === "subscriptions/modify") {
+      return reply(route, 200, { subscriptions: body.operations.map(({ subscription }) => {
+        const key = `${database}/${subscription.subscriptionID}`;
+        if (subscriptions.has(key)) return { subscriptionID: subscription.subscriptionID, serverErrorCode: "EXISTS", reason: "EXISTS" };
+        if (subscription.subscriptionType !== "database") return { serverErrorCode: "BAD_REQUEST", reason: "unsupported type" };
+        subscriptions.add(key);
+        return subscription;
+      }) });
+    }
+    if (endpoint === "records/modify") {
+      try {
+        return reply(route, 200, { records: modify(database, body) });
+      } catch (error) {
+        return reply(route, 400, { serverErrorCode: error.serverErrorCode, reason: error.reason });
+      }
+    }
     return reply(route, 404, { serverErrorCode: "NOT_FOUND", reason: endpoint });
   });
 
@@ -148,8 +191,20 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
     conflictNext(count) { conflicts = count; },
     /** The record as the account holds it now. */
     record: (recordName) => find(recordName)?.record,
-    /** What Apple's push does: the page is told, and reads again. */
-    push: () => page.evaluate(() => window.__mockCloudPush()),
+    /** What Apple's push does: the page is told, and reads again, but only where a subscription was saved. */
+    push: async () => {
+      // The page saves them just after it signs in; Apple sends nothing before.
+      for (let waited = 0; subscriptions.size < 2 && waited < 3000; waited += 50) await new Promise((resolve) => setTimeout(resolve, 50));
+      if (subscriptions.size === 0) return false;
+      await page.evaluate(() => window.__mockCloudPush());
+      return true;
+    },
+    /** The subscriptions the page saved, as `database/id`. */
+    subscriptions: () => [...subscriptions],
+    /** The mirror zone is not there yet, as in an account that never ran the app. */
+    removeZone: (database, zoneName) => { gone.add(`${database}/${zoneName}`); },
+    /** The next `count` reads that carry a sync token are told the token is no longer good. */
+    expireTokenNext(count) { expired = count; },
     tag: (recordName) => find(recordName).record.recordChangeTag
   };
 }

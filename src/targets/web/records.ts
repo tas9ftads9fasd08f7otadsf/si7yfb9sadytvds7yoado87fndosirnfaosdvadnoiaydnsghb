@@ -36,6 +36,12 @@ interface AssetValue {
   downloadURL?: string;
 }
 
+/**
+ * An asset's `downloadURL` carries a `${f}` slot for a file name, as Apple's web services reference shows it
+ * (inferred from the reference, not from cloudkit.js); any name opens the file.
+ */
+const filled = (url: string, name: string) => url.replace("${f}", encodeURIComponent(name));
+
 /** A `CD_` record as the core's row; a field moved to `_ckAsset` is fetched by its download URL. */
 export async function rowOf(record: CKRecord, where: Pick<CoreRow, "database" | "zone" | "owner">,
   fetcher: typeof fetch = fetch): Promise<CoreRow> {
@@ -46,9 +52,9 @@ export async function rowOf(record: CKRecord, where: Pick<CoreRow, "database" | 
     if (name.endsWith(ASSET_SUFFIX)) {
       const url = (field.value as AssetValue | null)?.downloadURL;
       if (!url) return;
-      const answer = await fetcher(url);
-      if (!answer.ok) throw new Error(`An asset of ${record.recordName} answered ${answer.status}`);
       const own = bare(name.slice(0, -ASSET_SUFFIX.length));
+      const answer = await fetcher(filled(url, own));
+      if (!answer.ok) throw new Error(`An asset of ${record.recordName} answered ${answer.status}`);
       fields[own] = await answer.text();
       assets.push(own);
     } else if (field.type === "REFERENCE") {

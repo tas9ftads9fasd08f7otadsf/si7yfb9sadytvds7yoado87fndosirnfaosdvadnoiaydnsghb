@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { schemaRefusal } from "../../../e2e/deployed-schema.mjs";
 import { MIRROR, textOfBytes } from "./mirror";
 import type { CoreRow, CoreWrite } from "./records";
-import { recordOf, stamped } from "./writes";
+import type { CKBatch, CKBatchResult, CKDatabase, CKSave } from "./cloud";
+import { Conflict, recordOf, stamped, write } from "./writes";
 
 // 84 bug: the site sent every string as STRING, and its history row lacked id, time and version
 const everything = (write: CoreWrite) => recordOf(write, undefined, Object.keys(write.fields));
@@ -82,5 +83,79 @@ describe("the schema the mock checks", () => {
 
   it("takes a cleared field and a cleared asset", () => {
     expect(schemaRefusal(record({ CD_payload: { value: null }, CD_payload_ckAsset: { value: null } }))).toBeNull();
+  });
+});
+
+// 87 bug: the site read a refused batch as saved, deleted without its tag, and called codes the library has not got
+interface Op { kind: "create" | "update" | "delete"; record: unknown }
+
+function database(answer: CKBatchResult | Error = { records: [{ recordName: "l", recordChangeTag: "t2" }] }) {
+  const made: { options?: unknown; ops: Op[]; commits: number } = { ops: [], commits: 0 };
+  const db = { newRecordsBatch(options: unknown): CKBatch {
+    made.options = options;
+    const batch: CKBatch = {
+      create: (record: CKSave) => { made.ops.push({ kind: "create", record }); return batch; },
+      update: (record: CKSave) => { made.ops.push({ kind: "update", record }); return batch; },
+      delete: (record) => { made.ops.push({ kind: "delete", record }); return batch; },
+      commit: async () => { made.commits += 1; if (answer instanceof Error) throw answer; return answer; }
+    };
+    return batch;
+  } } as unknown as CKDatabase;
+  return { db, made };
+}
+
+const row = (id: string, tag: string) => ({ entity: "SharedMapLayer", id, tag, database: "private", zone: "z", fields: { layerJSON: "{}" } }) as CoreRow;
+const zone = { zoneName: "z" };
+
+describe("a write through a records batch", () => {
+  it("saves and deletes in one atomic batch, a delete carrying the tag it was read at", async () => {
+    const { db, made } = database();
+    const tags = await write(db, zone, { save: [
+      { write: { entity: "SharedMapLayer", id: "l", fields: { layerJSON: "{\"a\":1}" } }, row: row("l", "t1") },
+      { write: { entity: "SharedMapChange", id: "c", fields: { payload: "{}" } } }],
+    remove: [row("gone", "g7")] });
+    expect(made.options).toEqual({ zoneID: zone, atomic: true });
+    expect(made.commits).toBe(1);
+    expect(made.ops.map((op) => op.kind)).toEqual(["update", "create", "delete"]);
+    expect(made.ops[2]!.record).toEqual({ recordName: "gone", recordChangeTag: "g7" });
+    expect(tags.get("l")).toBe("t2");
+  });
+
+  it("sends nothing when no field changed and nothing is removed", async () => {
+    const { db, made } = database();
+    await write(db, zone, { save: [{ write: { entity: "SharedMapLayer", id: "l", fields: { layerJSON: "{}" } }, row: row("l", "t1") }], remove: [] });
+    expect(made.commits).toBe(0);
+  });
+
+  it("reads a refused batch as a conflict when a record changed, though the other records only say ATOMIC_ERROR", async () => {
+    const { db } = database({ records: [], hasErrors: true, errors: [
+      { recordName: "c", ckErrorCode: "ATOMIC_ERROR", serverErrorCode: "ATOMIC_ERROR" },
+      { recordName: "l", ckErrorCode: "CONFLICT", serverErrorCode: "CONFLICT" }] });
+    await expect(write(db, zone, { save: [{ write: { entity: "SharedMapLayer", id: "l", fields: { layerJSON: "x" } }, row: row("l", "t1") }], remove: [] }))
+      .rejects.toBeInstanceOf(Conflict);
+  });
+
+  it("reads a record that exists already, or a delete whose tag is stale, as a conflict", async () => {
+    for (const code of ["EXISTS", "CONFLICT"]) {
+      const { db } = database({ records: [], hasErrors: true, errors: [{ ckErrorCode: code, serverErrorCode: code }] });
+      await expect(write(db, zone, { save: [], remove: [row("gone", "g7")] })).rejects.toBeInstanceOf(Conflict);
+    }
+  });
+
+  it("throws the cause of any other failure, not the collateral one", async () => {
+    const { db } = database({ records: [], hasErrors: true, errors: [
+      { ckErrorCode: "ATOMIC_ERROR", serverErrorCode: "ATOMIC_ERROR", reason: "ATOMIC_ERROR" },
+      { ckErrorCode: "UNKNOWN_ERROR", serverErrorCode: "SOME_NEW_CODE", reason: "The server has a new code" }] });
+    await expect(write(db, zone, { save: [], remove: [row("gone", "g7")] })).rejects.toThrow("The server has a new code");
+  });
+
+  it("does not call the saved records saved when errors came back with none of them", async () => {
+    const { db } = database({ hasErrors: true, errors: [{ ckErrorCode: "QUOTA_EXCEEDED", serverErrorCode: "QUOTA_EXCEEDED", reason: "iCloud is full" }] });
+    await expect(write(db, zone, { save: [], remove: [row("gone", "g7")] })).rejects.toThrow("iCloud is full");
+  });
+
+  it("reads a request refused as a whole for a conflict as one", async () => {
+    const { db } = database(Object.assign(new Error("x"), { ckErrorCode: "CONFLICT" }));
+    await expect(write(db, zone, { save: [], remove: [row("gone", "g7")] })).rejects.toBeInstanceOf(Conflict);
   });
 });

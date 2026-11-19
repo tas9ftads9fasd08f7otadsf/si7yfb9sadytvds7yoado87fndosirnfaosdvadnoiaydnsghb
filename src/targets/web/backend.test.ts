@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import type { Device, Portable } from "@/lib/types";
-import { Cloud, type CKContainer, type CKRecord, type CKSave, type CKSaved, type CloudKitJS } from "./cloud";
+import { Cloud, type CKBatchResult, type CKContainer, type CKRecord, type CKSave, type CKZoneChanges, type CloudKitJS } from "./cloud";
 import { NotOnSite, type Feature } from "@/backend/types";
 import { CoreMissing, type Applied, type Core, type HistoryEntry } from "./core";
 import { createBackend } from "./backend";
@@ -26,7 +26,7 @@ interface Options {
   /** CloudKit gives no name. */
   nameless?: boolean;
   /** Answers the saves; the default applies them to the account, as the server would. */
-  saving?: (records: CKSave[]) => CKSaved | undefined;
+  saving?: (records: CKSave[]) => CKBatchResult | undefined;
 }
 
 function stack(options: Options = {}) {
@@ -34,19 +34,22 @@ function stack(options: Options = {}) {
   let signIn: (identity: unknown) => void = () => {};
   const held = structuredClone(account.zones) as unknown as { private: { zoneID: { zoneName: string }; records: CKRecord[] }[];
     shared: { zoneID: { zoneName: string }; records: CKRecord[] }[] };
-  const changes = vi.fn(async ({ zones }: { zones: { zoneID: { zoneName: string } }[] }) => {
+  // 87 a zone's options, as the library takes them: it builds the `zones` of the request itself
+  const changes = vi.fn(async (options: CKZoneChanges | CKZoneChanges[]) => {
+    const [zone] = [options].flat();
     const mine = held.private[0]!;
-    return { zones: [{ zoneID: zones[0]!.zoneID, syncToken: "t",
-      records: zones[0]!.zoneID.zoneName === mine.zoneID.zoneName ? mine.records : held.shared[0]!.records }] };
+    return { zones: [{ zoneID: zone!.zoneID, syncToken: "t",
+      records: zone!.zoneID.zoneName === mine.zoneID.zoneName ? mine.records : held.shared[0]!.records }] };
   });
   const all = () => [...held.private[0]!.records, ...held.shared[0]!.records];
   let version = 0;
-  const saves = vi.fn<(records: CKSave[], where: unknown) => Promise<CKSaved>>(async (records) => {
+  /** The batch's commit: what it creates and updates, where, and what it deletes with the tags read. */
+  const saves = vi.fn<(records: CKSave[], where: unknown, removals: { recordName: string; recordChangeTag?: string }[]) => Promise<CKBatchResult>>(async (records) => {
     const refused = options.saving?.(records);
     if (refused) return refused;
     const stale = records.find((record) => record.recordChangeTag
       && record.recordChangeTag !== all().find((found) => found.recordName === record.recordName)?.recordChangeTag);
-    if (stale) return { records: [{ recordName: stale.recordName, serverErrorCode: "CONFLICT" }] };
+    if (stale) return { records: [], hasErrors: true, errors: [{ recordName: stale.recordName, ckErrorCode: "CONFLICT", serverErrorCode: "CONFLICT" }] };
     return { records: records.map((record) => {
       let each = all().find((found) => found.recordName === record.recordName);
       if (!each) {
@@ -62,17 +65,30 @@ function stack(options: Options = {}) {
       return { recordName: each.recordName, recordChangeTag: each.recordChangeTag };
     }) };
   });
-  const deletes = vi.fn(async () => ({ records: [] }));
+  const batchOf = (commit: (...asked: Parameters<typeof saves>) => Promise<CKBatchResult>) => (where: unknown) => {
+    const records: CKSave[] = [];
+    const removals: { recordName: string; recordChangeTag?: string }[] = [];
+    const batch = {
+      create: (record: CKSave) => { records.push(record); return batch; },
+      update: (record: CKSave) => { records.push(record); return batch; },
+      delete: (record: { recordName: string; recordChangeTag?: string }) => { removals.push(record); return batch; },
+      commit: () => commit(records, where, removals)
+    };
+    return batch;
+  };
+  const identities = { ...account.identities, rita: { userRecordName: "rita", nameComponents: { givenName: "Rita" } } } as Record<string, unknown>;
+  const database = { fetchRecordZoneChanges: changes, newRecordsBatch: batchOf(saves),
+    saveSubscriptions: vi.fn(async () => ({})), fetchDatabaseChanges: vi.fn(async () => ({ zones: [] })) };
+  const shared = vi.fn<(...asked: Parameters<typeof saves>) => Promise<CKBatchResult>>(async () => ({ records: [{ recordName: "shared-doprava", recordChangeTag: "s2" }] }));
   const container = {
-    setUpAuth: async () => (options.signedIn === false ? false : options.nameless ? {} : account.person),
+    setUpAuth: async () => (options.signedIn === false ? false : account.person),
+    discoverUserIdentityWithUserRecordName: async (name: string) => ({ users: options.nameless ? [] : [identities[name]] }),
     whenUserSignsIn: () => new Promise((resolve) => { signIn = resolve; }),
     whenUserSignsOut: () => new Promise(() => {}),
     registerForNotifications: async () => {},
     addNotificationListener: (listener: (n: unknown) => void) => { notify = listener; },
-    privateCloudDatabase: { fetchRecordZoneChanges: changes, fetchAllRecordZones: async () => ({}),
-      saveRecords: saves, deleteRecords: deletes },
-    sharedCloudDatabase: { fetchRecordZoneChanges: changes, saveRecords: vi.fn(async () => ({ records: [{ recordName: "shared-doprava", recordChangeTag: "s2" }] })),
-      deleteRecords: deletes,
+    privateCloudDatabase: { ...database, fetchAllRecordZones: async () => ({}) },
+    sharedCloudDatabase: { ...database, newRecordsBatch: batchOf(shared),
       fetchAllRecordZones: async () => ({ zones: account.zones.shared.map((each) => ({ zoneID: each.zoneID })) }) }
   } as unknown as CKContainer;
   const cloudkit: CloudKitJS = { configure: () => {}, getDefaultContainer: () => container };
@@ -103,14 +119,14 @@ function stack(options: Options = {}) {
     each.recordChangeTag = `${each.recordChangeTag}x`;
   };
   return { backend, seen, notify: () => notify({}), signIn: (identity: unknown) => signIn(identity), changes, core, saves,
-    shared: container.sharedCloudDatabase.saveRecords as ReturnType<typeof vi.fn>, elsewhere, held };
+    shared, elsewhere, held };
 }
 
 describe("WebBackend's reads", () => {
   it("says signed out, with the sign-in's standing, until an Apple Account is in", async () => {
     const { backend, signIn } = stack({ signedIn: false });
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "signedOut" } });
-    signIn({ nameComponents: { givenName: "Rita" } });
+    signIn({ userRecordName: "rita" });
     await new Promise((resolve) => setTimeout(resolve));
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "admitted", edits: true, token: "icloud", device: "Rita", viewers: null } });
   });
@@ -246,7 +262,7 @@ describe("WebBackend's edits", () => {
     expect(shared).toHaveBeenCalledWith(
       [{ recordName: "shared-doprava", recordType: "CD_SharedMap", recordChangeTag: "s1",
         fields: { CD_name: { value: "Roads", type: "STRING" } } }],
-      { zoneID: { zoneName: "share-doprava", ownerRecordName: "_friki" }, atomic: true });
+      { zoneID: { zoneName: "share-doprava", ownerRecordName: "_friki" }, atomic: true }, []);
   });
 
   it("returns the core's refusal words and writes nothing", async () => {
@@ -291,7 +307,8 @@ describe("WebBackend's edits", () => {
 
   it("refuses after three conflicts, in words that say the map changed elsewhere", async () => {
     const { backend, core, saves } = stack({ saving: (records) =>
-      ({ records: [{ recordName: records[0]!.recordName, serverErrorCode: "CONFLICT" }] }) });
+      ({ records: [], hasErrors: true, errors: [{ recordName: records[0]!.recordName, ckErrorCode: "CONFLICT", serverErrorCode: "CONFLICT" },
+        { recordName: records[1]!.recordName, ckErrorCode: "ATOMIC_ERROR", serverErrorCode: "ATOMIC_ERROR" }] }) });
     const answer = await backend.change(TATRAS, null, rename);
     expect(answer).toEqual({ ok: false, status: 412, said: "The map changed elsewhere. Open it again and repeat the change." });
     expect(core.apply).toHaveBeenCalledTimes(3);
@@ -299,7 +316,8 @@ describe("WebBackend's edits", () => {
   });
 
   it("does not hide any other error of the server", async () => {
-    const { backend } = stack({ saving: () => ({ records: [{ recordName: "r", serverErrorCode: "QUOTA_EXCEEDED", reason: "iCloud is full" }] }) });
+    const { backend } = stack({ saving: () => ({ records: [], hasErrors: true,
+      errors: [{ recordName: "r", ckErrorCode: "QUOTA_EXCEEDED", serverErrorCode: "QUOTA_EXCEEDED", reason: "iCloud is full" }] }) });
     await expect(backend.change(TATRAS, null, rename)).rejects.toThrow("iCloud is full");
   });
 
@@ -334,7 +352,7 @@ describe("WebBackend's edits", () => {
     expect(await backend.undo!(TATRAS)).toMatchObject({ ok: false, status: 412 });
     // the try on the cached rows was refused, and the rows read again hold Peaks
     expect(saves).toHaveBeenCalledTimes(2);
-    await expect(saves.mock.results[1]!.value).resolves.toMatchObject({ records: [{ serverErrorCode: "CONFLICT" }] });
+    await expect(saves.mock.results[1]!.value).resolves.toMatchObject({ errors: [{ ckErrorCode: "CONFLICT" }] });
   });
 });
 
