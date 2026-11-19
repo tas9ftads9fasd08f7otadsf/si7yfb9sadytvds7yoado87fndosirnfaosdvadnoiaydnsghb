@@ -20,10 +20,10 @@ export default defineConfig({
   },
   // One project per target (web-icloud.md §8): the phone's build, or the site's zip at the root and under a path.
   projects: SITE ? [
-    { name: "web", testMatch: /site\.spec\.mjs/, use: { ...DESKTOP, baseURL: "http://127.0.0.1:8801/" } },
-    { name: "web-under-path", testMatch: /site\.spec\.mjs/,
+    { name: "web", testMatch: /site(-\w+)?\.spec\.mjs/, use: { ...DESKTOP, baseURL: "http://127.0.0.1:8801/" } },
+    { name: "web-under-path", testMatch: /site(-\w+)?\.spec\.mjs/,
       use: { ...DESKTOP, baseURL: "http://127.0.0.1:8802/editor/" } }
-  ] : [{ name: "phone", testIgnore: /site\.spec\.mjs/, use: DESKTOP }],
+  ] : [{ name: "phone", testIgnore: /site(-\w+)?\.spec\.mjs/, use: DESKTOP }],
   webServer: process.env.BASE_URL ? undefined : SITE ? [
     { command: "node e2e/site.mjs 8801", url: "http://127.0.0.1:8801/", reuseExistingServer: false },
     { command: "node e2e/site.mjs 8802 editor", url: "http://127.0.0.1:8802/editor/", reuseExistingServer: false }

@@ -17,6 +17,26 @@ export function siteLeaks(files) {
     || /\/riki\/v1|\/web\/app\//.test(text ?? "")).map(({ name }) => name);
 }
 
+/**
+ * The pinned riki-core.wasm, checked against its .sha256; null with a message while no release is pinned,
+ * and a failure once one is pinned but missing or altered.
+ */
+export async function pinnedCore(pin, dir) {
+  if (!pin?.version) return { wasm: null, said: "riki-core.wasm is not pinned in package.json (rikiCore.version): the site is packed without it and cannot read maps yet" };
+  const wasm = path.join(dir, "riki-core.wasm");
+  let bytes;
+  let sums;
+  try {
+    [bytes, sums] = await Promise.all([readFile(wasm), readFile(`${wasm}.sha256`, "utf8")]);
+  } catch {
+    throw new Error(`riki-core.wasm ${pin.version} is pinned but ${wasm} and its .sha256 are not there: download release core-v${pin.version} first`);
+  }
+  const wanted = sums.trim().split(/\s+/)[0];
+  const got = createHash("sha256").update(bytes).digest("hex");
+  if (got !== wanted) throw new Error(`riki-core.wasm is ${got}, but its .sha256 says ${wanted}`);
+  return { wasm, said: `riki-core.wasm ${pin.version}` };
+}
+
 async function main() {
   const out = path.join(ROOT, "out");
   const work = path.join(ROOT, "dist", "web-site");
@@ -39,6 +59,9 @@ async function main() {
   for (const file of SERVER_FILES) await cp(path.join(ROOT, "server", file), path.join(work, file));
 
   const own = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8"));
+  const core = await pinnedCore(own.rikiCore, process.env.RIKI_CORE_DIR || path.join(ROOT, "dist", "riki-core"));
+  if (core.wasm) await cp(core.wasm, path.join(work, "out", "riki-core.wasm"));
+  else console.warn(`warning: ${core.said}`);
   const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
   const site = { version: process.env.WEB_EDITOR_VERSION || own.version, commit, pageSegments: PAGE_SEGMENTS };
   await writeFile(path.join(work, "site.json"), `${JSON.stringify(site, null, 2)}\n`);

@@ -2,6 +2,7 @@
   "name": "mapeditor-fe",
   "version": "0.1.0",
   "private": true,
+  "rikiCore": { "version": null },
   "description": "The map editor a sharing phone serves to browsers, built by Next.js and shipped inside the app",
   "type": "module",
   "engines": {
@@ -24,6 +25,7 @@
     "test:e2e:web": "RIKI_TARGET=web playwright test"
   },
   "dependencies": {
+    "@bjorn3/browser_wasi_shim": "0.4.2",
     "maplibre-gl": "4.7.1",
     "next": "16.4.5",
     "pmtiles": "4.5.0",
@@ -42,6 +44,7 @@
     "@vitejs/plugin-react": "6.2.1",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.5",
+    "fake-indexeddb": "6.2.8",
     "jsdom": "31.0.0",
     "typescript": "5.9.3",
     "vitest": "5.1.0"

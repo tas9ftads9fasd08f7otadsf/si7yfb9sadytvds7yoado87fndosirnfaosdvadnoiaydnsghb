@@ -131,6 +131,9 @@ export const backend: Backend = {
     token = get;
   },
 
+  // 76 The phone is asked again on its heartbeat.
+  onChanged: () => () => {},
+
   maps: () => readJSON(`${ROOT}/device`),
   map: (id) => readJSON(`${ROOT}/maps/${id}`),
 

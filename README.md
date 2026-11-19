@@ -47,7 +47,10 @@ runs PHP 8.1 or later, at a domain's root or under a path, and send every reques
 (nginx: `try_files $uri /index.php`; or `php -S host:port index.php`). Copy `config.example.php` to
 `config.php` with the CloudKit container, API token and environment. The server only serves files:
 `composer install --working-dir=server` and `npm run test:php` run its PHPUnit tests, and
-`npm run test:e2e:web` runs the browser specs against the zip at `/` and under `/editor/`.
+`npm run test:e2e:web` runs the browser specs against the zip at `/` and under `/editor/`, with
+`e2e/mock-cloud.mjs` standing in for CloudKit and `e2e/fake-core.mjs` for `riki-core.wasm`. The site's zip carries the
+core only once `rikiCore.version` in `package.json` pins a release (`dist/riki-core/riki-core.wasm` and its `.sha256`);
+until then `pack:web` says so and packs without it.
 
 ### Deploying it
 
@@ -76,7 +79,8 @@ deploy by hand.
 - `src/components`: the page in React; `edit/` is Edit map, `ui/` the small shared parts.
 - `src/store/viewer.ts`: all state; it asks `@backend`, never `fetch`.
 - `src/backend/types.ts`: the `Backend` every target answers; `src/lib/edit.ts`, the edits it takes.
-- `src/targets/phone`: today's calls to the phone. `src/targets/web`: the site's, built in step 3.
+- `src/targets/phone`: today's calls to the phone. `src/targets/web`: the site's: `config.ts`, `cloud.ts` (CloudKit JS, sign-in), `zones.ts` and
+  `records.ts` (the zones' rows, kept in IndexedDB), `core.ts` (`riki-core.wasm`) and `backend.ts`. It reads; writes wait for step 4.
 - `server`: the site's `index.php`, `Site.php` and their PHPUnit tests.
 - `src/map`: MapLibre, loaded on the client after the phone's words.
 - `src/lib`: logic with no framework in it.

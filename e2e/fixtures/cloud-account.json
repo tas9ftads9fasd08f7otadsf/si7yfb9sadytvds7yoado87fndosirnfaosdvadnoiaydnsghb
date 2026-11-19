@@ -1,0 +1,60 @@
+{
+  "person": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } },
+  "assets": {
+    "https://cvws.icloud-content.com/own-tatras/layers": "[{\"id\":\"L1\",\"name\":\"Trails\"}]",
+    "https://cvws.icloud-content.com/shared-doprava/layers": "[{\"id\":\"S1\",\"name\":\"Roads\"}]"
+  },
+  "zones": {
+    "private": [{
+      "zoneID": { "zoneName": "com.apple.coredata.cloudkit.zone" },
+      "syncToken": "private-1",
+      "records": [
+        { "recordName": "own-tatras", "recordType": "CD_SharedMap", "recordChangeTag": "a1",
+          "fields": {
+            "CD_id": { "value": "6F1E2A10-0000-4000-8000-000000000001", "type": "STRING" },
+            "CD_name": { "value": "High Tatras", "type": "STRING" },
+            "CD_layersJSON_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/own-tatras/layers" }, "type": "ASSETID" }
+          } },
+        { "recordName": "own-tatras-layer", "recordType": "CD_SharedMapLayer", "recordChangeTag": "a2",
+          "fields": {
+            "CD_name": { "value": "Trails", "type": "STRING" },
+            "CD_map": { "value": { "recordName": "own-tatras" }, "type": "REFERENCE" }
+          } },
+        { "recordName": "own-secrets", "recordType": "CD_LayerSecrets", "recordChangeTag": "a3",
+          "fields": { "CD_keys": { "value": "ciphertext", "type": "ENCRYPTED_BYTES" } } }
+      ]
+    }],
+    "shared": [{
+      "zoneID": { "zoneName": "share-doprava", "ownerRecordName": "_friki" },
+      "syncToken": "shared-1",
+      "records": [
+        { "recordName": "shared-doprava", "recordType": "CD_SharedMap", "recordChangeTag": "s1",
+          "fields": {
+            "CD_id": { "value": "6F1E2A10-0000-4000-8000-000000000002", "type": "STRING" },
+            "CD_name": { "value": "Doprava", "type": "STRING" },
+            "CD_layersJSON_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/shared-doprava/layers" }, "type": "ASSETID" }
+          } }
+      ]
+    }]
+  },
+  "core": {
+    "riki_maps": {
+      "name": "",
+      "maps": [
+        { "id": "6F1E2A10-0000-4000-8000-000000000001", "name": "High Tatras", "symbol": "mountain.2", "revision": 1,
+          "layers": [{ "id": "L1", "name": "Trails", "kind": "Vector tiles", "symbol": "figure.hiking" }] },
+        { "id": "6F1E2A10-0000-4000-8000-000000000002", "name": "Doprava", "symbol": "tram", "revision": 1,
+          "layers": [{ "id": "S1", "name": "Roads", "kind": "Vector tiles", "symbol": "road.lanes" }] }
+      ]
+    },
+    "riki_map": {
+      "id": "6F1E2A10-0000-4000-8000-000000000001", "name": "High Tatras", "symbol": "mountain.2",
+      "styles": [{ "id": "B1", "name": "Summer", "arrangement": { "hidden": [] } }], "selectedStyleID": "B1",
+      "stack": [{ "id": "L1", "name": "Trails", "kind": "Vector tiles" }]
+    },
+    "riki_style": {
+      "version": 8, "sources": {},
+      "layers": [{ "id": "ground", "type": "background", "paint": { "background-color": "#ddd" } }]
+    }
+  }
+}

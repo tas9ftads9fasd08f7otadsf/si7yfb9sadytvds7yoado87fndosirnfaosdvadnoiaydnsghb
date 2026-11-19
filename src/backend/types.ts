@@ -55,6 +55,10 @@ export interface Backend {
   unlock(key: string): Promise<Answer<{ token: string }>>;
   /** The token later calls carry, read when each is made. */
   useToken(token: () => string | null): void;
+  /** 76 Told when the maps changed elsewhere, or the person signed in or out; returns how to stop. */
+  onChanged(listener: () => void): () => void;
+  /** 76 The site's Sign in with Apple or sign-out button, put in this element; the phone has none. */
+  mountAccount?(button: "in" | "out", into: HTMLElement): void;
 
   maps(): Promise<Device>;
   map(id: string): Promise<Portable>;
