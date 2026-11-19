@@ -15,7 +15,7 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
 test("an Esri layer's Questions are set from its Options", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const row = page.locator("#editBody .row", { has: page.locator("input[value='Bedrock']") });
+  const row = page.locator("#editBody .layer-item", { has: page.locator("input[value='Bedrock']") });
   await row.getByRole("button", { name: "Options" }).click();
   const panel = page.locator(`[data-options='${layer}']`);
 

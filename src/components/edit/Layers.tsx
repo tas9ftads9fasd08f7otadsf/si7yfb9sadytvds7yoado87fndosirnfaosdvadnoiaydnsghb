@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { type DragEvent, Fragment } from "react";
 import { groundID } from "@/lib/ground";
 import { movedPast, originGroups, type OriginGroup } from "@/lib/origins";
 import type { Portable, SharedLayer, StackLayer } from "@/lib/types";
@@ -30,35 +30,68 @@ function LayerRow({ layer, listed, isBase, movable, peers }: RowProps) {
   const isOpen = useViewer((state) => state.optionsOpen.has(layer.id));
   const isUndrawn = useViewer((state) => state.undrawn.has(layer.id.toLowerCase()));
   const place = peers.indexOf(listed.id);
-  const move = (by: -1 | 1) => void change({ kind: "order", layers: movedPast(movable, peers, listed.id, by) });
+  const move = (order: string[]) => void change({ kind: "order", layers: order });
+  const moveBy = (by: -1 | 1) => move(movedPast(movable, peers, listed.id, by));
+  // 94 the design's handle: a row dropped on another takes its place, as Move up and down step it
+  const dropped = (event: DragEvent) => {
+    event.preventDefault();
+    const from = event.dataTransfer.getData("text/x-riki-layer");
+    const fromPlace = peers.indexOf(from);
+    if (fromPlace < 0 || from === listed.id) return;
+    let order = movable;
+    let among = peers;
+    const steps = place - fromPlace;
+    for (let step = 0; step < Math.abs(steps); step += 1) {
+      order = movedPast(order, among, from, steps > 0 ? 1 : -1);
+      among = movedPast(among, among, from, steps > 0 ? 1 : -1);
+    }
+    move(order);
+  };
   return (
-    <>
-      <div className="row" data-layer={layer.id}>
+    <div className={isOpen ? "layer-item open" : "layer-item"} data-layer={layer.id}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes("text/x-riki-layer")) event.preventDefault();
+      }} onDrop={dropped}>
+      <div className="row">
+        <span className="handle" draggable={peers.length > 1} title={words.moveUp + " / " + words.moveDown}
+          onDragStart={(event) => {
+            event.dataTransfer.setData("text/x-riki-layer", listed.id);
+            event.dataTransfer.effectAllowed = "move";
+          }}><Sym name="line.3.horizontal" /></span>
         <MarkTile symbol={layer.symbol} tint={layer.tintHex} small />
         <div className="words">
           <CommitField type="text" value={layer.name} aria-label={words.rename}
             onCommit={(name) => change({ kind: "layerName", layer: layer.id, name })} />
           <small>{listed.kind}</small>
           {isUndrawn ? <small className="undrawn">{words.layerUndrawn}</small> : null}
-          {isBase ? null : <CommitField type="range" min="0" max="1" step="0.05" value={String(layer.opacity ?? 1)}
-            aria-label={words.opacity} title={words.opacity} onCommit={(opacity) => change({ kind: "layerOpacity", layer: layer.id, opacity })} />}
         </div>
-        {sections ? (
-          <button type="button" className="icon-button" aria-label={words.layerOptions} title={words.layerOptions}
-            aria-expanded={isOpen} onClick={() => toggleOptions(layer.id)}>
-            <Sym name={isOpen ? "chevron.down" : "slider.horizontal.3"} />
-          </button>
-        ) : null}
-        <button type="button" className="icon-button" aria-label={words.moveUp} title={words.moveUp}
-          disabled={place <= 0} onClick={() => move(-1)}><Sym name="chevron.up" /></button>
-        <button type="button" className="icon-button" aria-label={words.moveDown} title={words.moveDown}
-          disabled={place < 0 || place >= peers.length - 1} onClick={() => move(1)}><Sym name="chevron.down" /></button>
         <Switch isOn={!isHidden} label={layer.name} onChange={(isOn) => change({ kind: "layerShown", layer: layer.id, shown: isOn })} />
-        <button type="button" className="icon-button danger" aria-label={words.deleteLayer} title={words.deleteLayer}
-          onClick={() => removeLayer(layer)}><Sym name="trash" /></button>
+        <button type="button" className="icon-button settings" aria-label={`${words.layerOptions} ${layer.name}`}
+          title={words.layerOptions} aria-expanded={isOpen} onClick={() => toggleOptions(layer.id)}>
+          <Sym name={isOpen ? "chevron.down" : "chevron.forward"} />
+        </button>
       </div>
-      {sections && isOpen ? <OptionsPanel id={layer.id} sections={sections} /> : null}
-    </>
+      {isOpen ? (
+        <div className="layer-settings">
+          {isBase ? null : (
+            <label className="opacity"><span>{words.opacity}</span>
+              <CommitField type="range" min="0" max="1" step="0.05" value={String(layer.opacity ?? 1)}
+                aria-label={words.opacity} onCommit={(opacity) => change({ kind: "layerOpacity", layer: layer.id, opacity })} />
+            </label>
+          )}
+          <div className="buttons">
+            <button type="button" className="pill" aria-label={words.moveUp} disabled={place <= 0}
+              onClick={() => moveBy(-1)}><Sym name="chevron.up" />{words.moveUp}</button>
+            <button type="button" className="pill" aria-label={words.moveDown}
+              disabled={place < 0 || place >= peers.length - 1} onClick={() => moveBy(1)}>
+              <Sym name="chevron.down" />{words.moveDown}</button>
+            <button type="button" className="pill danger" aria-label={words.deleteLayer}
+              onClick={() => removeLayer(layer)}><Sym name="trash" />{words.deleteLayer}</button>
+          </div>
+          {sections ? <OptionsPanel id={layer.id} sections={sections} /> : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

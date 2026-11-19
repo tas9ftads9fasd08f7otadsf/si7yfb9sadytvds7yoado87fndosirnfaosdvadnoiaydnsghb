@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { openViewer, reset, editTab } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -7,6 +7,7 @@ test.beforeEach(async ({ request }) => { await reset(request); });
 test("Edit map saves the map as a .mapson file", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
+  await editTab(page, "General");
   const saved = page.waitForEvent("download");
   await page.locator("#exportMap").click();
   const download = await saved;

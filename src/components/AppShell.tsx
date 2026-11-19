@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { type MapControl, setMapControl } from "@/map/control";
 import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
   from "@/store/viewer";
-import { LayerSwitcher } from "./MapLayers";
+import { LayerSwitcher, LivePreview } from "./MapLayers";
 import { NavRail } from "./NavRail";
 import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar, UndrawnNote } from "./Overlays";
 import { SideBar } from "./SideBar";
@@ -18,6 +18,7 @@ export function AppShell() {
   const mapBox = useRef<HTMLDivElement>(null);
   const standing = useViewer((state) => state.standing);
   const sideShown = useViewer((state) => state.sideShown);
+  const editing = useViewer((state) => state.editing);
 
   useEffect(() => {
     let isGone = false;
@@ -72,6 +73,10 @@ export function AppShell() {
     document.body.classList.toggle("side-hidden", !sideShown);
   }, [sideShown]);
 
+  useEffect(() => {
+    document.body.classList.toggle("editing", editing);
+  }, [editing]);
+
   return (
     <>
       <TopBar />
@@ -79,6 +84,7 @@ export function AppShell() {
       <SideBar />
       <div id="map" ref={mapBox} />
       <LayerSwitcher />
+      <LivePreview />
       <LoadingBar />
       <RegionOffer />
       <UndrawnNote />

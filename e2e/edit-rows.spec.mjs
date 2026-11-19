@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { editTab, openViewer, reset } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -18,10 +18,14 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
 
 const answered = (page) => page.waitForResponse((response) => response.url().includes("/edit?"));
 
-const layerRow = (page, name) => page.locator("#editBody .row").filter({ has: page.getByRole("switch", { name }) });
+// 94 a layer's row with its settings, which fold out under its › button
+const layerRow = (page, name) => page.locator("#editBody .layer-item")
+  .filter({ has: page.getByRole("switch", { name }) });
+const openSettings = (page, name) => layerRow(page, name).getByRole("button", { name: `Options ${name}` }).click();
 
 test("the map's name and note are written on the phone", async ({ page }) => {
   await openEdit(page);
+  await editTab(page, "General");
   let asked = sent(page);
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("Tatras in summer");
   await page.getByRole("textbox", { name: "Name", exact: true }).press("Enter");
@@ -36,6 +40,8 @@ test("the map's name and note are written on the phone", async ({ page }) => {
 
 test("a layer is renamed and its opacity set; the base layer has no opacity", async ({ page }) => {
   await openEdit(page);
+  await openSettings(page, "Trails");
+  await expect(layerRow(page, "Trails").getByRole("button", { name: "Delete layer" })).toBeVisible();
   await expect(layerRow(page, "Trails").getByRole("slider", { name: "Opacity" })).toHaveCount(0);
 
   let asked = sent(page);
@@ -47,6 +53,7 @@ test("a layer is renamed and its opacity set; the base layer has no opacity", as
   await expect(page.locator("#layerList").getByRole("switch", { name: "Mountain huts" })).toBeVisible();
 
   asked = sent(page);
+  await openSettings(page, "Mountain huts");
   const opacity = layerRow(page, "Mountain huts").getByRole("slider", { name: "Opacity" });
   await opacity.fill("0.5");
   expect(await asked).toMatchObject({ layer: HUTS, opacity: "0.5" });
@@ -59,6 +66,8 @@ test("a layer moves down and back up, and the ends cannot move further", async (
   const switches = page.locator("#editBody [data-layer]").getByRole("switch");
   const names = async () => switches.evaluateAll((all) => all.map((one) => one.getAttribute("aria-label")));
   expect(await names()).toEqual(["Trails", "Huts"]);
+  await openSettings(page, "Trails");
+  await openSettings(page, "Huts");
   await expect(layerRow(page, "Trails").getByRole("button", { name: "Move up" })).toBeDisabled();
   await expect(layerRow(page, "Huts").getByRole("button", { name: "Move down" })).toBeDisabled();
 
@@ -102,6 +111,7 @@ test("the list's own switch turns every layer off, then on again", async ({ page
 
 test("a style is added, renamed and deleted", async ({ page }) => {
   await openEdit(page);
+  await editTab(page, "Styling");
   const styleNames = page.locator("#editBody .list").first().getByRole("textbox", { name: "Rename" });
   await expect(styleNames).toHaveCount(2);
 
@@ -127,6 +137,7 @@ test("a style is added, renamed and deleted", async ({ page }) => {
 
 test("the last style left cannot be deleted", async ({ page }) => {
   await openEdit(page);
+  await editTab(page, "Styling");
   const remove = page.locator("#editBody .list").first().getByRole("button", { name: "Delete" });
   await expect(remove).toHaveCount(2);
   await page.locator("#editBody .list").first().getByRole("button", { name: "Delete" }).first().click();

@@ -83,6 +83,9 @@ describe("Layers", () => {
     showGrouped();
     render(<Layers portable={portable} />);
     fireEvent.click(screen.getByRole("button", { name: /^Trails server/ }));
+    // 94 a row's moves are in its settings, under the › at its end
+    fireEvent.click(screen.getByRole("button", { name: "Options Trails" }));
+    fireEvent.click(screen.getByRole("button", { name: "Options Huts" }));
     const ups = screen.getAllByRole("button", { name: "Move up" });
     const downs = screen.getAllByRole("button", { name: "Move down" });
     expect(ups.map((button) => (button as HTMLButtonElement).disabled)).toEqual([true, false]);
@@ -90,5 +93,32 @@ describe("Layers", () => {
     fireEvent.click(downs[0] as HTMLElement);
     expect(decodeURIComponent(String(asked.mock.calls[0]?.[0]))).toContain("order=B,H,T");
   });
-});
 
+  // 94 the row keeps the layer and its switch; opacity, moves and Delete fold out under its ›
+  it("folds a layer's settings out under its row", () => {
+    show([]);
+    render(<Layers portable={portable} />);
+    expect(screen.queryByRole("slider", { name: "Opacity" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete layer" })).toBeNull();
+    const open = screen.getByRole("button", { name: "Options Trails" });
+    fireEvent.click(open);
+    expect(open.getAttribute("aria-expanded")).toBe("true");
+    const item = document.querySelector('[data-layer="T"]')!;
+    expect(item.querySelector('input[type="range"]')).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete layer" })).toBeTruthy();
+  });
+
+  // 94 a row dragged by its handle onto another takes that row's place
+  it("moves a layer dropped on another row", () => {
+    const asked = vi.fn((input: RequestInfo | URL) => new Promise<Response>(() => void input));
+    vi.stubGlobal("fetch", asked);
+    show([]);
+    render(<Layers portable={portable} />);
+    const data = new Map<string, string>();
+    const dataTransfer = { setData: (kind: string, value: string) => data.set(kind, value),
+      getData: (kind: string) => data.get(kind) ?? "", get types() { return [...data.keys()]; }, effectAllowed: "" };
+    fireEvent.dragStart(document.querySelector('[data-layer="H"] .handle')!, { dataTransfer });
+    fireEvent.drop(document.querySelector('[data-layer="B"]')!, { dataTransfer });
+    expect(decodeURIComponent(String(asked.mock.calls[0]?.[0]))).toContain("order=H,B,T");
+  });
+});

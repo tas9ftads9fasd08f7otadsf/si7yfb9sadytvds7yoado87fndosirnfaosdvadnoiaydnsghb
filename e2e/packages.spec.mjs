@@ -51,7 +51,8 @@ test("the parts sit on one level, and a drawn package stays off", async ({ page 
 test("a layer is deleted once the question is answered", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const huts = page.locator("#editBody .row", { has: page.locator("input[value=Huts]") });
+  const huts = page.locator("#editBody .layer-item", { has: page.locator("input[value=Huts]") });
+  await huts.getByRole("button", { name: "Options Huts" }).click();
   let asked = 0;
   page.on("request", (request) => { if (request.url().includes("removeLayer")) asked += 1; });
 

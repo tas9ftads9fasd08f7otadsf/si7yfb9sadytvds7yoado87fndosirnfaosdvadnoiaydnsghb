@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset } from "./phone.mjs";
+import { editTab, openViewer, phone, reset } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -10,6 +10,7 @@ const mapNames = (page) => page.request.get("/riki/v1/device").then((answer) => 
 test("a map is deleted from Edit map once its name is typed", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
+  await editTab(page, "General");
   await page.locator("#deleteMap-edit").click();
   const yes = page.locator("#deleteMap-edit-yes");
   await page.locator("#deleteMap-edit-name").fill("High");

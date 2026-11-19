@@ -1,11 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { editTab, openViewer, reset } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 async function openCoverage(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
+  await editTab(page, "Offline");
   await expect(page.locator("#coverageLine")).toHaveText("Not limited");
   await page.locator("#coverageToggle").click();
   await expect(page.locator("#coveragePickers")).toBeVisible();
