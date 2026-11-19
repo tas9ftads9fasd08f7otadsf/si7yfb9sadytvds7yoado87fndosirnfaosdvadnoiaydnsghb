@@ -16,11 +16,11 @@ test("the page asks for a zone with its own options, and names the person by dis
   const cloud = await mockCloud(page, { signedIn: true });
   await page.goto("./");
   await page.locator("#current .hero").waitFor();
+  await expect(page.locator("#device")).toContainText("Riki Tester");
   const reads = cloud.asked.filter((each) => each.endpoint === "changes/zone");
   expect(reads.length).toBeGreaterThan(0);
   expect(reads.every((each) => each.body.zones.every((zone) => zone.zoneID))).toBe(true);
   expect(cloud.asked.find((each) => each.endpoint === "users/discover").body.lookupInfos).toEqual([{ userRecordName: "_me" }]);
-  await expect(page.locator("#device")).toContainText("Riki Tester");
 });
 
 test("the page saves a database subscription for each database, and is told of a push only then", async ({ page }) => {
@@ -50,9 +50,10 @@ test("a token the server forgot is dropped and the zone is read again from the s
   cloud.change("own-tatras", { CD_name: { value: "High Tatras 2", type: "STRING" } });
   await cloud.push();
   await expect(page.locator("#notice")).toHaveText("High Tatras was changed on another device");
-  const tokens = cloud.asked.filter((each) => each.endpoint === "changes/zone" && each.database === "private")
+  // 87 the notice can come before the read from the start has reached the mock, so the requests are waited for
+  const tokens = () => cloud.asked.filter((each) => each.endpoint === "changes/zone" && each.database === "private")
     .map((each) => each.body.zones[0].syncToken ?? null);
-  expect(tokens.slice(-3)).toEqual([expect.any(String), null, expect.any(String)]);
+  await expect.poll(() => tokens().slice(-3)).toEqual([expect.any(String), null, expect.any(String)]);
 });
 
 test("a sign-in window that failed leaves the sign-in button working", async ({ page }) => {
