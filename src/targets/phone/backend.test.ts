@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Edit } from "@/lib/edit";
 import type { Shelving } from "@/lib/edit";
-import { backend, queryOf, shelfQueryOf } from "./backend";
+import { backend, esriQueryOf, queryOf, shelfQueryOf } from "./backend";
 import { savedName } from "./phone";
 
 // 36 every edit is the query `PeerWebEdit(query:)` reads, as the store sent it before the split
@@ -123,5 +123,15 @@ describe("the phone backend", () => {
     expect(savedName(`attachment; filename="a.mapson"; filename*=UTF-8''Pre%C5%A1ov.mapson`)).toBe("Prešov.mapson");
     expect(savedName(`attachment; filename="a.mapson"`)).toBe("a.mapson");
     expect(savedName("")).toBe("Map.mapson");
+  });
+});
+
+// 67 a service's change as `PeerWebEsriServices.asked` reads it
+describe("esriQueryOf", () => {
+  it("names the service and the one thing asked", () => {
+    expect(esriQueryOf("G", { kind: "add", layer: 2 })).toEqual({ service: "G", add: "2" });
+    expect(esriQueryOf("G", { kind: "remove", layer: 0 })).toEqual({ service: "G", remove: "0" });
+    expect(esriQueryOf("G", { kind: "read" })).toEqual({ service: "G", read: "1" });
+    expect(esriQueryOf("G", { kind: "forget" })).toEqual({ service: "G", forget: "1" });
   });
 });
