@@ -269,6 +269,10 @@ label.action { cursor: pointer; }
 .layout-row input { flex: 1; }
 .add-row { gap: 6px; }
 .add-row input { flex: 1; }
+.row-icon { position: relative; }
+.row-icon-groups { position: absolute; z-index: 5; top: 100%; left: 0; width: 280px; max-height: 260px; overflow: auto;
+  padding: 6px 0; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 16px var(--shadow); border-radius: 8px; }
+.row-icon-groups small { padding: 0 14px; color: var(--sub); }
 .layout-header, .layout-actions { border-top: 1px solid var(--line); padding: 4px 0; }
 .field.pictured { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .field.pictured .shown { width: 44px; height: 44px; border-radius: 10px; background: center / cover; }
