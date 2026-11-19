@@ -43,8 +43,8 @@ describe("OptionsPanel's signs key", () => {
     await show([signKey]);
     expect(urls()[0]).toContain("/maps/a/road-signs");
     expect(await screen.findByText("Stop")).toBeTruthy();
-    const picture = document.querySelector("[data-sign='sk.ts.202'] img") as HTMLImageElement;
-    expect(picture.getAttribute("src")).toBe("/web/icons/sk.ts.202");
+    const picture = document.querySelector("[data-sign='sk.ts.202'] .sign") as HTMLElement;
+    expect(picture.style.backgroundImage).toContain("/web/icons/sk.ts.202");
     expect(screen.getByRole("button", { name: "Slovakia" }).getAttribute("aria-pressed")).toBe("true");
   });
 

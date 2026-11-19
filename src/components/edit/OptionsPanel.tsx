@@ -100,7 +100,7 @@ function SignKey({ section }: { section: OptionSection }) {
       <ul className="sign-grid" aria-label={key?.countryName}>
         {(key?.signs ?? []).map((sign) => (
           <li key={sign.id} data-sign={sign.id}>
-            <img src={iconURL(sign.id)} alt="" width={24} height={24} loading="lazy" />
+            <span className="sign" aria-hidden="true" style={{ backgroundImage: `url("${iconURL(sign.id)}")` }} />
             <span>{sign.title}</span>
           </li>
         ))}
