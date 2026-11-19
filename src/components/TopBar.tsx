@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { backend } from "@backend";
 import { pickStyle, shareAddress, shownMapOf, useViewer } from "@/store/viewer";
+import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
 import { Traffic } from "./Traffic";
@@ -19,13 +20,36 @@ function ShownMap() {
   );
 }
 
-/** 76 Where the site puts its sign-out button; empty on the phone. */
+/** 83 The name the site's changes are made under; blank leaves it to the Apple Account's. */
+function AccountName() {
+  const words = useViewer((state) => state.words);
+  const admitted = useViewer((state) => state.standing === "admitted");
+  const account = useViewer((state) => state.gateDevice);
+  const author = backend.author;
+  const [name, setName] = useState(() => author?.read() ?? "");
+  if (!author || !admitted) return null;
+  return (
+    <CommitField type="text" id="accountName" value={name} maxLength={100} aria-label={words.yourName}
+      placeholder={account || words.yourName} autoComplete="name" spellCheck={false}
+      onCommit={(typed) => {
+        author.keep(typed);
+        setName(author.read());
+      }} />
+  );
+}
+
+/** 76 Where the site puts its sign-out button, with 83 the name beside it; empty on the phone. */
 function Account() {
   const into = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (into.current) backend.mountAccount?.("out", into.current);
   }, []);
-  return <span id="account" ref={into} />;
+  return (
+    <>
+      <AccountName />
+      <span id="account" ref={into} />
+    </>
+  );
 }
 
 export function TopBar() {

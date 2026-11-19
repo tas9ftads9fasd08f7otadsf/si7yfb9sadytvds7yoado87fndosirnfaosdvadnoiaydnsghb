@@ -66,6 +66,8 @@ export interface Backend {
   onChanged(listener: (changed?: ChangedElsewhere[]) => void): () => void;
   /** 76 The site's Sign in with Apple or sign-out button, put in this element; the phone has none. */
   mountAccount?(button: "in" | "out", into: HTMLElement): void;
+  /** 83 The name the site's changes are made under, typed in its account part; the phone has none. */
+  readonly author?: { read(): string; keep(name: string): void };
 
   maps(): Promise<Device>;
   map(id: string): Promise<Portable>;

@@ -15,6 +15,10 @@ interface Options {
   core?: () => Promise<Core>;
   apply?: (ask: Parameters<Core["apply"]>[0]) => Applied;
   changes?: () => HistoryEntry[];
+  /** The name typed in the account part, if any. */
+  typed?: string;
+  /** CloudKit gives no name. */
+  nameless?: boolean;
   /** Answers the saves; the default applies them to the account, as the server would. */
   saving?: (records: CKSave[]) => CKSaved | undefined;
 }
@@ -54,7 +58,7 @@ function stack(options: Options = {}) {
   });
   const deletes = vi.fn(async () => ({ records: [] }));
   const container = {
-    setUpAuth: async () => (options.signedIn === false ? false : account.person),
+    setUpAuth: async () => (options.signedIn === false ? false : options.nameless ? {} : account.person),
     whenUserSignsIn: () => new Promise((resolve) => { signIn = resolve; }),
     whenUserSignsOut: () => new Promise(() => {}),
     registerForNotifications: async () => {},
@@ -85,7 +89,7 @@ function stack(options: Options = {}) {
     return new Response("", { status: 404 });
   });
   const backend = createBackend({ cloud, config: async () => config, core: options.core ?? (async () => core), keeping,
-    fetcher: fetcher as typeof fetch, base: "/editor", language: () => "sk" });
+    author: { read: () => options.typed ?? "", keep: () => {} }, fetcher: fetcher as typeof fetch, base: "/editor", language: () => "sk" });
   /** Another device wrote this record: a new tag and the fields it set. */
   const elsewhere = (recordName: string, fields: Record<string, { value: unknown; type: string }>) => {
     const each = all().find((found) => found.recordName === recordName)!;
@@ -191,6 +195,15 @@ describe("WebBackend's edits", () => {
         fields: { CD_map: { value: { recordName: "own-tatras", action: "DELETE_SELF" }, type: "REFERENCE" },
           CD_payload: { value: expect.stringContaining("\"origin\":\"web\""), type: "STRING" } } }
     ]);
+  });
+
+  // 83 the name typed in the account part goes ahead of the one CloudKit gives, else none
+  it("makes a change under the typed name, else CloudKit's, else none", async () => {
+    for (const [options, author] of [[{ typed: "Friki" }, "Friki"], [{}, "Riki Tester"], [{ nameless: true }, null]] as const) {
+      const { backend, core } = stack(options);
+      await backend.change(TATRAS, null, rename);
+      expect(vi.mocked(core.apply).mock.calls[0]![0].author).toBe(author);
+    }
   });
 
   it("sends a shared map's edit to the shared database, in the share's zone", async () => {
