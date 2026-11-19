@@ -1,6 +1,6 @@
 import type { Answer, Backend, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
-import { peopleQueryOf } from "@/lib/people";
+import { peoplePathOf, peopleQueryOf } from "@/lib/people";
 import { startQuery } from "@/lib/places";
 import type { APIAsk, APIRead, EsriChange, OfflineAsk, Portable, SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
@@ -159,8 +159,8 @@ export const backend: Backend = {
   switches: (mapID) => editing(`${ROOT}/maps/${mapID}/switches`, "GET"),
   setPicture: (mapID, kind, picture, style) => editing(`${ROOT}/maps/${mapID}/picture?kind=${kind}`
     + (style ? `&style=${encodeURIComponent(style)}` : ""), "POST", picture),
-  people: (mapID) => editing(`${ROOT}/maps/${mapID}/people`, "GET"),
-  askPeople: (mapID, ask) => editing(`${ROOT}/maps/${mapID}/people?${new URLSearchParams(peopleQueryOf(ask))}`),
+  people: (of) => editing(`${ROOT}/${peoplePathOf(of)}`, "GET"),
+  askPeople: (of, ask) => editing(`${ROOT}/${peoplePathOf(of)}?${new URLSearchParams(peopleQueryOf(ask))}`),
 
   layerOptions: (mapID) => editing(`${ROOT}/maps/${mapID}/layer-options`, "GET"),
   roadSigns(mapID, ask) {
@@ -190,8 +190,11 @@ export const backend: Backend = {
     return editing(`${ROOT}/maps/${mapID}/add-api?${query}`, "POST", undefined, json<Portable>, cookieHeader(ask));
   },
 
-  addFile: async (mapID, file) =>
-    editing(`${ROOT}/maps/${mapID}/add-file?${new URLSearchParams({ file: file.name })}`, "POST", await file.arrayBuffer()),
+  addFile: async (mapID, file, system) => editing(
+    `${ROOT}/maps/${mapID}/add-file?${new URLSearchParams({ file: file.name, ...system ? { system } : {} })}`, "POST",
+    await file.arrayBuffer()),
+  readDXF: async (mapID, file) =>
+    editing(`${ROOT}/maps/${mapID}/read-dxf?${new URLSearchParams({ file: file.name })}`, "POST", await file.arrayBuffer()),
   esriServices: (mapID) => editing(`${ROOT}/maps/${mapID}/esri-services`, "GET"),
   changeEsriService: (mapID, serviceID, asked) =>
     editing(`${ROOT}/maps/${mapID}/esri-service?${new URLSearchParams(esriQueryOf(serviceID, asked))}`),

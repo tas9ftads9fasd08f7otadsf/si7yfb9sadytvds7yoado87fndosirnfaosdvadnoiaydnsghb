@@ -186,6 +186,8 @@ export interface OptionSection {
   range?: number[];
   ends?: string[];
   layout?: DetailsLayout;
+  /** 70: the keys a `text` section's template may name. */
+  keys?: string[];
 }
 
 /** 29: a layer's Details layout as the phone lists it, each block named by its handle. */
@@ -287,6 +289,15 @@ export interface APIReading {
   detailRows?: APIDetailRow[] | null;
   cookies?: CookiePreflight | null;
   [other: string]: unknown;
+}
+
+/** 3409: a DXF as `PeerWebDXF` reads it: the phone's systems and the one it found. */
+export interface DXFReading {
+  fileName: string;
+  system: string | null;
+  systems: { value: string; title: string }[];
+  said: string;
+  features: number;
 }
 
 /** 3397: a page asked for cookies before the address, as `CookiePreflight` is written. */
@@ -481,6 +492,10 @@ export interface SharePeople {
   mayChangeLink: boolean;
   heldBy?: string | null;
   caveat: string;
+  /** 68 A folder's maps in its share, and those shared alone that stay out. */
+  folderLine?: string | null;
+  /** 68 Maps put in the folder since it was shared, which Share moves in. */
+  addsMore?: boolean | null;
 }
 
 /** 57 What the page asks Download tiles for: its view, or the view chosen on the map. */

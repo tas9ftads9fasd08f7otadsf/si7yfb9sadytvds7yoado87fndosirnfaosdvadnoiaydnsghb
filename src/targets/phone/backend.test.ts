@@ -129,13 +129,16 @@ describe("the phone backend", () => {
     const fetcher = vi.fn(async () => new Response("{}"));
     vi.stubGlobal("fetch", fetcher);
     backend.useToken(() => "T");
-    await backend.people("M");
-    await backend.askPeople("M", { kind: "invite", address: "eva@example.com", role: "editor" });
+    await backend.people({ kind: "map", id: "M" });
+    await backend.askPeople({ kind: "map", id: "M" }, { kind: "invite", address: "eva@example.com", role: "editor" });
     const [read, readInit] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
     const [asked, askedInit] = fetcher.mock.calls[1] as unknown as [string, RequestInit];
     expect([read, readInit.method]).toEqual(["/riki/v1/maps/M/people", "GET"]);
     expect([asked, askedInit.method]).toEqual(["/riki/v1/maps/M/people?invite=eva%40example.com&role=editor", "POST"]);
     expect(askedInit.headers).toEqual({ Authorization: "Bearer T" });
+    // 68 a folder's share is asked at the folder
+    await backend.askPeople({ kind: "folder", id: "F" }, { kind: "share" });
+    expect((fetcher.mock.calls[2] as unknown as [string])[0]).toBe("/riki/v1/folders/F/people?share=1");
   });
 
   // 36 an unreachable phone rejects, so the store says it is away
@@ -148,6 +151,21 @@ describe("the phone backend", () => {
     expect(savedName(`attachment; filename="a.mapson"; filename*=UTF-8''Pre%C5%A1ov.mapson`)).toBe("Prešov.mapson");
     expect(savedName(`attachment; filename="a.mapson"`)).toBe("a.mapson");
     expect(savedName("")).toBe("Map.mapson");
+  });
+
+  // 66 a DXF is read first, then sent again with the system picked; other files carry none
+  it("reads a DXF and sends it again with the coordinate system picked", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    const file = new File(["0\nEOF\n"], "plan.dxf");
+    await backend.readDXF("M", file);
+    await backend.addFile("M", file, "sjtsk");
+    await backend.addFile("M", new File(["{}"], "huts.geojson"));
+    const [read, added, plain] = fetcher.mock.calls.map((call) => new URL((call as unknown as [string])[0], "http://phone"));
+    expect(read?.pathname).toBe("/riki/v1/maps/M/read-dxf");
+    expect(read?.searchParams.get("file")).toBe("plan.dxf");
+    expect(added?.searchParams.get("system")).toBe("sjtsk");
+    expect(plain?.searchParams.has("system")).toBe(false);
   });
 
   // 61 a typed cookie travels in a header, never in the address; the page and colour in the query
