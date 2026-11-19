@@ -354,6 +354,20 @@ function editLayout(layer, query) {
   return true;
 }
 
+// 69: the signs' key as `PeerWebRoadSigns` answers: the country asked, else Slovakia, by its name.
+const SIGN_COUNTRIES = [["at", "Austria", [["at.ts.1", "Vorrang geben"]]],
+  ["sk", "Slovakia", [["sk.ts.201", "Give way"], ["sk.ts.202", "Stop"]]]];
+const SIGN_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+
+function roadSigns(query) {
+  const typed = (query.get("q") || "").trim().toLowerCase();
+  const [code, name, signs] = SIGN_COUNTRIES.find(([id]) => id === query.get("country")) || SIGN_COUNTRIES[1];
+  return { country: code, countryName: name,
+    countries: SIGN_COUNTRIES.filter(([id, title]) => !typed || title.toLowerCase().includes(typed) || id === typed)
+      .map(([id, title]) => ({ id, title, detail: "" })),
+    signs: signs.map(([id, title]) => ({ id, title })) };
+}
+
 function layerOptions(each) {
   const hidden = (style) => style.adjustments?.hiddenSkiKinds || [];
   const anyDraws = (key) => each.styles.some((style) => style.adjustments?.[key] !== true);
@@ -370,6 +384,17 @@ function layerOptions(each) {
         options: RAIL_VARIANTS.map(([id, title, detail]) => ({ id, title, detail })) },
       { kind: "switch", title: "Trackside marks", footnote: "In every style of this map.", key: "railMarks",
         label: "Marks on the track", isOn: anyDraws("hidesRailMarks") }];
+    }
+    if (layer.overlay === "roads") {
+      // 69: as `PeerWebLayerOptions` lists Roads: the switch, the key while signs show, road numbers.
+      const signs = anyDraws("hidesRoadSigns");
+      return [{ kind: "switch", title: "Traffic signs", footnote: "Signs as OpenStreetMap maps them.", key: "roadSigns",
+        label: "Signs by the road", isOn: signs },
+      ...(signs ? [{ kind: "signKey", title: "Country", footnote: "", label: "Search countries" }] : []),
+      { kind: "choice", title: "Road numbers", footnote: "Every map follows this.", key: "roadShields",
+        value: phone.roadShields || "country",
+        options: [["country", "Country shields"], ["classic", "One per road class"]]
+          .map(([id, title]) => ({ id, title, detail: "" })) }];
     }
     if (layer.layout) return detailsSections(layer);
     return layer.drawn ? featureSections(layer) : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
@@ -636,6 +661,11 @@ function edit(each, query, response) {
       if (query.get("shown") === "1") hidden.delete(query.get("kind")); else hidden.add(query.get("kind"));
       return { ...made, hiddenSkiKinds: hidden.size ? [...hidden].sort() : undefined };
     });
+  } else if (query.has("roadShields")) {
+    if (!["country", "classic"].includes(query.get("roadShields"))) return send(response, 400, "");
+    phone.roadShields = query.get("roadShields");
+  } else if (query.has("roadSigns")) {
+    adjust((made) => ({ ...made, hidesRoadSigns: query.get("roadSigns") === "1" ? undefined : true }));
   } else if (query.has("railMarks")) {
     adjust((made) => ({ ...made, hidesRailMarks: query.get("railMarks") === "1" ? undefined : true }));
   } else if (query.has("railVariant")) {
@@ -812,6 +842,11 @@ async function answer(request, response) {
     return send(response, 200, file, TYPES[path.extname(route)] ?? "application/octet-stream");
   }
   if (refuses(request)) return send(response, 403, "This phone has not let this browser in");
+  if (route.startsWith("/web/icons/") && /^\/web\/icons\/[a-z]{2}\.ts\./.test(route)) {
+    // 69: a road sign is cut from its sheet, as `PeerWebIcons` answers.
+    response.writeHead(200, { "Content-Type": "image/png" });
+    return response.end(Buffer.from(SIGN_PNG, "base64"));
+  }
   if (route.startsWith("/web/icons/")) return send(response, 404, "");
 
   const parts = route.split("/").filter(Boolean);
@@ -968,6 +1003,11 @@ async function answer(request, response) {
     return json(response, { answers: phone.answersServers ? [
       { layer: "Geology", properties: { name: "Granite", age: "300 Ma" } },
       { layer: "Geology", properties: { name: "Gneiss" } }] : [] });
+  }
+  if (parts[4] === "road-signs" && parts.length === 5) {
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    phone.signsAsked = [...(phone.signsAsked || []), Object.fromEntries(url.searchParams)];
+    return json(response, roadSigns(url.searchParams));
   }
   if (parts[4] === "layer-options" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -1148,6 +1188,11 @@ function testControl(route, query, response) {
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000C1", name: "Aerial", kind: "Tiles",
       symbol: "airplane", isEnabled: true, net: true });
     break;
+  case "/__test/roads-layer":
+    phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000B7", name: "Roads", kind: "Riki Maps package",
+      symbol: "road.lanes", isEnabled: true, overlay: "roads" });
+    break;
+  case "/__test/signs-asked": return json(response, phone.signsAsked || []);
   case "/__test/esri-layer":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-00000000009E", name: "Bedrock", kind: "Esri",
       symbol: "map", isEnabled: true, esri: true });
