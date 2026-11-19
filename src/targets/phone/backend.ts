@@ -112,6 +112,7 @@ export function offlineQueryOf(ask: OfflineAsk): Record<string, string> {
 /** The phone sharing these maps, asked over `/riki/v1` as Nearby sharing answers. */
 export const backend: Backend = {
   target: "phone",
+  offers: () => true,
 
   words: () => readJSON(WORDS_PATH),
 

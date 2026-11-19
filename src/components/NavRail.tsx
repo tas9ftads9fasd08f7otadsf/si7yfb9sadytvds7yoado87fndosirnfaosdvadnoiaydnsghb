@@ -1,7 +1,7 @@
 "use client";
 
 import type { Route } from "@/lib/route";
-import { THEMES, go, nextTheme, showSide, toggleSide, useViewer } from "@/store/viewer";
+import { THEMES, go, nextTheme, offers, showSide, toggleSide, useViewer } from "@/store/viewer";
 import { Link } from "./ui/Link";
 import { Sym } from "./ui/Sym";
 
@@ -55,7 +55,7 @@ export function NavRail() {
       <Link to={{ screen: "maps" }} id="railMaps" current={lit === "maps"} onFollow={followSide({ screen: "maps" })}>
         <Sym name="square.grid.2x2" /><span>{words.maps}</span>
       </Link>
-      {canEdit ? (
+      {canEdit && offers("servers") ? (
         <Link to={{ screen: "servers" }} id="railServers" current={lit === "servers"}
           onFollow={followSide({ screen: "servers" })}>
           <Sym name="server.rack" /><span>{words.servers}</span>

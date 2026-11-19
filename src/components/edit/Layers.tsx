@@ -5,7 +5,7 @@ import { groundID } from "@/lib/ground";
 import { movedPast, originGroups, type OriginGroup } from "@/lib/origins";
 import type { Portable, SharedLayer, StackLayer } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { change, groupByOrigin, removeLayer, shownMapOf, toggleAddingPackages, toggleOptions, toggleOrigin,
+import { change, groupByOrigin, offers, removeLayer, shownMapOf, toggleAddingPackages, toggleOptions, toggleOrigin,
   useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { MarkTile } from "../ui/MarkTile";
@@ -133,9 +133,11 @@ export function Layers({ portable }: { portable: Portable }) {
             </Fragment>
           );
         }) : sharedLayers.map((listed) => row(listed, movable))}
-        <button type="button" className="row add" id="addLayer" aria-expanded={adding} onClick={toggleAddingPackages}>
-          <Sym name={adding ? "chevron.down" : "plus.circle.fill"} />{words.addLayer}
-        </button>
+        {offers("addLayer") ? (
+          <button type="button" className="row add" id="addLayer" aria-expanded={adding} onClick={toggleAddingPackages}>
+            <Sym name={adding ? "chevron.down" : "plus.circle.fill"} />{words.addLayer}
+          </button>
+        ) : null}
       </div>
     </>
   );

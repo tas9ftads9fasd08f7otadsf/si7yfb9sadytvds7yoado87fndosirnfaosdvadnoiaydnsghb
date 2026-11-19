@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { change, duplicateMap, exportMap, loadCoverage, loadLayerOptions, loadSwitches, useViewer } from "@/store/viewer";
+import { change, duplicateMap, exportMap, loadCoverage, loadLayerOptions, loadSwitches, offers, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
 import { AddLayer } from "./AddLayer";
@@ -56,7 +56,7 @@ function EditFields() {
       </div>
       <Languages portable={portable} />
       <Styling portable={portable} />
-      <CoverageCard />
+      {offers("coverage") ? <CoverageCard /> : null}
       <OpensAt portable={portable} />
       <MinimumVersion />
       <Styles portable={portable} />
@@ -67,12 +67,16 @@ function EditFields() {
       {switches ? <Availability switches={switches} /> : null}
       <People />
       <Offline />
-      <button type="button" className="action" id="exportMap" onClick={exportMap}>
-        <Sym name="square.and.arrow.up" />{words.export}
-      </button>
-      <button type="button" className="action" id="duplicateMap" onClick={() => void duplicateMap()}>
-        <Sym name="plus.square.on.square" />{words.duplicateMap}
-      </button>
+      {offers("exportMap") ? (
+        <button type="button" className="action" id="exportMap" onClick={exportMap}>
+          <Sym name="square.and.arrow.up" />{words.export}
+        </button>
+      ) : null}
+      {offers("duplicateMap") ? (
+        <button type="button" className="action" id="duplicateMap" onClick={() => void duplicateMap()}>
+          <Sym name="plus.square.on.square" />{words.duplicateMap}
+        </button>
+      ) : null}
       <DeleteMap place="edit" />
     </>
   );
