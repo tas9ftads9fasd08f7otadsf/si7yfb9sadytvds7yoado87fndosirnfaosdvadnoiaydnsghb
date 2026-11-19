@@ -56,12 +56,12 @@ test.describe("a browser asking for a language with no words", () => {
   });
 });
 
-test("the site packed with English alone serves its words under its path, and speaks English", async ({ page }) => {
+test("the site serves its words under its path, English among them, and speaks English to a browser asking for it", async ({ page }) => {
   await mockCloud(page);
   await page.goto("./");
   await expect(page.locator("#gateTitle")).toHaveText("Sign in to iCloud");
   const list = await page.request.get(new URL("words/languages.json", page.url()).href);
-  expect(await list.json()).toEqual(["en"]);
+  expect(await list.json()).toContain("en");
   const english = await (await page.request.get(new URL("words/en.json", page.url()).href)).json();
   expect(english).toMatchObject({ language: "en", words: { signInTitle: "Sign in to iCloud" } });
 });
