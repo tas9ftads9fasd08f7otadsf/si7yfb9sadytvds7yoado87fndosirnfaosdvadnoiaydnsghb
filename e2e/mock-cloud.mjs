@@ -4,6 +4,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { schemaRefusal } from "./deployed-schema.mjs";
 import { fakeCoreWasm } from "./fake-core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -63,13 +64,15 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
     }
     const errors = operations.map(({ operationType, record }) => {
       const held = zone.records.find((each) => each.recordName === record.recordName);
+      if (operationType !== "delete" && schemaRefusal(record)) return "BAD_REQUEST";
       if (operationType === "create") return held ? "ALREADY_EXISTS" : null;
       if (!held) return "NOT_FOUND";
       return record.recordChangeTag && record.recordChangeTag !== held.recordChangeTag ? "CONFLICT" : null;
     });
     if (errors.some(Boolean)) {
       return operations.map(({ record }, index) => ({ recordName: record.recordName,
-        serverErrorCode: errors[index] ?? "BATCH_ERROR", reason: errors[index] ?? "atomic batch failed" }));
+        serverErrorCode: errors[index] ?? "BATCH_ERROR",
+        reason: (errors[index] === "BAD_REQUEST" && schemaRefusal(record)) || errors[index] || "atomic batch failed" }));
     }
     return operations.map(({ operationType, record }) => {
       let held = zone.records.find((each) => each.recordName === record.recordName);

@@ -1,8 +1,8 @@
 {
   "person": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } },
   "assets": {
-    "https://cvws.icloud-content.com/own-tatras/layers": "[{\"id\":\"L1\",\"name\":\"Trails\"}]",
-    "https://cvws.icloud-content.com/shared-doprava/layers": "[{\"id\":\"S1\",\"name\":\"Roads\"}]"
+    "https://cvws.icloud-content.com/own-tatras/payload": "{\"symbol\":\"mountain.2\"}",
+    "https://cvws.icloud-content.com/shared-doprava/payload": "{\"symbol\":\"tram\"}"
   },
   "zones": {
     "private": [{
@@ -11,17 +11,35 @@
       "records": [
         { "recordName": "own-tatras", "recordType": "CD_SharedMap", "recordChangeTag": "a1",
           "fields": {
+            "CD_entityName": { "value": "SharedMap", "type": "STRING" },
             "CD_id": { "value": "6F1E2A10-0000-4000-8000-000000000001", "type": "STRING" },
             "CD_name": { "value": "High Tatras", "type": "STRING" },
-            "CD_layersJSON_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/own-tatras/layers" }, "type": "ASSETID" }
+            "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_schemaVersion": { "value": 1, "type": "INT64" },
+            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/own-tatras/payload" }, "type": "ASSETID" }
           } },
         { "recordName": "own-tatras-layer", "recordType": "CD_SharedMapLayer", "recordChangeTag": "a2",
           "fields": {
-            "CD_name": { "value": "Trails", "type": "STRING" },
+            "CD_entityName": { "value": "SharedMapLayer", "type": "STRING" },
+            "CD_id": { "value": "6F1E2A10-0000-4000-8000-0000000000A1", "type": "STRING" },
+            "CD_order": { "value": 0, "type": "INT64" },
+            "CD_layerJSON": { "value": "{\"id\":\"L1\",\"name\":\"Trails\"}", "type": "STRING" },
+            "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_schemaVersion": { "value": 1, "type": "INT64" },
+            "CD_payload": { "value": "e30=", "type": "BYTES" },
             "CD_map": { "value": { "recordName": "own-tatras" }, "type": "REFERENCE" }
           } },
         { "recordName": "own-secrets", "recordType": "CD_LayerSecrets", "recordChangeTag": "a3",
-          "fields": { "CD_keys": { "value": "ciphertext", "type": "ENCRYPTED_BYTES" } } }
+          "fields": { "CD_headers": { "value": "ciphertext", "type": "ENCRYPTED_BYTES" } } },
+        { "recordName": "change-phone-1", "recordType": "CD_SharedMapChange", "recordChangeTag": "a4",
+          "fields": {
+            "CD_entityName": { "value": "SharedMapChange", "type": "STRING" },
+            "CD_id": { "value": "6F1E2A10-0000-4000-8000-0000000000C1", "type": "STRING" },
+            "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_schemaVersion": { "value": 1, "type": "INT64" },
+            "CD_payload": { "value": "eyJhdXRob3IiOiJSaWtpIFRlc3RlciIsImxpbmVzIjpbIlRyYWlscyBhZGRlZCJdfQ==", "type": "BYTES" },
+            "CD_map": { "value": { "recordName": "own-tatras" }, "type": "REFERENCE" }
+          } }
       ]
     }],
     "shared": [{
@@ -30,9 +48,12 @@
       "records": [
         { "recordName": "shared-doprava", "recordType": "CD_SharedMap", "recordChangeTag": "s1",
           "fields": {
+            "CD_entityName": { "value": "SharedMap", "type": "STRING" },
             "CD_id": { "value": "6F1E2A10-0000-4000-8000-000000000002", "type": "STRING" },
             "CD_name": { "value": "Doprava", "type": "STRING" },
-            "CD_layersJSON_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/shared-doprava/layers" }, "type": "ASSETID" }
+            "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_schemaVersion": { "value": 1, "type": "INT64" },
+            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/shared-doprava/payload" }, "type": "ASSETID" }
           } }
       ]
     }]
@@ -59,7 +80,7 @@
         "stack": [{ "id": "L1", "name": "Ridges", "kind": "Vector tiles" }]
       },
       "write": [{ "entity": "SharedMapLayer", "id": "own-tatras-layer", "refs": ["map"],
-        "fields": { "name": "Ridges", "map": "own-tatras" } }],
+        "fields": { "layerJSON": "{\"id\":\"L1\",\"name\":\"Ridges\"}", "map": "own-tatras" } }],
       "history": { "entity": "SharedMapChange", "id": "change-web-1", "refs": ["map"],
         "fields": { "map": "own-tatras", "payload": "{\"author\":\"Riki Tester\",\"origin\":\"web\",\"lines\":[\"Trails renamed to Ridges\"]}" } }
     },

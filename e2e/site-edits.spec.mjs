@@ -30,11 +30,26 @@ test("a layer renamed is saved to the mirror zone with its change tag and a web 
   expect(asked.body.zoneID.zoneName).toBe("com.apple.coredata.cloudkit.zone");
   const [layer, history] = asked.body.operations;
   expect(layer).toMatchObject({ operationType: "update", record: { recordName: "own-tatras-layer", recordChangeTag: "a2",
-    fields: { CD_name: { value: "Ridges" } } } });
+    fields: { CD_layerJSON: { value: "{\"id\":\"L1\",\"name\":\"Ridges\"}", type: "STRING" } } } });
   expect(history).toMatchObject({ operationType: "create", record: { recordName: "change-web-1", recordType: "CD_SharedMapChange" } });
-  expect(history.record.fields.CD_payload.value).toContain("\"origin\":\"web\"");
-  expect(cloud.record("own-tatras-layer").fields.CD_name.value).toBe("Ridges");
+  expect(cloud.record("own-tatras-layer").fields.CD_layerJSON.value).toContain("Ridges");
   expect(cloud.record("change-web-1")).toBeTruthy();
+});
+
+// 84 bug: the history row went as a STRING payload without id, time or version; a deployed schema refuses it
+test("the history row is written as the app's mirror writes one, which the mock's schema takes", async ({ page }) => {
+  const cloud = await mockCloud(page, { signedIn: true });
+  await openEdit(page);
+  await rename(page, "Trails", "Ridges");
+  await expect.poll(() => cloud.record("change-web-1")).toBeTruthy();
+  const { fields } = cloud.record("change-web-1");
+  expect(fields.CD_payload.type).toBe("BYTES");
+  expect(Buffer.from(fields.CD_payload.value, "base64").toString()).toContain("\"origin\":\"web\"");
+  expect(fields.CD_id.value).toMatch(/^[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}$/);
+  expect(fields.CD_updatedAt.type).toBe("TIMESTAMP");
+  expect(Date.now() - fields.CD_updatedAt.value).toBeLessThan(60_000);
+  expect(fields.CD_schemaVersion).toEqual({ value: 1, type: "INT64" });
+  expect(fields.CD_entityName.value).toBe("SharedMapChange");
 });
 
 test("a conflict is read again and the edit applied again, and then it is saved", async ({ page }) => {
@@ -46,7 +61,7 @@ test("a conflict is read again and the edit applied again, and then it is saved"
   const [first, second] = modifies(cloud).map((each) => each.body.operations[0].record.recordChangeTag);
   expect(first).toBe("a2");
   expect(second).toBe("a2x2");
-  await expect.poll(() => cloud.record("own-tatras-layer").fields.CD_name.value).toBe("Ridges");
+  await expect.poll(() => cloud.record("own-tatras-layer").fields.CD_layerJSON.value).toContain("Ridges");
   await expect(page.locator("#notice")).not.toHaveClass(/shown/);
 });
 
@@ -57,7 +72,7 @@ test("three conflicts in a row say the map changed elsewhere and put the field b
   await rename(page, "Trails", "Ridges");
   await expect(page.locator("#notice")).toHaveText("The map changed elsewhere. Open it again and repeat the change.");
   expect(modifies(cloud)).toHaveLength(3);
-  expect(cloud.record("own-tatras-layer").fields.CD_name.value).toBe("Trails");
+  expect(cloud.record("own-tatras-layer").fields.CD_layerJSON.value).toContain("Trails");
   await expect(layerRow(page, "Trails").getByRole("textbox", { name: "Rename" })).toHaveValue("Trails");
 });
 
