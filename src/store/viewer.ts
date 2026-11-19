@@ -36,6 +36,8 @@ export interface ViewerState {
   picking: boolean;
   /** The style or its tiles are still on their way. */
   mapBusy: boolean;
+  /** 85 The layers, lowercased, this browser cannot draw, as the last style said. */
+  undrawn: Set<string>;
   editToken: string | null;
   device: Device | null;
   mapID: string | null;
@@ -86,7 +88,7 @@ export interface ViewerState {
 }
 
 const firstState = (): ViewerState => ({
-  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "", picking: false, mapBusy: false,
+  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "", picking: false, mapBusy: false, undrawn: new Set(),
   editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, traffic: null, regionOffer: null,

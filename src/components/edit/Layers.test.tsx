@@ -39,6 +39,17 @@ describe("Layers", () => {
     expect(screen.getByRole("button", { name: "All on" })).toBeTruthy();
   });
 
+  // 85 a row says so when its service does not answer browsers; the layer stays editable
+  it("says on a layer's row that its service does not answer browsers, and keeps its fields", () => {
+    show([]);
+    useViewer.setState({ undrawn: new Set(["t"]) });
+    render(<Layers portable={portable} />);
+    const row = document.querySelector('[data-layer="T"]')!;
+    expect(row.textContent).toContain("This service doesn't answer browsers. The app draws it.");
+    expect(row.querySelector("input")).toBeTruthy();
+    expect(document.querySelector('[data-layer="H"]')!.textContent).not.toContain("answer browsers");
+  });
+
   it("asks the phone for every layer at once", () => {
     // Never answered: what follows an answer is the map's redraw, not this test's.
     const asked = vi.fn((input: RequestInfo | URL) => new Promise<Response>(() => void input));

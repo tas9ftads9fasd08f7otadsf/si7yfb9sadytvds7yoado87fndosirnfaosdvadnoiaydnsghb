@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetViewer, useViewer } from "@/store/viewer";
-import { Offline } from "./Overlays";
+import { Offline, UndrawnNote } from "./Overlays";
 
 describe("Offline", () => {
   beforeEach(resetViewer);
@@ -14,5 +14,21 @@ describe("Offline", () => {
     expect(screen.getByRole("alert").textContent).toBe("Not connectedTrying to reconnect…");
     act(() => useViewer.setState({ connected: true }));
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("UndrawnNote", () => {
+  beforeEach(resetViewer);
+
+  // 85 the map says which layers a browser cannot draw, and why, in the app's words
+  it("names each layer the style left out, and is gone when none is", () => {
+    useViewer.setState({ mapID: "a", device: { name: "x", maps: [{ id: "a", name: "A", layers: [
+      { id: "T1", name: "Trails", kind: "Tiles" }, { id: "H1", name: "Huts", kind: "Tiles" }] }] } });
+    render(<UndrawnNote />);
+    expect(screen.queryByRole("status")).toBeNull();
+    act(() => useViewer.setState({ undrawn: new Set(["t1"]) }));
+    expect(screen.getByRole("status").textContent).toBe("Trails This service doesn't answer browsers. The app draws it.");
+    act(() => useViewer.setState({ undrawn: new Set() }));
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

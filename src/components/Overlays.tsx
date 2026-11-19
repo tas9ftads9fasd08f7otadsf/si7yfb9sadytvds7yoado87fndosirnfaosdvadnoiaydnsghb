@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { backend } from "@backend";
-import { downloadRegion, askToJoin, useViewer } from "@/store/viewer";
+import { downloadRegion, askToJoin, shownMapOf, useViewer } from "@/store/viewer";
 import { filledIn } from "@/lib/words";
 import { Sym } from "./ui/Sym";
 
@@ -39,6 +40,19 @@ export function LoadingBar() {
   const busy = useViewer((state) => state.picking || state.mapBusy);
   if (!busy) return null;
   return <div id="loadingBar" role="progressbar" aria-label={words.loading}><i /></div>;
+}
+
+/** 85 Over the map: the layers this browser cannot draw, and why. */
+export function UndrawnNote() {
+  const words = useViewer((state) => state.words);
+  const names = useViewer(useShallow((state) => (shownMapOf(state)?.layers ?? [])
+    .filter((layer) => state.undrawn.has(layer.id.toLowerCase())).map((layer) => layer.name)));
+  if (names.length === 0) return null;
+  return (
+    <div id="undrawnNote" role="status">
+      {names.map((name) => <div key={name}><b>{name}</b> {words.layerUndrawn}</div>)}
+    </div>
+  );
 }
 
 /** Rows that pulse where the phone's answer will be listed. */
