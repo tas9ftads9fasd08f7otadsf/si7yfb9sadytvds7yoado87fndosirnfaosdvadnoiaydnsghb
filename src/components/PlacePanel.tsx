@@ -36,7 +36,7 @@ export function PlacePanel() {
       </div>
       <div className="place-body">
         {place.found.map((one, index) => (
-          <FeatureCard key={index} properties={one.properties} layer={one.layer} details={one.details} />
+          <FeatureCard key={index} properties={one.properties} layer={one.layer} details={one.details} asked={one.asked} />
         ))}
       </div>
       <dl className="place-foot">
