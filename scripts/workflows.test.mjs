@@ -109,6 +109,35 @@ describe("the site's deploy", () => {
   });
 });
 
+// 132 runners waited 8 minutes on Playwright's browser; CI keeps it and the rest
+describe("CI's caches", () => {
+  const ci = read("ci.yml");
+
+  it("keep Playwright's browser for its version, a week at most, and fetch it only on a miss", () => {
+    expect(ci).toContain("path: ~/.cache/ms-playwright");
+    expect(ci).toContain("key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ steps.week.outputs.week }}");
+    expect(ci).toContain("date -u +%G-W%V");
+    expect(ci).toMatch(/if: steps\.browser\.outputs\.cache-hit != 'true'\s*\n\s*run: npx playwright install --with-deps chromium/);
+    expect(ci).toMatch(/if: steps\.browser\.outputs\.cache-hit == 'true'\s*\n\s*run: npx playwright install-deps chromium/);
+  });
+
+  it("keep the packages until the lockfile changes, and install only on a miss", () => {
+    expect(ci).toContain("key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}");
+    expect(ci).toMatch(/if: steps\.modules\.outputs\.cache-hit != 'true'\s*\n\s*run: npm ci/);
+    expect(ci).toContain("key: composer-${{ runner.os }}-${{ hashFiles('server/composer.lock') }}");
+  });
+
+  it("keep pip's downloads a week and the build's cache by its sources", () => {
+    expect(ci).toContain("key: pip-${{ runner.os }}-ftps-${{ steps.week.outputs.week }}");
+    expect(ci).toContain("path: .next/cache");
+  });
+
+  it("ask apt for its lists once, before the FTPS tools", () => {
+    expect(ci.match(/apt-get update/g)).toBeNull();
+    expect(ci.indexOf("playwright install-deps")).toBeLessThan(ci.indexOf("apt-get install -y -q lftp"));
+  });
+});
+
 // 63 a draft pull request runs no CI; marking it ready runs it, and so does each later push
 describe("CI on a pull request", () => {
   const ci = read("ci.yml");

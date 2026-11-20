@@ -60,21 +60,59 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+      # 132 The ISO week in a key makes a new cache each Monday, so none outlives a week.
+      - id: week
+        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - name: Cache the packages
+        id: modules
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
       # The site's server: PHPUnit, with the runner's own PHP and Composer.
+      - name: Cache the server's packages
+        uses: actions/cache@v5
+        with:
+          path: server/vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('server/composer.lock') }}
       - run: composer install --working-dir=server --no-interaction --no-progress
-      # The deploy script's test runs it against a stand-in FTPS server.
-      - run: sudo apt-get update -q && sudo apt-get install -y -q lftp && pip install pyftpdlib pyopenssl
+      - id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright's browser
+        id: browser
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ steps.week.outputs.week }}
+      # Its system libraries come from apt every run; the browser only on a miss.
+      - if: steps.browser.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.browser.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: Cache pip's downloads
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-ftps-${{ steps.week.outputs.week }}
+      # The deploy script's test runs it on a stand-in FTPS server; apt's lists are fresh.
+      - run: sudo apt-get install -y -q lftp && pip install pyftpdlib pyopenssl
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:php
+      - name: Cache the build's own cache
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.ts') }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm run pack
       - run: npm run build:web
