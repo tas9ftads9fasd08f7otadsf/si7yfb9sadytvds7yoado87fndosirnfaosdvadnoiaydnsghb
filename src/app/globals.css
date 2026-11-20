@@ -475,6 +475,31 @@ body.gated #gate { display: flex; }
 .feature-note { margin: 4px 0; padding: 8px 10px; border-radius: 10px; background: var(--fill); overflow-wrap: anywhere; }
 .feature-note small { display: block; color: var(--secondary); }
 .feature-note.warning { background: color-mix(in srgb, orange 18%, transparent); }
+/* 130 The phone's connection card and LIVE pill; the three tones are the card's green, orange and red. */
+.feature-live { margin: 0 0 8px; }
+.live-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px; font-size: 11px;
+  font-weight: 700; color: var(--c-gray); background: color-mix(in srgb, var(--c-gray) var(--tint), transparent); }
+.live-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.live-pill.on { color: var(--c-red); background: var(--cs-red); }
+.connection { display: grid; gap: 10px; margin: 6px 0; padding: 14px; border-radius: 18px; background: var(--inset); }
+.connection small { display: block; margin: 0; font-size: 12px; color: var(--sub); }
+.connection p { margin: 0; }
+.connection .end { text-align: right; }
+.connection-head { display: flex; justify-content: space-between; gap: 12px; }
+.connection-head .delay { display: block; font-size: 20px; font-weight: 700; letter-spacing: -0.2px; }
+.connection-route { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.connection-operator { font-size: 13px; color: var(--sub); }
+.connection-times { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px;
+  font-variant-numeric: tabular-nums; font-weight: 600; }
+.connection-times s { color: var(--sub); }
+.connection-times .short { padding: 3px 9px; border-radius: 999px; font-size: 12px; background: var(--hover); }
+.connection .tone-good { color: var(--c-green); }
+.connection .tone-late { color: var(--c-orange); }
+.connection .tone-veryLate { color: var(--c-red); }
+.connection .short.tone-good { background: var(--cs-green); }
+.connection .short.tone-late { background: var(--cs-orange); }
+.connection .short.tone-veryLate { background: var(--cs-red); }
+.connection .feature-note { margin: 0; }
 .feature-link { display: inline-block; margin: 4px 0; padding: 6px 12px; border-radius: 999px; background: var(--fill); color: var(--accent); text-decoration: none; }
 .feature-image { aspect-ratio: 4 / 3; margin: 6px 0; border-radius: 10px; background: var(--fill) center / cover no-repeat; }
 /* 59 The share's link is long; the row keeps its Copy button in view. */

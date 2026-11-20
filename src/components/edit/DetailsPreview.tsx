@@ -12,7 +12,7 @@ export function DetailsPreview({ layout, layer }: { layout: DetailsLayout; layer
   const mapID = useViewer((state) => state.mapID);
   const samples = layout.samples;
   const [at, setAt] = useState(0);
-  const [answered, setAnswered] = useState<{ point: LayoutSample; sheet: DetailsSheet | null } | null>(null);
+  const [answered, setAnswered] = useState<{ point: LayoutSample; sheet: DetailsSheet | null; at: number } | null>(null);
   const point = samples?.[Math.min(at, samples.length - 1)];
   // Each change is saved on the phone at once, so a new layout is a new fill.
   const laidOut = JSON.stringify([layout.sections, layout.header]);
@@ -21,8 +21,8 @@ export function DetailsPreview({ layout, layer }: { layout: DetailsLayout; layer
     if (!mapID || !point) return;
     let current = true;
     backend.details(mapID, layer, point.properties).then(
-      (sheet) => current && setAnswered({ point, sheet }),
-      () => current && setAnswered({ point, sheet: null }));
+      (sheet) => current && setAnswered({ point, sheet, at: Date.now() }),
+      () => current && setAnswered({ point, sheet: null, at: Date.now() }));
     return () => { current = false; };
   }, [mapID, layer, point, laidOut]);
 
@@ -37,7 +37,7 @@ export function DetailsPreview({ layout, layer }: { layout: DetailsLayout; layer
       </div>
       {point ? (
         <FeatureCard properties={point.properties} layer=""
-          details={answered?.point === point ? answered.sheet : null} />
+          details={answered?.point === point ? answered.sheet : null} asked={answered?.at} />
       ) : null}
     </div>
   );

@@ -9,7 +9,8 @@ import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
 import { type Named, pointOn } from "@/lib/search";
 import { setNeeds } from "@/store/regions";
-import { type ShownFeature, drawStyle, failed, isDark, notice, showPlace, shownMapOf, useViewer } from "@/store/viewer";
+import { textValues } from "@/lib/feature";
+import { type ShownFeature,drawStyle, failed, isDark, notice, showPlace, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
 import { heightModel, threeDView } from "./three-d";
 
@@ -314,11 +315,10 @@ export function createMapView(container: HTMLElement): MapControl {
     return found.find((feature) => feature.source.startsWith(CUSTOM)) ?? found[0] ?? null;
   }
 
-  function layerName(feature: MapGeoJSONFeature) {
+  function layerOf(feature: MapGeoJSONFeature) {
     const id = feature.source.startsWith(CUSTOM) ? feature.source.slice(CUSTOM.length) : null;
-    return shownMapOf(get())?.layers.find((layer) => layer.id.toLowerCase() === id)?.name ?? "";
+    return shownMapOf(get())?.layers.find((layer) => layer.id.toLowerCase() === id);
   }
-
   // 100 What a tap found opens the place panel beside the map, as the design's W2 has it.
   type Shown = ShownFeature;
   function showFeatures(found: Shown[], at: maplibregl.LngLat) {
@@ -351,15 +351,14 @@ export function createMapView(container: HTMLElement): MapControl {
     const layer = feature.source.startsWith(CUSTOM) ? feature.source.slice(CUSTOM.length) : null;
     if (!mapID || !layer) return;
     const asked = asking;
-    const values = Object.fromEntries(Object.entries(shown.properties).map(([key, value]) => [key, String(value)]));
     let details: DetailsSheet | null;
     try {
-      details = await backend.details(mapID, layer, values);
+      details = await backend.details(mapID, layer, textValues(shown.properties));
     } catch {
       return;
     }
     if (asked !== asking || !details) return;
-    showFeatures([{ ...shown, details }], at);
+    showFeatures([{ ...shown, details, asked: Date.now() }], at);
   }
 
   map.on("click", (event) => {
@@ -367,7 +366,8 @@ export function createMapView(container: HTMLElement): MapControl {
     showPlace(null);
     asking += 1;
     if (feature) {
-      const shown = { properties: feature.properties ?? {}, layer: layerName(feature) };
+      const own = layerOf(feature);
+      const shown = { properties: feature.properties ?? {}, layer: own?.name ?? "", ...own ? { layerID: own.id } : {} };
       showFeatures([shown], event.lngLat);
       void askLayout(feature, shown, event.lngLat);
     } else void askServers(event.lngLat);

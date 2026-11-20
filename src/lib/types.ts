@@ -311,6 +311,30 @@ export interface DetailsSheet {
   sections: { title?: string | null; blocks: DetailsBlock[] }[];
   /** What the layout read, which the card's tag list leaves out. */
   keys: string[];
+  /** 130 The phone's LIVE pill, for a layer that answers live; none from a phone before 3493. */
+  live?: DetailsLive | null;
+}
+
+/** 130 `ageSeconds` is since the layer last answered, nil if it never has; the page counts it on from asking. */
+export interface DetailsLive {
+  isLive: boolean;
+  ageSeconds?: number | null;
+  windowSeconds: number;
+  label: string;
+  notLiveLabel: string;
+}
+
+/** 130 A vehicle's running state, every part worded by the phone; `tone` is `good`, `late` or `veryLate`. */
+export interface DetailsConnection {
+  delay?: { minutes: number; sentence: string; short: string; tone: string } | null;
+  station?: string | null;
+  route?: string | null;
+  operatorLine?: string | null;
+  planned?: string | null;
+  actual?: string | null;
+  updated?: string | null;
+  note?: string | null;
+  labels: { delay: string; planned: string; actual: string; updated: string; note: string };
 }
 
 /** `rows`, `text`, `link`, `image` or `allTags`; a kind this page does not know is skipped. */
@@ -320,6 +344,8 @@ export interface DetailsBlock {
   title?: string | null;
   text?: string | null;
   warning?: boolean | null;
+  /** 130 A connection card whole; `rows` still holds what a phone from before 3493 sends alone. */
+  connection?: DetailsConnection | null;
 }
 
 /** What the layers' servers said of a tap on empty ground, top layer's first. */

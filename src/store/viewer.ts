@@ -5,7 +5,7 @@ import { backend } from "@backend";
 import { DIRECT_KEY } from "@/lib/page";
 import { CoreNotReady, NotOnSite, type Answer, type ChangedElsewhere, type Feature, type Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
-import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
+import { HEARTBEAT_EVERY, PLACE_LIVE_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
 import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
@@ -14,7 +14,9 @@ import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces,
   Loading, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
-import { type NameHit, findNames, indexedPlaces, withPhoneHits, worthAsking } from "@/lib/search";
+import { type NameHit, findNames, indexedPlaces, pointOn, withPhoneHits, worthAsking } from "@/lib/search";
+import { textValues } from "@/lib/feature";
+import { sameFeature } from "@/lib/live";
 
 export type Theme = "auto" | "light" | "dark";
 export { SERVER_PARTS, type ServerPart } from "@/lib/route";
@@ -109,6 +111,9 @@ export interface ShownFeature {
   properties: Record<string, unknown>;
   layer: string;
   details?: DetailsSheet | null;
+  /** 130 The layer's id, for the live answer an open panel keeps reading; and when its Details arrived. */
+  layerID?: string;
+  asked?: number;
   /** 129 What a search listed it as, when its tags hold no name; and an indexed place's category. */
   title?: string;
   kind?: string;
@@ -146,6 +151,7 @@ const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof 
   coverageEdits: Promise.resolve(), optionsAsked: 0,
   offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0,
   search: undefined as ReturnType<typeof setTimeout> | undefined,
+  placeLive: undefined as ReturnType<typeof setTimeout> | undefined,
   /** 129 The maps whose phone answered 404 to the places search, which an older phone does. */
   noPlacesSearch: new Set<string>() };
 
@@ -153,6 +159,7 @@ export function resetViewer() {
   clearTimeout(busy.heartbeat);
   clearTimeout(busy.notice);
   clearTimeout(busy.offline);
+  clearTimeout(busy.placeLive);
   Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, otherLayers: null, servers: false,
     coverage: null, addressKey: null, coverageEdits: Promise.resolve(), noPlacesSearch: new Set<string>() });
   clearTimeout(busy.search);
@@ -507,7 +514,41 @@ export const toggleSide = () => showSide(!get().sideShown);
 
 // MARK: - Search and places
 
-export const showPlace = (place: Place | null) => set({ place });
+export function showPlace(place: Place | null) {
+  clearTimeout(busy.placeLive);
+  set({ place });
+  if (place?.found.some((one) => one.layerID && one.details?.live)) {
+    busy.placeLive = setTimeout(() => void readLive(place), PLACE_LIVE_EVERY);
+  }
+}
+
+/** 130 An open panel of a live layer reads the layer's live answer again and asks for the feature's Details anew,
+ * which is what renews the pill's age; the phone's `details` only words the values it is given. */
+async function readLive(shown: Place) {
+  const { mapID, editing: isEditing, route } = get();
+  if (!mapID || get().place !== shown) return;
+  if (isEditing || ["details", "data", "settings"].includes(route.screen)) return showPlace(shown);
+  const box = mapControl()?.box();
+  let at: [number, number] = [shown.lng, shown.lat];
+  const found = await Promise.all(shown.found.map(async (one) => {
+    if (!one.layerID || !one.details?.live) return one;
+    let properties = one.properties;
+    try {
+      const answer = box?.length === 4
+        ? await backend.live(mapID, one.layerID, box.map((value) => value.toFixed(5)).join(",")) : null;
+      const same = sameFeature(one.properties, answer, [shown.lng, shown.lat]);
+      if (!same?.properties) return one;
+      properties = same.properties;
+      at = pointOn(same.geometry) ?? at;
+      const details = await backend.details(mapID, one.layerID, textValues(properties));
+      return details ? { ...one, properties, details, asked: Date.now() } : one;
+    } catch {
+      return one;
+    }
+  }));
+  if (get().place !== shown) return;
+  showPlace({ found, lng: at[0], lat: at[1] });
+}
 
 const SEARCH_WAIT = 250;
 
