@@ -21,11 +21,11 @@ describe("NavRail", () => {
     expect(link("Map").getAttribute("href")).toBe("/maps/M1");
     expect(railItemOf({ screen: "maps" })).toBe("maps");
     expect(railItemOf({ screen: "servers", server: "S1" })).toBe("servers");
-    // 92 Settings arrived, with the QR code that lets a browser edit
+    // 103 the gear at the rail's foot is Settings
     expect(railItemOf({ screen: "settings" })).toBe("settings");
   });
 
-  // 92 Settings stands at the rail's foot, above the theme button
+  // 92 Settings opens from the rail's foot; 103 as the gear, in place of the theme button
   it("offers Settings, which opens the Settings page", () => {
     render(<NavRail />);
     fireEvent.click(link("Settings"));

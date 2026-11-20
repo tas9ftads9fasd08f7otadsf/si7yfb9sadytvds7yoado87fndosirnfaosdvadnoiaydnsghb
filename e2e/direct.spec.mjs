@@ -30,6 +30,8 @@ test("where the phone allows it, a browser loads tiles from their source, and ke
     return route.fulfill({ contentType: "image/png", headers: { "access-control-allow-origin": "*" }, body: PIXEL });
   });
   await openViewer(page);
+  // 103 how tiles load is a choice in Settings
+  await page.locator("#railSettings").click();
   await expect(page.locator("#tilesViaPhone")).toHaveAttribute("aria-checked", "true");
   await expect.poll(() => tilesOf(page)).toEqual(["/riki/v1/relay/mock/{z}/{x}/{y}.png"]);
   expect(elsewhere).toEqual([]);
@@ -57,6 +59,7 @@ test("turning the phone's switch off brings a browser's tiles back through the p
   await page.route("https://tiles.test/**", (route) => route.fulfill({
     contentType: "image/png", headers: { "access-control-allow-origin": "*" }, body: PIXEL }));
   await openViewer(page);
+  await page.locator("#railSettings").click();
   await page.locator("#tilesViaSource").click();
   await expect.poll(() => tilesOf(page)).toEqual(["https://tiles.test/{z}/{x}/{y}.png"]);
   await phone(request, "direct", { on: "0" });

@@ -154,36 +154,36 @@ test("a page opened from the editing address edits the map in the side bar", asy
   await expect(page.locator("#editPage")).toHaveClass(/ahead/);
 });
 
-// 2800: the owner's ask, a light and dark switch on the page.
-test("the header's switch turns the page light, dark or back to the computer's, and the map follows", async ({ page }) => {
+// 2800: the owner's ask, a light and dark switch on the page; 103 Settings' Appearance, from the rail's gear.
+test("Settings turns the page light, dark or back to the computer's, and the map follows", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await openViewer(page);
   const root = page.locator("html");
-  const toggle = page.locator("#themeToggle");
   const background = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  await expect(toggle).toHaveAttribute("aria-label", "Appearance: Automatic");
+  await page.locator("#railSettings").click();
+  await expect(page).toHaveURL(/\/settings#/);
+  await expect(page.locator("#theme-auto")).toHaveAttribute("aria-checked", "true");
   // 30 the design's grounds
   expect(await background()).toBe("rgb(242, 242, 247)");
 
   let asked = page.waitForRequest((request) => request.url().includes("/style?"));
-  await toggle.click();
+  await page.locator("#theme-light").click();
   await expect(root).toHaveAttribute("data-theme", "light");
   expect(new URL((await asked).url()).searchParams.get("theme")).toBe("light");
 
   asked = page.waitForRequest((request) => request.url().includes("/style?"));
-  await toggle.click();
+  await page.locator("#theme-dark").click();
   await expect(root).toHaveAttribute("data-theme", "dark");
-  await expect(toggle).toHaveAttribute("aria-label", "Appearance: Dark");
+  await expect(page.locator("#theme-dark")).toHaveAttribute("aria-checked", "true");
   expect(new URL((await asked).url()).searchParams.get("theme")).toBe("dark");
   expect(await background()).toBe("rgb(0, 0, 0)");
 
   await page.reload();
-  await page.locator("#current .hero").waitFor();
-  await expect(root).toHaveAttribute("data-theme", "dark", { timeout: 1000 });
+  await expect(root).toHaveAttribute("data-theme", "dark", { timeout: 2000 });
+  await expect(page.locator("#settings")).toBeVisible();
 
-  await toggle.click();
+  await page.locator("#theme-auto").click();
   await expect(root).not.toHaveAttribute("data-theme", /.*/);
-  await expect(toggle).toHaveAttribute("aria-label", "Appearance: Automatic");
   await page.emulateMedia({ colorScheme: "dark" });
   expect(await background()).toBe("rgb(0, 0, 0)");
 });

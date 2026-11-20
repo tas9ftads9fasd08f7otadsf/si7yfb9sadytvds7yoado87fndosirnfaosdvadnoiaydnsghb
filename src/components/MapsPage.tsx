@@ -12,7 +12,6 @@ import { LayerToggles, StylePicker, useLayersOn, useStyleName } from "./MapLayer
 import { railItemOf } from "./NavRail";
 import { SearchResults } from "./Search";
 import { ServerCards } from "./Servers";
-import { TileSource } from "./TileSource";
 import { Sym } from "./ui/Sym";
 
 /** The oldest app and viewer the map's author allows; this viewer is the phone's app. */
@@ -87,7 +86,6 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
             <span className="badge">{words.onMapNow}</span>
           </div> : unread ? <div className="picture pending" /> : null}
           <Versions shared={shared} />
-          <TileSource />
           <StylePicker id="sideStyle" />
           {canEdit ? (
             <>

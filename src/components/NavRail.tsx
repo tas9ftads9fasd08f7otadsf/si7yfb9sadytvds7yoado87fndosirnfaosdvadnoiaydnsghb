@@ -1,7 +1,7 @@
 "use client";
 
 import type { Route } from "@/lib/route";
-import { THEMES, go, nextTheme, offers, showSide, toggleSide, useViewer } from "@/store/viewer";
+import { go, offers, showSide, toggleSide, useViewer } from "@/store/viewer";
 import { Link } from "./ui/Link";
 import { Sym } from "./ui/Sym";
 
@@ -36,11 +36,9 @@ export function NavRail() {
   const mapID = useViewer((state) => state.mapID);
   const sideShown = useViewer((state) => state.sideShown);
   const canEdit = useViewer((state) => state.editToken != null);
-  const theme = useViewer((state) => state.theme);
   const lit = railItemOf(route);
   const onMap = route.screen === "map";
   const mapRoute: Route = mapID ? { screen: "map", map: mapID } : { screen: "maps" };
-  const themeLabel = `${words.appearance}: ${words[`theme.${theme}`]}`;
   // On the map its item folds the side bar, as `[` does; elsewhere it goes back to the map.
   const followMap = () => {
     if (onMap) toggleSide();
@@ -68,14 +66,10 @@ export function NavRail() {
           <Sym name="server.rack" /><span>{words.servers}</span>
         </Link>
       ) : null}
-      {offers("pairing") ? (
-        <Link to={{ screen: "settings" }} id="railSettings" className="foot" current={lit === "settings"}
-          onFollow={followSide({ screen: "settings" })}>
-          <Sym name="gearshape" /><span>{words.settings}</span>
-        </Link>
-      ) : null}
-      <button id="themeToggle" className="foot" type="button" title={themeLabel} aria-label={themeLabel}
-        onClick={nextTheme}><Sym name={THEMES[theme]} /></button>
+      <Link to={{ screen: "settings" }} id="railSettings" className="foot" current={lit === "settings"}
+        title={words.settings} onFollow={() => go({ screen: "settings" })}>
+        <Sym name="gearshape" />
+      </Link>
     </nav>
   );
 }

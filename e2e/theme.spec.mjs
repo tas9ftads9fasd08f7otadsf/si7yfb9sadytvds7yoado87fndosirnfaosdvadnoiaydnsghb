@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset, showAllMaps } from "./phone.mjs";
+import { openViewer, pickTheme, reset, showAllMaps } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -15,12 +15,12 @@ test("A style the phone refuses leaves the map drawn, and the next switch asks a
   await page.route("**/style?*", (route) => (refusals-- > 0
     ? route.fulfill({ status: 404, body: "No style could be built for this map" }) : route.continue()));
 
-  await page.locator("#themeToggle").click();
+  await pickTheme(page, "light");
   await expect(page.locator("#notice")).toHaveText("No style could be built for this map");
   expect(await layers(page)).toBe(drawn);
 
   const asked = page.waitForResponse((answer) => answer.url().includes("/style?") && answer.ok());
-  await page.locator("#themeToggle").click();
+  await pickTheme(page, "dark");
   await asked;
   await expect.poll(() => layers(page)).toBe(drawn);
 });
@@ -38,8 +38,8 @@ test("A slow phone keeps the map on screen, and the last switch wins", async ({ 
     await route.continue();
   });
 
-  await page.locator("#themeToggle").click();
-  await page.locator("#themeToggle").click();
+  await pickTheme(page, "light");
+  await pickTheme(page, "dark");
   expect(await layers(page)).toBe(drawn);
   await page.waitForTimeout(1800);
   expect(urls.map(themeAsked)).toEqual(["light", "dark"]);
@@ -55,7 +55,7 @@ test("A switch of light and dark keeps the sources, and another map replaces the
   await page.evaluate(() => { for (const each of Object.values(window.__riki.map.style.sourceCaches)) each.kept = true; });
 
   const light = page.waitForResponse((answer) => answer.url().includes("theme=light"));
-  await page.locator("#themeToggle").click();
+  await pickTheme(page, "light");
   await light;
   await page.waitForTimeout(300);
   expect(await marked()).toBe(true);

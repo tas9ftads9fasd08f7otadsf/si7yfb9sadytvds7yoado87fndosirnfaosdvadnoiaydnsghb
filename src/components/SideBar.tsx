@@ -1,11 +1,10 @@
 "use client";
 
-import { go, openServer, showEdit, shownMapOf, useViewer } from "@/store/viewer";
+import { openServer, showEdit, shownMapOf, useViewer } from "@/store/viewer";
 import { EditPage, EditTabs } from "./edit/EditPage";
 import { MapMark } from "./MapShelf";
 import { MapsPage } from "./MapsPage";
 import { ServerPage } from "./Servers";
-import { SettingsPage } from "./SettingsPage";
 import { Sym } from "./ui/Sym";
 
 export function SideBar() {
@@ -14,8 +13,7 @@ export function SideBar() {
   const portableName = useViewer((state) => state.portable?.name);
   const shown = useViewer(shownMapOf);
   const server = useViewer((state) => state.servers?.servers.find((each) => each.id === state.serverID));
-  const settings = useViewer((state) => state.route.screen === "settings");
-  const away = editing || server != null || settings;
+  const away = editing || server != null;
   return (
     <aside id="side">
       <section id="mapsPage" className={away ? "page behind" : "page"}><MapsPage /></section>
@@ -41,16 +39,6 @@ export function SideBar() {
           <h1><span id="serverTitle">{server?.name ?? ""}</span><small>{server?.line ?? ""}</small></h1>
         </div>
         <div id="serverBody">{server && !editing ? <ServerPage /> : null}</div>
-      </section>
-      <section id="settingsPage" className={settings ? "page" : "page ahead"}>
-        <div className="bar">
-          <button className="tool" type="button" id="settingsBack" aria-label={words.done}
-            onClick={() => go({ screen: "maps" })}>
-            <Sym name="chevron.backward" />
-          </button>
-          <h1><span id="settingsTitle">{words.settings}</span></h1>
-        </div>
-        <div id="settingsBody">{settings ? <SettingsPage /> : null}</div>
       </section>
     </aside>
   );

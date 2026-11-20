@@ -11,6 +11,7 @@ import { LayerSwitcher, LivePreview } from "./MapLayers";
 import { NavRail } from "./NavRail";
 import { NewMapModal } from "./NewMapModal";
 import { PlacePanel } from "./PlacePanel";
+import { SettingsPage } from "./SettingsPage";
 import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar, UndrawnNote } from "./Overlays";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
@@ -93,6 +94,7 @@ export function AppShell() {
       <PlacePanel />
       <DetailsScreen />
       <DataPage />
+      <SettingsPage />
       <NewMapModal />
       <AddLayerModal />
       <LoadingBar />

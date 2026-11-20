@@ -35,3 +35,9 @@ export async function addFrom(page, source) {
   await page.locator(`#addFrom-${source}`).click();
   await page.locator(`#addFrom-${source}[aria-pressed=true]`).waitFor();
 }
+
+// 103 Appearance is picked in Settings, from the gear at the rail's foot.
+export async function pickTheme(page, theme) {
+  if (!(await page.locator("#settings").count())) await page.locator("#railSettings").click();
+  await page.locator(`#theme-${theme}`).click();
+}

@@ -29,3 +29,16 @@ test("Settings say when the phone refused, and show a new code", async ({ page, 
   await expect.poll(() => code.textContent(), { timeout: 10000 }).not.toBe(first);
   await expect(page.locator("#editAllowed")).toHaveCount(0);
 });
+
+// 103 bug: the page's column rule pushed the QR code to the left of its centred words
+test("Settings' QR code is centred on a card of its own, as the page's other sections", async ({ page }) => {
+  await openViewer(page);
+  await page.locator("#railSettings").click();
+  const card = page.locator("#settings .group.edit-here");
+  const picture = card.locator("#pairPicture");
+  await expect(picture).toBeVisible();
+  const box = await card.boundingBox();
+  const shown = await picture.boundingBox();
+  expect(Math.abs(shown.x + shown.width / 2 - (box.x + box.width / 2))).toBeLessThan(2);
+  await expect(card.locator("#settings-passwordForm")).toBeVisible();
+});
