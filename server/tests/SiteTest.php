@@ -92,6 +92,26 @@ final class SiteTest extends TestCase
         $this->assertSame('no-cache', $core->headers['Cache-Control']);
     }
 
+    // 112 the region packages' two addresses, off until the config names a catalog
+    public function testTheRegionRoutesAreOffWithoutACatalogAndMethodsOtherThanReadingAreRefused(): void
+    {
+        $this->assertSame(404, $this->ask('/regions/catalog.json')->status);
+        $this->assertStringContainsString('regionsCatalog', $this->ask('/regions/file/1xfu1OzAYa6PUtmtvSwH4yjVXZ9x9sIHO')->body);
+        $this->assertSame(405, $this->ask('/regions/catalog.json', '/index.php', 'POST')->status);
+    }
+
+    public function testTheRegionRoutesAnswerUnderTheSitesPathAndNothingElseUnderRegions(): void
+    {
+        $regions = new RegionHost('https://catalog.example/maps.json', $this->folder . '/cache',
+            new StubFetcher(['https://catalog.example/maps.json' => ['status' => 200, 'body' => '{"a":{"download":"https://drive.google.com/uc?id=1xfu1OzAYa6PUtmtvSwH4yjVXZ9x9sIHO","size":3}}']]));
+        $site = new Site($this->folder . '/out', ['maps'], null, $regions);
+        $this->assertSame(200, $site->answer('GET', '/editor/regions/catalog.json', '/editor/index.php')->status);
+        $this->assertSame(404, $site->answer('GET', '/editor/regions/other.json', '/editor/index.php')->status);
+        $this->assertSame(404, $site->answer('GET', '/editor/regions/file', '/editor/index.php')->status);
+        $this->assertSame(404, $site->answer('GET', '/editor/regions/file/a/b', '/editor/index.php')->status);
+        $this->assertSame(404, $site->answer('GET', '/regions/catalog.json', '/editor/index.php')->status, 'outside the base');
+    }
+
     // 110 the glyphs and the base sprite are the site's own files, a font stack's name with spaces among them
     public function testTheGlyphsAndTheSpriteAreServedWithTheirTypes(): void
     {

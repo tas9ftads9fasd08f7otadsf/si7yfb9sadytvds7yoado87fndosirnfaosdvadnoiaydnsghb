@@ -26,3 +26,14 @@ describe("drawable", () => {
     expect(drawable(style({})).terrain).toBeUndefined();
   });
 });
+
+// 112 the core names the region packages a style would draw from and the browser lacks
+describe("the region packages a style needs", () => {
+  it("reads them from the style's metadata, leaving out what is not a region and a piece", async () => {
+    const { needsOf } = await import("./drawable");
+    const style = { metadata: { "riki:needs": [{ region: "tatry", piece: "base" }, { region: "tatry" }, null, "x", { region: 1, piece: "b" }] } };
+    expect(needsOf(style as never)).toEqual([{ region: "tatry", piece: "base" }]);
+    expect(needsOf({} as never)).toEqual([]);
+    expect(needsOf({ metadata: { "riki:needs": "tatry" } } as never)).toEqual([]);
+  });
+});

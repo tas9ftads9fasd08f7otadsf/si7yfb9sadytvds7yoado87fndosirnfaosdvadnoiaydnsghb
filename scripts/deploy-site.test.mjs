@@ -23,6 +23,7 @@ function release(name, version, commit, assets, extra = {}, { core = true, glyph
   for (const asset of assets) writeFileSync(path.join(folder, "out", "_next", "static", asset), asset);
   writeFileSync(path.join(folder, "index.php"), "<?php // page");
   writeFileSync(path.join(folder, "Site.php"), "<?php // site");
+  writeFileSync(path.join(folder, "Regions.php"), "<?php // regions");
   writeFileSync(path.join(folder, "config.example.php"), "<?php return [];");
   writeFileSync(path.join(folder, ".htaccess"), "RewriteEngine On\n");
   writeFileSync(path.join(folder, "site.json"), JSON.stringify({ version, commit }));
@@ -37,7 +38,7 @@ function release(name, version, commit, assets, extra = {}, { core = true, glyph
 function deploy(zip, env = {}) {
   return spawnSync("bash", [SCRIPT, zip], { encoding: "utf8", env: { ...process.env, FTPS_HOST: "127.0.0.1",
     FTPS_PORT: String(PORT), FTPS_USER: "deploy", FTPS_PASSWORD: "s3cret", FTPS_DIR: "/editor", FTPS_CA_FILE: ca,
-    ICLOUD_API_TOKEN: "tok-123", ICLOUD_CONTAINER: "", TILES_BASE: "", ...env } });
+    ICLOUD_API_TOKEN: "tok-123", ICLOUD_CONTAINER: "", TILES_BASE: "", REGIONS_CATALOG: "", ...env } });
 }
 
 const onServer = (file) => readFileSync(path.join(root, "editor", file), "utf8");
@@ -178,6 +179,25 @@ describe("the config.php the deploy writes", () => {
     expect(run.status).toBe(0);
     expect(configOnServer()).toMatchObject({ apiToken: "other-token", container: "iCloud.com.test.maps", tilesBase: "" });
   }, 60000);
+
+  // 112 the region catalog's address is written into config.php when set, and only as an https address
+  it("writes the region catalog into the config when set, and leaves it out when not", () => {
+    const run = deploy(release("r1", "0.2.20", "r11111", ["k.js"]), { REGIONS_CATALOG: "https://raw.example.com/x/maps.json" });
+    expect(run.stderr).toBe("");
+    expect(configOnServer()).toMatchObject({ regionsCatalog: "https://raw.example.com/x/maps.json" });
+    expect(onServer("Regions.php")).toBe("<?php // regions");
+    expect(deploy(release("r2", "0.2.21", "r22222", ["k.js"])).status).toBe(0);
+    expect(configOnServer()).not.toHaveProperty("regionsCatalog");
+  }, 120000);
+
+  it("refuses a region catalog that is not an https address, before anything is sent", () => {
+    for (const REGIONS_CATALOG of ["http://raw.example.com/maps.json", "raw.example.com/maps.json", "https://", "https://a.example/m.json?x=1", "https://a b.example"]) {
+      const run = deploy(release("r3", "0.2.22", "r33333", ["never.js"]), { REGIONS_CATALOG });
+      expect(run.status, REGIONS_CATALOG).not.toBe(0);
+      expect(run.stderr).toContain("REGIONS_CATALOG");
+    }
+    expect(existsSync(path.join(root, "editor", "out", "_next", "static", "never.js"))).toBe(false);
+  }, 120000);
 
   it("takes a trailing slash off the tiles base", () => {
     expect(deploy(release("c3", "0.2.3", "c33333", ["k.js"]), { TILES_BASE: "https://tiles.example.com/maps/" }).status).toBe(0);

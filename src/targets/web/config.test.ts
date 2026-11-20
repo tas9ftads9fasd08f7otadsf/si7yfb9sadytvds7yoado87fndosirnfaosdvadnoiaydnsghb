@@ -14,7 +14,15 @@ describe("the site's config", () => {
     await readConfig(fetcher, "/editor");
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(fetcher.mock.calls[0]?.[0]).toBe("/editor/config.json");
-    expect(first).toEqual({ container: "iCloud.x", apiToken: "T", environment: "production", tilesBase: "https://t.example" });
+    expect(first).toEqual({ container: "iCloud.x", apiToken: "T", environment: "production", tilesBase: "https://t.example", regionsCatalog: "" });
+  });
+
+  // 112 the catalog the server fetches region packages from is in the config when the deploy set it
+  it("carries the region catalog the deploy named, and none where it did not", async () => {
+    expect((await readConfig(answering({ container: "iCloud.x", regionsCatalog: "https://r.example/maps.json" }), "")).regionsCatalog)
+      .toBe("https://r.example/maps.json");
+    forgetConfig();
+    expect((await readConfig(answering({ container: "iCloud.x" }), "")).regionsCatalog).toBe("");
   });
 
   it("defaults to the development environment and no tiles host", async () => {

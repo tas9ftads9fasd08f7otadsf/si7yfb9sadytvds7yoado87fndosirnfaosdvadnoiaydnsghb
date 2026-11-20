@@ -488,6 +488,21 @@ export interface MapSwitches {
   deletion?: "onlyYou" | "everyone" | "yourList";
 }
 
+/** 112 A region package the style would draw from and this browser does not hold; the core names it. */
+export interface RegionNeed {
+  region: string;
+  piece: string;
+}
+
+/** 112 One region's packages as the Edit map card and the map's note list them. */
+export interface RegionRow {
+  region: string;
+  name: string;
+  /** What to fetch to see the map: pieces not held, and held ones the catalog has a newer build of. */
+  fetch: { piece: string; bytes: number; update: boolean }[];
+  held: { piece: string; bytes: number }[];
+}
+
 /** 59 A role on a shared map, as `MapShareRole` names it. */
 export type ShareRole = "owner" | "admin" | "editor" | "reader";
 

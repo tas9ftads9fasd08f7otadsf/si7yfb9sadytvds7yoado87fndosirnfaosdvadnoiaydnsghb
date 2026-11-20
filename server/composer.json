@@ -10,7 +10,7 @@
     "phpunit/phpunit": "^11.5"
   },
   "autoload": {
-    "classmap": ["Site.php"]
+    "classmap": ["Site.php", "Regions.php"]
   },
   "scripts": {
     "test": "phpunit"
