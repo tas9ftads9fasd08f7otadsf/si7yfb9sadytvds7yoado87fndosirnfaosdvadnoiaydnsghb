@@ -31,7 +31,8 @@ function freshMaps() {
   const layer = (id, name, kind, symbol) => ({ id, name, kind, symbol, isEnabled: true });
   return [
     { id: "6F1E2A10-0000-4000-8000-000000000001", name: "High Tatras", symbol: "mountain.2", iconTintHex: "#3a7d44",
-      revision: 1, note: "Summer trails", minimumVersion: { app: "0.18.0", browser: "0.30.0" }, drawsRelief: true,
+      revision: 1, note: "Summer trails", sendsNewFields: true, offlineState: "ready", bytes: 1_200_000_000,
+      changedAt: 1_700_000_000, minimumVersion: { app: "0.18.0", browser: "0.30.0" }, drawsRelief: true,
       layers: [layer("6F1E2A10-0000-4000-8000-0000000000A1", "Trails", "Vector tiles", "figure.hiking"),
         layer("6F1E2A10-0000-4000-8000-0000000000A2", "Huts", "Points", "house")],
       styles: [{ id: "6F1E2A10-0000-4000-8000-0000000000B1", name: "Summer", arrangement: { hidden: [] } },
@@ -293,7 +294,18 @@ function catalog() {
       stackIconTintHex: each.stackID ? each.stackIconTintHex : undefined,
       layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive,
         // 58: as `MapDefinition.origin(of:)` falls back to a layer's kind.
-        origin: { key: `kind:${kind}`, title: kind, symbol } })) })) };
+        origin: { key: `kind:${kind}`, title: kind, symbol } })),
+      ...newFields(each) })) };
+}
+
+// 128: as `PeerSharedMap` carries them since 3490; a map without `sendsNewFields` answers as an older phone.
+function newFields(each) {
+  if (!each.sendsNewFields) return {};
+  const share = phone.shares[each.id];
+  const others = (share?.people ?? []).filter((person) => person.role !== "owner").length;
+  return { styles: each.styles.map((style) => style.name), styleIDs: each.styles.map((style) => style.id),
+    note: each.note || undefined, role: share?.role === "reader" ? "view" : share?.role === "editor" ? "edit" : "own",
+    people: others, isLocked: false, offline: each.offlineState, bytes: each.bytes, changedAt: each.changedAt };
 }
 
 // 2957: as `PeerWebCoverage` answers: the places to pick, and a map's choices said in a line.
@@ -1040,6 +1052,17 @@ function deletionOf(each) {
   return phone.ownsSettings ? "onlyYou" : "yourList";
 }
 
+// 119: as `PeerWebFromMaps.listing`: unlocked maps only; what this map draws is blocked.
+const ALREADY = "Already in this map";
+
+function otherLayers(each) {
+  const groups = phone.maps.filter((one) => one.id !== each.id && !one.locked).map((one) => ({
+    map: one.id, name: one.name, symbol: one.symbol ?? "map", iconTintHex: one.iconTintHex ?? null,
+    rows: [...one.layers].reverse().map((layer) => ({ layer: layer.id, title: layer.name, subtitle: layer.kind,
+      symbol: layer.symbol, blocked: each.layers.some((mine) => mine.name === layer.name) ? ALREADY : null })) }));
+  return { groups: groups.filter((group) => group.rows.some((row) => !row.blocked)) };
+}
+
 const AVAILABILITY = { picker: "hiddenFromPicker", carPlay: "hiddenFromCarPlay", legend: "hidesLegend",
   world: "hidesWorldAround" };
 
@@ -1582,6 +1605,11 @@ async function answer(request, response) {
     }
     return json(response, roster(each.id));
   }
+  if (parts[4] === "other-layers" && parts.length === 5) {
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    return json(response, otherLayers(each));
+  }
   if (parts[4] === "switches" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -1681,6 +1709,27 @@ async function answer(request, response) {
     each.layers.push(...found.map((row) => ({ id: randomUUID().toUpperCase(), name: row.title,
       kind: "WMS", symbol: "square.grid.3x3", isEnabled: true })));
     each.revision += 1;
+    return json(response, portable(each));
+  }
+  if (method === "POST" && parts[4] === "add-copies") {
+    // 119: as `PeerWebFromMaps.copies`: a layer the picker would not tick is refused.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (each.locked) return send(response, 403, "This map is locked on the phone");
+    const asked = (url.searchParams.get("layers") || "").split(",").filter(Boolean);
+    if (!asked.length) return send(response, 409, "Tick one or more layers of another map");
+    const rows = otherLayers(each).groups.flatMap((group) => group.rows);
+    const made = [];
+    for (const id of new Set(asked)) {
+      const row = rows.find((one) => one.layer === id);
+      if (!row) return send(response, 409, "No other map this browser may see has that layer");
+      if (row.blocked) return send(response, 409, row.blocked);
+      const source = phone.maps.flatMap((one) => one.layers).find((layer) => layer.id === id);
+      made.push({ ...structuredClone(source), id: randomUUID().toUpperCase() });
+    }
+    each.layers.push(...made);
+    each.revision += 1;
+    phone.copies = [...(phone.copies ?? []), ...made.map((layer) => layer.name)];
     return json(response, portable(each));
   }
   if (method === "POST" && parts[4] === "add-server-layers") {
@@ -1948,6 +1997,7 @@ function testControl(route, query, response) {
   case "/__test/face-asks": return json(response, { asks: face().asks });
   case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
   case "/__test/shares": return json(response, phone.shares);
+  case "/__test/copies": return json(response, phone.copies ?? []);
   case "/__test/folder":
     for (const each of phone.maps) Object.assign(each, { stackID: "F01DE500-0000-4000-8000-000000000001", stackName: "Hills" });
     break;

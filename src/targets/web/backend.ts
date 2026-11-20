@@ -1,4 +1,5 @@
 import { NotOnSite, type Answer, type Backend, type ChangedElsewhere, type Feature } from "@/backend/types";
+import { siteSymbolURL } from "./symbols";
 import { createRegionPackages } from "./regions/packages";
 import { loadStored, registerArchives } from "./regions/source";
 import { browserStore, type PackageStore } from "./regions/store";
@@ -7,7 +8,7 @@ import type { Portable, SessionAnswer } from "@/lib/types";
 import { ENGLISH, type Words } from "@/lib/words";
 import { storedAuthor, type Author } from "./author";
 import { BASE } from "./base";
-import { Cloud } from "./cloud";
+import { Cloud, refusesToken } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
 import { loadCore, type AddressRead, type Adding, type Applied, type Core, type Reply } from "./core";
@@ -279,7 +280,11 @@ export function createBackend(parts: Parts): Backend {
   };
 
   const session = async (): Promise<Answer<SessionAnswer>> => {
-    const person = await parts.cloud.start();
+    const person = await parts.cloud.start().catch((error: unknown) => {
+      if (refusesToken(error)) return "refused" as const;
+      throw error;
+    });
+    if (person === "refused") return { ok: true, value: { standing: "refused" } };
     if (!person) return { ok: true, value: { standing: "signedOut" } };
     regionsOn = Boolean((await parts.config().catch(() => null))?.regionsCatalog);
     return { ok: true, value: { standing: "admitted", edits: true, token: SITE_TOKEN, device: person.name, viewers: null } };
@@ -357,6 +362,7 @@ export function createBackend(parts: Parts): Backend {
     newMap: editing, importMap: editing, exportMap: editing, duplicateMap: editing,
     deleteMap: editing, shelve: editing, switches: editing, askPeople: editing, setPicture: editing,
     layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
+    otherLayers: adding, addCopies: adding,
     readAddress,
     addTiles: (mapID, template) => addLayer(mapID, template, (replies) => ({ kind: "tiles", address: template, replies })),
     addServiceLayers: (mapID, address, picks) =>
@@ -369,7 +375,7 @@ export function createBackend(parts: Parts): Backend {
     iconURL: () => "",
     regions: async () => ({}),
     icon: async () => null,
-    symbolURL: () => "none"
+    symbolURL: siteSymbolURL
   };
 }
 

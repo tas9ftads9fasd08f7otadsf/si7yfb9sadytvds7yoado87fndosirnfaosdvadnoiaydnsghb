@@ -83,4 +83,17 @@ describe("MapsPage", () => {
     render(<MapsPage />);
     expect(screen.getByText("No map here can be shared.")).toBeTruthy();
   });
+
+  // 128 W1's card line: who else has the map and the role, drawn only when the phone sent them
+  it("says on the map card who has the map and its role", () => {
+    show({ device: { name: "iPad", maps: [{ id: "a", name: "Tatras", layers: [], people: 3, role: "edit" }] } });
+    render(<MapsPage />);
+    expect(document.getElementById("mapSharing")!.textContent).toBe("Shared with 3 · Can edit");
+  });
+
+  it("leaves the sharing line off a card from an older phone", () => {
+    show({ device: device(null) });
+    render(<MapsPage />);
+    expect(document.getElementById("mapSharing")).toBeNull();
+  });
 });

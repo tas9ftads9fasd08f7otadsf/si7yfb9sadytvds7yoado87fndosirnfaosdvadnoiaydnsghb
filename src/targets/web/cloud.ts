@@ -153,6 +153,13 @@ export function loadScript(src = CLOUDKIT_SRC): Promise<CloudKitJS> {
   });
 }
 
+/** 134 Apple refuses the site's API token: no one can sign in until its owner sets a new one. */
+export function refusesToken(error: unknown): boolean {
+  const said = error as Partial<CKError> & { message?: string } | null;
+  return [said?.ckErrorCode, said?.serverErrorCode, said?.message].some((each) =>
+    typeof each === "string" && each.includes("AUTHENTICATION_FAILED"));
+}
+
 export interface Person {
   name: string;
 }
@@ -183,11 +190,11 @@ export class Cloud {
   constructor(private readonly load: () => Promise<CloudKitJS> = loadScript,
     private readonly config: () => Promise<SiteConfig> = readConfig) {}
 
-  /** The container set up once; a set-up that failed is tried again by the next call. */
+  /** The container set up once; a set-up that failed is tried again, unless Apple refused the token. */
   private ready(): Promise<CKContainer> {
     if (!this.container) {
       this.container = this.setUp();
-      this.container.catch(() => { this.container = null; });
+      this.container.catch((error: unknown) => { if (!refusesToken(error)) this.container = null; });
     }
     return this.container;
   }

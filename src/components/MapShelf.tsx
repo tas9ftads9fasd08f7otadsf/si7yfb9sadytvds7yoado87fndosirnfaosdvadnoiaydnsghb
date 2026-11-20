@@ -9,6 +9,7 @@ import { FolderPeople, FolderShareButton } from "./FolderSharing";
 import { Swatch } from "./edit/Styling";
 import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
+import { HeldPill, OfflinePill } from "./MapPills";
 import { Sym } from "./ui/Sym";
 
 export function useLayerCount() {
@@ -35,7 +36,8 @@ function MapRow({ shared }: { shared: SharedMap }) {
     <button type="button" className={isShown ? "row picked" : "row"} aria-current={isShown ? "true" : undefined}
       onClick={() => openMap(shared.id)}>
       <MapMark shared={shared} />
-      <span className="words">{shared.name}<small>{layerCount(shared.layers.length)}</small></span>
+      <span className="words">{shared.name}<small>{layerCount(shared.layers.length)}</small>
+        <span className="pills"><OfflinePill shared={shared} /><HeldPill shared={shared} /></span></span>
     </button>
   );
 }
