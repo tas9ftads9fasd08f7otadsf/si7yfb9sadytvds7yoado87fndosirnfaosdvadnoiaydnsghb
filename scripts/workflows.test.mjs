@@ -233,7 +233,8 @@ describe("the app's update", () => {
 
   it("reaches Riki Maps with a secret token, handed on by the release", () => {
     expect(update).toContain("GH_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN }}");
-    expect(job).toContain("RIKIMAPS_ACTIONS_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN }}");
+    // 140 bug: no RIKIMAPS_ACTIONS_TOKEN was set, so no release ever asked; the read token stands in
+    expect(job).toContain("RIKIMAPS_ACTIONS_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN || secrets.RIKIMAPS_READ_TOKEN }}");
   });
 
   it("gives the called update what it asks for", () => {
