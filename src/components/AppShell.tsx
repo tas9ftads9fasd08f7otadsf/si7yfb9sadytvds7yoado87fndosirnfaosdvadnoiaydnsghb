@@ -5,6 +5,7 @@ import { type MapControl, setMapControl } from "@/map/control";
 import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
   from "@/store/viewer";
 import { AddLayerModal } from "./edit/AddLayerModal";
+import { DataPage } from "./DataPage";
 import { DetailsScreen } from "./edit/DetailsScreen";
 import { LayerSwitcher, LivePreview } from "./MapLayers";
 import { NavRail } from "./NavRail";
@@ -91,6 +92,7 @@ export function AppShell() {
       <LivePreview />
       <PlacePanel />
       <DetailsScreen />
+      <DataPage />
       <NewMapModal />
       <AddLayerModal />
       <LoadingBar />
