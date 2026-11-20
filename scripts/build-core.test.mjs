@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import account from "../e2e/fixtures/cloud-account.json";
 import { fakeCoreWasm } from "../e2e/fake-core.mjs";
-import { CONTRACT, checkoutProblem, pinFor, readPin, sha256Of, sizes, smoke, verifyPinned, verifySum } from "./build-core.mjs";
+import { CONTRACT, SCRATCH, checkoutProblem, pinFor, readPin, sha256Of, sizes, smoke, swiftBuildArgs, verifyPinned, verifySum } from "./build-core.mjs";
 
 // 88 the pieces of the core's build that need no Swift
 describe("the pin", () => {
@@ -32,6 +32,19 @@ describe("the pin", () => {
     expect(CONTRACT.sdk.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(CONTRACT.toolchain.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(CONTRACT.calls).toHaveLength(7);
+  });
+});
+
+// 99 bug: the pinned sum came from one machine, and GitHub's runner built other bytes from the same commit
+describe("the build's flags", () => {
+  it("keep paths out of the module: no debug info, and a scratch that does not move with the checkout", () => {
+    const here = swiftBuildArgs("/home/runner/work/site/rikimaps");
+    const there = swiftBuildArgs("/Users/someone/rikimaps");
+    expect(here).toContain("--swift-sdk");
+    expect(here.join(" ")).toContain("-debug-info-format none");
+    expect(here.join(" ")).toContain("-file-prefix-map -Xswiftc /home/runner/work/site/rikimaps=/rikimaps");
+    expect(here[here.indexOf("--scratch-path") + 1]).toBe(`${SCRATCH}/build`);
+    expect(there[there.indexOf("--scratch-path") + 1]).toBe(here[here.indexOf("--scratch-path") + 1]);
   });
 });
 

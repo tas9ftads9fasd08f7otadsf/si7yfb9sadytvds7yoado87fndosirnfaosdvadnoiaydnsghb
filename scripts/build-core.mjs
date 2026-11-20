@@ -37,6 +37,16 @@ export const CONTRACT = {
 
 const SEMVER = /^\d+\.\d+\.\d+$/;
 
+// swiftc hashes each object's IR, which names the object's path, into the module: the scratch is never moved.
+export const SCRATCH = "/tmp/riki-core-build";
+
+/** The arguments of the documented swift build, plus what makes its bytes the same at any checkout path. */
+export function swiftBuildArgs(dir, scratch = SCRATCH) {
+  return ["build", "--swift-sdk", CONTRACT.sdk.id, "-c", "release", "--product", CONTRACT.product,
+    "--scratch-path", path.join(scratch, "build"), "-debug-info-format", "none",
+    "-Xswiftc", "-file-prefix-map", "-Xswiftc", `${dir}=/rikimaps`];
+}
+
 export const sha256Of = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 /** Raw and brotli sizes, the second as a server sends the module. */
@@ -164,13 +174,13 @@ async function installSdk(swift, scratch) {
 export async function build({ dir, pin, out, env = process.env }) {
   const problem = checkoutProblem(dir, pin.ref);
   if (problem) throw new Error(problem);
-  const scratch = path.join(out, ".scratch");
+  const scratch = SCRATCH;
+  await rm(scratch, { recursive: true, force: true });
   const swift = await toolchain(download);
   await installSdk(swift, scratch);
   const cwd = path.join(dir, CONTRACT.package);
   // Nothing is written in the checkout: SwiftPM's scratch is ours.
-  execFileSync(swift, ["build", "--swift-sdk", CONTRACT.sdk.id, "-c", "release", "--product", CONTRACT.product,
-    "--scratch-path", path.join(scratch, "build")], { cwd, stdio: "inherit", env: { ...env, PATH: `${path.dirname(swift)}:${env.PATH}` } });
+  execFileSync(swift, swiftBuildArgs(dir, scratch), { cwd, stdio: "inherit", env: { ...env, PATH: `${path.dirname(swift)}:${env.PATH}` } });
   const built = path.join(scratch, "build", "wasm32-unknown-wasip1", "release", `${CONTRACT.product}.wasm`);
   const opt = path.join(ROOT, "node_modules", ".bin", "wasm-opt");
   if (!existsSync(opt)) throw new Error("wasm-opt is not installed: run npm ci");
