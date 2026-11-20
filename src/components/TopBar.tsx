@@ -1,5 +1,6 @@
 "use client";
 
+import { AppIcon } from "./ui/AppIcon";
 import { useEffect, useRef, useState } from "react";
 import { backend } from "@backend";
 import { go, offers, openNewMap, toggleSide, shareAddress, showSide, shownMapOf, useViewer } from "@/store/viewer";
@@ -94,7 +95,7 @@ export function TopBar() {
   return (
     <header id="top">
       <div className="start">
-        <div id="brand"><span className="tile" aria-hidden="true">R</span><b id="appName">{words.app}</b></div>
+        <div id="brand"><AppIcon size={36} /><b id="appName">{words.app}</b></div>
         <SideToggle />
         <ShownMap />
       </div>
