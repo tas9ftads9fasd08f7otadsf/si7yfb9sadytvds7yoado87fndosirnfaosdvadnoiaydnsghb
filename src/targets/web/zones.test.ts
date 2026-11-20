@@ -59,8 +59,23 @@ describe("Zones", () => {
     const rows = await new Zones(container, keeping, fetcher).rows();
     expect(rows.map((row) => `${row.database}:${row.entity}:${row.id}`).sort()).toEqual([
       "private:SharedMap:own-tatras", "private:SharedMapChange:change-phone-1", "private:SharedMapLayer:own-tatras-layer",
-      "shared:SharedMap:shared-doprava"]);
+      "shared:Share:Share-doprava", "shared:SharedMap:shared-doprava", "shared:SharedMapMember:member-marek",
+      "shared:SharedMapMember:member-me"]);
     expect(rows.find((row) => row.id === "shared-doprava")).toMatchObject({ owner: "_friki", zone: "share-doprava", tag: "s1" });
+  });
+
+  // 108 a shared zone's share and its member rows are kept with the map, so the core can read who holds it
+  it("keeps a zone's share and member rows beside its map, in the zone they came from", async () => {
+    const { container } = cloud();
+    const rows = await new Zones(container, keeping, fetcher).rows();
+    const share = rows.find((row) => row.entity === "Share");
+    expect(share).toMatchObject({ database: "shared", zone: "share-doprava", owner: "_friki" });
+    expect((share?.fields.participants as unknown[]).length).toBe(3);
+    const members = rows.filter((row) => row.entity === "SharedMapMember");
+    expect(members.map((row) => [row.fields.participantID, row.fields.roleRaw, row.fields.map])).toEqual([
+      ["_me", "editor", "shared-doprava"], ["_marek", "reader", "shared-doprava"]]);
+    const again = await new Zones(async () => { throw new Error("offline"); }, keeping, fetcher).rows();
+    expect(again.map((row) => row.id)).toEqual(expect.arrayContaining(["Share-doprava", "member-me"]));
   });
 
   it("asks again from the token it kept, and takes a deletion out", async () => {
@@ -120,7 +135,8 @@ describe("Zones", () => {
   it("opens a map seen once from what it kept when CloudKit cannot be reached", async () => {
     await new Zones(cloud().container, keeping, fetcher).rows();
     const rows = await new Zones(cloud({ down: true }).container, keeping, fetcher).rows();
-    expect(rows.map((row) => row.id).sort()).toEqual(["change-phone-1", "own-tatras", "own-tatras-layer", "shared-doprava"]);
+    expect(rows.map((row) => row.id).sort()).toEqual(["Share-doprava", "change-phone-1", "member-marek",
+      "member-me", "own-tatras", "own-tatras-layer", "shared-doprava"]);
   });
 
   it("fails when CloudKit cannot be reached and nothing was kept", async () => {

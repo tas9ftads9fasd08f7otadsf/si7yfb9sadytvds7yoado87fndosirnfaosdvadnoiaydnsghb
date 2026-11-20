@@ -1,7 +1,7 @@
 import { WASI } from "@bjorn3/browser_wasi_shim";
 import { CoreNotReady } from "@/backend/types";
 import type { Edit } from "@/lib/edit";
-import type { AddressReading, Device, Portable } from "@/lib/types";
+import type { AddressReading, Device, Portable, ShareRole } from "@/lib/types";
 import { BASE } from "./base";
 import type { CoreRow, CoreWrite } from "./records";
 
@@ -77,6 +77,14 @@ export interface HistoryEntry {
   lines: string[];
 }
 
+/** 108 Who holds a map, read off its share and member rows by the app's rules (README). */
+export interface PeopleRead {
+  shared: boolean;
+  role: ShareRole;
+  people: { id: string; name: string | null; role: ShareRole; hasAccepted: boolean; isYou: boolean }[];
+  linkRole: ShareRole | null;
+}
+
 /** The rules of the maps, as `riki-core.wasm` answers them; none of them is written again here. */
 export interface Core {
   maps(rows: CoreRow[]): Device;
@@ -88,6 +96,8 @@ export interface Core {
   /** 86 The rows that add layers to a map, or a refusal, as `apply` answers. */
   addLayer(ask: AddAsk): Applied;
   changes(rows: CoreRow[]): HistoryEntry[];
+  /** 108 Who holds the map; `CoreNotReady` while the module has no `riki_people`. */
+  people(rows: CoreRow[], mapID: string): PeopleRead | { refused: string; status?: number };
 }
 
 /** The release asset is not in the site yet; the site cannot read a map without it. */
@@ -109,19 +119,24 @@ export interface CoreExports {
   riki_changes(pointer: number, length: number): number;
   riki_read_address(pointer: number, length: number): number;
   riki_add_layer(pointer: number, length: number): number;
+  /** 108 Not in the pinned module yet. */
+  riki_people?(pointer: number, length: number): number;
 }
 
-type Call = "riki_maps" | "riki_map" | "riki_apply" | "riki_style" | "riki_changes" | "riki_read_address" | "riki_add_layer";
+type Call = "riki_maps" | "riki_map" | "riki_apply" | "riki_style" | "riki_changes" | "riki_read_address" | "riki_add_layer"
+  | "riki_people";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 /** One call: the request written into the module, the answer read out and both buffers freed. */
 export function callJSON<T>(exports: CoreExports, call: Call, request: unknown): T {
+  const run = exports[call];
+  if (!run) throw new CoreNotReady(`riki-core.wasm has no ${call} yet`);
   const bytes = encoder.encode(JSON.stringify(request));
   const input = exports.riki_alloc(bytes.length);
   new Uint8Array(exports.memory.buffer, input, bytes.length).set(bytes);
-  const output = exports[call](input, bytes.length);
+  const output = run(input, bytes.length);
   exports.riki_free(input, bytes.length);
   const length = new DataView(exports.memory.buffer).getUint32(output, true);
   const text = decoder.decode(new Uint8Array(exports.memory.buffer, output + 4, length));
@@ -141,7 +156,8 @@ export function coreOf(exports: CoreExports): Core {
     apply: (ask) => callJSON(exports, "riki_apply", ask),
     readAddress: (ask) => callJSON(exports, "riki_read_address", ask),
     addLayer: (ask) => callJSON(exports, "riki_add_layer", ask),
-    changes: (rows) => callJSON(exports, "riki_changes", { rows })
+    changes: (rows) => callJSON(exports, "riki_changes", { rows }),
+    people: (rows, mapID) => callJSON(exports, "riki_people", { rows, id: mapID })
   };
 }
 

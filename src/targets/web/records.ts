@@ -26,7 +26,10 @@ export interface CoreWrite {
 
 /** The record types the site reads; `CD_LayerSecrets` is encrypted and stays unread. */
 export const READ_TYPES = ["CD_SharedMap", "CD_SharedMapLayer", "CD_SharedMapStyle", "CD_SharedMapChange",
-  "CD_ServerRecord"];
+  "CD_ServerRecord", "CD_SharedMapMember"];
+
+/** 108 A map's share in the zone made for it; its row's entity is `Share`. */
+export const SHARE_TYPE = "cloudkit.share";
 
 const ASSET_SUFFIX = "_ckAsset";
 
@@ -68,4 +71,14 @@ export async function rowOf(record: CKRecord, where: Pick<CoreRow, "database" | 
   }));
   return { entity: bare(record.recordType ?? ""), id: record.recordName, tag: record.recordChangeTag ?? "", fields,
     ...(refs.length ? { refs: refs.sort() } : {}), ...(assets.length ? { assets: assets.sort() } : {}), ...where };
+}
+
+/** 108 A share as the core's `Share` row: its text fields and the people and link beside them. */
+export function shareRowOf(record: CKRecord, where: Pick<CoreRow, "database" | "zone" | "owner">): CoreRow {
+  const fields: Record<string, unknown> = {};
+  for (const [name, field] of Object.entries(record.fields ?? {})) if (field.type === "STRING") fields[name] = field.value;
+  const beside = { participants: record.participants, owner: record.owner,
+    currentUserParticipant: record.currentUserParticipant, publicPermission: record.publicPermission };
+  for (const [name, value] of Object.entries(beside)) if (value !== undefined) fields[name] = value;
+  return { entity: "Share", id: record.recordName, tag: record.recordChangeTag ?? "", fields, ...where };
 }

@@ -36,11 +36,11 @@ export function Roster({ people }: { people: SharePeople }) {
         {!people.heldBy && !people.isShared ? (
           <div className="row" id="peopleAlone">
             <div className="words">{isFolder ? words.folderAlone : words.aloneHeadline}
-              <small>{isFolder ? words.folderAdvice : words.aloneAdvice}</small></div>
+              {people.readOnly ? null : <small>{isFolder ? words.folderAdvice : words.aloneAdvice}</small>}</div>
           </div>
         ) : null}
         {people.folderLine ? <div className="foot-note" id="folderLine">{people.folderLine}</div> : null}
-        {people.people.map((person) => <PersonRow key={person.id} person={person} />)}
+        {people.people.map((person) => <PersonRow key={person.id} person={person} readOnly={people.readOnly === true} />)}
       </div>
       {asking === "share" || (asking === "invite" && !people.isShared) ? (
         <div className="foot-note" id="peopleWorking">{words.askingLink}</div>
@@ -52,16 +52,17 @@ export function Roster({ people }: { people: SharePeople }) {
         </button>
       ) : null}
       {people.mayInvite ? <Invite people={people} role={role} onRole={setRole} /> : null}
-      {people.link ? <LinkCard people={people} role={role} /> : null}
+      {people.link || (people.readOnly && people.isShared) ? <LinkCard people={people} role={role} /> : null}
       {people.isShared && !people.heldBy ? (
         <div className="foot-note">{people.linkRole ? words.linkNote : words.sharedNote}</div>
       ) : null}
-      {people.heldBy ? null : <div className="foot-note" id="peopleCaveat">{people.caveat}</div>}
+      {people.heldBy || !people.caveat ? null : <div className="foot-note" id="peopleCaveat">{people.caveat}</div>}
+      {people.readOnly ? <div className="foot-note" id="peopleInApp">{words.peopleInApp}</div> : null}
     </>
   );
 }
 
-function PersonRow({ person }: { person: SharePerson }) {
+function PersonRow({ person, readOnly }: { person: SharePerson; readOnly: boolean }) {
   const words = useViewer((state) => state.words);
   const roleTitle = (role: ShareRole) => words[`role.${role}`] ?? role;
   return (
@@ -72,7 +73,7 @@ function PersonRow({ person }: { person: SharePerson }) {
           onChange={(event) => void askPeople({ kind: "role", person: person.id, role: event.target.value as ShareRole })}>
           {OFFERED_ROLES.map((role) => <option key={role} value={role}>{roleTitle(role)}</option>)}
         </select>
-      ) : person.role !== "owner" && person.hasAccepted ? <small>{roleTitle(person.role)}</small> : null}
+      ) : !readOnly && person.role !== "owner" && person.hasAccepted ? <small>{roleTitle(person.role)}</small> : null}
       {person.mayRemove ? (
         <button type="button" className="icon-button danger" aria-label={filledIn(words.removePerson, "name", person.name)}
           title={filledIn(words.removePerson, "name", person.name)} onClick={() => removePerson(person.id, person.name)}>
@@ -133,10 +134,13 @@ function LinkCard({ people, role }: { people: SharePeople; role: ShareRole }) {
       <h2 className="title">{words.linkTitle}</h2>
       <div className="list" id="peopleLink">
         <div className="row">
-          <div className="words"><span className="link-text">{link}</span>
-            <small>{isOpen ? words.linkOpen : words.linkInvitedOnly}</small></div>
-          <button type="button" className="text-button" id="copyShareLink" onClick={() => void copyText(link)}>
-            {words.copyLink}</button>
+          <div className="words">{link ? <span className="link-text">{link}</span> : null}
+            <small>{isOpen ? words.linkOpen : words.linkInvitedOnly}
+              {people.readOnly && people.linkRole ? ` · ${words[`role.${people.linkRole}`]}` : ""}</small></div>
+          {link ? (
+            <button type="button" className="text-button" id="copyShareLink" onClick={() => void copyText(link)}>
+              {words.copyLink}</button>
+          ) : null}
         </div>
       </div>
       {people.mayChangeLink ? (

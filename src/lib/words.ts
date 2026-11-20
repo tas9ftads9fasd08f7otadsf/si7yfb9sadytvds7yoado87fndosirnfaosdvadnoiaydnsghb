@@ -131,6 +131,8 @@ export const ENGLISH = {
   "roleDetail.owner": "Shares the map, and is the only one who can stop",
   "roleDetail.admin": "Edits the map, and says who else may", "roleDetail.editor": "Edits the map",
   "roleDetail.reader": "Sees the map as it is",
+  someone: "Someone", you: "you", joined: "Joined",
+  peopleInApp: "Invitations and roles are changed in the app for now.",
   folderSharing: "Sharing a folder", folderAlone: "This folder is yours alone.",
   folderAdvice: "Share it and every map in it goes at once.", shareFolder: "Share this folder",
   addRest: "Add the rest to this share", inviteToFolder: "Invite someone to this folder",

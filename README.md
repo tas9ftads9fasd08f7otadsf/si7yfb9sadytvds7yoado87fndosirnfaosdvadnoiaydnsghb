@@ -74,6 +74,17 @@ CI builds them in `.github/workflows/core.yml`, which `release.yml` calls before
 repository secret `RIKIMAPS_READ_TOKEN` (a token that reads it) has to exist. With a commit pinned, `pack:web` fails
 where the module was not built; `RIKI_PACK_WITHOUT_CORE=1` packs without it for the browser specs, which stand in for the
 core (CI does, and `npm run check`).
+`riki_people` (item 108) is the call that reads who holds a map, and the module pinned today lacks it, so the People
+card answers "The site's map rules are not ready yet." until the pin moves to a commit that has it (then
+`CONTRACT.calls` in `scripts/build-core.mjs` and `riki_version` list it). It takes `{rows, id}`, the rows being
+those every call gets plus a shared map's `Share` row (a `cloudkit.share` record: its `cloudkit.title` and other text fields,
+and `participants`, `owner`, `currentUserParticipant`, `publicPermission` as CloudKit answers them) and its
+`SharedMapMember` rows (`participantID`, `roleRaw`, `displayName`, `addedAt`, `map`), and answers
+`{shared, role, people: [{id, name, role, hasAccepted, isYou}], linkRole}` by `MapShareService`'s rules: owner for the
+owner, reader for a read-only participant, else the member row's `roleRaw` (not owner), else editor; a member row keyed
+`invite:<address>` is an invited person; `name` is null where neither CloudKit nor the row names them; people come in
+`MapSharePeople.ordered`'s order; `linkRole` is reader or editor for a `publicPermission` of `READ_ONLY` or
+`READ_WRITE`, else null. The `Share` and member rows of a map are those of its own zone.
 Without Swift, run `.github/workflows/core-on-demand.yml` by hand (`gh workflow run core-on-demand.yml`, with
 `-f ref=<rikimaps commit, branch or tag>` for another than the pin): it builds and tests the core and keeps
 `dist/riki-core/` for 90 days as the artifact `riki-core-<commit>`. `npm run fetch:core` (or

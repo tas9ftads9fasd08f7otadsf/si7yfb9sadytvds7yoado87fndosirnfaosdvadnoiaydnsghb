@@ -21,8 +21,9 @@ export class NotOnSite extends Error {}
 export class CoreNotReady extends NotOnSite {}
 
 /** 82 The parts of the page a target may not answer yet; a screen offers only what it does. 86 `addLayer` is the panel
- * with a tile address and a service's layers; its packages, files, API layers and servers are offered apart. */
-export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "coverage" | "pairing";
+ * with a tile address and a service's layers; its packages, files, API layers and servers are offered apart.
+ * 108 `people` reads who a map is shared with. */
+export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "coverage" | "pairing" | "people";
 
 /** 78 A map whose rows another device changed, and the author its history names, if any. */
 export interface ChangedElsewhere {

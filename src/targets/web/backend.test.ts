@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import type { Device, Portable } from "@/lib/types";
 import { Cloud, type CKBatchResult, type CKContainer, type CKRecord, type CKSave, type CKZoneChanges, type CloudKitJS } from "./cloud";
-import { NotOnSite, type Feature } from "@/backend/types";
-import { CoreMissing, type AddAsk, type AddressRead, type Applied, type Core, type HistoryEntry, type ReadAsk } from "./core";
+import { CoreNotReady, NotOnSite, type Feature } from "@/backend/types";
+import { CoreMissing, type AddAsk, type AddressRead, type Applied, type Core, type HistoryEntry, type PeopleRead, type ReadAsk } from "./core";
 import { createBackend } from "./backend";
 import type { Reach } from "./reach";
 import type { Keeping } from "./zones";
@@ -17,6 +17,8 @@ interface Options {
   core?: () => Promise<Core>;
   apply?: (ask: Parameters<Core["apply"]>[0]) => Applied;
   changes?: () => HistoryEntry[];
+  /** 108 What the core reads of a share. */
+  people?: () => PeopleRead | { refused: string; status?: number };
   /** 85 Which hosts answer a browser; every one does by default. */
   reach?: Reach;
   /** 86 What the core reads an address as, by round; the recorded answer by default. */
@@ -109,7 +111,8 @@ function stack(options: Options = {}) {
     apply: vi.fn((ask) => options.apply?.(ask) ?? (account.core.riki_apply as unknown as Applied)),
     readAddress: (ask) => options.reads?.(ask) ?? (account.core.riki_read_address as unknown as AddressRead),
     addLayer: vi.fn((ask) => options.adds?.(ask) ?? (account.core.riki_add_layer as unknown as Applied)),
-    changes: () => options.changes?.() ?? []
+    changes: () => options.changes?.() ?? [],
+    people: vi.fn(() => options.people?.() ?? (account.core.riki_people as unknown as PeopleRead))
   };
   const kept = new Map<string, unknown>();
   const keeping: Keeping = { load: async <T,>(key: string) => kept.get(key) as T | undefined, save: async (k, v) => { kept.set(k, v); } };
@@ -193,7 +196,9 @@ describe("WebBackend's reads", () => {
     expect(device.name).toBe("Riki Tester");
     expect(device.maps.map((each) => each.name)).toEqual(["High Tatras", "Doprava"]);
     const rows = seen[0] as { entity: string; fields: Record<string, unknown> }[];
-    expect(rows.map((row) => row.entity).sort()).toEqual(["SharedMap", "SharedMap", "SharedMapChange", "SharedMapLayer"]);
+    // 108 a shared map's share and member rows are among them, for the core to read who holds it
+    expect(rows.map((row) => row.entity).sort()).toEqual(["Share", "SharedMap", "SharedMap", "SharedMapChange", "SharedMapLayer",
+      "SharedMapMember", "SharedMapMember"]);
     expect(rows.find((row) => row.fields.name === "High Tatras")?.fields.payload).toBe("{\"symbol\":\"mountain.2\"}");
   });
 
@@ -261,7 +266,8 @@ describe("WebBackend's edits", () => {
     expect(answer).toEqual({ ok: true, value: account.core.riki_map });
     const ask = vi.mocked(core.apply).mock.calls[0]![0];
     expect(ask).toMatchObject({ mapID: TATRAS, styleID: "B1", edit: rename, author: "Riki Tester", origin: "web" });
-    expect(ask.rows.map((row) => row.entity).sort()).toEqual(["SharedMap", "SharedMap", "SharedMapChange", "SharedMapLayer"]);
+    expect(ask.rows.map((row) => row.entity).sort()).toEqual(["Share", "SharedMap", "SharedMap", "SharedMapChange", "SharedMapLayer",
+      "SharedMapMember", "SharedMapMember"]);
     expect(saves).toHaveBeenCalledTimes(1);
     const [records, where] = saves.mock.calls[0]!;
     expect(where).toEqual({ zoneID: { zoneName: "com.apple.coredata.cloudkit.zone" }, atomic: true });
@@ -438,6 +444,53 @@ describe("WebBackend's notice of a change elsewhere", () => {
     await made.backend.change(TATRAS_ID, null, { kind: "layerName", layer: "L1", name: "Ridges" });
     made.notify();
     await vi.waitFor(() => expect(listener).toHaveBeenCalledWith([]));
+  });
+});
+
+describe("WebBackend's people", () => {
+  const DOPRAVA = "6F1E2A10-0000-4000-8000-000000000002";
+
+  // 108 the share and member rows go to the core as read, and the card is built from its answer, read only
+  it("asks the core who holds the map with the rows of its zone, and answers a card that changes nothing", async () => {
+    const { backend, core } = stack();
+    expect(backend.offers("people")).toBe(true);
+    const answer = await backend.people({ kind: "map", id: DOPRAVA });
+    const [rows, id] = vi.mocked(core.people).mock.calls[0]!;
+    expect(id).toBe(DOPRAVA);
+    expect(rows.filter((row) => row.zone === "share-doprava").map((row) => row.entity).sort())
+      .toEqual(["Share", "SharedMap", "SharedMapMember", "SharedMapMember"]);
+    expect(answer).toMatchObject({ ok: true, value: { isShared: true, role: "editor", linkRole: null, readOnly: true,
+      mayInvite: false, mayChangeLink: false, link: null } });
+    if (!answer.ok) return;
+    expect(answer.value.people.map((each) => [each.name, each.line, each.hasAccepted, each.mayChangeRole, each.mayRemove])).toEqual([
+      ["Friki", "Owner", true, false, false],
+      ["Riki Tester (you)", "Can edit · Joined", true, false, false],
+      ["marek@example.com", "View only · Invited", false, false, false]]);
+  });
+
+  it("answers a map nobody shares, an unknown map and a folder as it can", async () => {
+    const alone = stack({ people: () => ({ shared: false, role: "owner", people: [], linkRole: null }) });
+    expect(await alone.backend.people({ kind: "map", id: DOPRAVA })).toMatchObject({ ok: true, value: { isShared: false, people: [] } });
+    expect(await alone.backend.people({ kind: "map", id: "nope" })).toMatchObject({ ok: false, status: 404 });
+    await expect(alone.backend.people({ kind: "folder", id: "F" })).rejects.toBeInstanceOf(NotOnSite);
+  });
+
+  // 108 until the module has riki_people the site says its rules are not ready, as for any call not in yet
+  it("says the core's rules are not ready while the module lacks the call", async () => {
+    const lacking = stack({ people: () => { throw new CoreNotReady("no riki_people"); } });
+    await expect(lacking.backend.people({ kind: "map", id: DOPRAVA })).rejects.toBeInstanceOf(CoreNotReady);
+  });
+
+  it("passes on what the core refuses", async () => {
+    const { backend } = stack({ people: () => ({ refused: "No share here", status: 409 }) });
+    expect(await backend.people({ kind: "map", id: DOPRAVA })).toEqual({ ok: false, status: 409, said: "No share here" });
+  });
+
+  it("changes nothing of the share: every ask is refused as not on the site", async () => {
+    const { backend } = stack();
+    await expect(backend.askPeople({ kind: "map", id: DOPRAVA }, { kind: "role", person: "_marek", role: "editor" }))
+      .rejects.toBeInstanceOf(NotOnSite);
+    await expect(backend.askPeople({ kind: "map", id: DOPRAVA }, { kind: "link", role: null })).rejects.toBeInstanceOf(NotOnSite);
   });
 });
 

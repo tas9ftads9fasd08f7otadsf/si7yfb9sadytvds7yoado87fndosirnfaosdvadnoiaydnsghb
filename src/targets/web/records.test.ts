@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import type { CKRecord } from "./cloud";
-import { READ_TYPES, rowOf } from "./records";
+import { READ_TYPES, rowOf, shareRowOf } from "./records";
 
 const where = { database: "private", zone: "z" } as const;
 const assets = account.assets as Record<string, string>;
@@ -60,6 +60,36 @@ describe("a record as the core's row", () => {
     expect(READ_TYPES).not.toContain(secrets!.recordType);
     // 78 the history rows are read too, for who changed a map
     expect(READ_TYPES).toEqual(["CD_SharedMap", "CD_SharedMapLayer", "CD_SharedMapStyle", "CD_SharedMapChange",
-      "CD_ServerRecord"]);
+      "CD_ServerRecord", "CD_SharedMapMember"]);
+  });
+
+  // 108 a member row is a plain mirror row: its role is its own field
+  it("reads a member row's role and the map it belongs to", async () => {
+    const member = account.zones.shared[0]!.records.find((each) => each.recordName === "member-me") as unknown as CKRecord;
+    const row = await rowOf(member, { database: "shared", zone: "share-doprava", owner: "_friki" }, fetcher);
+    expect(row).toMatchObject({ entity: "SharedMapMember", id: "member-me", refs: ["map"] });
+    expect(row.fields).toMatchObject({ participantID: "_me", roleRaw: "editor", displayName: "Riki Tester", map: "shared-doprava" });
+  });
+});
+
+describe("a share as the core's row", () => {
+  const share = account.zones.shared[0]!.records.find((each) => each.recordName === "Share-doprava") as unknown as CKRecord;
+
+  // 108 the people and the link sit beside the fields in what CloudKit answers; the row holds them as they came
+  it("holds the share's title, people, owner, own participant and link as CloudKit answered them", () => {
+    const row = shareRowOf(share, { database: "shared", zone: "share-doprava", owner: "_friki" });
+    expect(row).toMatchObject({ entity: "Share", id: "Share-doprava", tag: "s2", database: "shared", zone: "share-doprava", owner: "_friki" });
+    expect(row.fields["cloudkit.title"]).toBe("Doprava");
+    expect(row.fields.publicPermission).toBe("NONE");
+    expect(row.fields.participants).toEqual(share.participants);
+    expect(row.fields.owner).toEqual(share.participants![0]);
+    expect(row.fields.currentUserParticipant).toEqual(share.participants![1]);
+  });
+
+  it("leaves a thumbnail out and what is not answered unset", () => {
+    const row = shareRowOf({ recordName: "s", recordType: "cloudkit.share", fields: {
+      "cloudkit.thumbnailImageData": { value: "/9j/4AAQ", type: "BYTES" }, rikiAskedRole: { value: "editor", type: "STRING" } } },
+    { database: "shared", zone: "z" });
+    expect(row.fields).toEqual({ rikiAskedRole: "editor" });
   });
 });
