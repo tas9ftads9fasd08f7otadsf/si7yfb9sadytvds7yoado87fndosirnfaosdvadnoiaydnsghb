@@ -39,7 +39,7 @@ describe("Edit map's tabs", () => {
     expect(screen.getByRole("tab", { name: "General" }).getAttribute("aria-selected")).toBe("true");
   });
 
-  // 118 General draws the Privacy row only for a phone that sent a lock, so the site has none
+  // 118 Privacy shows only for a phone that sent a lock, so the site has none
   it("draws Privacy under General when the phone offers a lock, and not otherwise", () => {
     const base = { picker: true, carPlay: true, legend: true, world: true, legendEverywhere: true, worldEverywhere: true,
       hasNothingToDraw: false, ownsSettings: true, groupsByOrigin: false, groupingOffered: false, groupingReorders: false,

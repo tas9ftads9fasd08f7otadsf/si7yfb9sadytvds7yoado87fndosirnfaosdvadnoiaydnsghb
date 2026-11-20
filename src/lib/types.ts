@@ -486,7 +486,7 @@ export interface MapSwitches {
   editedStyles?: string[];
   /** 62 Who loses the map deleted, as the Maps sheet asks; absent where it offers no Delete. */
   deletion?: "onlyYou" | "everyone" | "yourList";
-  /** 118 Edit map's lock, asked of the phone's person when switched; absent from older phones. */
+  /** 118 Edit map's lock, asked of the phone's person; absent from older phones. */
   lock?: LockOffer;
 }
 

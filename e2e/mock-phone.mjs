@@ -1003,10 +1003,10 @@ function switches(each) {
     lock: lockOf(each) };
 }
 
-// 118: Face ID on the phone, as the test says it answers: yes or no, after a wait, or no passcode at all.
+// 118: Face ID as the test sets it: yes or no, after a wait, or no passcode.
 const face = () => (phone.face ??= { answers: true, asks: 0, wait: 0, hasPasscode: true });
 
-// 118: as `PeerWebLock.offered` draws Edit map's row: only the owner of a shared map may move it.
+// 118: as `PeerWebLock.offered`: only the owner of a shared map may move it.
 function lockOf(each) {
   const mayChange = phone.ownsSettings && face().hasPasscode;
   return { isOn: each.locked === true, mayChange, brand: "Face ID",
@@ -1016,7 +1016,7 @@ function lockOf(each) {
         : "The map's owner locked it for everyone it is shared with.") : null };
 }
 
-// 118: as `PeerWebLock.refusal` weighs it: asked only when the lock would change, then written.
+// 118: as `PeerWebLock.refusal`: asked only when the lock would change.
 async function lockChange(each, query, response) {
   const on = query.get("lock");
   if (on !== "1" && on !== "0") return send(response, 400, "");
@@ -1940,7 +1940,7 @@ function testControl(route, query, response) {
   case "/__test/legend-everywhere": phone.legendEverywhere = query.get("on") === "1"; break;
   case "/__test/reader": phone.ownsSettings = false; break;
   case "/__test/share-role": phone.shares[query.get("map")].role = query.get("role"); break;
-  // 118: what the phone's person does when Face ID is asked: answer, wait, or have no passcode.
+  // 118: what the phone's person does when Face ID is asked.
   case "/__test/face-id":
     Object.assign(face(), { answers: query.get("answer") !== "0", wait: Number(query.get("wait") || 0),
       hasPasscode: query.get("passcode") !== "0" });

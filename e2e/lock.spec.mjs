@@ -14,7 +14,7 @@ const row = (page) => page.locator("#privacy [data-switch=lock]").getByRole("swi
 
 const asks = async (request) => (await phone(request, "face-asks")).asks;
 
-// 118: Edit map's Privacy row; the phone asks Face ID, then the map is locked and takes no other edit.
+// 118: the phone asks Face ID, then the map is locked and takes no other edit.
 test("a map is locked once the phone's person confirms, and takes no other edit until unlocked", async ({ page, request }) => {
   await openGeneral(page);
   await expect(page.locator("#editBody h2", { hasText: "Privacy" })).toBeVisible();
@@ -48,7 +48,7 @@ test("the row says the phone is asking while it waits", async ({ page, request }
   await expect(row(page)).toBeChecked();
 });
 
-// 118: nobody answered on the phone, so nothing is locked and the phone's words are shown.
+// 118: nobody answered on the phone: nothing is locked, the phone's words are shown.
 test("a lock nobody confirms on the phone stays off", async ({ page, request }) => {
   await phone(request, "face-id", { answer: "0" });
   await openGeneral(page);

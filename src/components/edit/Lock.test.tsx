@@ -30,7 +30,7 @@ describe("Edit map's lock", () => {
     expect(screen.getByRole("switch", { name: "Lock this map" })).toBeTruthy();
   });
 
-  // 118 the phone asks Face ID while the request waits; the row says so and cannot be pressed twice
+  // 118 while the phone asks Face ID the row says so and cannot be pressed twice
   it("says the phone is asking while it waits, then shows what the phone settled on", async () => {
     let answer: (response: Response) => void = () => {};
     const waiting = new Promise<Response>((resolve) => { answer = resolve; });
@@ -54,7 +54,7 @@ describe("Edit map's lock", () => {
     await waitFor(() => expect(screen.queryByText("Confirm it is you")).toBeNull());
   });
 
-  // 118 nobody confirmed on the phone: the phone's words are shown and the lock stays as it was
+  // 118 nobody confirmed on the phone: its words are shown and the lock stays as it was
   it("shows the phone's words when nobody confirms, and the lock stays off", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(
       "Not confirmed on the phone: answer Face ID or the passcode there", { status: 403 })));
