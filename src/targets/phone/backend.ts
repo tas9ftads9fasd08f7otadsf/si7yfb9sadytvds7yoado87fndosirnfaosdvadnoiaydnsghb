@@ -17,6 +17,8 @@ const json = <T>(answer: Response) => answer.json() as Promise<T>;
 /** A call that may change something carries the token the password was traded for. */
 async function editing<T>(path: string, method = "POST", body?: BodyInit,
   read: (answer: Response) => Promise<T> = json<T>, more: Record<string, string> = {}): Promise<Answer<T>> {
+  // Without a token the phone can only refuse, and Chrome logs every refusal as an error.
+  if (!token()) return { ok: false, status: 401, said: "" };
   const answer = await fetch(path, { method, body, cache: "no-store",
     headers: { ...more, Authorization: `Bearer ${token()}` } });
   return answered(answer, read);

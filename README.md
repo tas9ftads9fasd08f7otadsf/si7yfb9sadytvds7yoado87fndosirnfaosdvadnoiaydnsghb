@@ -36,6 +36,10 @@ PHONE_URL=http://192.168.1.20:8765 npm run dev   # against a real phone
 | `npm run pack` | The bundle and zip in `dist/` |
 | `npm run check` | All of it, as CI runs it |
 
+`e2e/console.spec.mjs` and `e2e/site-console.spec.mjs` open every screen, looking and editing, signed in and
+out, and fail on any console error, thrown error or refused request, so neither a pull request nor a release
+passes CI with one. The one exception is Apple's 421 to a signed-out visitor's sign-in check (`users/caller`).
+
 `npm run real-region` downloads Bratislavský kraj from maptiles' `maps.json` into `e2e/real/`, and
 `npm run phone:real` then opens the Riki Maps map over it first, drawn as the app draws it.
 
@@ -85,6 +89,7 @@ owner, reader for a read-only participant, else the member row's `roleRaw` (not 
 `invite:<address>` is an invited person; `name` is null where neither CloudKit nor the row names them; people come in
 `MapSharePeople.ordered`'s order; `linkRole` is reader or editor for a `publicPermission` of `READ_ONLY` or
 `READ_WRITE`, else null. The `Share` and member rows of a map are those of its own zone.
+A map the person shares is moved by Core Data into a private zone of its own, `com.apple.coredata.cloudkit.share.<UUID>`, so the site reads that zone beside the mirror zone and the shared database's.
 Without Swift, run `.github/workflows/core-on-demand.yml` by hand (`gh workflow run core-on-demand.yml`, with
 `-f ref=<rikimaps commit, branch or tag>` for another than the pin): it builds and tests the core and keeps
 `dist/riki-core/` for 90 days as the artifact `riki-core-<commit>`. `npm run fetch:core` (or
@@ -157,15 +162,28 @@ Set it up once in Settings › Environments › `site`:
 | `FTPS_PASSWORD` | secret | its password |
 | `FTPS_DIR` | variable | the site's folder on the server, `/` when unset |
 | `FTPS_PORT` | variable | `21` when unset (explicit FTPS) |
+| `FTPS_CERT_NAME` | variable | a name the server's certificate holds, accepted in place of `FTPS_HOST`; `*.r5.websupport.sk` when unset |
 | `ICLOUD_API_TOKEN` | variable (a secret works too) | the container's CloudKit JS API token; every browser sends it, so it is no secret; required |
 | `ICLOUD_CONTAINER` | variable | `iCloud.com.rikimaps.rikimaps.maps` when unset |
 | `TILES_BASE` | variable | the maptiles host, `https://…`; optional, and without it Riki's own region maps do not draw |
+| `SITE_URL` | variable | the site's address, whose `site.json` the server check reads; optional |
 | `REGIONS_CATALOG` | variable | the region catalog (maptiles' `maps.json`), `https://…`; optional, and without it the site offers no region downloads |
 | `RIKIMAPS_READ_TOKEN` | repository secret | reads the private rikimaps repository for the core and the words; the release build, not the deploy |
 
 Until the three FTPS secrets are set, the deploy job says so and skips. The server's certificate must
-be valid for its host name. Add required reviewers to the `site` environment to approve each
+be signed by a trusted authority and issued for `FTPS_HOST` or `FTPS_CERT_NAME`: shared hosting shows one
+certificate for every site on the server, which never names the site's own host. Add required reviewers to the `site` environment to approve each
 deploy by hand.
+
+#### Checking the server
+
+`.github/workflows/check-server.yml` runs `scripts/check-server.sh` each morning, by hand (Actions › Check
+server › Run workflow), and as the deploy's step before it uploads anything. It checks, in order: that
+`FTPS_HOST` resolves, that `FTPS_PORT` answers, that the certificate is issued for `FTPS_HOST` or `FTPS_CERT_NAME`
+(naming the names it does hold when not), trusted and not expiring within 14 days (a warning), that `FTPS_USER` logs in
+and can write and remove a file in `FTPS_DIR`, and, with `SITE_URL` set, which release the site serves (a warning when it serves none). Each
+line reads `ok`, `warn`, `skip` or `FAIL`, and any `FAIL` fails the run, so GitHub mails it. Locally, with the
+same variables set: `bash scripts/check-server.sh`.
 
 What stays in CloudKit Console, for the container: Web Services on for it; the API token's **Sign-In Callback** set
 to `postMessage` and the site's origin (scheme, host and port) among its allowed origins; the schema deployed to

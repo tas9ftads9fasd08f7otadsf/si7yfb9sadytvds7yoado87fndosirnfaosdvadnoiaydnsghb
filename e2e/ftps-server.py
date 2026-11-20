@@ -8,6 +8,8 @@ from pyftpdlib.servers import FTPServer
 root, port, cert, key = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
 authorizer = DummyAuthorizer()
 authorizer.add_user("deploy", "s3cret", root, perm="elradfmwMT")
+# 126 An account that may look but not write.
+authorizer.add_user("reader", "s3cret", root, perm="elr")
 handler = TLS_FTPHandler
 handler.certfile, handler.keyfile = cert, key
 handler.authorizer = authorizer

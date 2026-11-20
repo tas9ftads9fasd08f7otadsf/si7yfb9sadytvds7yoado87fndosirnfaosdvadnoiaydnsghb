@@ -59,12 +59,12 @@ jobs:
         run: echo "sha=$(git -C rikimaps rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Cache the Swift toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/riki-swift
           key: riki-swift-6.2-RELEASE-ubuntu24.04-8e3d63a3
       - name: Cache the WebAssembly SDK
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.swiftpm/swift-sdks
           key: riki-swift-wasm-sdk-6.2-RELEASE-fe4e8648
@@ -81,7 +81,7 @@ jobs:
         run: |
           SWIFT="${SWIFT/#\~/$HOME}" rikimaps/tools/linux-core-tests.sh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: riki-core-${{ steps.commit.outputs.sha }}
           path: dist/riki-core

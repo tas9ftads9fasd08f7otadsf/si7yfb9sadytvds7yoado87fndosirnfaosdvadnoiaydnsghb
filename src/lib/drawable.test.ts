@@ -22,6 +22,25 @@ describe("drawable", () => {
     expect((made.layers[0] as { layout: object }).layout).toEqual({ "text-field": "x" });
   });
 
+  // 125 bug: Safari's MapLibre threw on one layer's two zoom curves, then on every redraw and tap
+  it("leaves out a layer whose value MapLibre cannot build, and names it", () => {
+    const twoCurves = ["coalesce", ["interpolate", ["linear"], ["zoom"], 1, 1, 5, 2],
+      ["step", ["zoom"], 1, 5, 2]];
+    const made = drawable(style({ sources: { s: { type: "geojson", data: { type: "FeatureCollection", features: [] } } },
+      layers: [{ id: "kept", type: "line", source: "s", paint: { "line-width": 2 } },
+        { id: "bad", type: "line", source: "s", paint: { "line-width": twoCurves } },
+        { id: "badFilter", type: "line", source: "s", filter: ["==", ["get"], 1] },
+        { id: "label", type: "symbol", source: "s", layout: { "text-field": "x" } }] }));
+    expect(made.layers.map((layer) => layer.id)).toEqual(["kept", "label"]);
+    expect((made.metadata as Record<string, unknown>)["riki:refused"]).toEqual(["bad", "badFilter"]);
+  });
+
+  // 125 a style MapLibre takes whole comes back as it was, with nothing named
+  it("names nothing on a style every layer of which MapLibre builds", () => {
+    const made = drawable(style({ layers: [{ id: "a", type: "background", paint: { "background-color": "#fff" } }] }));
+    expect(made.metadata).toBeUndefined();
+  });
+
   it("leaves a style without terrain without one", () => {
     expect(drawable(style({})).terrain).toBeUndefined();
   });
