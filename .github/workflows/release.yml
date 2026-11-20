@@ -44,17 +44,17 @@ jobs:
           cache: npm
       - run: npm ci
       # Not there while rikiCore.ref pins no commit: pack:web says so, and the deploy refuses such a zip.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           name: riki-core
           path: dist/riki-core
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           name: riki-words
           path: dist/words
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           name: riki-assets

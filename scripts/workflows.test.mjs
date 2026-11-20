@@ -26,6 +26,21 @@ describe("the commits the workflows check out", () => {
   });
 });
 
+// 124 bug: actions/cache@v4 and actions/upload-artifact@v4 ran on the deprecated Node.js 20
+describe("the actions the workflows use", () => {
+  const firstOnNode24 = { "actions/cache": 5, "actions/checkout": 5, "actions/download-artifact": 7,
+    "actions/setup-node": 5, "actions/upload-artifact": 6 };
+
+  it("are releases that run on Node.js 24", () => {
+    for (const file of readdirSync(path.join(process.cwd(), ".github/workflows"))) {
+      for (const [, action, major] of read(file).matchAll(/uses:\s+(actions\/[\w-]+)@v(\d+)/g)) {
+        expect(firstOnNode24[action], `${file}: ${action} is not listed`).toBeDefined();
+        expect(Number(major), `${file}: ${action}@v${major}`).toBeGreaterThanOrEqual(firstOnNode24[action]);
+      }
+    }
+  });
+});
+
 // 32 Release never started: CI asked to read pull requests, and Release did not grant it.
 describe("the release workflow", () => {
   it("grants the CI it calls every permission CI's jobs ask for", () => {
