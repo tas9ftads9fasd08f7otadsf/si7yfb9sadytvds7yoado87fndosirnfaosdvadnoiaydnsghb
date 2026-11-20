@@ -147,14 +147,14 @@ const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof 
   packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
   coverageEdits: Promise.resolve(), optionsAsked: 0,
   offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0,
-  search: undefined as ReturnType<typeof setTimeout> | undefined, saved: false, savedAsked: 0, inSaved: false };
+  search: undefined as ReturnType<typeof setTimeout> | undefined, saved: false, savedAsked: 0, inSaved: false, savedDrawn: false };
 
 export function resetViewer() {
   clearTimeout(busy.heartbeat);
   clearTimeout(busy.notice);
   clearTimeout(busy.offline);
   Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, servers: false, coverage: null,
-    addressKey: null, coverageEdits: Promise.resolve(), saved: false, savedAsked: 0, inSaved: false });
+    addressKey: null, coverageEdits: Promise.resolve(), saved: false, savedAsked: 0, inSaved: false, savedDrawn: false });
   set(firstState(), true);
 }
 
@@ -598,9 +598,11 @@ export async function loadSaved() {
 export function drawSaved() {
   const { saved, savedFilter, route, savedShape } = get();
   if (route.screen !== "saved" || !saved) {
-    mapControl()?.showSaved(null, null);
+    if (busy.savedDrawn) mapControl()?.showSaved(null, null);
+    busy.savedDrawn = false;
     return;
   }
+  busy.savedDrawn = true;
   const marks = shownSaved(saved.features, savedFilter).filter((row) => row.kind === "point")
     .map((row) => ({ id: row.id, lng: row.longitude, lat: row.latitude, ink: row.ink }));
   mapControl()?.showSaved(marks, savedShape);
