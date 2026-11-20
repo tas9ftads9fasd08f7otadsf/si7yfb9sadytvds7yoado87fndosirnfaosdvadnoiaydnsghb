@@ -56,6 +56,8 @@ beforeAll(async () => {
   const pages = path.join(work, "pages");
   mkdirSync(path.join(pages, "editor"), { recursive: true });
   writeFileSync(path.join(pages, "editor", "site.json"), JSON.stringify({ version: "0.1.5", commit: "abc123" }));
+  mkdirSync(path.join(pages, "other"));
+  writeFileSync(path.join(pages, "other", "site.json"), JSON.stringify({ name: "another app" }));
   await serve(["-u", "-m", "http.server", String(SITE), "--bind", "127.0.0.1", "--directory", pages], "Serving");
 }, 30000);
 
@@ -118,20 +120,29 @@ describe("checking the site's server", () => {
     expect(run.lines.some((line) => /^warn {2}certificate: expires within 14 days, on /.test(line))).toBe(true);
   });
 
-  // 120: a wrong password is a failed login, its secret never echoed
-  it("fails the login with a wrong password", () => {
+  // 126: a refused login says the server refused the account, not that a folder may be missing
+  it("fails the login with a wrong password, saying the server refused it", () => {
     const run = check({ FTPS_PASSWORD: "wrong-pass" });
     expect(run.status).toBe(1);
     const login = run.lines.find((line) => line.startsWith("FAIL  login: "));
-    expect(login).toContain("check FTPS_USER, FTPS_PASSWORD and that /editor exists");
+    expect(login).toMatch(/^FAIL {2}login: the server refused FTPS_USER and FTPS_PASSWORD \(.*530.*\); set both as/);
     expect(run.stdout).not.toContain("wrong-pass");
   });
 
-  // 120: a folder that is not there fails the login step too
-  it("fails when FTPS_DIR does not exist", () => {
+  // 126: a folder that is not there fails after a login that worked
+  it("fails when FTPS_DIR does not exist, after logging in", () => {
     const run = check({ FTPS_DIR: "/missing" });
     expect(run.status).toBe(1);
-    expect(run.lines.some((line) => line.startsWith("FAIL  login: "))).toBe(true);
+    expect(run.lines).toContain("ok    login: FTPS_USER logs in");
+    expect(run.lines.some((line) => /^FAIL {2}folder: \/missing cannot be opened \(.*550/.test(line))).toBe(true);
+  });
+
+  // 126: an account that may not write fails at the write, after the login and the folder
+  it("fails when FTPS_USER may not write in FTPS_DIR", () => {
+    const run = check({ FTPS_USER: "reader" });
+    expect(run.status).toBe(1);
+    expect(run.lines).toContain("ok    login: FTPS_USER logs in, and opens /editor");
+    expect(run.lines.some((line) => /^FAIL {2}write: .*; FTPS_USER may not write in \/editor$/.test(line))).toBe(true);
   });
 
   // 120: a closed port and an unknown name stop the check where they are found
@@ -148,11 +159,27 @@ describe("checking the site's server", () => {
     expect(run.lines).toEqual(["FAIL  name: FTPS_HOST does not resolve; check the secret for a typo"]);
   });
 
-  // 120: the site's address must answer with its site.json
-  it("fails a site address that does not serve site.json", () => {
+  // 126: the site's address must answer with its site.json, its status said
+  it("fails a site address that does not serve site.json, with its status", () => {
     const run = check({ SITE_URL: `${siteURL}/elsewhere` });
     expect(run.status).toBe(1);
-    expect(run.lines.at(-1)).toMatch(/^FAIL {2}site: .*\/elsewhere\/site\.json: .*404/);
+    expect(run.lines.at(-1)).toBe(`FAIL  site: ${siteURL}/elsewhere/site.json answers 404; `
+      + "no release is deployed there, or SITE_URL is not the site");
+  });
+
+  // 126 bug: SITE_URL set to maps.example without its scheme failed as "not the site's"
+  it("names a site address without its scheme", () => {
+    const run = check({ SITE_URL: "maps.example" });
+    expect(run.status).toBe(1);
+    expect(run.lines.at(-1)).toBe("FAIL  site: SITE_URL (maps.example) has no scheme; set it to https://maps.example");
+  });
+
+  // 126: a page that is not the site's site.json says what it is instead
+  it("says what answers in place of the site's site.json", () => {
+    const run = check({ SITE_URL: `${siteURL}/other` });
+    expect(run.status).toBe(1);
+    expect(run.lines.at(-1)).toBe(`FAIL  site: ${siteURL}/other/site.json answers 200 application/json, `
+      + "not the site's site.json; is SITE_URL the site's address?");
   });
 
   // 120: GitHub's annotations carry the failures, so a run's summary names them
