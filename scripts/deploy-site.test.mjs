@@ -18,6 +18,7 @@ function release(name, version, commit, assets, extra = {}, { core = true } = {}
   writeFileSync(path.join(folder, "index.php"), "<?php // page");
   writeFileSync(path.join(folder, "Site.php"), "<?php // site");
   writeFileSync(path.join(folder, "config.example.php"), "<?php return [];");
+  writeFileSync(path.join(folder, ".htaccess"), "RewriteEngine On\n");
   writeFileSync(path.join(folder, "site.json"), JSON.stringify({ version, commit }));
   for (const [file, text] of Object.entries(extra)) writeFileSync(path.join(folder, file), text);
   const zip = path.join(work, `${name}.zip`);
@@ -29,7 +30,8 @@ function release(name, version, commit, assets, extra = {}, { core = true } = {}
 
 function deploy(zip, env = {}) {
   return spawnSync("bash", [SCRIPT, zip], { encoding: "utf8", env: { ...process.env, FTPS_HOST: "127.0.0.1",
-    FTPS_PORT: String(PORT), FTPS_USER: "deploy", FTPS_PASSWORD: "s3cret", FTPS_DIR: "/editor", FTPS_CA_FILE: ca, ...env } });
+    FTPS_PORT: String(PORT), FTPS_USER: "deploy", FTPS_PASSWORD: "s3cret", FTPS_DIR: "/editor", FTPS_CA_FILE: ca,
+    ICLOUD_API_TOKEN: "tok-123", ICLOUD_CONTAINER: "", TILES_BASE: "", ...env } });
 }
 
 const onServer = (file) => readFileSync(path.join(root, "editor", file), "utf8");
@@ -44,7 +46,9 @@ beforeAll(async () => {
   const key = path.join(work, "key.pem");
   execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj", "/CN=127.0.0.1",
     "-addext", "subjectAltName=IP:127.0.0.1", "-keyout", key, "-out", ca], { stdio: "ignore" });
-  server = spawn("python3", [path.join(process.cwd(), "e2e", "ftps-server.py"), root, String(PORT), ca, key]);
+  // 98 an unread stderr fills up and stops the server mid-deploy, which then hangs for minutes
+  server = spawn("python3", [path.join(process.cwd(), "e2e", "ftps-server.py"), root, String(PORT), ca, key],
+    { stdio: ["ignore", "pipe", "ignore"] });
   await new Promise((resolve, reject) => {
     server.stdout.on("data", (data) => { if (String(data).includes("ready")) resolve(); });
     server.on("exit", (code) => reject(new Error(`the FTPS server stopped: ${code}`)));
@@ -56,9 +60,13 @@ afterAll(() => {
   rmSync(work, { recursive: true, force: true });
 });
 
-// 49 the deploy: what a release's zip holds lands on the server over FTPS, and config.php stays
+/** The config.php on the server, as PHP reads it. */
+const configOnServer = () => JSON.parse(execFileSync("php", ["-r", "echo json_encode(require $argv[1]);",
+  path.join(root, "editor", "config.php")], { encoding: "utf8" }));
+
+// 49 the deploy: what a release's zip holds lands on the server over FTPS
 describe("deploying the site over FTPS", () => {
-  it("puts the release on the server and keeps the server's config.php", () => {
+  it("puts the release on the server", () => {
     const run = deploy(release("one", "0.1.1", "aaa111", ["a.js", "b.css"]));
     expect(run.stderr).toBe("");
     expect(run.stdout).toContain("deployed 0.1.1 (aaa111) to 127.0.0.1/editor");
@@ -66,7 +74,6 @@ describe("deploying the site over FTPS", () => {
     expect(onServer("out/index.html")).toBe("<html>0.1.1</html>");
     expect(onServer("index.php")).toBe("<?php // page");
     expect(assetsOnServer()).toEqual(["a.js", "b.css"]);
-    expect(onServer("config.php")).toBe("<?php return ['apiToken' => 'kept'];");
   }, 60000);
 
   it("replaces the page and clears assets the new release no longer names", () => {
@@ -75,7 +82,6 @@ describe("deploying the site over FTPS", () => {
     expect(JSON.parse(onServer("site.json")).commit).toBe("bbb222");
     expect(onServer("out/index.html")).toBe("<html>0.1.2</html>");
     expect(assetsOnServer()).toEqual(["b.css", "c.js"]);
-    expect(onServer("config.php")).toBe("<?php return ['apiToken' => 'kept'];");
   }, 60000);
 
   it("refuses a server whose certificate it cannot trust, and changes nothing", () => {
@@ -104,7 +110,8 @@ describe("deploying the site over FTPS", () => {
     const run = deploy(release("six", "0.1.6", "fff666", ["g.js"], { "config.php": "<?php return [];" }));
     expect(run.status).not.toBe(0);
     expect(run.stderr).toContain("config.php");
-    expect(onServer("config.php")).toBe("<?php return ['apiToken' => 'kept'];");
+    expect(onServer("config.php")).toContain("tok-123");
+    expect(JSON.parse(onServer("site.json")).commit).toBe("bbb222");
   }, 60000);
 
   // 88 a site without the core cannot read maps, so a real deploy is refused before anything is sent
@@ -125,5 +132,80 @@ describe("deploying the site over FTPS", () => {
     expect(run.status).not.toBe(0);
     expect(run.stderr).toContain("FTPS_HOST");
     expect(existsSync(path.join(root, "editor", "out", "_next", "static", "h.js"))).toBe(false);
+  }, 60000);
+});
+
+// 98 the deploy writes config.php from the repository's settings, so no step is left to do on the server
+describe("the config.php the deploy writes", () => {
+  const settingsTree = () => {
+    expect(existsSync(path.join(root, "editor", "config.php.new"))).toBe(false);
+  };
+
+  it("carries the token, the default container, production and the tiles base", () => {
+    const run = deploy(release("c1", "0.2.1", "c11111", ["k.js"]), { TILES_BASE: "https://tiles.example.com" });
+    expect(run.stderr).toBe("");
+    expect(configOnServer()).toEqual({ container: "iCloud.com.rikimaps.rikimaps.maps", apiToken: "tok-123",
+      environment: "production", tilesBase: "https://tiles.example.com" });
+    expect(run.stdout + run.stderr).not.toContain("tok-123");
+    settingsTree();
+  }, 60000);
+
+  it("replaces the one the server held, on every deploy", () => {
+    const run = deploy(release("c2", "0.2.2", "c22222", ["k.js"]), { ICLOUD_API_TOKEN: "other-token", ICLOUD_CONTAINER: "iCloud.com.test.maps" });
+    expect(run.status).toBe(0);
+    expect(configOnServer()).toMatchObject({ apiToken: "other-token", container: "iCloud.com.test.maps", tilesBase: "" });
+  }, 60000);
+
+  it("takes a trailing slash off the tiles base", () => {
+    expect(deploy(release("c3", "0.2.3", "c33333", ["k.js"]), { TILES_BASE: "https://tiles.example.com/maps/" }).status).toBe(0);
+    expect(configOnServer().tilesBase).toBe("https://tiles.example.com/maps");
+  }, 60000);
+
+  it("keeps a token with quotes, dollars, backslashes and a newline a plain string", () => {
+    const token = "a'b\"c$d${e}\\f\\'g?>\n<?php die(); //";
+    expect(deploy(release("c4", "0.2.4", "c44444", ["k.js"]), { ICLOUD_API_TOKEN: `  ${token}  ` }).status).toBe(0);
+    const file = path.join(root, "editor", "config.php");
+    expect(execFileSync("php", ["-l", file], { encoding: "utf8" })).toContain("No syntax errors");
+    expect(configOnServer().apiToken).toBe(token);
+    expect(execFileSync("php", ["-r", "var_dump(require $argv[1]);", file], { encoding: "utf8" })).toContain("array(4)");
+    const served = execFileSync("php", ["-r", `require $argv[1]; echo Site::inFolder($argv[2])->answer("GET", "/config.json", "/index.php")->body;`,
+      path.join(process.cwd(), "server", "Site.php"), path.join(root, "editor")], { encoding: "utf8" });
+    expect(JSON.parse(served)).toMatchObject({ apiToken: token, environment: "production" });
+  }, 60000);
+
+  it("refuses an empty token, naming the variable, before anything is sent", () => {
+    for (const ICLOUD_API_TOKEN of ["", "  \n"]) {
+      const run = deploy(release("c5", "0.2.5", "c55555", ["never.js"]), { ICLOUD_API_TOKEN });
+      expect(run.status).not.toBe(0);
+      expect(run.stderr).toContain("ICLOUD_API_TOKEN");
+    }
+    expect(existsSync(path.join(root, "editor", "out", "_next", "static", "never.js"))).toBe(false);
+    expect(configOnServer().apiToken).not.toBe("");
+  }, 60000);
+
+  it("refuses a tiles base that is not an https address, and a container that is not one", () => {
+    for (const TILES_BASE of ["http://tiles.example.com", "tiles.example.com", "https://", "https://t.example.com/?a=1", "https://a b.example"]) {
+      const run = deploy(release("c6", "0.2.6", "c66666", ["never.js"]), { TILES_BASE });
+      expect(run.status, TILES_BASE).not.toBe(0);
+      expect(run.stderr).toContain("TILES_BASE");
+    }
+    const run = deploy(release("c7", "0.2.7", "c77777", ["never.js"]), { ICLOUD_CONTAINER: "x'];//" });
+    expect(run.status).not.toBe(0);
+    expect(run.stderr).toContain("ICLOUD_CONTAINER");
+    expect(existsSync(path.join(root, "editor", "out", "_next", "static", "never.js"))).toBe(false);
+  }, 120000);
+
+  it("sends the .htaccess too", () => {
+    expect(deploy(release("c8", "0.2.8", "c88888", ["k.js"], { ".htaccess": "RewriteEngine On\n# 98\n" })).status).toBe(0);
+    expect(onServer(".htaccess")).toContain("# 98");
+  }, 60000);
+
+  it("refuses a zip without the .htaccess", () => {
+    const zip = release("c9", "0.2.9", "c99999", ["never.js"]);
+    execFileSync("zip", ["-qd", zip, ".htaccess"]);
+    writeFileSync(`${zip}.sha256`, `${execFileSync("sha256sum", [zip], { encoding: "utf8" }).split(" ")[0]}  c9.zip\n`);
+    const run = deploy(zip);
+    expect(run.status).not.toBe(0);
+    expect(run.stderr).toContain(".htaccess");
   }, 60000);
 });

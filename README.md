@@ -45,10 +45,12 @@ against a real phone.
 ## The site
 
 `npm run build:web && npm run pack:web` writes `dist/web-site.zip`: the site's build under `out/`,
-`index.php` and `Site.php`, `config.example.php` and `site.json`. Unpack it anywhere a web server
-runs PHP 8.1 or later, at a domain's root or under a path, and send every request to `index.php`
-(nginx: `try_files $uri /index.php`; or `php -S host:port index.php`). Copy `config.example.php` to
-`config.php` with the CloudKit container, API token and environment. The server only serves files:
+`index.php` and `Site.php`, `.htaccess`, `config.example.php` and `site.json`. Unpack it anywhere a web
+server runs PHP 8.1 or later, at a domain's root or under a path, and send every request to `index.php`. Apache does
+so by the zip's `.htaccess` (`mod_rewrite`, and `AllowOverride All` for the folder; no `RewriteBase`, so it works at a
+root and under a path). nginx has no `.htaccess` and needs `try_files $uri /index.php;`; `php -S host:port index.php`
+needs nothing. `config.php` is the one file tied to the address and is not in the zip: the deploy writes it
+(below); by hand, copy `config.example.php` to `config.php`. The server only serves files:
 `composer install --working-dir=server` and `npm run test:php` run its PHPUnit tests, and
 `npm run test:e2e:web` runs the browser specs against the zip at `/` and under `/editor/`, with
 `e2e/mock-cloud.mjs` standing in for CloudKit and `e2e/fake-core.mjs` for `riki-core.wasm`. The site's zip carries the
@@ -79,8 +81,7 @@ Without Swift, run `.github/workflows/core-on-demand.yml` by hand (`gh workflow 
 a build is. It is not a release, since rikimaps takes the newest release as the editor's bundle.
 
 The API token (CloudKit Console, the container's API Access) needs two settings: **Sign-In Callback** set to
-`postMessage`, and the site's origin (scheme, host and port) in its allowed origins, once per address and
-environment. CloudKit JS keeps the sign-in in a cookie scoped to the page's path, so a site under `/editor/` and
+`postMessage`, and the site's origin (scheme, host and port) in its allowed origins, once per address. CloudKit JS keeps the sign-in in a cookie scoped to the page's path, so a site under `/editor/` and
 its nested routes are worth checking in a real browser once, signing in on a nested screen and reloading it.
 
 ### Deploying it
@@ -88,7 +89,17 @@ its nested routes are worth checking in a real browser once, signing in on a nes
 Every merge to `master` runs CI, publishes a release and then deploys that release's
 `web-site.zip` to the PHP server over FTPS (`.github/workflows/deploy-site.yml`,
 `scripts/deploy-site.sh`). Actions › Deploy site › Run workflow deploys any release again by tag.
-The server's `config.php` is never uploaded, replaced or deleted.
+No step is left to do on the server: every deploy writes `config.php` itself, from the settings below, and
+replaces the one there. The deploy generates it with `php` (`var_export`, so no setting can end up as code; the
+workflow installs `php-cli`) and refuses to deploy when `ICLOUD_API_TOKEN` is empty, naming it. The CloudKit
+environment is always `production`; there is no setting for it. `TILES_BASE`, when set, must be an `https://`
+URL (a trailing slash is dropped); the zip must not carry a `config.php` of its own.
+
+Upload order: new assets and the page's `out/` first, then `Site.php`, `config.example.php` and `.htaccess`, then
+`config.php` (sent as `config.php.new` and renamed, so no request reads half of it), then `index.php` and
+`site.json`, then the assets no page names any more. A request reaches the new entry point last, so it never meets
+new code without its config, and a failed config upload stops the deploy with the old `index.php` still serving.
+Afterwards the deploy reads `site.json` and `config.php` back and compares them.
 
 Set it up once in Settings › Environments › `site`:
 
@@ -99,10 +110,18 @@ Set it up once in Settings › Environments › `site`:
 | `FTPS_PASSWORD` | secret | its password |
 | `FTPS_DIR` | variable | the site's folder on the server, `/` when unset |
 | `FTPS_PORT` | variable | `21` when unset (explicit FTPS) |
+| `ICLOUD_API_TOKEN` | variable (a secret works too) | the container's CloudKit JS API token; every browser sends it, so it is no secret; required |
+| `ICLOUD_CONTAINER` | variable | `iCloud.com.rikimaps.rikimaps.maps` when unset |
+| `TILES_BASE` | variable | the maptiles host, `https://…`; optional, and without it Riki's own region maps do not draw |
+| `RIKIMAPS_READ_TOKEN` | repository secret | reads the private rikimaps repository for the core and the words; the release build, not the deploy |
 
-Until the three secrets are set, the deploy job says so and skips. The server's certificate must
+Until the three FTPS secrets are set, the deploy job says so and skips. The server's certificate must
 be valid for its host name. Add required reviewers to the `site` environment to approve each
 deploy by hand.
+
+What stays in CloudKit Console, for the container: Web Services on for it; the API token's **Sign-In Callback** set
+to `postMessage` and the site's origin (scheme, host and port) among its allowed origins; the schema deployed to
+Production, since the site always uses it.
 
 ## Layout
 

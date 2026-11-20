@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { asked, infoPlist, phoneLeaks, ships, styleFacts } from "./pack.mjs";
 
@@ -57,6 +59,19 @@ describe("what the site's zip carries", () => {
       { name: "WebEditor.bundle/Info.plist", text: null }]))
       .toEqual(["out/_next/static/a.js", "out/index.html", "WebEditor.bundle/Info.plist"]);
     expect(SERVER_FILES).not.toContain("config.php");
+  });
+
+  // 98 on Apache nothing else sends a request to index.php
+  it("ships the .htaccess that sends every request to index.php", async () => {
+    const { SERVER_FILES } = await import("./pack-web.mjs");
+    expect(SERVER_FILES).toContain(".htaccess");
+    const text = readFileSync(path.join(process.cwd(), "server", ".htaccess"), "utf8");
+    expect(text).toMatch(/^RewriteEngine On$/m);
+    expect(text).toMatch(/^RewriteRule \^index\\\.php\$ - \[L\]$/m);
+    expect(text).toMatch(/^RewriteRule \^ index\.php \[L\]$/m);
+    expect(text).toMatch(/^Options -Indexes$/m);
+    expect(text).not.toMatch(/RewriteBase/);
+    for (const file of SERVER_FILES) expect(existsSync(path.join(process.cwd(), "server", file)), file).toBe(true);
   });
 });
 

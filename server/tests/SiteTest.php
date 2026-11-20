@@ -112,6 +112,18 @@ final class SiteTest extends TestCase
         $this->assertSame(404, $this->ask('/config.json')->status);
     }
 
+    // 98 the config.php the deploy writes (var_export of the settings) is what config.json answers, token intact
+    public function testTheConfigTheDeployWritesIsServedAsItIs(): void
+    {
+        $token = "a'b\"c\$d\${e}\\f\\'g?>\n<?php die(); //";
+        $config = ['container' => 'iCloud.test', 'apiToken' => $token, 'environment' => 'production',
+            'tilesBase' => 'https://tiles.example.com'];
+        file_put_contents($this->folder . '/config.php', "<?php\n\nreturn " . var_export($config, true) . ";\n");
+        $answer = $this->ask('/config.json');
+        $this->assertSame(200, $answer->status);
+        $this->assertSame($config, json_decode($answer->body, true));
+    }
+
     public function testNothingOutsideTheBuildIsReached(): void
     {
         foreach (['/../secret.txt', '/%2e%2e/secret.txt', '/_next/../../secret.txt', '/site.json', '/config.php',
