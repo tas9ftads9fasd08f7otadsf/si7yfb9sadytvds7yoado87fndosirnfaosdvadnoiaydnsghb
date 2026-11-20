@@ -23,3 +23,9 @@ export async function editTab(page, name) {
   await page.locator("#editTabs").getByRole("tab", { name, exact: true }).click();
   await page.locator(`#editTabs [aria-selected=true]`, { hasText: name }).waitFor();
 }
+
+// 95 a part of the Details layout is picked by its card; its settings then take the middle pane.
+export async function pickPart(page, name) {
+  await page.locator("#details .layout-pane .part-card", { hasText: name }).first().click();
+  await page.locator("#details .settings-pane .pane-title", { hasText: name }).waitFor();
+}

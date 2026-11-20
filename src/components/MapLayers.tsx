@@ -98,7 +98,8 @@ export function LayerSwitcher() {
     document.addEventListener("pointerdown", away);
     return () => document.removeEventListener("pointerdown", away);
   }, [isOpen]);
-  if (!shown || editing || (!canEdit && styleCount < 2)) return null;
+  const covered = useViewer((state) => state.route.screen === "details");
+  if (!shown || editing || covered || (!canEdit && styleCount < 2)) return null;
   return (
     <div id="switcher" ref={box}>
       <button type="button" id="switcherButton" className="glass" aria-haspopup="dialog" aria-expanded={isOpen}

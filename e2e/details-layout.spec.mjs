@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset } from "./phone.mjs";
+import { openViewer, phone, pickPart, reset } from "./phone.mjs";
 
 const layer = "6F1E2A10-0000-4000-8000-0000000000A5";
 
@@ -16,16 +16,20 @@ async function openLayout(page) {
   await page.locator("#editButton").click();
   const row = page.locator("#editBody .layer-item", { has: page.locator("input[value='Trams']") });
   await row.getByRole("button", { name: "Options" }).click();
-  return page.locator(`[data-options='${layer}']`);
+  // 95 the layout opens as W16's page of its own
+  await page.locator(`[data-options='${layer}'] [data-layer-details]`).click();
+  await page.locator("#details .layout-pane").waitFor();
+  return page.locator("#details");
 }
 
 // 29: a block moves by its place and handle, and the panel reads the phone's layout back.
 test("a block of the Details layout is moved and removed", async ({ page }) => {
   const panel = await openLayout(page);
-  const blocks = panel.locator(".layout-block");
+  const blocks = panel.locator(".layout-pane .layout-item");
   await expect(blocks).toHaveCount(2);
 
   let asked = sent(page);
+  await pickPart(page, "Info rows");
   await panel.getByRole("button", { name: "Move down Info rows" }).click();
   expect(await asked).toMatchObject({ layer, details: "move", section: "0", block: "0", was: "r1", toPlace: "1" });
   await expect(blocks.first()).toHaveAttribute("data-handle", "t1");
@@ -39,20 +43,22 @@ test("a block of the Details layout is moved and removed", async ({ page }) => {
 // 29: a text block is added at the foot of its section, reading one of the layer's keys.
 test("a text block is added to the Details layout", async ({ page }) => {
   const panel = await openLayout(page);
+  await panel.locator(".add-content-toggle").first().click();
   await panel.getByRole("combobox", { name: "Add content" }).selectOption("text");
   await panel.locator(".add-content").getByRole("combobox", { name: "Value" }).fill("{line}");
 
   const asked = sent(page);
   await panel.locator(".add-content").getByRole("button", { name: "Add content" }).click();
   expect(await asked).toMatchObject({ details: "add", kind: "text", value: "{line}", section: "0", place: "2" });
-  await expect(panel.locator(".layout-block")).toHaveCount(3);
+  await expect(panel.locator(".layout-pane .layout-item")).toHaveCount(3);
   await expect(panel).toContainText("3 of 10 content blocks used");
 });
 
 // 50: a text block's heading, words and style, each sent with the block's place and handle.
 test("a text block's heading, value and style are edited", async ({ page }) => {
   const panel = await openLayout(page);
-  const text = panel.locator(".layout-block[data-handle='t1']");
+  await pickPart(page, "Text");
+  const text = panel.locator(".settings-pane .layout-block[data-handle='t1']");
 
   let asked = sent(page);
   await text.getByRole("textbox", { name: "Title" }).fill("Line");
@@ -68,7 +74,7 @@ test("a text block's heading, value and style are edited", async ({ page }) => {
   asked = sent(page);
   await text.getByRole("combobox", { name: "Text" }).selectOption("warning");
   expect(await asked).toMatchObject({ details: "edit", was: "t1", style: "warning" });
-  await expect(panel.locator(".layout-block[data-handle='t1']").getByRole("combobox", { name: "Text" }))
+  await expect(panel.locator(".settings-pane .layout-block[data-handle='t1']").getByRole("combobox", { name: "Text" }))
     .toHaveValue("warning");
 });
 
@@ -92,4 +98,25 @@ test("a section is added, titled and removed", async ({ page }) => {
   await panel.locator(".layout-section[data-section='1']").getByRole("button", { name: "Remove section" }).click();
   expect(await asked).toMatchObject({ details: "removeSection", section: "1" });
   await expect(panel.locator(".layout-section")).toHaveCount(1);
+});
+
+// 95 the Details editor is W16's three panes at the layer's own address, and Done goes back to Edit map.
+test("the Details editor opens at its address beside its settings and preview", async ({ page }) => {
+  const panel = await openLayout(page);
+  await expect(page).toHaveURL(new RegExp(`/layers/${layer}/details#`));
+  await expect(panel.locator(".layout-pane [data-card=header]")).toHaveAttribute("aria-pressed", "true");
+  const layout = await panel.locator(".layout-pane").boundingBox();
+  const settings = await panel.locator(".settings-pane").boundingBox();
+  const preview = await panel.locator(".preview-pane").boundingBox();
+  expect(settings.x).toBeGreaterThanOrEqual(layout.x + layout.width - 1);
+  expect(preview.x).toBeGreaterThanOrEqual(settings.x + settings.width - 1);
+
+  await pickPart(page, "Text");
+  await expect(panel.locator(".settings-pane .layout-block[data-handle='t1']")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("#details .layout-pane .layout-item")).toHaveCount(2);
+
+  await page.locator("#detailsDone").click();
+  await expect(page.locator("#details")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/edit\/layers#/);
 });

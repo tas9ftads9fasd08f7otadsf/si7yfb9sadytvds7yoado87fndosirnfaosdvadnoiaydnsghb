@@ -571,3 +571,73 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #editBody .layer-settings .card.options { margin: 0; box-shadow: none; background: var(--inset); }
 #editBody .list > .row + .row, #editBody .card > .row + .row, #serverBody .list > .row + .row {
   box-shadow: inset 0 1px 0 var(--sep); }
+
+/* 95 The Details editor, W16: the layout, the picked part's settings, the sheet as it shows. */
+#details { position: absolute; top: var(--top); left: var(--rail); right: 0; bottom: 0; z-index: 5; display: grid;
+  grid-template-columns: 480px 360px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+  background: var(--ground); }
+#details > .empty { grid-column: 1 / -1; }
+#details .pane-head { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 14px; padding: 22px 24px 0;
+  box-shadow: 1px 0 0 var(--sep); }
+#details .pane-head h1 { flex: 1; min-width: 0; margin: 0; display: flex; flex-direction: column; gap: 1px; }
+#details .pane-head h1 span { font-size: 26px; font-weight: 700; letter-spacing: -0.3px; }
+#details .pane-head h1 small { font-size: 13px; font-weight: 400; color: var(--sub); }
+#details .details-layout { display: contents; }
+.details-pane { min-height: 0; overflow-y: auto; }
+#details .layout-pane { grid-column: 1; grid-row: 2; padding: 16px 24px 20px; display: flex; flex-direction: column;
+  gap: 10px; box-shadow: 1px 0 0 var(--sep); }
+#details .settings-pane { grid-column: 2; grid-row: 1 / 3; padding: 22px 24px; display: flex; flex-direction: column;
+  gap: 14px; box-shadow: 1px 0 0 var(--sep); }
+#details .preview-pane { grid-column: 3; grid-row: 1 / 3; background: var(--inset); display: flex; flex-direction: column;
+  align-items: center; padding: 22px 20px 0; }
+.part-card { width: 100%; border: 0; text-align: left; color: var(--text); padding: 14px; border-radius: 22px;
+  background: var(--card); box-shadow: var(--lift); display: flex; align-items: center; gap: 12px; }
+.part-card[aria-pressed=true] { box-shadow: inset 0 0 0 2px var(--c-water), var(--lift); }
+.part-card .mark, .part-card .tile { width: 44px; height: 44px; border-radius: 12px; flex: none; display: flex;
+  align-items: center; justify-content: center; background: var(--cs-water); color: var(--c-water); }
+.part-card .tile .sym, .part-card .mark .sym { font-size: 20px; }
+.part-card .words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.part-card .words small { font-size: 12px; font-weight: 600; color: var(--sub); }
+.part-card .words b { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.part-card > .sym:last-child { color: var(--sub); font-size: 14px; }
+.part-card.small { padding: 10px 12px; border-radius: 16px; }
+.part-card.small .tile { width: 36px; height: 36px; border-radius: 10px; }
+.part-card.small .words b { font-size: 15px; font-weight: 600; }
+.part-card.small .words small { font-weight: 400; }
+#details .layout-section { display: flex; flex-direction: column; gap: 8px; border: 0; padding: 8px 0 0; }
+#details .section-head { display: flex; align-items: center; gap: 10px; padding: 0 2px; }
+#details .section-head input { flex: 1; min-width: 0; height: 36px; border: 0; border-radius: 12px; background: var(--inset);
+  padding: 0 12px; font-size: 15px; font-weight: 700; }
+#details .link { border: 0; background: none; font-size: 13px; font-weight: 600; color: var(--link); padding: 0 4px; }
+#details .link.danger { color: var(--danger); }
+#details .layout-pane .layout-item { display: flex; align-items: center; gap: 8px; padding-left: 2px; border: 0; }
+#details .layout-item .remove { width: 24px; height: 24px; border-radius: 12px; border: 0; background: var(--danger);
+  color: #fff; display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+#details .layout-item .remove .sym { font-size: 12px; }
+#details .add-content-toggle { margin-left: 34px; height: 42px; border-radius: 14px; border: 2px dashed var(--c-water);
+  background: none; color: var(--c-water); display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 14px; font-weight: 600; }
+#details .add-content { margin-left: 34px; padding: 10px 12px; border-radius: 16px; background: var(--card);
+  box-shadow: var(--lift); }
+#details .add-section { height: 48px; margin-top: 6px; border-radius: 24px; border: 0; background: var(--cs-water);
+  color: var(--c-water); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px;
+  font-weight: 700; }
+#details .used { padding: 4px 4px 0; font-size: 12px; color: var(--sub); }
+#details .pane-title { display: flex; flex-direction: column; gap: 2px; }
+#details .pane-title small { font-size: 13px; font-weight: 600; color: var(--sub); }
+#details .pane-title b { font-size: 22px; letter-spacing: -0.3px; }
+#details .settings-pane .buttons { display: flex; gap: 6px; }
+#details .settings-pane .pill:disabled { background: var(--inset); color: var(--tertiary); }
+#details .settings-pane .block-fields, #details .settings-pane .layout-header, #details .settings-pane .layout-actions {
+  display: flex; flex-direction: column; gap: 10px; padding: 0; border: 0; }
+#details .settings-pane input:not([type=checkbox]), #details .settings-pane textarea, #details .settings-pane select {
+  min-height: 44px; border-radius: 14px; border: 0; background: var(--card); box-shadow: var(--lift); padding: 0 14px;
+  font-size: 15px; color: var(--text); }
+#details .settings-pane textarea { padding: 10px 14px; }
+#details .settings-pane .check { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px;
+  border-radius: 14px; background: var(--card); box-shadow: var(--lift); font-size: 15px; }
+#details .settings-pane .layout-block .row { padding: 0; min-height: 0; }
+#details .preview-pane .sheet { width: 390px; flex: 1; min-height: 0; overflow: auto; border-radius: 36px 36px 0 0;
+  background: var(--card); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22); padding: 26px 20px 20px; }
+#details .preview-pane .details-preview .feature { border: 0; background: none; padding: 0; }
+#details .preview-pane .details-preview > .row { padding: 0 0 12px; }
