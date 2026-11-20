@@ -752,3 +752,40 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 .pair-code { display: grid; gap: 2px; }
 .pair-code small { font-size: 12px; color: var(--secondary); }
 .pair-code b { font: 600 22px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.2em; }
+
+/* 101 The Data page, W4: what the phone shares, its counts and one table a tab. */
+#data { position: absolute; top: var(--top); left: var(--rail); right: 0; bottom: 0; z-index: 5; overflow-y: auto;
+  background: var(--ground); padding: 28px 36px 28px; display: flex; flex-direction: column; gap: 18px; }
+#data .data-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+#data h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
+#data .data-head p { margin: 4px 0 0; font-size: 15px; color: var(--sub); }
+#data .data-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 20px; background: var(--card); box-shadow: var(--lift); }
+#data .data-tabs button { height: 36px; padding: 0 16px; border-radius: 16px; border: 0; background: none;
+  color: var(--text); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+#data .data-tabs button span { font-weight: 500; opacity: 0.7; }
+#data .data-tabs button[aria-selected=true] { background: var(--cs-water); color: var(--c-water); }
+#data .data-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+#data .data-stats > div { border-radius: 20px; background: var(--card); box-shadow: var(--lift); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 4px; }
+#data .data-stats small { font-size: 13px; color: var(--sub); }
+#data .data-stats b { font-size: 24px; font-variant-numeric: tabular-nums; }
+#data .data-table { border-radius: 22px; background: var(--card); box-shadow: var(--lift); overflow: hidden; }
+#data .data-row { display: grid; grid-template-columns: 2.2fr 1fr 1fr 180px; gap: 12px; align-items: center; min-height: 58px;
+  padding: 0 20px; box-shadow: 0 1px 0 var(--sep); font-size: 14px; font-variant-numeric: tabular-nums; }
+#data .data-row > span:nth-child(2), #data .data-row > span:nth-child(3) { color: var(--sub); }
+#data .data-row.head { min-height: 0; padding: 12px 20px; font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.4px; color: var(--sub); }
+#data .name-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
+#data .name-cell .mark { width: 34px; height: 34px; border-radius: 10px; }
+#data .name-cell .words { display: flex; flex-direction: column; min-width: 0; font-size: 15px; font-weight: 600; }
+#data .name-cell .words small { font-size: 12px; font-weight: 400; color: var(--sub); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+#data .link-name { border: 0; background: none; padding: 0; text-align: left; font: inherit; color: inherit; }
+#data .link-name:hover { color: var(--link); }
+#data .end-cell { display: flex; justify-content: flex-end; gap: 6px; min-width: 0; }
+.pill-tag { height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-flex;
+  align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pill-tag.on { background: var(--cs-green); color: var(--c-green); }
+.pill-tag.busy { background: var(--cs-water); color: var(--c-water); }
+.pill-tag.plain { background: var(--inset); color: var(--sub); }
+#data .data-table > .empty { padding: 18px 20px; }

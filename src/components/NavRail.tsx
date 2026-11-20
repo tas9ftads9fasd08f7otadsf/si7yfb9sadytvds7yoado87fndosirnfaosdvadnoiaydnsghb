@@ -5,9 +5,9 @@ import { THEMES, go, nextTheme, offers, showSide, toggleSide, useViewer } from "
 import { Link } from "./ui/Link";
 import { Sym } from "./ui/Sym";
 
-type Item = "map" | "maps" | "servers" | "settings";
+type Item = "map" | "maps" | "data" | "servers" | "settings";
 
-/** The item lit for a screen; Search, Saved, Data and Settings join as their screens arrive. */
+/** The item lit for a screen; Search and Saved join as their screens arrive. */
 export function railItemOf(route: Route): Item | null {
   switch (route.screen) {
     case "home":
@@ -19,6 +19,8 @@ export function railItemOf(route: Route): Item | null {
       return "map";
     case "maps":
       return "maps";
+    case "data":
+      return "data";
     case "servers":
       return "servers";
     case "settings":
@@ -56,6 +58,9 @@ export function NavRail() {
       </Link>
       <Link to={{ screen: "maps" }} id="railMaps" current={lit === "maps"} onFollow={followSide({ screen: "maps" })}>
         <Sym name="square.grid.2x2" /><span>{words.maps}</span>
+      </Link>
+      <Link to={{ screen: "data", tab: "maps" }} id="railData" current={lit === "data"} onFollow={() => go({ screen: "data", tab: "maps" })}>
+        <Sym name="cylinder.split.1x2" /><span>{words.data}</span>
       </Link>
       {canEdit && offers("servers") ? (
         <Link to={{ screen: "servers" }} id="railServers" current={lit === "servers"}
