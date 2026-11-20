@@ -518,6 +518,8 @@ export interface SharePeople {
   folderLine?: string | null;
   /** 68 Maps put in the folder since it was shared, which Share moves in. */
   addsMore?: boolean | null;
+  /** 108 The site only reads a share; the card offers no change and says they are made in the app. */
+  readOnly?: boolean;
 }
 
 /** 57 What the page asks Download tiles for: its view, or the view chosen on the map. */

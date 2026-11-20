@@ -55,6 +55,41 @@
             "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
             "CD_schemaVersion": { "value": 1, "type": "INT64" },
             "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/shared-doprava/${f}" }, "type": "ASSETID" }
+          } },
+        { "recordName": "Share-doprava", "recordType": "cloudkit.share", "recordChangeTag": "s2",
+          "fields": { "cloudkit.title": { "value": "Doprava", "type": "STRING" } },
+          "participants": [
+            { "userIdentity": { "userRecordName": "_friki", "nameComponents": { "givenName": "Friki" },
+                "lookupInfo": { "emailAddress": "friki@example.com" } },
+              "permission": "READ_WRITE", "type": "OWNER", "acceptanceStatus": "ACCEPTED" },
+            { "userIdentity": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki" } },
+              "permission": "READ_WRITE", "type": "USER", "acceptanceStatus": "ACCEPTED" },
+            { "userIdentity": { "userRecordName": "_marek", "lookupInfo": { "emailAddress": "marek@example.com" } },
+              "permission": "READ_ONLY", "type": "USER", "acceptanceStatus": "PENDING" }
+          ],
+          "owner": { "userIdentity": { "userRecordName": "_friki", "nameComponents": { "givenName": "Friki" },
+              "lookupInfo": { "emailAddress": "friki@example.com" } },
+            "permission": "READ_WRITE", "type": "OWNER", "acceptanceStatus": "ACCEPTED" },
+          "currentUserParticipant": { "userIdentity": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki" } },
+            "permission": "READ_WRITE", "type": "USER", "acceptanceStatus": "ACCEPTED" },
+          "publicPermission": "NONE" },
+        { "recordName": "member-me", "recordType": "CD_SharedMapMember", "recordChangeTag": "s3",
+          "fields": {
+            "CD_entityName": { "value": "SharedMapMember", "type": "STRING" },
+            "CD_participantID": { "value": "_me", "type": "STRING" },
+            "CD_roleRaw": { "value": "editor", "type": "STRING" },
+            "CD_displayName": { "value": "Riki Tester", "type": "STRING" },
+            "CD_addedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_map": { "value": { "recordName": "shared-doprava" }, "type": "REFERENCE" }
+          } },
+        { "recordName": "member-marek", "recordType": "CD_SharedMapMember", "recordChangeTag": "s4",
+          "fields": {
+            "CD_entityName": { "value": "SharedMapMember", "type": "STRING" },
+            "CD_participantID": { "value": "_marek", "type": "STRING" },
+            "CD_roleRaw": { "value": "reader", "type": "STRING" },
+            "CD_displayName": { "value": "marek@example.com", "type": "STRING" },
+            "CD_addedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_map": { "value": { "recordName": "shared-doprava" }, "type": "REFERENCE" }
           } }
       ]
     }]
@@ -86,6 +121,14 @@
         "fields": { "map": "own-tatras", "payload": "{\"author\":\"Riki Tester\",\"origin\":\"web\",\"lines\":[\"Trails renamed to Ridges\"]}" } }
     },
     "riki_changes": [],
+    "riki_people": {
+      "shared": true, "role": "editor", "linkRole": null,
+      "people": [
+        { "id": "_friki", "name": "Friki", "role": "owner", "hasAccepted": true, "isYou": false },
+        { "id": "_me", "name": "Riki Tester", "role": "editor", "hasAccepted": true, "isYou": true },
+        { "id": "_marek", "name": "marek@example.com", "role": "reader", "hasAccepted": false, "isYou": false }
+      ]
+    },
     "riki_version": {
       "version": "0.1.0",
       "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer"],

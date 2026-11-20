@@ -1,5 +1,5 @@
 import type { CKContainer, CKError, CKReading, CKRecord, ZoneID } from "./cloud";
-import { READ_TYPES, rowOf, type CoreRow } from "./records";
+import { READ_TYPES, SHARE_TYPE, rowOf, shareRowOf, type CoreRow } from "./records";
 
 /** The mirror's zone in the person's private database. */
 export const MIRROR_ZONE = "com.apple.coredata.cloudkit.zone";
@@ -126,6 +126,8 @@ export class Zones {
   private async take(kept: Kept, record: CKRecord, where: Pick<CoreRow, "database" | "zone" | "owner">) {
     if (record.deleted) {
       delete kept.rows[record.recordName];
+    } else if (record.recordType === SHARE_TYPE) {
+      kept.rows[record.recordName] = shareRowOf(record, where);
     } else if (READ_TYPES.includes(record.recordType ?? "")) {
       kept.rows[record.recordName] = await rowOf(record, where, this.fetcher);
     }

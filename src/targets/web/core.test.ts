@@ -24,7 +24,7 @@ describe("the core's wrapper", () => {
     const alloc = (length: number) => { const at = top; top += length; return at; };
     return { memory, riki_alloc: alloc, riki_free: (p, l) => { freed.push([p, l]); }, freed,
       riki_maps: respond, riki_map: respond, riki_apply: respond, riki_style: respond, riki_changes: respond,
-      riki_read_address: respond, riki_add_layer: respond };
+      riki_read_address: respond, riki_add_layer: respond, riki_people: respond };
   }
 
   it("writes the request as JSON, reads the answer back and frees both buffers", () => {
@@ -70,6 +70,14 @@ describe("the core's wrapper", () => {
     expect(core.addLayer(ask)).toEqual(ask);
   });
 
+  // 108 riki_people takes the rows and the map's id; a module without it is not ready, not broken
+  it("asks riki_people with the rows and the map, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).people([], "M")).toEqual({ rows: [], id: "M" });
+    const without: CoreExports = { ...exports, riki_people: undefined };
+    expect(() => coreOf(without).people([], "M")).toThrow(CoreNotReady);
+  });
+
   it("loads a module through the WASI shim and answers what it recorded", async () => {
     const bytes = fakeCoreWasm(account.core);
     const fetcher = async () => new Response(bytes.slice().buffer as ArrayBuffer, { status: 200 });
@@ -80,6 +88,8 @@ describe("the core's wrapper", () => {
     expect(core.apply({ rows: [], mapID: "x", styleID: null, edit: { kind: "name", name: "n" }, author: null, origin: "web" }))
       .toMatchObject({ write: [{ id: "own-tatras-layer" }] });
     expect(core.changes([])).toEqual([]);
+    // 108 and who holds a map
+    expect(core.people([], "x")).toMatchObject({ shared: true, role: "editor", linkRole: null });
     // 86 the stand-in holds what an address reads as, and the rows an added layer writes
     expect(core.readAddress({ address: "https://cors.example/{z}/{x}/{y}.png", replies: [] }))
       .toEqual({ read: { kind: "tiles", probe: "https://cors.example/0/0/0.png" } });

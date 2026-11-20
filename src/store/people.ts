@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { backend } from "@backend";
 import type { PeopleAsk, Sharer } from "@/lib/people";
 import type { SharePeople } from "@/lib/types";
-import { editing, told, useViewer } from "./viewer";
+import { editing, offers, told, useViewer } from "./viewer";
 
 /** 59 Edit map's People card, and since 68 a folder's: who the phone's share holds. */
 export interface PeopleState {
@@ -28,7 +28,7 @@ export const isSharer = (one: Sharer | null, other: Sharer | null) =>
 
 /** 59 Read again for each map or folder opened; an answer for one no longer shown is dropped. */
 export async function loadPeople(of: Sharer) {
-  if (!useViewer.getState().editToken) return;
+  if (!useViewer.getState().editToken || !offers("people")) return;
   if (!isSharer(get().of, of)) set({ ...FIRST, of });
   const answer = await editing(() => backend.people(of), { quiet: true });
   if (answer?.ok && isSharer(get().of, of)) set({ people: answer.value });

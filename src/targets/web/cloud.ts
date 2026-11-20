@@ -30,6 +30,18 @@ export interface CKField {
   type?: string;
 }
 
+/** One person on a share, as the web services write a participant. */
+export interface CKParticipant {
+  userIdentity?: {
+    userRecordName?: string;
+    nameComponents?: { givenName?: string; familyName?: string };
+    lookupInfo?: { emailAddress?: string; phoneNumber?: string };
+  };
+  permission?: "READ_ONLY" | "READ_WRITE" | "NONE" | "UNKNOWN";
+  type?: "OWNER" | "USER" | "PUBLIC_USER" | "UNKNOWN";
+  acceptanceStatus?: "PENDING" | "ACCEPTED" | "UNKNOWN";
+}
+
 export interface CKRecord {
   recordName: string;
   recordType?: string;
@@ -37,6 +49,11 @@ export interface CKRecord {
   fields?: Record<string, CKField>;
   deleted?: boolean;
   zoneID?: ZoneID;
+  /** 108 A `cloudkit.share` record carries its people and its link beside its fields. */
+  participants?: CKParticipant[];
+  owner?: CKParticipant;
+  currentUserParticipant?: CKParticipant;
+  publicPermission?: string;
 }
 
 /** A record to save: with a `recordChangeTag` it updates, without one it creates. */

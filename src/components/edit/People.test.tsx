@@ -90,4 +90,49 @@ describe("People", () => {
     await vi.waitFor(() => expect(fetcher).toHaveBeenCalled());
     expect(asked(fetcher).get("link")).toBe("editor");
   });
+
+  // 108 the site reads a share: people with their roles, invited or joined, the link's setting, and no way to change one
+  describe("as the site reads it", () => {
+    const site: SharePeople = { isShared: true, role: "editor", mayInvite: false, invitesDirectly: false, tally: "", link: null,
+      linkRole: null, mayChangeLink: false, heldBy: null, caveat: "", readOnly: true,
+      people: [
+        { id: "o", name: "Friki", role: "owner", line: "Owner", hasAccepted: true, isYou: false, mayChangeRole: false, mayRemove: false },
+        { id: "m", name: "Riki (you)", role: "editor", line: "Can edit · Joined", hasAccepted: true, isYou: true, mayChangeRole: false,
+          mayRemove: false },
+        { id: "r", name: "Marek", role: "reader", line: "View only · Invited", hasAccepted: false, isYou: false, mayChangeRole: false,
+          mayRemove: false }] };
+
+    it("lists who is in, each role, invited or joined, and says changes are made in the app", () => {
+      render(<Roster people={site} />);
+      expect(screen.getByText("Friki")).toBeTruthy();
+      expect(screen.getByText("Can edit · Joined")).toBeTruthy();
+      expect(screen.getByText("View only · Invited")).toBeTruthy();
+      expect(screen.getByText("Invitations and roles are changed in the app for now.")).toBeTruthy();
+      // the role is told once, in the line
+      expect(screen.getAllByText(/Can edit/)).toHaveLength(1);
+    });
+
+    it("shows the link's setting and nothing to copy or change", () => {
+      const { unmount } = render(<Roster people={site} />);
+      expect(screen.getByText("Works only for people you invite")).toBeTruthy();
+      unmount();
+      render(<Roster people={{ ...site, linkRole: "reader" }} />);
+      expect(screen.getByText("Anyone who opens it can join · View only")).toBeTruthy();
+    });
+
+    it("offers no control to write with", () => {
+      render(<Roster people={site} />);
+      for (const role of ["textbox", "combobox", "button", "radio", "radiogroup"]) expect(screen.queryAllByRole(role)).toEqual([]);
+      for (const id of ["peopleInvite", "shareFolder", "copyShareLink", "whoCanJoin", "peopleCaveat"]) {
+        expect(document.getElementById(id)).toBeNull();
+      }
+    });
+
+    it("says a map nobody shares is the person's alone, without advice to invite", () => {
+      render(<Roster people={{ ...site, isShared: false, people: [] }} />);
+      expect(screen.getByText("This map is yours alone.")).toBeTruthy();
+      expect(screen.queryByText(/Invite someone/)).toBeNull();
+      expect(document.getElementById("peopleLink")).toBeNull();
+    });
+  });
 });

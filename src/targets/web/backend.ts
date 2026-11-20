@@ -8,6 +8,7 @@ import { Cloud } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
 import { loadCore, type AddressRead, type Adding, type Applied, type Core, type Reply } from "./core";
+import { peopleOf, type Say } from "./people";
 import { createReach, hostOf, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
@@ -20,7 +21,7 @@ const editing = notYet(4);
 const adding = notYet(5);
 
 /** What the site answers so far; the page offers no more. Packages, files, API layers and servers wait. */
-const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer"]);
+const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people"]);
 
 /** 86 How many rounds of fetching the core may ask of one address. */
 const ROUNDS = 4;
@@ -324,8 +325,20 @@ export function createBackend(parts: Parts): Backend {
     change,
     undo,
 
+    /** 108 A share's people and link as the core reads them; changes wait for the app. */
+    async people(of) {
+      if (of.kind !== "map") throw new NotOnSite("A folder's sharing is not read on the site yet");
+      const [core, read] = await Promise.all([parts.core(), rows()]);
+      const home = mapRow(read, of.id);
+      if (!home) return refused(say("noSuchMap"), 404);
+      const said = core.people(read, of.id);
+      if ("refused" in said) return refused(said.refused, said.status ?? 400);
+      const word: Say = (key) => spoken[key] ?? ENGLISH[key];
+      return { ok: true, value: peopleOf(said, word) };
+    },
+
     newMap: editing, importMap: editing, exportMap: editing, duplicateMap: editing,
-    deleteMap: editing, shelve: editing, switches: editing, people: editing, askPeople: editing, setPicture: editing,
+    deleteMap: editing, shelve: editing, switches: editing, askPeople: editing, setPicture: editing,
     layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
     readAddress,
     addTiles: (mapID, template) => addLayer(mapID, template, (replies) => ({ kind: "tiles", address: template, replies })),
