@@ -573,7 +573,8 @@ const LAYOUT_WORDS = { addContent: "Add content", addSection: "Add section", rem
   whenTapped: "When tapped", subject: "Subject", body: "Message", hidesButton: "Hide when a key is empty",
   textIcon: "A note icon before the text", hidesText: "Hide when empty", nameAndValue: "Name and value",
   rowIcons: "A small icon before each row", hidesRows: "Hide empty rows", addRow: "Add a row", liveFor: "Live for",
-  card: "What the card shows", place: "Place", withActions: "With action buttons", belowRows: "Below the rows" };
+  card: "What the card shows", place: "Place", withActions: "With action buttons", belowRows: "Below the rows",
+  taps: "A tap opens Details on", tapsNote: "A tap on a shape that is off goes through to the map under it." };
 
 function detailsSections(layer) {
   const used = layer.layout.flatMap((section) => section.blocks).filter((block) => block.counts).length;
@@ -588,6 +589,8 @@ function detailsSections(layer) {
       actions: layer.actions ? { ...layer.actions, items: [...layer.actions.items,
         ...BUILT_INS.filter(([id]) => !layer.actions.items.some((item) => item.id === id))
           .map(([id, name]) => ({ id, name, note: "", isOn: false }))] } : null,
+      taps: ["points", "paths", "areas"].map((kind) => ({ kind, name: kind[0].toUpperCase() + kind.slice(1),
+        isOn: !(layer.tapsOff ?? []).includes(kind) })),
       symbols: ["tram.fill", "star.fill"], choices: LAYOUT_CHOICES,
       // 80: an older phone sends none of the groups, so the page offers no row icon.
       ...(phone.listsRowIcons === false ? {} : { symbolGroups: SYMBOL_GROUPS.map(({ title, symbols }) => ({ title,
@@ -660,6 +663,10 @@ function settleLayout(layer, query, held) {
     if (from < 0) return false;
     const [item] = items.splice(from, 1);
     items.splice(Number(query.get("to")), 0, item);
+  } else if (op === "taps") {
+    const kind = query.get("kind");
+    if (!["points", "paths", "areas"].includes(kind)) return false;
+    layer.tapsOff = (layer.tapsOff ?? []).filter((one) => one !== kind).concat(on("on") ? [] : [kind]);
   } else if (op === "actionsLook") {
     Object.assign(layer.actions, { labels: query.get("labels"), highlightsFirst: on("highlight") });
   } else if (op === "addButton") {
