@@ -260,7 +260,7 @@ button.row:disabled { opacity: 0.6; cursor: default; }
   height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--accent);
   font-weight: 600; width: calc(100% - 32px); }
 .action:hover { background: var(--hover); }
-label.action { cursor: pointer; }
+label.action { cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .capsule { border: 0; border-radius: 999px; padding: 4px 12px; background: var(--accent); color: var(--on-accent);
   font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .capsule:hover { filter: brightness(1.08); }
@@ -841,3 +841,41 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 .style-card .words small { font-size: 12px; font-weight: 400; color: var(--sub); }
 #styleCards .new-style { height: 44px; border-radius: 22px; border: 0; background: var(--cs-water); color: var(--c-water);
   font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* 109 W7: the styles beside the picked style's layers; W6: the note's languages as chips. */
+.styling-grid { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 14px; margin-top: 8px; }
+.styling-grid .group-title { display: block; font-size: 13px; padding: 0 4px 8px; }
+.styles-column, .layers-column { display: flex; flex-direction: column; min-width: 0; }
+#styleList { display: flex; flex-direction: column; gap: 8px; }
+#styleList button { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 12px; border-radius: 16px; border: 0;
+  background: var(--card); box-shadow: var(--lift); text-align: left; font-size: 15px; font-weight: 600; color: var(--text); }
+#styleList button[aria-pressed=true] { background: var(--cs-water); color: var(--c-water); }
+#styleList .mark.small { width: 30px; height: 30px; border-radius: 15px; }
+#styleList .name, .tick-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.styles-column .new-style { margin-top: 8px; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px;
+  border-radius: 16px; border: 0; background: none; box-shadow: inset 0 0 0 1px var(--sep); font-size: 14px;
+  font-weight: 600; color: var(--link); }
+#styleLayers .tick-row { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 14px 0 12px;
+  border: 0; background: none; text-align: left; font-size: 14px; font-weight: 500; color: var(--sub); }
+#styleLayers .tick-row[aria-checked=true] { color: var(--text); }
+#styleLayers .tick-row + .tick-row { box-shadow: inset 0 1px 0 var(--sep); }
+#styleLayers .tick-row .mark.small { width: 26px; height: 26px; border-radius: 8px; }
+.tick-row .tick { width: 22px; height: 22px; border-radius: 6px; flex: none; display: flex; align-items: center;
+  justify-content: center; box-shadow: inset 0 0 0 1.5px #8e8e93; color: #fff; }
+.tick-row[aria-checked=true] .tick { background: var(--c-water); box-shadow: none; }
+.tick-row .tick .sym { font-size: 13px; }
+#editBody .picked-style { margin-top: 14px; }
+#editBody .arrange-rows:empty { display: none; }
+#editBody .arrange-rows { margin-top: 14px; }
+.language-chips { padding: 0 14px 10px; }
+.language-chips .chips { padding: 0 0 8px; align-items: center; }
+.language-chips select { height: 28px; border-radius: 14px; border: 0; box-shadow: inset 0 0 0 1px var(--sep);
+  background: none; color: var(--link); font-size: 13px; font-weight: 600; padding: 0 10px; }
+.language-chips .language .field { padding: 6px 0; }
+.text-link.danger { color: var(--danger); font-size: 13px; }
+#editBody .map-actions { margin-top: 18px; }
+#editBody .map-actions .row.add { width: 100%; border: 0; background: none; text-align: left; color: var(--c-water);
+  font-size: 15px; font-weight: 500; }
+#editBody .map-actions .tile { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; background: var(--cs-water); }
+#editBody .map-actions + .action, #editBody .map-actions ~ .confirm-delete { margin-top: 10px; }

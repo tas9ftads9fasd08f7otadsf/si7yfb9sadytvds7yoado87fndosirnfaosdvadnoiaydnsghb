@@ -3,9 +3,10 @@
 import { useState } from "react";
 import type { ArrangeAction } from "@/lib/edit";
 import type { MapSwitches, Portable, PortableStyle } from "@/lib/types";
-import { listed } from "@/lib/words";
-import { change, moveStyle, offers, pickStyle, setStylePicture, useViewer } from "@/store/viewer";
+import { filledIn, listed } from "@/lib/words";
+import { change, moveStyle, offers, pickStyle, setStylePicture, shownMapOf, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
+import { MarkTile } from "../ui/MarkTile";
 import { Sym } from "../ui/Sym";
 import { Swatch } from "./Styling";
 
@@ -151,29 +152,62 @@ function ArrangeRows({ switches }: { switches: MapSwitches }) {
   );
 }
 
+/** 109 W7: the styles on the left, the picked one's layers as ticks on the right, top drawing over bottom. */
 export function Styles({ portable }: { portable: Portable }) {
   const words = useViewer((state) => state.words);
   const styleID = useViewer((state) => state.styleID);
   const switches = useViewer((state) => state.switches);
+  const hidden = useViewer((state) => state.hidden);
+  const layers = useViewer((state) => shownMapOf(state)?.layers) ?? [];
   const styles = portable.styles ?? [];
-  const [opened, setOpened] = useState<string | null>(null);
+  const [opened, setOpened] = useState(false);
+  const place = Math.max(0, styles.findIndex((style) => style.id === styleID));
+  const style = styles[place];
   return (
     <>
-      <h2 className="title">{words.styles}</h2>
-      <div className="list" id="styleList">
-        {styles.map((style, place) => (
-          <div key={style.id}>
-          <div className="row" data-style={style.id}>
-            <button type="button" className="icon-button" aria-label={style.name} onClick={() => pickStyle(style.id)}>
-              <Sym name={style.id === styleID ? "checkmark.circle.fill" : "circle"} />
-            </button>
+      <div className="styling-grid">
+        <div className="styles-column">
+          <span className="group-title">{words.styles}</span>
+          <div id="styleList" role="group" aria-label={words.styles}>
+            {styles.map((each) => (
+              <button type="button" key={each.id} data-style={each.id} aria-pressed={each.id === style?.id}
+                onClick={() => pickStyle(each.id)}>
+                <MarkTile symbol={each.symbol || "map"} tint={each.iconTintHex} small />
+                <span className="name">{each.name}</span>
+              </button>
+            ))}
+          </div>
+          <button type="button" className="new-style" onClick={() =>
+            change({ kind: "addStyle", name: `${words.newStyle} ${styles.length + 1}` })}>
+            <Sym name="plus" />{words.newStyle}
+          </button>
+        </div>
+        <div className="layers-column">
+          <span className="group-title">{style ? filledIn(words.layersIn, "style", style.name) : words.layers}</span>
+          <div className="group" id="styleLayers" role="group" aria-label={words.layers}>
+            {layers.map((layer) => {
+              const isOn = !hidden.has(layer.id);
+              return (
+                <button type="button" key={layer.id} role="checkbox" aria-checked={isOn} className="tick-row"
+                  onClick={() => change({ kind: "layerShown", layer: layer.id, shown: !isOn })}>
+                  <MarkTile symbol={layer.symbol} small />
+                  <span className="name">{layer.name}</span>
+                  <span className="tick">{isOn ? <Sym name="checkmark" /> : null}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      {style ? (
+        <div className="card picked-style" data-style-settings={style.id}>
+          <div className="row">
             <div className="words">
               <CommitField type="text" value={style.name} aria-label={words.rename}
                 onCommit={(name) => change({ kind: "styleName", style: style.id, name })} />
             </div>
             <button type="button" className="icon-button" aria-label={`${words.layerOptions} ${style.name}`}
-              title={words.layerOptions} aria-expanded={opened === style.id}
-              onClick={() => setOpened(opened === style.id ? null : style.id)}>
+              title={words.layerOptions} aria-expanded={opened} onClick={() => setOpened(!opened)}>
               <Sym name="slider.horizontal.3" /></button>
             <button type="button" className="icon-button" aria-label={`${words.moveUp} ${style.name}`}
               title={words.moveUp} disabled={place === 0} onClick={() => moveStyle(style.id, -1)}>
@@ -182,16 +216,13 @@ export function Styles({ portable }: { portable: Portable }) {
               title={words.moveDown} disabled={place === styles.length - 1} onClick={() => moveStyle(style.id, 1)}>
               <Sym name="chevron.down" /></button>
             <button type="button" className="icon-button danger" aria-label={words.delete} title={words.delete}
-              disabled={styles.length < 2} onClick={() => change({ kind: "removeStyle", style: style.id })}><Sym name="trash" /></button>
+              disabled={styles.length < 2} onClick={() => change({ kind: "removeStyle", style: style.id })}>
+              <Sym name="trash" /></button>
           </div>
-          {opened === style.id ? <StyleOptions style={style} /> : null}
-          </div>
-        ))}
-        <button type="button" className="row add" onClick={() => change({ kind: "addStyle", name: `${words.newStyle} ${styles.length + 1}` })}>
-          <Sym name="plus.circle.fill" />{words.newStyle}
-        </button>
-        {switches ? <ArrangeRows switches={switches} /> : null}
-      </div>
+          {opened ? <StyleOptions style={style} /> : null}
+        </div>
+      ) : null}
+      {switches ? <div className="list arrange-rows"><ArrangeRows switches={switches} /></div> : null}
     </>
   );
 }

@@ -109,39 +109,40 @@ test("the list's own switch turns every layer off, then on again", async ({ page
   await expect(layerRow(page, "Huts").getByRole("switch")).toBeChecked();
 });
 
+// 109 W7: a style is picked in the list, its settings under the two columns
 test("a style is added, renamed and deleted", async ({ page }) => {
   await openEdit(page);
   await editTab(page, "Styling");
-  const styleNames = page.locator("#editBody .list").first().getByRole("textbox", { name: "Rename" });
-  await expect(styleNames).toHaveCount(2);
+  const list = page.locator("#styleList [data-style]");
+  const pick = (name) => page.locator("#styleList").getByRole("button", { name, exact: true }).click();
+  const rename = page.locator("[data-style-settings]").getByRole("textbox", { name: "Rename" });
+  await expect(list).toHaveText(["Summer", "Winter"]);
 
   let asked = sent(page);
   await page.getByRole("button", { name: "New style" }).click();
   expect((await asked).addStyle).toBe("New style 3");
-  await expect(styleNames).toHaveCount(3);
-  await expect(styleNames.nth(2)).toHaveValue("New style 3");
+  await expect(list).toHaveText(["Summer", "Winter", "New style 3"]);
 
+  await pick("New style 3");
+  await expect(rename).toHaveValue("New style 3");
   asked = sent(page);
-  await styleNames.nth(2).fill("Autumn");
-  await styleNames.nth(2).press("Enter");
+  await rename.fill("Autumn");
+  await rename.press("Enter");
   expect((await asked).name).toBe("Autumn");
 
+  await pick("Winter");
   asked = sent(page);
-  await page.locator("#editBody .row").filter({ has: page.getByRole("button", { name: "Winter", exact: true }) })
-    .getByRole("button", { name: "Delete" }).click();
+  await page.locator("[data-style-settings]").getByRole("button", { name: "Delete" }).click();
   expect((await asked).removeStyle).toBe(WINTER);
-  await expect(styleNames).toHaveCount(2);
-  await expect(styleNames.nth(0)).toHaveValue("Summer");
-  await expect(styleNames.nth(1)).toHaveValue("Autumn");
+  await expect(list).toHaveText(["Summer", "Autumn"]);
 });
 
 test("the last style left cannot be deleted", async ({ page }) => {
   await openEdit(page);
   await editTab(page, "Styling");
-  const remove = page.locator("#editBody .list").first().getByRole("button", { name: "Delete" });
-  await expect(remove).toHaveCount(2);
-  await page.locator("#editBody .list").first().getByRole("button", { name: "Delete" }).first().click();
-  await expect(remove).toHaveCount(1);
+  const remove = page.locator("[data-style-settings]").getByRole("button", { name: "Delete" });
+  await remove.click();
+  await expect(page.locator("#styleList [data-style]")).toHaveCount(1);
   await expect(remove).toBeDisabled();
 });
 

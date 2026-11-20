@@ -88,26 +88,31 @@ function EditFields() {
             <div className="field"><label>{words.name}</label>
               <CommitField type="text" value={portable.name} aria-label={words.name} maxLength={200}
                 onCommit={(name) => change({ kind: "name", name })} /></div>
-            <div className="field"><label>{words.note}</label>
+          </div>
+          <Styling portable={portable} />
+          <h2 className="title">{words.note}</h2>
+          <div className="card note-card">
+            <div className="field">
               <CommitField multiline rows={3} value={portable.note ?? ""} aria-label={words.note} maxLength={2000}
                 onCommit={(note) => change({ kind: "note", note })} /></div>
+            <Languages portable={portable} />
           </div>
-          <Languages portable={portable} />
-          <Styling portable={portable} />
+          <div className="list map-actions">
+            {offers("duplicateMap") ? (
+              <button type="button" className="row add" id="duplicateMap" onClick={() => void duplicateMap()}>
+                <span className="tile"><Sym name="plus.square.on.square" /></span>{words.duplicateMap}
+              </button>
+            ) : null}
+            {offers("exportMap") ? (
+              <button type="button" className="row add" id="exportMap" onClick={exportMap}>
+                <span className="tile"><Sym name="square.and.arrow.up" /></span>{words.export}
+              </button>
+            ) : null}
+          </div>
+          <DeleteMap place="edit" />
           <OpensAt portable={portable} />
           <MinimumVersion />
           {switches ? <Availability switches={switches} /> : null}
-          {offers("exportMap") ? (
-            <button type="button" className="action" id="exportMap" onClick={exportMap}>
-              <Sym name="square.and.arrow.up" />{words.export}
-            </button>
-          ) : null}
-          {offers("duplicateMap") ? (
-            <button type="button" className="action" id="duplicateMap" onClick={() => void duplicateMap()}>
-              <Sym name="plus.square.on.square" />{words.duplicateMap}
-            </button>
-          ) : null}
-          <DeleteMap place="edit" />
         </>
       );
   }

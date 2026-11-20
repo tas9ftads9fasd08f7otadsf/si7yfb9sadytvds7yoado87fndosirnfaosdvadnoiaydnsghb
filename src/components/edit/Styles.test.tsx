@@ -31,6 +31,8 @@ describe("Styles", () => {
       expect(screen.queryByText(name)).toBeNull();
     }
     expect((screen.getByRole("button", { name: "Move up Summer" }) as HTMLButtonElement).disabled).toBe(true);
+    // 109 the picked style's settings sit under W7's two columns
+    fireEvent.click(screen.getByRole("button", { name: "Winter" }));
     expect((screen.getByRole("button", { name: "Move down Winter" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -84,6 +86,7 @@ describe("Styles", () => {
     const asked = vi.fn((input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>(() => void [input, init]));
     vi.stubGlobal("fetch", asked);
     const { unmount } = render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Winter" }));
     fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
     expect(screen.queryByRole("button", { name: "Remove the picture · Winter" })).toBeNull();
     const file = new File([new Uint8Array([0x89, 0x50])], "snow.png", { type: "image/png" });
@@ -94,6 +97,7 @@ describe("Styles", () => {
     const pictured: Portable = { ...portable, styles: [{ id: "W", name: "Winter", symbol: "map", iconPicture: "AAAA" }] };
     useViewer.setState({ portable: pictured });
     render(<Styles portable={pictured} />);
+    fireEvent.click(screen.getByRole("button", { name: "Winter" }));
     fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
     expect(screen.getByRole("button", { name: "map" }).getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "Remove the picture · Winter" }));
@@ -108,6 +112,7 @@ describe("Styles", () => {
       iconTints: "#FF0000" } });
     const url = asking();
     render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Winter" }));
     fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
     fireEvent.click(screen.getByRole("button", { name: "snowflake" }));
     expect(url()).toContain("style=W");
@@ -140,6 +145,7 @@ describe("Styles", () => {
     useViewer.setState({ words: { ...useViewer.getState().words, languages: "de,sk", "language.sk": "Slovak" } });
     const url = asking();
     render(<Styles portable={portable} />);
+    fireEvent.click(screen.getByRole("button", { name: "Winter" }));
     fireEvent.click(screen.getByRole("button", { name: "Options Winter" }));
     fireEvent.change(screen.getByRole("combobox", { name: "Add a language · Winter" }), { target: { value: "sk" } });
     const field = screen.getByRole("textbox", { name: "Name · Slovak · Winter" });
@@ -149,4 +155,19 @@ describe("Styles", () => {
     expect(url()).toContain("language=sk");
     expect(url()).toContain("name=Zima");
   });
+
+  // 109 W7: the picked style's layers as ticks; a tick switches the layer in the style shown
+  it("ticks the picked style's layers", () => {
+    const url = asking();
+    useViewer.setState({ mapID: "a", hidden: new Set(["H"]), device: { name: "iPad", maps: [{ id: "a", name: "Tatras",
+      layers: [{ id: "T", name: "Trails", kind: "Vector" }, { id: "H", name: "Huts", kind: "Points" }] }] } });
+    render(<Styles portable={portable} />);
+    expect(screen.getByText("Layers in Summer")).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Trails" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("checkbox", { name: "Huts" }).getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Huts" }));
+    expect(url()).toContain("layer=H");
+    expect(url()).toContain("shown=1");
+  });
 });
+
