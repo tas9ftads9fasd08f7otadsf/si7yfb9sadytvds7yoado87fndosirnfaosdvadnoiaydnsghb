@@ -18,14 +18,16 @@ async function openEdit(page, tab = "General") {
 const sent = (page) => page.waitForRequest((request) => request.url().includes("/edit?"))
   .then((request) => Object.fromEntries(new URL(request.url()).searchParams));
 
-const styleNames = (page) => page.locator("#styleList [data-style] input[type=text]")
-  .evaluateAll((all) => all.map((one) => one.value));
+// 109 W7 lists the styles by name; the picked one's settings sit under the two columns
+const styleNames = (page) => page.locator("#styleList [data-style]").allTextContents();
 
 // 50: as the styles' page drags them; the ends move no further.
 test("a style moves down and back up", async ({ page }) => {
   await openEdit(page, "Styling");
   await expect(page.getByRole("button", { name: "Move up Summer" })).toBeDisabled();
+  await page.locator("#styleList").getByRole("button", { name: "Winter" }).click();
   await expect(page.getByRole("button", { name: "Move down Winter" })).toBeDisabled();
+  await page.locator("#styleList").getByRole("button", { name: "Summer" }).click();
 
   let asked = sent(page);
   await page.getByRole("button", { name: "Move down Summer" }).click();

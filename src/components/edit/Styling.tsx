@@ -37,7 +37,7 @@ export function Styling({ portable }: { portable: Portable }) {
     || (portable.staysLightInDarkMode ? "light" : "automatic");
   return (
     <>
-      <h2 className="title">{words.styling}</h2>
+      <h2 className="title">{words.iconAndColour}</h2>
       <div className="card">
         <div className="field"><label>{words.icon}</label></div>
         <div className="swatches" role="group" id="mapSymbols" aria-label={words.icon}>

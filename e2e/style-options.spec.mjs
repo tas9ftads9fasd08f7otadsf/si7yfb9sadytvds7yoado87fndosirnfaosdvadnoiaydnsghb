@@ -13,6 +13,7 @@ test("a style's icon, colour and note are set from its options", async ({ page }
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await editTab(page, "Styling");
+  await page.locator("#styleList").getByRole("button", { name: "Winter" }).click();
   await page.getByRole("button", { name: "Options Winter" }).click();
   const options = page.locator(`[data-style-options="${WINTER}"]`);
 
@@ -47,6 +48,7 @@ test("a style's picture is set and removed from its options", async ({ page, req
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await editTab(page, "Styling");
+  await page.locator("#styleList").getByRole("button", { name: "Winter" }).click();
   await page.getByRole("button", { name: "Options Winter" }).click();
   const options = page.locator(`[data-style-options="${WINTER}"]`);
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==",
