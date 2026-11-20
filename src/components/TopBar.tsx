@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { backend } from "@backend";
-import { go, offers, openNewMap, shareAddress, showSide, shownMapOf, useViewer } from "@/store/viewer";
+import { go, offers, openNewMap, toggleSide, shareAddress, showSide, shownMapOf, useViewer } from "@/store/viewer";
 import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
@@ -23,6 +23,21 @@ function ShownMap() {
       <MarkTile symbol={shown?.symbol} tint={shown?.iconTintHex} picture={icon} />
       <span id="mapName">{shown?.name ?? ""}</span>
       <Sym name="chevron.down" className="chevron" />
+    </button>
+  );
+}
+
+/** 104 Hides the side bar for the whole map, and brings it back; `[` does the same. */
+function SideToggle() {
+  const words = useViewer((state) => state.words);
+  const shown = useViewer((state) => state.sideShown);
+  const beside = useViewer((state) => !state.editing && !["data", "settings", "details"].includes(state.route.screen));
+  if (!beside) return null;
+  const label = `${shown ? words.hideSide : words.showSideBar} ( [ )`;
+  return (
+    <button type="button" id="sideToggle" className="tool round" aria-controls="side" aria-expanded={shown}
+      aria-label={shown ? words.hideSide : words.showSideBar} title={label} onClick={toggleSide}>
+      <Sym name="sidebar.left" />
     </button>
   );
 }
@@ -80,6 +95,7 @@ export function TopBar() {
     <header id="top">
       <div className="start">
         <div id="brand"><span className="tile" aria-hidden="true">R</span><b id="appName">{words.app}</b></div>
+        <SideToggle />
         <ShownMap />
       </div>
       <SearchField />
