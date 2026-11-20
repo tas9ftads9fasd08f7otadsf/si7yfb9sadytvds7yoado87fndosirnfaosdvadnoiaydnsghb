@@ -81,12 +81,19 @@ describe("checking the site's server", () => {
     expect(existsSync(path.join(root, "editor", ".riki-connection-check"))).toBe(false);
   });
 
-  // 120 bug: deploy v0.1.112 failed on a certificate issued for another name than FTPS_HOST
-  it("names the certificate's own names when FTPS_HOST is not among them, and skips the login", () => {
+  // 121 bug: the host's shared certificate for *.r5.websupport.sk failed the check and the deploy
+  it("warns of a trusted certificate issued for other names, and still logs in", () => {
+    const run = check({ FTPS_PORT: String(STRANGER), FTPS_CA_FILE: path.join(work, "stranger.pem") });
+    expect(run.status).toBe(0);
+    expect(run.lines).toContain(
+      "warn  certificate: issued for ftp.other.example, not for FTPS_HOST; the deploy accepts it if trusted");
+    expect(run.lines).toContain("ok    login: FTPS_USER logs in, and writes and removes a file in /editor");
+  });
+
+  // 121: a certificate for other names that no authority vouches for still skips the login
+  it("skips the login when a certificate for other names is not trusted", () => {
     const run = check({ FTPS_PORT: String(STRANGER) });
     expect(run.status).toBe(1);
-    expect(run.lines).toContain(
-      "FAIL  certificate: issued for ftp.other.example, not for FTPS_HOST; set FTPS_HOST to one of those names");
     expect(run.lines).toContain(
       "skip  login: the deploy verifies the certificate, so it cannot log in until that is fixed");
   });

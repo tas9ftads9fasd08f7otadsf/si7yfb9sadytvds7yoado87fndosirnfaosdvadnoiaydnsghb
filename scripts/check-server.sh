@@ -57,8 +57,8 @@ cert_ok=1
 if openssl x509 -in "$work/cert.pem" -noout "${check[@]}" | grep -q "does match"; then
   ok "certificate: issued for FTPS_HOST ($names)"
 else
-  fail "certificate: issued for $names, not for FTPS_HOST; set FTPS_HOST to one of those names"
-  cert_ok=0
+  # 121 Shared hosting serves one certificate for all its sites; the deploy checks only its trust.
+  warn "certificate: issued for $names, not for FTPS_HOST; the deploy accepts it if trusted"
 fi
 
 verdict="$(sed -n 's/^ *Verify return code: //p' "$work/tls.txt" | tail -1)"
@@ -89,7 +89,7 @@ else
   # The deploy's own settings, so a pass here means the deploy connects the same way.
   if LFTP_PASSWORD="$FTPS_PASSWORD" lftp -c "
       set cmd:fail-exit true;
-      set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true; $ca
+      set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true; set ssl:check-hostname false; $ca
       set net:max-retries 1; set net:timeout 20;
       open --env-password -u \"$FTPS_USER\" -p $port \"$host\";
       cd \"$dir\";

@@ -252,3 +252,36 @@ describe("the config.php the deploy writes", () => {
     expect(run.stderr).toContain(".htaccess");
   }, 60000);
 });
+
+// 121 bug: the host's shared certificate for *.r5.websupport.sk stopped every deploy
+describe("deploying to a server whose certificate names other hosts", () => {
+  let shared, sharedRoot;
+  const SHARED = PORT + 13;
+
+  beforeAll(async () => {
+    sharedRoot = path.join(work, "shared-server");
+    mkdirSync(path.join(sharedRoot, "editor"), { recursive: true });
+    const cert = path.join(work, "shared.pem");
+    const key = path.join(work, "shared.key");
+    execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj",
+      "/CN=*.r5.websupport.sk", "-addext", "subjectAltName=DNS:*.r5.websupport.sk", "-keyout", key, "-out", cert],
+      { stdio: "ignore" });
+    shared = spawn("python3", [path.join(process.cwd(), "e2e", "ftps-server.py"), sharedRoot, String(SHARED), cert,
+      key], { stdio: ["ignore", "pipe", "ignore"] });
+    await new Promise((resolve, reject) => {
+      shared.stdout.on("data", (data) => { if (String(data).includes("ready")) resolve(); });
+      shared.on("exit", (code) => reject(new Error(`the FTPS server stopped: ${code}`)));
+    });
+  }, 30000);
+
+  afterAll(() => shared?.kill());
+
+  // 121: a trusted certificate is enough, whichever names it holds
+  it("deploys when the certificate is trusted", () => {
+    const run = deploy(release("shared", "0.1.21", "sss121", ["s.js"]),
+      { FTPS_PORT: String(SHARED), FTPS_CA_FILE: path.join(work, "shared.pem") });
+    expect(run.status).toBe(0);
+    const deployed = readFileSync(path.join(sharedRoot, "editor", "site.json"), "utf8");
+    expect(JSON.parse(deployed).commit).toBe("sss121");
+  }, 60000);
+});

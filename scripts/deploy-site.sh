@@ -73,9 +73,10 @@ if [ -n "${FTPS_CA_FILE:-}" ]; then trust="set ssl:ca-file \"$FTPS_CA_FILE\";"; 
 # Assets, server code, config.php (sent as .new, renamed), index.php, site.json, then deletions:
 # the new entry point goes last, and a failed config upload leaves the old one serving.
 # Every file is sent: a page of the same size, older than the server's copy, is still new.
+# 121 The host's shared certificate names its own servers, not FTPS_HOST: only its trust is checked.
 LFTP_PASSWORD="$FTPS_PASSWORD" lftp -c "
   set cmd:fail-exit true;
-  set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true; $trust
+  set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true; set ssl:check-hostname false; $trust
   set net:max-retries 3; set net:timeout 30; set net:reconnect-interval-base 5;
   open --env-password -u \"$FTPS_USER\" -p $port \"$FTPS_HOST\";
   mkdir -p -f \"$dir\"; cd \"$dir\";
