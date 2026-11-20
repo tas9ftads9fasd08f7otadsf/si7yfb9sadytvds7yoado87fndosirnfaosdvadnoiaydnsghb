@@ -169,6 +169,60 @@ export interface CoveragePlaces {
   mountains: string;
 }
 
+/** 135 A folder of the phone's saved places; `isSharedWithMe` is one another person shared. */
+export interface SavedFolder {
+  id: string;
+  name: string;
+  symbol: string;
+  colour?: string;
+  note?: string;
+  isShared: boolean;
+  isSharedWithMe: boolean;
+}
+
+export interface SavedBounds {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
+/** 135 One saved place, line or area; a line's or area's shape is read apart, by its id. */
+export interface SavedRow {
+  id: string;
+  name: string;
+  kind: "point" | "line" | "area";
+  category?: string;
+  /** The spot, or the middle of a shape. */
+  latitude: number;
+  longitude: number;
+  bounds?: SavedBounds;
+  folderID?: string;
+  note?: string;
+  symbol?: string;
+  ink?: string;
+  mapName?: string;
+  layerName?: string;
+  /** ISO 8601. */
+  savedAt: string;
+  /** False where only part of a long line or large area was kept. */
+  isComplete: boolean;
+}
+
+export interface SavedListing {
+  folders: SavedFolder[];
+  features: SavedRow[];
+  total: number;
+}
+
+/** 135 One saved feature as GeoJSON, its row the properties. */
+export interface SavedShape {
+  type: "Feature";
+  id?: string;
+  geometry: { type: string; coordinates: unknown };
+  properties: SavedRow;
+}
+
 export interface FoundPlace {
   start: Start;
   title: string;

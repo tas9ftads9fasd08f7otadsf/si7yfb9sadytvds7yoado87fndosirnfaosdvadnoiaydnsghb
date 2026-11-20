@@ -1,7 +1,7 @@
 import type { Protocol } from "pmtiles";
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk, Sharer } from "@/lib/people";
-import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing,
+import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing, SavedListing, SavedShape,
   LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
   SharePeople, RegionNeed, RegionRow } from "@/lib/types";
 
@@ -23,8 +23,9 @@ export class CoreNotReady extends NotOnSite {}
 
 /** 82 The parts of the page a target may not answer yet; a screen offers only what it does. 86 `addLayer` is the panel
  * with a tile address and a service's layers; its packages, files, API layers and servers are offered apart.
- * 108 `people` reads who shares a map. 119 `fromMaps` copies the other maps' layers. */
-export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "fromMaps" | "coverage" | "pairing" | "people" | "regionPackages";
+ * 108 `people` reads who shares a map. 119 `fromMaps` copies the other maps' layers. 135 `saved` reads the phone's
+ * saved places. */
+export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "fromMaps" | "coverage" | "pairing" | "people" | "regionPackages" | "saved";
 
 /** 112 Why a region package did not come: no room, the host said no, the connection, a wrong size or an unreadable zip. */
 export class RegionFailed extends Error {
@@ -181,6 +182,9 @@ export interface Backend {
   coverage(mapID: string): Promise<Answer<CoverageSummary>>;
   coveragePlaces(): Promise<Answer<CoveragePlaces>>;
   startPlaces(kind: string, query: string): Promise<Answer<FoundPlace[]>>;
+  /** 135 What the phone saved, read only; a shape comes apart, by the row's id. */
+  saved(): Promise<Answer<SavedListing>>;
+  savedFeature(id: string): Promise<Answer<SavedShape>>;
   regions(mapID: string): Promise<RegionList>;
   downloadRegion(mapID: string, regionID: string): Promise<Answer<null>>;
   /** 57 Download tiles for the whole map, as the phone counts it for this area. */

@@ -30,6 +30,9 @@ const TABLE: [string, Route][] = [
   ["/servers/S1/layers", { screen: "servers", server: "S1", part: "layers" }],
   ["/servers/S1/general", { screen: "servers", server: "S1", part: "general" }],
   ["/servers/S1/sharing", { screen: "servers", server: "S1", part: "sharing" }],
+  // 135 the phone's saved places, and the one open
+  ["/saved", { screen: "saved" }],
+  ["/saved/6F1E2A10-0000-4000-8000-0000000000A1", { screen: "saved", id: "6F1E2A10-0000-4000-8000-0000000000A1" }],
   ["/settings", { screen: "settings" }],
   ["/unlock/7Q4K29", { screen: "unlock", key: "7Q4K29" }]
 ];

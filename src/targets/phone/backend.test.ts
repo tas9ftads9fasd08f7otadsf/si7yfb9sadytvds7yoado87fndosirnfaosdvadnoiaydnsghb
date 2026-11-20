@@ -110,6 +110,21 @@ describe("the phone backend", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  // 135 the saved places are read with the token, the list and one feature by its id
+  it("reads the saved places and one saved feature with the token", async () => {
+    const fetcher = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    backend.useToken(() => "t");
+    await backend.saved();
+    await backend.savedFeature("A/B");
+    const [list, one] = fetcher.mock.calls as unknown as [[string, RequestInit], [string, RequestInit]];
+    expect(list[0]).toBe("/riki/v1/saved");
+    expect(one[0]).toBe("/riki/v1/saved/A%2FB");
+    expect((one[1].headers as Record<string, string>).Authorization).toBe("Bearer t");
+    backend.useToken(() => null);
+    expect(await backend.saved()).toEqual({ ok: false, status: 401, said: "" });
+  });
+
   // 36 the token is read when each call is made, and a refusal keeps the phone's words
   it("sends an edit with the style and the current token, and keeps a refusal's words", async () => {
     const fetcher = vi.fn(async () => new Response("A name cannot be blank", { status: 400 }));

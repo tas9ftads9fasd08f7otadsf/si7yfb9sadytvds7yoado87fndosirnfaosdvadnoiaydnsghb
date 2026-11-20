@@ -955,3 +955,14 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #mapRegions .region-row { justify-content: space-between; }
 #editBody h2.title .count { float: right; font-weight: 400; margin-left: 8px; }
 #settings .about dt.whole { color: var(--text); font-weight: 600; }
+
+/* 135 The saved places in the side bar, read only: rows as the search's, a field, chips and a folder picker. */
+#savedPage { display: flex; flex-direction: column; gap: 10px; }
+#savedPage .group > .row.hit { width: 100%; min-height: 60px; border: 0; background: none; text-align: left; color: var(--text); }
+#savedPage .group > .row.hit.picked { background: var(--cs-water); }
+#savedPage .row.hit .words { font-size: 15px; font-weight: 600; }
+#savedPage .row.hit .distance { font-size: 12px; color: var(--sub); }
+#savedPage .chips { padding: 0; }
+#savedPage .field { padding: 0; }
+#savedPage .field input, #savedPage .field select { width: 100%; height: 36px; border-radius: 12px; border: 0; background: var(--inset);
+  padding: 0 10px; }

@@ -42,6 +42,27 @@ describe("NavRail", () => {
     expect(screen.queryByRole("link", { name: "Servers" })).toBeNull();
   });
 
+  // 135 Saved is the phone's own, so only a browser that may edit has it, between Search and Maps
+  it("offers Saved to a browser that may edit, between Search and Maps, and lights it", () => {
+    useViewer.setState({ mapID: "M1", editToken: "t", route: { screen: "saved" } });
+    render(<NavRail />);
+    const names = screen.getAllByRole("link").map((each) => each.textContent);
+    expect(names.indexOf("Saved")).toBe(names.indexOf("Maps") - 1);
+    expect(link("Saved").getAttribute("aria-current")).toBe("page");
+    expect(link("Saved").getAttribute("href")).toBe("/saved");
+    expect(railItemOf({ screen: "saved", id: "S1" })).toBe("saved");
+  });
+
+  // 135 a browser that only looks, and a phone that answered 404, have no Saved item
+  it("leaves Saved out for a browser that may not edit and for an older phone", () => {
+    const { unmount } = render(<NavRail />);
+    expect(screen.queryByRole("link", { name: "Saved" })).toBeNull();
+    unmount();
+    useViewer.setState({ editToken: "t", savedReadable: false });
+    render(<NavRail />);
+    expect(screen.queryByRole("link", { name: "Saved" })).toBeNull();
+  });
+
   // 30 the Map item folds the side bar on the map, as `[` does, and leaves the address alone
   it("folds the side bar on the map and goes to the map elsewhere", () => {
     useViewer.setState({ mapID: "M1", route: { screen: "map", map: "M1" } });

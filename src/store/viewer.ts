@@ -11,7 +11,8 @@ import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } f
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
-  Loading, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
+  Loading, SavedListing, SavedRow, SavedShape, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
+import { NO_FILTER, type SavedFilter, savedBox, shownSaved } from "@/lib/saved";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
 import { type NameHit, findNames, indexedPlaces, pointOn, withPhoneHits, worthAsking } from "@/lib/search";
@@ -104,6 +105,12 @@ export interface ViewerState {
   sideStyles: boolean;
   /** 101 The regions of the map on screen, as the Data page lists them. */
   regionList: RegionList | null;
+  /** 135 The phone's saved places as last read, how they are narrowed, and the shape of the one open. */
+  saved: SavedListing | null;
+  savedFilter: SavedFilter;
+  savedShape: SavedShape["geometry"] | null;
+  /** False once the phone answered 404: an older app, so the rail leaves Saved out. */
+  savedReadable: boolean;
 }
 
 /** 100 A feature as the place panel shows it: its tags, its layer, and its layout once the phone fills it. */
@@ -123,6 +130,8 @@ export interface Place {
   found: ShownFeature[];
   lng: number;
   lat: number;
+  /** 135 Set for a saved place, which the panel words as the phone's Saved sheet does. */
+  saved?: SavedRow;
 }
 
 const firstState = (): ViewerState => ({
@@ -136,7 +145,8 @@ const firstState = (): ViewerState => ({
   otherLayers: null, copyTicks: new Set(), serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
   switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null,
-  switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null, regionList: null, sideStyles: false
+  switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null, regionList: null, sideStyles: false,
+  saved: null, savedFilter: NO_FILTER, savedShape: null, savedReadable: true
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -150,7 +160,7 @@ const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof 
   packages: null as string | null, otherLayers: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
   coverageEdits: Promise.resolve(), optionsAsked: 0,
   offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0,
-  search: undefined as ReturnType<typeof setTimeout> | undefined,
+  search: undefined as ReturnType<typeof setTimeout> | undefined, saved: false, savedAsked: 0, inSaved: false, savedDrawn: false,
   placeLive: undefined as ReturnType<typeof setTimeout> | undefined,
   /** 129 The maps whose phone answered 404 to the places search, which an older phone does. */
   noPlacesSearch: new Set<string>() };
@@ -161,7 +171,8 @@ export function resetViewer() {
   clearTimeout(busy.offline);
   clearTimeout(busy.placeLive);
   Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, otherLayers: null, servers: false,
-    coverage: null, addressKey: null, coverageEdits: Promise.resolve(), noPlacesSearch: new Set<string>() });
+    coverage: null, addressKey: null, coverageEdits: Promise.resolve(), noPlacesSearch: new Set<string>(), saved: false,
+    savedAsked: 0, inSaved: false, savedDrawn: false });
   clearTimeout(busy.search);
   set(firstState(), true);
 }
@@ -372,6 +383,7 @@ function followRoute(route: Route) {
   set({ route, editing: route.screen === "edit",
     serverID: route.screen === "servers" ? route.server ?? null : null,
     serverPart: route.screen === "servers" ? route.part ?? "layers" : "layers" });
+  followSaved(route);
   const { device, mapID, styleID } = get();
   if (!device) return;
   const wanted = mapOf(route);
@@ -515,11 +527,16 @@ export const toggleSide = () => showSide(!get().sideShown);
 // MARK: - Search and places
 
 export function showPlace(place: Place | null) {
+  const { route, place: was } = get();
   clearTimeout(busy.placeLive);
   set({ place });
   if (place?.found.some((one) => one.layerID && one.details?.live)) {
     busy.placeLive = setTimeout(() => void readLive(place), PLACE_LIVE_EVERY);
   }
+  if (place || !was?.saved) return;
+  set({ savedShape: null });
+  drawSaved();
+  if (route.screen === "saved" && route.id) go({ screen: "saved" }, { replace: true });
 }
 
 /** 130 An open panel of a live layer reads the layer's live answer again and asks for the feature's Details anew,
@@ -639,6 +656,78 @@ export function openFound(found: FoundPlace) {
   if (!found.properties) return;
   showPlace({ found: [{ properties: found.properties, layer: "", title: found.title, ...found.kind ? { kind: found.kind } : {} }],
     lng: start.longitude, lat: start.latitude });
+}
+
+// MARK: - 135 Saved
+
+/** The screen reads the phone's saved places afresh each time it opens; any other screen clears the map. */
+function followSaved(route: Route) {
+  if (route.screen === "saved") {
+    if (!busy.inSaved) void loadSaved();
+    busy.inSaved = true;
+    return;
+  }
+  busy.inSaved = false;
+  if (get().place?.saved) set({ place: null });
+  if (get().savedShape) set({ savedShape: null });
+  drawSaved();
+}
+
+export async function loadSaved() {
+  if (busy.saved || !offers("saved") || !get().editToken) return;
+  busy.saved = true;
+  const answer = await editing(() => backend.saved(), { quiet: true });
+  busy.saved = false;
+  if (!answer) return;
+  if (!answer.ok) {
+    if (answer.status === 404) set({ savedReadable: false });
+    return;
+  }
+  set({ saved: answer.value, savedReadable: true });
+  const { route } = get();
+  if (route.screen !== "saved") return;
+  drawSaved();
+  if (route.id) void showSavedRow(route.id);
+}
+
+/** The marks of the points the filters leave, and the opened shape, on the map; none off the screen. */
+export function drawSaved() {
+  const { saved, savedFilter, route, savedShape } = get();
+  if (route.screen !== "saved" || !saved) {
+    if (busy.savedDrawn) mapControl()?.showSaved(null, null);
+    busy.savedDrawn = false;
+    return;
+  }
+  busy.savedDrawn = true;
+  const marks = shownSaved(saved.features, savedFilter).filter((row) => row.kind === "point")
+    .map((row) => ({ id: row.id, lng: row.longitude, lat: row.latitude, ink: row.ink }));
+  mapControl()?.showSaved(marks, savedShape);
+}
+
+export function setSavedFilter(more: Partial<SavedFilter>) {
+  set({ savedFilter: { ...get().savedFilter, ...more } });
+  drawSaved();
+}
+
+/** A row picked: the address names it, the map goes there and the panel words it. */
+export function openSaved(row: SavedRow) {
+  go({ screen: "saved", id: row.id });
+  void showSavedRow(row.id);
+}
+
+async function showSavedRow(id: string) {
+  const row = get().saved?.features.find((each) => each.id === id);
+  if (!row) return;
+  const asked = ++busy.savedAsked;
+  let shape: SavedShape["geometry"] | null = null;
+  if (row.kind !== "point") {
+    const answer = await editing(() => backend.savedFeature(id), { quiet: true });
+    if (asked !== busy.savedAsked) return;
+    shape = answer?.ok ? answer.value.geometry : null;
+  }
+  set({ savedShape: shape, place: { found: [], lng: row.longitude, lat: row.latitude, saved: row } });
+  drawSaved();
+  mapControl()?.flyTo(row.longitude, row.latitude, savedBox(row));
 }
 
 /** 94 One of Edit map's tabs, in the address as the design's routes have it. */
