@@ -119,8 +119,9 @@ export function Gate() {
     return (
       <div id="gate" className="closed" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
         <div className="sheet">
-          <AppIcon size={48} className="gate-icon" />
-          <div id="gateMark">{refused ? <Sym name="exclamationmark.triangle.fill" /> : <div className="spinner" />}</div>
+          <AppIcon size={64} className="gate-icon" />
+          <p className="app-name">{words.app}</p>
+          {refused ? null : <div id="gateMark"><div className="spinner" /></div>}
           <h1 id="gateTitle">{refused ? words.refusedTitle : words.notConnected}</h1>
           <p id="gateText">{refused ? words.refusedText : words.reconnecting}</p>
         </div>
@@ -131,8 +132,8 @@ export function Gate() {
     return (
       <div id="gate" className="closed" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
         <div className="sheet">
-          <AppIcon size={48} className="gate-icon" />
-          <div id="gateMark"><Sym name="person.crop.circle" /></div>
+          <AppIcon size={64} className="gate-icon" />
+          <p className="app-name">{words.app}</p>
           <h1 id="gateTitle">{words.signInTitle}</h1>
           <p id="gateText">{words.signInText}</p>
           <div id="signIn" ref={signIn} />
@@ -143,7 +144,8 @@ export function Gate() {
   return (
     <div id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
       <div className="sheet">
-        <AppIcon size={48} className="gate-icon" />
+        <AppIcon size={64} className="gate-icon" />
+        <p className="app-name">{words.app}</p>
         <div id="gateMark">{removed ? <Sym name="person.crop.circle.badge.xmark" /> : <div className="spinner" />}</div>
         <h1 id="gateTitle">{removed ? words.removedTitle : words.waiting}</h1>
         <p id="gateText">{removed ? words.removedText : words.waitingText}</p>

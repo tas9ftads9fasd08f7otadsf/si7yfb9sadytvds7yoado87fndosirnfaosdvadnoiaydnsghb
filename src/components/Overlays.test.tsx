@@ -72,4 +72,16 @@ describe("Gate", () => {
     expect(screen.getByRole("dialog").className).toBe("closed");
     expect(screen.getByRole("heading").textContent).toBe("Sign in to iCloud");
   });
+
+  // 134 the sign-in names the app under its icon, with no second mark beside it
+  it("names the app on the sign-in and the refusal, with no symbol but its icon", () => {
+    for (const standing of ["signedOut", "refused"] as const) {
+      act(() => useViewer.setState({ standing }));
+      const { container, unmount } = render(<Gate />);
+      expect(container.querySelector(".app-name")?.textContent).toBe("Riki Maps");
+      expect(container.querySelector("#gateMark")).toBeNull();
+      expect(container.querySelector(".sym")).toBeNull();
+      unmount();
+    }
+  });
 });
