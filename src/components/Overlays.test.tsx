@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetViewer, useViewer } from "@/store/viewer";
-import { Offline, UndrawnNote } from "./Overlays";
+import { Offline, StatusBar, UndrawnNote } from "./Overlays";
 
 describe("Offline", () => {
   beforeEach(resetViewer);
@@ -30,5 +30,17 @@ describe("UndrawnNote", () => {
     expect(screen.getByRole("status").textContent).toBe("Trails This service doesn't answer browsers. The app draws it.");
     act(() => useViewer.setState({ undrawn: new Set() }));
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+describe("StatusBar", () => {
+  beforeEach(resetViewer);
+
+  // 105 the pointer's place alone: no [ key hint, no second zoom
+  it("writes where the pointer is and nothing else", () => {
+    useViewer.setState({ pointerText: "48.14500, 17.10800" });
+    const { container } = render(<StatusBar />);
+    expect(container.textContent).toBe("48.14500, 17.10800");
+    expect(container.querySelector("kbd")).toBeNull();
   });
 });

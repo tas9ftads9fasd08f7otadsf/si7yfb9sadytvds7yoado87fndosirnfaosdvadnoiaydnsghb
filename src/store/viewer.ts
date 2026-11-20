@@ -55,7 +55,6 @@ export interface ViewerState {
   /** Bytes a second now arriving from the phone and from elsewhere; null until measured. */
   traffic: Speeds | null;
   regionOffer: RegionOffer;
-  zoomText: string;
   pointerText: string;
   addedLanguages: Set<string>;
   startKind: string | null;
@@ -116,7 +115,7 @@ const firstState = (): ViewerState => ({
   editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, traffic: null, regionOffer: null,
-  zoomText: "", pointerText: "", addedLanguages: new Set(), startKind: null, startFound: null, coverage: null,
+  pointerText: "", addedLanguages: new Set(), startKind: null, startFound: null, coverage: null,
   coverageShown: false, coverageSide: "include", coverageOpen: new Map(), coverageQuery: "", coveragePlaces: null,
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),

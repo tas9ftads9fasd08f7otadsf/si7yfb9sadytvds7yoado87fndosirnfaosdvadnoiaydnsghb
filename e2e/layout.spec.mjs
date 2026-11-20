@@ -33,7 +33,10 @@ test("a computer's screen gets a header, a side bar, the map and a status line",
   await expect(page.locator(".maplibregl-ctrl-zoom-in")).toBeVisible();
   await expect(page.locator(".maplibregl-ctrl-fullscreen")).toBeVisible();
   await expect(page.locator(".maplibregl-ctrl-scale")).toBeVisible();
-  await expect(page.locator("#zoom")).toHaveText(/^z \d+\.\d$/);
+  // 105 the zoom is the map's badge alone, and no [ hint sits under the map
+  await expect(page.locator("#mapZoom")).toHaveText(/^z \d+\.\d$/);
+  await expect(page.locator("#zoom")).toHaveCount(0);
+  await expect(page.locator("#status kbd")).toHaveCount(0);
   await expect(page.locator("#editButton")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -200,9 +203,9 @@ test("the zoom is written on the map's top left and follows it", async ({ page }
   const before = await badge.textContent();
   await page.locator(".maplibregl-ctrl-zoom-in").click();
   await expect(badge).not.toHaveText(before);
-  // 2917: both follow an eased zoom; one read of the status line mid-way caught a stale value.
-  await expect.poll(async () => (await badge.textContent()) === (await page.locator("#zoom").textContent()))
-    .toBe(true);
+  // 2917: it follows an eased zoom to its end; 105 read against the map, the status line has none
+  await expect.poll(async () => (await badge.textContent())
+    === await page.evaluate(() => `z ${window.__riki.map.getZoom().toFixed(1)}`)).toBe(true);
 });
 
 // 94 Edit map is W5–W9's page of tabs beside the live map; a tab is an address that a reload keeps.

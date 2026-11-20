@@ -7,16 +7,10 @@ import { downloadRegion, askToJoin, shownMapOf, useViewer } from "@/store/viewer
 import { filledIn } from "@/lib/words";
 import { Sym } from "./ui/Sym";
 
+/** 105 Where the pointer is; the zoom is the badge's, and `[` is told by the side bar's button. */
 export function StatusBar() {
-  const words = useViewer((state) => state.words);
-  const zoom = useViewer((state) => state.zoomText);
   const pointer = useViewer((state) => state.pointerText);
-  return (
-    <footer id="status">
-      <span id="zoom">{zoom}</span><span id="pointer">{pointer}</span><span className="spacer" />
-      <span id="keys"><kbd>[</kbd>{` ${words.maps}`}</span>
-    </footer>
-  );
+  return <footer id="status"><span id="pointer">{pointer}</span></footer>;
 }
 
 /** Over everything until the phone's maps are read, so the page is not seen filling up piece by piece. */
