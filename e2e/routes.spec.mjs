@@ -120,3 +120,18 @@ test("Share copies the page's address", async ({ page, context }) => {
   expect(copied.split("#")[0]).toBe(shown);
   expect(copied).toMatch(/#\d+(\.\d+)?\/-?\d/);
 });
+
+// 122 bug: a browser without the edit key opened Edit map and logged a 401 for every part
+test("Edit map opened without the edit key asks the phone nothing it would refuse", async ({ page }) => {
+  const refused = [];
+  page.on("response", (answer) => { if (answer.status() === 401) refused.push(answer.url()); });
+  const logged = [];
+  page.on("console", (message) => { if (message.type() === "error") logged.push(message.text()); });
+  for (const tab of ["layers", "general", "styling", "sharing", "offline"]) {
+    await page.goto(`/maps/${TATRAS}/edit/${tab}`);
+    await page.locator("#map").waitFor();
+  }
+  await page.waitForLoadState("networkidle");
+  expect(refused).toEqual([]);
+  expect(logged).toEqual([]);
+});
