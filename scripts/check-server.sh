@@ -94,22 +94,43 @@ else
   else
     reason="$(grep -v '^\s*$' "$work/lftp.txt" | tail -1)"
     reason="${reason//"$FTPS_PASSWORD"/***}"
-    fail "login: ${reason:-lftp failed}; check FTPS_USER, FTPS_PASSWORD and that $dir exists"
+    # lftp logs in at its first command, so a refused login shows up as cd's failure.
+    if [[ "$reason" == *"Login failed"* || "$reason" =~ (^|[^0-9])530([^0-9]|$) ]]; then
+      fail "login: the server refused FTPS_USER and FTPS_PASSWORD (${reason#*: }); set both as the host's admin shows them"
+    elif [[ "$reason" == cd:* ]]; then
+      ok "login: FTPS_USER logs in"
+      fail "folder: $dir cannot be opened (${reason#cd: }); FTPS_DIR is read from where FTPS_USER lands"
+    elif [ -n "$reason" ]; then
+      ok "login: FTPS_USER logs in, and opens $dir"
+      fail "write: ${reason}; FTPS_USER may not write in $dir"
+    else
+      fail "login: lftp failed without a reason"
+    fi
   fi
 fi
 
-if [ -z "${SITE_URL:-}" ]; then
+# 126 A site that does not answer yet warns: the deploy only needs the server to take it.
+site="${SITE_URL%/}"
+if [ -z "$site" ]; then
   skip "site: SITE_URL is not set"
-elif body="$(curl -fsS --max-time 20 "${SITE_URL%/}/site.json" 2>"$work/curl.txt")"; then
-  version="$(sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p' <<<"$body")"
-  commit="$(sed -n 's/.*"commit" *: *"\([^"]*\)".*/\1/p' <<<"$body")"
-  if [ -n "$version" ]; then
-    ok "site: ${SITE_URL%/} serves $version ($commit)"
+elif [[ "$site" != http://* && "$site" != https://* ]]; then
+  warn "site: SITE_URL ($site) has no scheme; set it to https://$site"
+elif answer="$(curl -sS -L --max-time 20 -o "$work/site.json" -w '%{http_code} %{url_effective} %{content_type}' \
+    "$site/site.json" 2>"$work/curl.txt")"; then
+  read -r status landed type <<<"$answer"
+  version="$(sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p' "$work/site.json")"
+  commit="$(sed -n 's/.*"commit" *: *"\([^"]*\)".*/\1/p' "$work/site.json")"
+  moved=""
+  [ "$landed" != "$site/site.json" ] && moved=", redirected to $landed"
+  if [ "${status:0:1}" != 2 ]; then
+    warn "site: $site/site.json answers $status$moved; no release is deployed there, or SITE_URL is not the site"
+  elif [ -n "$version" ]; then
+    ok "site: $site serves $version ($commit)"
   else
-    fail "site: ${SITE_URL%/}/site.json is not the site's; is SITE_URL the site's address?"
+    warn "site: $site/site.json answers $status ${type:-without a type}$moved, not the site's site.json; is SITE_URL the site's address?"
   fi
 else
-  fail "site: ${SITE_URL%/}/site.json: $(tail -1 "$work/curl.txt")"
+  warn "site: $site/site.json: $(tail -1 "$work/curl.txt")"
 fi
 
 exit "$failed"
