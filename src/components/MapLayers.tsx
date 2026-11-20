@@ -66,7 +66,8 @@ export function useLayersOn(shared: SharedMap) {
   const words = useViewer((state) => state.words);
   const hidden = useViewer((state) => state.hidden);
   const on = shared.layers.filter((layer) => !hidden.has(layer.id)).length;
-  return filledIn(filledIn(words.layersOn, "on", String(on)), "all", String(shared.layers.length));
+  // 113 the app's own words for it, as Edit map's groups count theirs
+  return filledIn(filledIn(words.groupLayersOn, "on", String(on)), "count", String(shared.layers.length));
 }
 
 /** 97 Add layer's window, where the browser may add one. */

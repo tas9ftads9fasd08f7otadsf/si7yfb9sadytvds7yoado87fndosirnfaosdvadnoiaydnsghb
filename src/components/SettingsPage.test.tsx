@@ -36,7 +36,8 @@ describe("Settings", () => {
   it("names the phone and its app", () => {
     useViewer.setState({ route: { screen: "settings" } });
     render(<SettingsPage />);
-    expect(screen.getByText("Riki's iPad")).toBeTruthy();
+    // 113 in the app's own sentence for it
+    expect(screen.getByText("Shared by Riki's iPad")).toBeTruthy();
     expect(screen.getByRole("img", { name: "Connected" })).toBeTruthy();
     expect(screen.getByText("Riki Maps 0.31.0")).toBeTruthy();
   });
