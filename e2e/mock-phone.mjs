@@ -232,6 +232,38 @@ const typed = (key) => (key || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
 const opensEditing = (request) => typed(request.headers["x-riki-edit"]) === EDIT_KEY;
 const bearsToken = (request) => phone.tokens.has((request.headers.authorization || "").replace(/^Bearer /, ""));
 
+// 135: the phone's saved places as `PeerWebSaved` lists them, newest first; Spring has no mark of its own.
+const SAVED_FOLDERS = [
+  { id: "5A1E0000-0000-4000-8000-000000000001", name: "Tatras", symbol: "mountain.2", colour: "#336699", isShared: false, isSharedWithMe: false },
+  { id: "5A1E0000-0000-4000-8000-000000000002", name: "Hikes of Rita", symbol: "figure.hiking", isShared: true, isSharedWithMe: true }
+];
+const SAVED_ROWS = [
+  { id: "5A1E1000-0000-4000-8000-000000000001", name: "Chata pri Zelenom plese", kind: "point", category: "Shelter",
+    latitude: 49.2, longitude: 20.2, folderID: SAVED_FOLDERS[0].id, note: "Water at the back door", symbol: "house.fill", ink: "#B5651D",
+    mapName: "High Tatras", layerName: "Huts", savedAt: "2026-05-04T08:30:00Z", isComplete: true },
+  { id: "5A1E1000-0000-4000-8000-000000000002", name: "Tatranska magistrala", kind: "line", category: "Trail",
+    latitude: 49.15, longitude: 20.1, bounds: { south: 49.1, west: 20.0, north: 49.2, east: 20.2 }, folderID: SAVED_FOLDERS[1].id,
+    symbol: "figure.hiking", ink: "#2E8B57", mapName: "High Tatras", layerName: "Trails", savedAt: "2026-04-02T08:30:00Z", isComplete: false },
+  { id: "5A1E1000-0000-4000-8000-000000000003", name: "Strbske pleso", kind: "area", category: "Lake",
+    latitude: 49.12, longitude: 20.06, bounds: { south: 49.11, west: 20.05, north: 49.13, east: 20.07 }, note: "Swim in summer",
+    symbol: "drop.fill", ink: "#1E90FF", savedAt: "2026-03-03T08:30:00Z", isComplete: true },
+  { id: "5A1E1000-0000-4000-8000-000000000004", name: "Spring", kind: "point", latitude: 49.0, longitude: 20.0,
+    savedAt: "2026-02-01T08:30:00Z", isComplete: true }
+];
+
+// 135: the whole shape a row leaves out, as GeoJSON; a point is its spot.
+function savedShape(row) {
+  const { south, west, north, east } = row.bounds ?? {};
+  const geometry = row.kind === "line"
+    ? { type: "LineString", coordinates: [[west, south], [(west + east) / 2, north], [east, south]] }
+    : row.kind === "area"
+      ? { type: "Polygon", coordinates: [[[west, south], [east, south], [east, north], [west, north], [west, south]]] }
+      : { type: "Point", coordinates: [row.longitude, row.latitude] };
+  return { type: "Feature", id: row.id, geometry, properties: row };
+}
+
+const savedState = () => (phone.saved ??= { empty: false, gone: false, total: null });
+
 // MARK: - Answers
 
 function send(response, status, body, type = "text/plain; charset=utf-8", headers = {}) {
@@ -1488,6 +1520,20 @@ async function answer(request, response) {
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
   }
+  if (parts[2] === "saved" && parts.length <= 4) {
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const state = savedState();
+    if (state.gone) return send(response, 404, "");
+    const rows = state.empty ? [] : SAVED_ROWS;
+    if (parts.length === 3) {
+      return send(response, 200, JSON.stringify({ folders: state.empty ? [] : SAVED_FOLDERS, features: rows,
+        total: state.total ?? rows.length }), "application/json", { "Cache-Control": "no-store" });
+    }
+    const found = rows.find((one) => one.id === parts[3]);
+    if (!found) return send(response, 404, "");
+    return send(response, 200, JSON.stringify(savedShape(found)), "application/geo+json", { "Cache-Control": "no-store" });
+  }
   if (parts[2] === "start-places" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -1946,6 +1992,11 @@ function testControl(route, query, response) {
       hasPasscode: query.get("passcode") !== "0" });
     break;
   case "/__test/face-asks": return json(response, { asks: face().asks });
+  // 135: what the phone's Saved answers: nothing saved, a longer library than it sends, or an older app's 404.
+  case "/__test/saved":
+    Object.assign(savedState(), { empty: query.get("empty") === "1", gone: query.get("gone") === "1",
+      total: query.get("total") ? Number(query.get("total")) : null });
+    break;
   case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
   case "/__test/shares": return json(response, phone.shares);
   case "/__test/folder":
