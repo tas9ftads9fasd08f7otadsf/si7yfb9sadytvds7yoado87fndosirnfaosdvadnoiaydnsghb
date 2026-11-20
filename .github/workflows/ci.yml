@@ -83,17 +83,17 @@ jobs:
         env:
           RIKI_PACK_WITHOUT_CORE: "1"
       - run: npm run test:e2e:web
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: web-editor
           path: dist/web-editor.zip*
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: web-site
           path: dist/web-site.zip*
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ failure() }}
         with:
           name: playwright-report
