@@ -1,5 +1,6 @@
 "use client";
 
+import { isAnySize } from "@/lib/any-size";
 import { useEffect, useRef } from "react";
 import { type MapControl, setMapControl } from "@/map/control";
 import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
@@ -32,7 +33,7 @@ export function AppShell() {
     let made: MapControl | null = null;
     const small = matchMedia(SMALL_SCREEN);
     const dark = matchMedia("(prefers-color-scheme: dark)");
-    const smallChanged = () => startSession(small.matches);
+    const smallChanged = () => startSession(small.matches && !isAnySize());
     const darkChanged = () => {
       if (useViewer.getState().theme === "auto") drawStyle();
     };
@@ -47,7 +48,7 @@ export function AppShell() {
       if (isGone || !mapBox.current) return;
       made = createMapView(mapBox.current);
       setMapControl(made);
-      startSession(small.matches);
+      startSession(small.matches && !isAnySize());
     })();
     return () => {
       isGone = true;

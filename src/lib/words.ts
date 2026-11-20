@@ -40,6 +40,7 @@ export const ENGLISH = {
   removedText: "The phone sharing these maps removed this browser. Ask to join, and it can let you in again.",
   askToJoin: "Ask to join", smallTitle: "Made for a computer's screen",
   smallText: "This size is not supported. On a phone or a tablet, open the shared maps in Riki Maps.",
+  openInApp: "Open Riki Maps",
   typePassword: "Type the edit password", password: "Edit password", unlock: "Unlock",
   editHere: "Edit from this browser", scanToEdit: "Scan this code with the phone's camera to edit from this browser.",
   pairCode: "The phone asks you to check this code", editAllowed: "This browser can edit",

@@ -87,10 +87,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 #top .start { display: flex; align-items: center; gap: 16px; min-width: 0; justify-self: start; }
 #top .end { display: flex; align-items: center; gap: 10px; min-width: 0; justify-self: end; }
 #brand { display: flex; align-items: center; gap: 10px; flex: none; }
-#brand .tile { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center;
-  justify-content: center; background: linear-gradient(160deg, #fbf3da, #ebddb2);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); font: italic 900 20px -apple-system, system-ui, sans-serif;
-  color: #2f5fb3; }
 #brand b { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; }
 .tool { border: 0; background: none; border-radius: 999px; height: 40px; min-width: 40px; padding: 0 12px;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--text); flex: none; }
@@ -435,8 +431,6 @@ body.gated #gate { display: flex; }
 .skeleton .bar { flex: 1; height: 12px; border-radius: 6px; background: var(--fill); }
 #boot { position: fixed; inset: 0; z-index: 15; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 16px; background: var(--ground); color: var(--sub); }
-#boot .tile { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: 28px; }
 #boot .spinner { margin: 0; }
 #loadingBar { position: absolute; z-index: 4; top: var(--top); left: 0; right: 0; height: 3px; overflow: hidden;
   pointer-events: none; }
@@ -447,9 +441,16 @@ body.gated #gate { display: flex; }
 }
 /* Item 1994: a phone's or a small window's size is not supported; the app is the way there. */
 @media (max-width: 899px), (max-height: 499px) {
-  #small { display: flex; z-index: 30; }
-  #top, #rail, #side, #map, #status { visibility: hidden; }
+  html:not([data-any-size]) #small { display: flex; z-index: 30; }
+  html:not([data-any-size]) :is(#top, #rail, #side, #map, #status) { visibility: hidden; }
 }
+/* 131: Riki Maps' own icon, rounded as the home screen rounds it. */
+.app-icon { display: inline-block; flex: none; border-radius: 22.5%; background: center / cover no-repeat;
+  box-shadow: 0 1px 3px var(--shadow); }
+.sheet > .app-icon { display: block; margin: 0 auto 4px; }
+.sheet .gate-icon + #gateMark { margin-top: 10px; }
+.sheet a.button { display: inline-flex; align-items: center; margin-top: 16px; height: 36px; padding: 0 18px;
+  border-radius: 8px; background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none; }
 /* TestFlight AFKF: what a clicked feature carries, in the map's own popup. */
 .maplibregl-popup-content { background: var(--panel); color: var(--label); border-radius: var(--radius);
   padding: 12px 14px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22); max-width: 340px; }
