@@ -8,7 +8,7 @@ import type { Portable, SessionAnswer } from "@/lib/types";
 import { ENGLISH, type Words } from "@/lib/words";
 import { storedAuthor, type Author } from "./author";
 import { BASE } from "./base";
-import { Cloud } from "./cloud";
+import { Cloud, refusesToken } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
 import { loadCore, type AddressRead, type Adding, type Applied, type Core, type Reply } from "./core";
@@ -280,7 +280,11 @@ export function createBackend(parts: Parts): Backend {
   };
 
   const session = async (): Promise<Answer<SessionAnswer>> => {
-    const person = await parts.cloud.start();
+    const person = await parts.cloud.start().catch((error: unknown) => {
+      if (refusesToken(error)) return "refused" as const;
+      throw error;
+    });
+    if (person === "refused") return { ok: true, value: { standing: "refused" } };
     if (!person) return { ok: true, value: { standing: "signedOut" } };
     regionsOn = Boolean((await parts.config().catch(() => null))?.regionsCatalog);
     return { ok: true, value: { standing: "admitted", edits: true, token: SITE_TOKEN, device: person.name, viewers: null } };

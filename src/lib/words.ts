@@ -33,6 +33,8 @@ export const ENGLISH = {
   close: "Close", viewing: "Browsers viewing", connected: "Connected", notConnected: "Not connected",
   reconnecting: "Trying to reconnect…", connectedAgain: "Connected again", waiting: "Waiting to be let in",
   waitingText: "The phone sharing these maps has been asked to let this browser in.",
+  refusedTitle: "iCloud refused this site",
+  refusedText: "Apple did not accept this site's iCloud key, so no one can sign in. The site's owner has to set a new one.",
   signInTitle: "Sign in to iCloud", signInText: "Sign in with your Apple Account to see the maps in your iCloud.",
   changedBy: "{map} was changed by {author}", changedAway: "{map} was changed on another device",
   yourName: "Your name",

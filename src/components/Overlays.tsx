@@ -101,6 +101,7 @@ export function RegionOffer() {
 export function Gate() {
   const words = useViewer((state) => state.words);
   const standing = useViewer((state) => state.standing);
+  const connected = useViewer((state) => state.connected);
   const device = useViewer((state) => state.gateDevice);
   const [asking, setAsking] = useState(false);
   const removed = standing === "removed";
@@ -113,9 +114,22 @@ export function Gate() {
     await askToJoin();
     setAsking(false);
   };
+  if (standing === "refused" || (standing == null && connected === false)) {
+    const refused = standing === "refused";
+    return (
+      <div id="gate" className="closed" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+        <div className="sheet">
+          <AppIcon size={48} className="gate-icon" />
+          <div id="gateMark">{refused ? <Sym name="exclamationmark.triangle.fill" /> : <div className="spinner" />}</div>
+          <h1 id="gateTitle">{refused ? words.refusedTitle : words.notConnected}</h1>
+          <p id="gateText">{refused ? words.refusedText : words.reconnecting}</p>
+        </div>
+      </div>
+    );
+  }
   if (standing === "signedOut") {
     return (
-      <div id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+      <div id="gate" className="closed" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
         <div className="sheet">
           <AppIcon size={48} className="gate-icon" />
           <div id="gateMark"><Sym name="person.crop.circle" /></div>

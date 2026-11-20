@@ -1,5 +1,5 @@
 /** `signedOut` is the site's: no Apple Account is signed in yet. */
-export type Standing = "admitted" | "waiting" | "removed" | "signedOut";
+export type Standing = "admitted" | "waiting" | "removed" | "signedOut" | "refused";
 export type Box = [number, number, number, number];
 
 export interface MinimumVersion {

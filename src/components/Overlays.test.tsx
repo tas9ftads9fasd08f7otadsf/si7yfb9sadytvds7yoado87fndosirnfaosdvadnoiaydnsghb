@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetViewer, useViewer } from "@/store/viewer";
-import { Offline, StatusBar, UndrawnNote } from "./Overlays";
+import { Gate, Offline, StatusBar, UndrawnNote } from "./Overlays";
 
 describe("Offline", () => {
   beforeEach(resetViewer);
@@ -42,5 +42,34 @@ describe("StatusBar", () => {
     const { container } = render(<StatusBar />);
     expect(container.textContent).toBe("48.14500, 17.10800");
     expect(container.querySelector("kbd")).toBeNull();
+  });
+});
+
+describe("Gate", () => {
+  beforeEach(resetViewer);
+
+  // 134 bug: a refused token left the editor up with no word of why no one could sign in
+  it("says Apple refused the site, over nothing of the editor", () => {
+    act(() => useViewer.setState({ standing: "refused" }));
+    render(<Gate />);
+    expect(screen.getByRole("dialog").className).toBe("closed");
+    expect(screen.getByRole("heading").textContent).toBe("iCloud refused this site");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  // 134 a page that never reached its cloud has no one let in, so it shows no editor either
+  it("covers the page while no one is let in and the cloud does not answer", () => {
+    act(() => useViewer.setState({ standing: null, connected: false }));
+    render(<Gate />);
+    expect(screen.getByRole("dialog").className).toBe("closed");
+    expect(screen.getByRole("heading").textContent).toBe("Not connected");
+  });
+
+  // 134 signed out, the editor is not seen behind the sign-in
+  it("hides the editor behind the sign-in", () => {
+    act(() => useViewer.setState({ standing: "signedOut" }));
+    render(<Gate />);
+    expect(screen.getByRole("dialog").className).toBe("closed");
+    expect(screen.getByRole("heading").textContent).toBe("Sign in to iCloud");
   });
 });
