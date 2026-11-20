@@ -1,0 +1,39 @@
+name: Check server
+
+# Whether the site's FTPS server takes a deploy: each day, by hand, and before every deploy.
+on:
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Connection to the site's server
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: site
+    env:
+      FTPS_HOST: ${{ secrets.FTPS_HOST }}
+      FTPS_USER: ${{ secrets.FTPS_USER }}
+      FTPS_PASSWORD: ${{ secrets.FTPS_PASSWORD }}
+      FTPS_DIR: ${{ vars.FTPS_DIR }}
+      FTPS_PORT: ${{ vars.FTPS_PORT }}
+      # The host's shared certificate names its own servers, not FTPS_HOST.
+      FTPS_CERT_NAME: ${{ vars.FTPS_CERT_NAME || '*.r5.websupport.sk' }}
+      SITE_URL: ${{ vars.SITE_URL }}
+      # Optional: the site's address, whose site.json says which release it serves.
+      SITE_URL: ${{ vars.SITE_URL }}
+    steps:
+      - name: Settings
+        run: |
+          if [ -z "$FTPS_HOST" ] || [ -z "$FTPS_USER" ] || [ -z "$FTPS_PASSWORD" ]; then
+            echo "::error::FTPS_HOST, FTPS_USER and FTPS_PASSWORD are not all set on the site environment"
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - run: sudo apt-get update -q && sudo apt-get install -y -q lftp
+      - run: bash scripts/check-server.sh

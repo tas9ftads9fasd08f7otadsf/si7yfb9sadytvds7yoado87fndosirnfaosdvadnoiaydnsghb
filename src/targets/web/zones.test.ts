@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import type { CKContainer, CKError, CKReading, CKRecord, CKRecordList, CKZoneChanges } from "./cloud";
-import { indexedKeeping, MIRROR_ZONE, Zones, type Keeping } from "./zones";
+import { indexedKeeping, MIRROR_ZONE, OWN_SHARE_PREFIX, Zones, type Keeping } from "./zones";
 
 // 76 zone changes by token, private mirror and shared zones, kept for offline
 const assets = account.assets as Record<string, string>;
@@ -20,16 +20,32 @@ const zoneOf = (options: CKZoneChanges | CKZoneChanges[]): CKZoneChanges => {
   return zone;
 };
 
-function cloud(options: { privateRecords?: CKRecord[][]; down?: boolean; errors?: CKError[][] } = {}) {
-  const asked: { syncToken?: string }[] = [];
+const OWN = account.zones.private[1]!;
+const OWN_ZONE = OWN.zoneID.zoneName;
+
+/** `own` names the private share zones the person's database lists, from the fixture's; the mirror's `privateRecords` are pages. */
+function cloud(options: { privateRecords?: CKRecord[][]; down?: boolean; errors?: CKError[][]; own?: string[] } = {}) {
+  const asked: { syncToken?: string; zone?: string }[] = [];
   const errors = [...(options.errors ?? [])];
   const pages = [...(options.privateRecords ?? [account.zones.private[0]!.records as unknown as CKRecord[]])];
   const privateDB: CKReading = {
-    fetchAllRecordZones: async () => ({}),
+    // The person's database lists the zones Core Data made beside the others, which are not the site's to read.
+    fetchAllRecordZones: async () => {
+      if (options.down) throw new Error("offline");
+      return { zones: [{ zoneID: { zoneName: "_defaultZone", ownerRecordName: "_me" } },
+        { zoneID: { zoneName: MIRROR_ZONE, ownerRecordName: "_me" } }, { zoneID: { zoneName: "role-editors", ownerRecordName: "_me" } },
+        ...(options.own ?? []).map((zoneName) => ({ zoneID: { zoneName, ownerRecordName: "_me" } }))] };
+    },
     fetchRecordZoneChanges: async (given) => {
       if (options.down) throw new Error("offline");
       const zone = zoneOf(given);
-      asked.push({ syncToken: zone.syncToken });
+      asked.push({ syncToken: zone.syncToken, zone: zone.zoneID.zoneName });
+      if (zone.zoneID.zoneName.startsWith(OWN_SHARE_PREFIX)) {
+        if (!options.own?.includes(zone.zoneID.zoneName)) {
+          return { zones: [], errors: [{ ckErrorCode: "ZONE_NOT_FOUND", zoneID: zone.zoneID }], hasErrors: true } as CKRecordList;
+        }
+        return { zones: [{ zoneID: zone.zoneID, records: OWN.records as unknown as CKRecord[], syncToken: `own-${asked.length}` }] };
+      }
       // A zone that failed is in `errors`, not in `zones`, as the library splits the answer.
       const failed = errors.shift();
       if (failed) return { zones: [], errors: failed, hasErrors: true } as CKRecordList;
@@ -143,8 +159,81 @@ describe("Zones", () => {
     await expect(new Zones(cloud({ down: true }).container, keeping, fetcher).rows()).rejects.toThrow("offline");
   });
 
+  // 116 bug: a map the person shares moves to a private zone of its own, which the site never read
+  it("reads the private zone made for a map the person shares, with its share and members", async () => {
+    const { container, asked } = cloud({ own: [OWN_ZONE] });
+    const rows = await new Zones(container, keeping, fetcher).rows();
+    const inZone = rows.filter((row) => row.zone === OWN_ZONE);
+    expect(inZone.map((row) => row.entity).sort()).toEqual(["Share", "SharedMap", "SharedMapLayer", "SharedMapMember", "SharedMapMember"]);
+    expect(inZone.every((row) => row.database === "private" && row.owner === undefined)).toBe(true);
+    expect(inZone.find((row) => row.entity === "SharedMap")).toMatchObject({ id: "own-beskydy", tag: "o1" });
+    const share = inZone.find((row) => row.entity === "Share");
+    expect((share?.fields.participants as unknown[]).length).toBe(3);
+    expect(asked.map((each) => each.zone)).toEqual([MIRROR_ZONE, OWN_ZONE]);
+  });
+
+  // 116 the other zones of the private database stay unread
+  it("reads only the mirror zone and the share zones of the private database", async () => {
+    const { container, asked } = cloud({ own: [OWN_ZONE] });
+    await new Zones(container, keeping, fetcher).rows();
+    expect(asked.map((each) => each.zone)).not.toContain("_defaultZone");
+    expect(asked.map((each) => each.zone)).not.toContain("role-editors");
+  });
+
+  // 116 a share zone is kept by its own token
+  it("asks a share zone again from the token it kept", async () => {
+    await new Zones(cloud({ own: [OWN_ZONE] }).container, keeping, fetcher).rows();
+    const second = cloud({ own: [OWN_ZONE] });
+    await new Zones(second.container, keeping, fetcher).rows();
+    expect(second.asked.map((each) => [each.zone, each.syncToken])).toEqual([[MIRROR_ZONE, "private-1"], [OWN_ZONE, "own-2"]]);
+  });
+
+  // 116 sharing stopped: the zone is gone and the map's rows are in the mirror zone again, once
+  it("drops the rows of a share zone that is gone, as the mirror zone brings them back", async () => {
+    await new Zones(cloud({ own: [OWN_ZONE] }).container, keeping, fetcher).rows();
+    const back = OWN.records.filter((each) => ["own-beskydy", "own-beskydy-layer"].includes(each.recordName)) as unknown as CKRecord[];
+    const rows = await new Zones(cloud({ privateRecords: [back] }).container, keeping, fetcher).rows();
+    expect(rows.filter((row) => row.zone === OWN_ZONE)).toEqual([]);
+    expect(rows.filter((row) => row.id === "own-beskydy").map((row) => row.zone)).toEqual([MIRROR_ZONE]);
+    const offline = await new Zones(cloud({ down: true }).container, keeping, fetcher).rows();
+    expect(offline.filter((row) => row.zone === OWN_ZONE)).toEqual([]);
+  });
+
+  // 116 a zone name that returns does not take the old token
+  it("reads a share zone that comes back from the start, not from the token of its first time", async () => {
+    await new Zones(cloud({ own: [OWN_ZONE] }).container, keeping, fetcher).rows();
+    await new Zones(cloud().container, keeping, fetcher).rows();
+    const again = cloud({ own: [OWN_ZONE] });
+    const rows = await new Zones(again.container, keeping, fetcher).rows();
+    expect(again.asked.find((each) => each.zone === OWN_ZONE)?.syncToken).toBeUndefined();
+    expect(rows.filter((row) => row.zone === OWN_ZONE)).toHaveLength(5);
+  });
+
+  // 116 a zone may go between the list and its read
+  it("takes a listed share zone that is not there any more as no rows, not as a failure", async () => {
+    const stale = cloud({ own: [OWN_ZONE] });
+    await new Zones(stale.container, keeping, fetcher).rows();
+    const listed = cloud({ own: [OWN_ZONE] });
+    const container = await listed.container();
+    // The list was taken a moment before the zone went.
+    const rows = await new Zones(async () => ({ ...container, privateCloudDatabase: { ...container.privateCloudDatabase,
+      fetchRecordZoneChanges: async (given: CKZoneChanges | CKZoneChanges[]) => zoneOf(given).zoneID.zoneName === OWN_ZONE
+        ? { zones: [], errors: [{ ckErrorCode: "ZONE_NOT_FOUND", zoneID: zoneOf(given).zoneID }] } as CKRecordList
+        : container.privateCloudDatabase.fetchRecordZoneChanges(given) } }) as CKContainer, keeping, fetcher).rows();
+    expect(rows.filter((row) => row.zone === OWN_ZONE)).toEqual([]);
+  });
+
+  // 116 an owner-shared map opens offline as the others
+  it("opens the maps a person shares from what it kept when CloudKit cannot be reached", async () => {
+    await new Zones(cloud({ own: [OWN_ZONE] }).container, keeping, fetcher).rows();
+    const rows = await new Zones(cloud({ down: true }).container, keeping, fetcher).rows();
+    expect(rows.filter((row) => row.zone === OWN_ZONE).map((row) => row.id).sort()).toEqual(["Share-beskydy", "member-jana",
+      "member-petr", "own-beskydy", "own-beskydy-layer"]);
+  });
+
   it("names the mirror zone as Core Data does", () => {
     expect(MIRROR_ZONE).toBe("com.apple.coredata.cloudkit.zone");
+    expect(OWN_SHARE_PREFIX).toBe("com.apple.coredata.cloudkit.share.");
   });
 });
 

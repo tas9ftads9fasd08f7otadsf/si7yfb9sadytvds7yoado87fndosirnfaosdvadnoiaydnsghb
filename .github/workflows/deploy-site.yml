@@ -40,6 +40,9 @@ jobs:
       FTPS_PASSWORD: ${{ secrets.FTPS_PASSWORD }}
       FTPS_DIR: ${{ vars.FTPS_DIR }}
       FTPS_PORT: ${{ vars.FTPS_PORT }}
+      # The host's shared certificate names its own servers, not FTPS_HOST.
+      FTPS_CERT_NAME: ${{ vars.FTPS_CERT_NAME || '*.r5.websupport.sk' }}
+      SITE_URL: ${{ vars.SITE_URL }}
       # A CloudKit JS API token is sent by every browser, so a variable will do; a secret works too.
       ICLOUD_API_TOKEN: ${{ vars.ICLOUD_API_TOKEN || secrets.ICLOUD_API_TOKEN }}
       ICLOUD_CONTAINER: ${{ vars.ICLOUD_CONTAINER || 'iCloud.com.rikimaps.rikimaps.maps' }}
@@ -72,5 +75,8 @@ jobs:
         run: sudo apt-get update -q && sudo apt-get install -y -q lftp php-cli
       - if: steps.ready.outputs.go == 'true'
         run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'web-site.zip*' --dir dist
+      - if: steps.ready.outputs.go == 'true'
+        name: Check the server
+        run: bash scripts/check-server.sh
       - if: steps.ready.outputs.go == 'true'
         run: bash scripts/deploy-site.sh dist/web-site.zip

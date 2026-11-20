@@ -22,6 +22,13 @@ test("the page and every file it asks for are served, under the site's own path"
   expect(missing.filter((url) => !/\/words\/\w+\.json$/.test(url))).toEqual([]);
 });
 
+// 122 bug: with no icon named, Chrome asked the site for /favicon.ico and logged its 404 on every load
+test("the page names its own icon, so the browser asks the site for no favicon", async ({ page }) => {
+  await page.goto("./");
+  await expect(page.locator("#appName")).toHaveText("Riki Maps");
+  await expect(page.locator('head link[rel="icon"]')).toHaveAttribute("href", "data:,");
+});
+
 test("a screen's address opens the page and survives a reload", async ({ page, baseURL }) => {
   await page.goto("./maps/M1/edit/layers");
   await expect(page.locator("#appName")).toHaveText("Riki Maps");

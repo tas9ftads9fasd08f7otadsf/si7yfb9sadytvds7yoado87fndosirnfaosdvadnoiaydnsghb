@@ -13,6 +13,7 @@ import { opfsStore, type PackageStore } from "./regions/store";
 
 // 76 WebBackend reads against recorded CloudKit answers and a fake core
 const assets = account.assets as Record<string, string>;
+const SHARE_ZONE = account.zones.private[1]!.zoneID.zoneName;
 
 interface Options {
   signedIn?: boolean;
@@ -51,11 +52,10 @@ function stack(options: Options = {}) {
   // 87 a zone's options, as the library takes them: it builds the `zones` of the request itself
   const changes = vi.fn(async (options: CKZoneChanges | CKZoneChanges[]) => {
     const [zone] = [options].flat();
-    const mine = held.private[0]!;
-    return { zones: [{ zoneID: zone!.zoneID, syncToken: "t",
-      records: zone!.zoneID.zoneName === mine.zoneID.zoneName ? mine.records : held.shared[0]!.records }] };
+    const found = [...held.private, ...held.shared].find((each) => each.zoneID.zoneName === zone!.zoneID.zoneName);
+    return { zones: [{ zoneID: zone!.zoneID, syncToken: "t", records: found?.records ?? [] }] };
   });
-  const all = () => [...held.private[0]!.records, ...held.shared[0]!.records];
+  const all = () => [...held.private, ...held.shared].flatMap((zone) => zone.records);
   let version = 0;
   /** The batch's commit: what it creates and updates, where, and what it deletes with the tags read. */
   const saves = vi.fn<(records: CKSave[], where: unknown, removals: { recordName: string; recordChangeTag?: string }[]) => Promise<CKBatchResult>>(async (records) => {
@@ -101,7 +101,7 @@ function stack(options: Options = {}) {
     whenUserSignsOut: () => new Promise(() => {}),
     registerForNotifications: async () => {},
     addNotificationListener: (listener: (n: unknown) => void) => { notify = listener; },
-    privateCloudDatabase: { ...database, fetchAllRecordZones: async () => ({}) },
+    privateCloudDatabase: { ...database, fetchAllRecordZones: async () => ({ zones: held.private.map((each) => ({ zoneID: each.zoneID })) }) },
     sharedCloudDatabase: { ...database, newRecordsBatch: batchOf(shared),
       fetchAllRecordZones: async () => ({ zones: account.zones.shared.map((each) => ({ zoneID: each.zoneID })) }) }
   } as unknown as CKContainer;
@@ -203,8 +203,9 @@ describe("WebBackend's reads", () => {
     expect(device.maps.map((each) => each.name)).toEqual(["High Tatras", "Doprava"]);
     const rows = seen[0] as { entity: string; fields: Record<string, unknown> }[];
     // 108 a shared map's share and member rows are among them, for the core to read who holds it
-    expect(rows.map((row) => row.entity).sort()).toEqual(["Share", "SharedMap", "SharedMap", "SharedMapChange", "SharedMapLayer",
-      "SharedMapMember", "SharedMapMember"]);
+    expect(rows.map((row) => row.entity).sort()).toEqual(["Share", "Share", "SharedMap", "SharedMap", "SharedMap",
+      "SharedMapChange", "SharedMapLayer", "SharedMapLayer", "SharedMapMember", "SharedMapMember", "SharedMapMember",
+      "SharedMapMember"]);
     expect(rows.find((row) => row.fields.name === "High Tatras")?.fields.payload).toBe("{\"symbol\":\"mountain.2\"}");
   });
 
@@ -274,8 +275,9 @@ describe("WebBackend's edits", () => {
     expect(answer).toEqual({ ok: true, value: account.core.riki_map });
     const ask = vi.mocked(core.apply).mock.calls[0]![0];
     expect(ask).toMatchObject({ mapID: TATRAS, styleID: "B1", edit: rename, author: "Riki Tester", origin: "web" });
-    expect(ask.rows.map((row) => row.entity).sort()).toEqual(["Share", "SharedMap", "SharedMap", "SharedMapChange", "SharedMapLayer",
-      "SharedMapMember", "SharedMapMember"]);
+    expect(ask.rows.map((row) => row.entity).sort()).toEqual(["Share", "Share", "SharedMap", "SharedMap", "SharedMap",
+      "SharedMapChange", "SharedMapLayer", "SharedMapLayer", "SharedMapMember", "SharedMapMember", "SharedMapMember",
+      "SharedMapMember"]);
     expect(saves).toHaveBeenCalledTimes(1);
     const [records, where] = saves.mock.calls[0]!;
     expect(where).toEqual({ zoneID: { zoneName: "com.apple.coredata.cloudkit.zone" }, atomic: true });
@@ -319,6 +321,17 @@ describe("WebBackend's edits", () => {
       [{ recordName: "shared-doprava", recordType: "CD_SharedMap", recordChangeTag: "s1",
         fields: { CD_name: { value: "Roads", type: "STRING" } } }],
       { zoneID: { zoneName: "share-doprava", ownerRecordName: "_friki" }, atomic: true }, []);
+  });
+
+  // 116 bug: the site never read a map the person shares, so none of its rows could be written to its zone
+  it("sends an owner-shared map's edit to the private database, in the zone made for the share", async () => {
+    const BESKYDY = "6F1E2A10-0000-4000-8000-000000000003";
+    const { backend, saves, shared } = stack({ apply: () => ({ map: account.core.riki_map as never,
+      write: [{ entity: "SharedMap", id: "own-beskydy", fields: { name: "Beskydy 2" } }] }) });
+    expect((await backend.change(BESKYDY, null, { kind: "name", name: "Beskydy 2" })).ok).toBe(true);
+    expect(shared).not.toHaveBeenCalled();
+    expect(saves.mock.calls[0]![1]).toEqual({ zoneID: { zoneName: SHARE_ZONE }, atomic: true });
+    expect(saves.mock.calls[0]![0]).toMatchObject([{ recordName: "own-beskydy", recordChangeTag: "o1" }]);
   });
 
   it("returns the core's refusal words and writes nothing", async () => {

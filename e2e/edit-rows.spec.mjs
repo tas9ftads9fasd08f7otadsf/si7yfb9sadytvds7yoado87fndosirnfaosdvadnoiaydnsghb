@@ -86,6 +86,14 @@ test("a layer moves down and back up, and the ends cannot move further", async (
   await expect.poll(names).toEqual(["Trails", "Huts"]);
 });
 
+// 115 W5's heading, with the count of the layers the list switches
+test("the layers' heading says they are dragged into order, and how many", async ({ page }) => {
+  await openEdit(page);
+  const heading = page.locator("#editBody .title-row h2").first();
+  await expect(heading).toContainText("Layers · drag to change the order");
+  await expect(heading.locator(".count")).toHaveText(String(await page.locator("#editBody .layer-item").count()));
+});
+
 // 3083 TestFlight AJNX
 test("the list's own switch turns every layer off, then on again", async ({ page }) => {
   await openEdit(page);

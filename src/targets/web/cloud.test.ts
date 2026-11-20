@@ -195,6 +195,36 @@ describe("Cloud", () => {
     });
   });
 
+  // 116 a database subscription has no zone, so a share zone made later is covered; the fallback asks the same way
+  it("subscribes to the private database as a whole, not to a zone", async () => {
+    const stub = kit({ userRecordName: "_me" });
+    await new Cloud(async () => stub.cloudkit, async () => config).start();
+    await flush();
+    expect(stub.saved.find((each) => each.subscriptionID === "riki-site-private")).toEqual({
+      subscriptionID: "riki-site-private", subscriptionType: "database" });
+  });
+
+  // 116 the zone of a map the person has just shared is new to the private database, and its rows are news
+  it("tells when the private database answers with a zone it did not have", async () => {
+    vi.useFakeTimers();
+    try {
+      const stub = kit({ userRecordName: "_me" }, { saving: async () => { throw new Error("subscriptions are not on"); } });
+      const own = { fetchDatabaseChanges: vi.fn(async () => ({ zones: [] as unknown[], syncToken: "p1" })) };
+      (stub.container as unknown as { privateCloudDatabase: unknown }).privateCloudDatabase = { ...stub.database, ...own };
+      const cloud = new Cloud(async () => stub.cloudkit, async () => config);
+      const told = vi.fn();
+      cloud.onChanged(told);
+      await cloud.start();
+      await vi.advanceTimersByTimeAsync(0);
+      own.fetchDatabaseChanges.mockResolvedValue({ zones: [{ zoneID: { zoneName: "com.apple.coredata.cloudkit.share.X" } }], syncToken: "p2" });
+      await vi.advanceTimersByTimeAsync(POLL_EVERY);
+      expect(told).toHaveBeenCalledTimes(1);
+      expect(own.fetchDatabaseChanges).toHaveBeenLastCalledWith({ syncToken: "p1" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("fails when CloudKit JS cannot be loaded", async () => {
     const cloud = new Cloud(async () => { throw new Error("blocked"); }, async () => config);
     await expect(cloud.start()).rejects.toThrow("blocked");
