@@ -45,6 +45,21 @@ describe("TopBar", () => {
     expect(location.pathname).toBe("/new");
   });
 
+  // 104 the side bar's button hides it and brings it back, and steps aside while editing
+  it("hides and shows the side bar", () => {
+    const { rerender } = render(<TopBar />);
+    const toggle = screen.getByRole("button", { name: "Hide the side bar" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    act(() => fireEvent.click(toggle));
+    expect(useViewer.getState().sideShown).toBe(false);
+    expect(screen.getByRole("button", { name: "Show the side bar" }).getAttribute("aria-expanded")).toBe("false");
+    act(() => fireEvent.click(screen.getByRole("button", { name: "Show the side bar" })));
+    expect(useViewer.getState().sideShown).toBe(true);
+    act(() => useViewer.setState({ editing: true }));
+    rerender(<TopBar />);
+    expect(screen.queryByRole("button", { name: /side bar/ })).toBeNull();
+  });
+
   // 40 no dot until the phone has been asked, green once it answers, red when it does not
   it("marks the phone connected or not by its name", () => {
     render(<TopBar />);

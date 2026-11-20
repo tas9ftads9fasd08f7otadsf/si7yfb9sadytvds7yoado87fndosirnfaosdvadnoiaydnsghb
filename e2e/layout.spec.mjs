@@ -243,3 +243,16 @@ test("Add layer opens its window of sources from the side bar", async ({ page })
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
 });
+
+// 104 the top bar's side bar button hides it, the map takes the room, and the same button brings it back.
+test("the top bar's button hides the side bar and brings it back", async ({ page }) => {
+  await openViewer(page);
+  const wide = (await page.locator("#map").boundingBox()).width;
+  await page.getByRole("button", { name: "Hide the side bar" }).click();
+  await expect(page.locator("body")).toHaveClass(/side-hidden/);
+  await expect(page.locator("#side")).toBeHidden();
+  await expect.poll(async () => (await page.locator("#map").boundingBox()).width).toBeGreaterThan(wide + 300);
+  await page.getByRole("button", { name: "Show the side bar" }).click();
+  await expect(page.locator("#side")).toBeVisible();
+  await expect(page.locator("body")).not.toHaveClass(/side-hidden/);
+});

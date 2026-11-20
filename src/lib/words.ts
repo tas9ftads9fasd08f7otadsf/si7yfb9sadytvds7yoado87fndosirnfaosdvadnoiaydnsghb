@@ -7,7 +7,7 @@ export const ENGLISH = {
   newMapPlaceholder: "For example: Hiking in Malé Karpaty", createAndEdit: "Create and edit", searchPlaceholder: "Search names in this map, places or coordinates",
   resultsFor: "Results for “{text}”", inMapData: "In this map's data", placesFound: "Places",
   noResults: "Nothing on the map goes by that name.", copy: "Copy", copied: "Copied", fromLayer: "From layer",
-  goThere: "Go there", data: "Data", dataNote: "Everything the shared maps use, as the phone keeps it.",
+  goThere: "Go there", hideSide: "Hide the side bar", showSideBar: "Show the side bar", data: "Data", dataNote: "Everything the shared maps use, as the phone keeps it.",
   regions: "Regions", usedIn: "Used in", inMaps: "{count} maps", oneMap: "1 map", onThisPhone: "On the phone",
   downloading: "Downloading", about: "About", sharedBy: "Shared by", appVersion: "Riki Maps {version}",
   settingsNote: "For this browser; the maps are set on the phone that shares them.", nameNote: "Changes you make are signed with it.", regionsOf: "Regions of {map}", noneHere: "Nothing here yet.", rikiMaps: "Riki Maps", builtInNote: "Built in, from your regions",
