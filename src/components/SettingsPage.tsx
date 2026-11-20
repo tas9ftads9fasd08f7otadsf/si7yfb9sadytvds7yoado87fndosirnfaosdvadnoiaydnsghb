@@ -68,12 +68,14 @@ function EditHere() {
   return (
     <section aria-labelledby="editHereTitle">
       <span className="group-title" id="editHereTitle">{words.editHere}</span>
-      {canEdit ? <p className="foot-note" id="editAllowed">{words.editAllowed}</p> : (
-        <>
-          {backend.pair ? <PairCode /> : null}
-          <PasswordForm prefix="settings-" />
-        </>
-      )}
+      <div className="group edit-here">
+        {canEdit ? <p className="foot-note" id="editAllowed">{words.editAllowed}</p> : (
+          <>
+            {backend.pair ? <PairCode /> : null}
+            <PasswordForm prefix="settings-" />
+          </>
+        )}
+      </div>
     </section>
   );
 }

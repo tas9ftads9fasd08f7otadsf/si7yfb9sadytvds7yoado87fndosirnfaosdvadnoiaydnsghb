@@ -813,6 +813,9 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #settings .about { margin: 0; display: grid; grid-template-columns: auto 1fr; padding: 4px 16px; }
 #settings .about dt, #settings .about dd { margin: 0; min-height: 48px; display: flex; align-items: center; font-size: 15px; }
 #settings .about dt { color: var(--sub); }
+/* 103 The QR code is a section too, so it takes back its centred grid from the page's columns. */
+#settings section.pair { display: grid; }
+#settings .edit-here #editAllowed { margin: 0; padding: 16px; font-size: 15px; color: var(--text); }
 #settings .about dd { justify-content: flex-end; gap: 8px; font-weight: 600; }
 #settings .about dt + dd ~ dt, #settings .about dt + dd ~ dd { box-shadow: inset 0 1px 0 var(--sep); }
 #settings .about .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
