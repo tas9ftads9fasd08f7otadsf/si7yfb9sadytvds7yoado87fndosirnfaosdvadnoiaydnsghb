@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { change, duplicateMap, exportMap, loadCoverage, loadLayerOptions, loadSwitches, offers, useViewer } from "@/store/viewer";
+import { EDIT_TABS, type EditTab, type Route } from "@/lib/route";
+import { change, duplicateMap, exportMap, loadCoverage, loadLayerOptions, loadSwitches, offers, showEditTab, useViewer }
+  from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
-import { AddLayer } from "./AddLayer";
 import { Availability } from "./Availability";
 import { CoverageCard } from "./CoverageCard";
 import { DeleteMap } from "./DeleteMap";
@@ -38,46 +39,76 @@ export function EditPage() {
   return portable ? <EditFields key={epoch} /> : null;
 }
 
+const tabOf = (route: Route): EditTab => route.screen === "edit" ? route.tab : "layers";
+
+/** 94 Edit map's tabs, as the design's W5–W9 split it. */
+export function EditTabs() {
+  const words = useViewer((state) => state.words);
+  const tab = useViewer((state) => tabOf(state.route));
+  return (
+    <div role="tablist" id="editTabs" aria-label={words.edit}>
+      {EDIT_TABS.map((each) => (
+        <button type="button" role="tab" key={each} id={`editTab-${each}`} aria-selected={each === tab}
+          aria-controls="editBody" onClick={() => showEditTab(each)}>{words[each]}</button>
+      ))}
+    </div>
+  );
+}
+
 function EditFields() {
   const words = useViewer((state) => state.words);
   const portable = useViewer((state) => state.portable);
-  const adding = useViewer((state) => state.addingPackages);
   const switches = useViewer((state) => state.switches);
+  const tab = useViewer((state) => tabOf(state.route));
   if (!portable) return null;
-  return (
-    <>
-      <div className="card" style={{ marginTop: 8 }}>
-        <div className="field"><label>{words.name}</label>
-          <CommitField type="text" value={portable.name} aria-label={words.name} maxLength={200}
-            onCommit={(name) => change({ kind: "name", name })} /></div>
-        <div className="field"><label>{words.note}</label>
-          <CommitField multiline rows={3} value={portable.note ?? ""} aria-label={words.note} maxLength={2000}
-            onCommit={(note) => change({ kind: "note", note })} /></div>
-      </div>
-      <Languages portable={portable} />
-      <Styling portable={portable} />
-      {offers("coverage") ? <CoverageCard /> : null}
-      <OpensAt portable={portable} />
-      <MinimumVersion />
-      <Styles portable={portable} />
-      <Layers portable={portable} />
-      <EsriServices />
-      {adding ? <AddLayer /> : null}
-      {portable.styles?.length ? <div className="foot-note">{words.layerCap}</div> : null}
-      {switches ? <Availability switches={switches} /> : null}
-      <People />
-      <Offline />
-      {offers("exportMap") ? (
-        <button type="button" className="action" id="exportMap" onClick={exportMap}>
-          <Sym name="square.and.arrow.up" />{words.export}
-        </button>
-      ) : null}
-      {offers("duplicateMap") ? (
-        <button type="button" className="action" id="duplicateMap" onClick={() => void duplicateMap()}>
-          <Sym name="plus.square.on.square" />{words.duplicateMap}
-        </button>
-      ) : null}
-      <DeleteMap place="edit" />
-    </>
-  );
+  switch (tab) {
+    case "layers":
+      return (
+        <>
+          <Layers portable={portable} />
+          <EsriServices />
+          {portable.styles?.length ? <div className="foot-note">{words.layerCap}</div> : null}
+        </>
+      );
+    case "styling":
+      return <Styles portable={portable} />;
+    case "sharing":
+      return <People />;
+    case "offline":
+      return (
+        <>
+          <Offline />
+          {offers("coverage") ? <CoverageCard /> : null}
+        </>
+      );
+    case "general":
+      return (
+        <>
+          <div className="card" style={{ marginTop: 8 }}>
+            <div className="field"><label>{words.name}</label>
+              <CommitField type="text" value={portable.name} aria-label={words.name} maxLength={200}
+                onCommit={(name) => change({ kind: "name", name })} /></div>
+            <div className="field"><label>{words.note}</label>
+              <CommitField multiline rows={3} value={portable.note ?? ""} aria-label={words.note} maxLength={2000}
+                onCommit={(note) => change({ kind: "note", note })} /></div>
+          </div>
+          <Languages portable={portable} />
+          <Styling portable={portable} />
+          <OpensAt portable={portable} />
+          <MinimumVersion />
+          {switches ? <Availability switches={switches} /> : null}
+          {offers("exportMap") ? (
+            <button type="button" className="action" id="exportMap" onClick={exportMap}>
+              <Sym name="square.and.arrow.up" />{words.export}
+            </button>
+          ) : null}
+          {offers("duplicateMap") ? (
+            <button type="button" className="action" id="duplicateMap" onClick={() => void duplicateMap()}>
+              <Sym name="plus.square.on.square" />{words.duplicateMap}
+            </button>
+          ) : null}
+          <DeleteMap place="edit" />
+        </>
+      );
+  }
 }

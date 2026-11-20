@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset } from "./phone.mjs";
+import { openViewer, phone, pickPart, reset } from "./phone.mjs";
 
 const layer = "6F1E2A10-0000-4000-8000-0000000000A5";
 
@@ -16,9 +16,12 @@ const reread = (page) => page.waitForResponse((response) => response.url().inclu
 async function openLayout(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const row = page.locator("#editBody .row", { has: page.locator("input[value='Trams']") });
+  const row = page.locator("#editBody .layer-item", { has: page.locator("input[value='Trams']") });
   await row.getByRole("button", { name: "Options" }).click();
-  return page.locator(`[data-options='${layer}']`);
+  // 95 the layout opens as W16's page of its own
+  await page.locator(`[data-options='${layer}'] [data-layer-details]`).click();
+  await page.locator("#details .layout-pane").waitFor();
+  return page.locator("#details");
 }
 
 // 55: the header's title and icon are sent together, and the panel reads them back.
@@ -41,7 +44,8 @@ test("the Details header takes a title and an icon", async ({ page }) => {
 // 55: the action buttons are added, switched, given a custom button that is edited, and removed.
 test("the action buttons and a custom button are set", async ({ page }) => {
   const panel = await openLayout(page);
-  const actions = panel.locator("[data-part='actions']");
+  await pickPart(page, "Action buttons");
+  const actions = panel.locator(".settings-pane [data-part='actions']");
   let asked = sent(page);
   await actions.getByRole("button", { name: "Add action buttons" }).click();
   expect(await asked).toMatchObject({ details: "addActions" });
@@ -66,12 +70,14 @@ test("the action buttons and a custom button are set", async ({ page }) => {
   await button.getByRole("combobox", { name: "Place" }).selectOption("belowRows");
   expect(await asked).toMatchObject({ details: "buttonPlace" });
   await expect(button).toHaveCount(0);
-  const placed = panel.locator(".layout-block[data-block='button'] .button-fields");
+  await panel.locator(".layout-pane .layout-item[data-block='button'] .part-card").click();
+  const placed = panel.locator(".settings-pane .layout-block[data-block='button'] .button-fields");
   await expect(placed).toHaveCount(1);
 
   asked = sent(page);
   await placed.getByRole("combobox", { name: "Place" }).selectOption("withActions");
   expect(await asked).toMatchObject({ details: "buttonPlace", section: "0" });
+  await pickPart(page, "Action buttons");
   await expect(button).toHaveCount(1);
 
   asked = sent(page);
@@ -83,12 +89,14 @@ test("the action buttons and a custom button are set", async ({ page }) => {
 // 55: a text block's icon and a rows block's rows, each by the block's place and handle.
 test("a block's own settings and rows are set", async ({ page }) => {
   const panel = await openLayout(page);
+  await pickPart(page, "Text");
   let asked = sent(page);
   await panel.getByRole("checkbox", { name: "A note icon before the text" }).click();
   expect(await asked).toMatchObject({ details: "blockSettings", block: "1", was: "t1", icon: "1" });
   await expect(panel.getByRole("checkbox", { name: "A note icon before the text" })).toBeChecked();
 
-  const rows = panel.locator(".layout-block[data-handle='r1']");
+  await pickPart(page, "Info rows");
+  const rows = panel.locator(".settings-pane .layout-block[data-handle='r1']");
   await rows.getByRole("textbox", { name: "Add a row Name" }).fill("Line");
   await rows.getByRole("textbox", { name: "Add a row Value" }).fill("{line}");
   asked = sent(page);

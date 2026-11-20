@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { addFrom, openViewer, reset } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -7,6 +7,7 @@ async function openPackages(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await page.locator("#addLayer").click();
+  await addFrom(page, "builtin");
   await expect(page.locator("#packages")).toBeVisible();
 }
 
@@ -43,6 +44,7 @@ test("the parts sit on one level, and a drawn package stays off", async ({ page 
   expect((await asked).addPackages.split(",").sort()).toEqual(["landscape", "roads"]);
 
   await page.locator("#addLayer").click();
+  await addFrom(page, "builtin");
   await expect(row(page, "roads")).toBeDisabled();
   await expect(row(page, "roads")).toContainText("Already in this map");
 });
@@ -51,7 +53,8 @@ test("the parts sit on one level, and a drawn package stays off", async ({ page 
 test("a layer is deleted once the question is answered", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const huts = page.locator("#editBody .row", { has: page.locator("input[value=Huts]") });
+  const huts = page.locator("#editBody .layer-item", { has: page.locator("input[value=Huts]") });
+  await huts.getByRole("button", { name: "Options Huts" }).click();
   let asked = 0;
   page.on("request", (request) => { if (request.url().includes("removeLayer")) asked += 1; });
 

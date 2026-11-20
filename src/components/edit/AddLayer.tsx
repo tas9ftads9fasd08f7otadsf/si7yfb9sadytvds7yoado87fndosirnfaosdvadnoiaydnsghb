@@ -235,36 +235,50 @@ function Servers() {
   );
 }
 
-/** Add layer: a tile address always; the Riki packages, files, API layers and servers where the target answers them. */
-export function AddLayer() {
+export type AddSource = "builtin" | "tile" | "file" | "api" | "server";
+
+/** 97 The sources this phone or site adds from, in the order Add layer lists them. */
+export function addSources(): AddSource[] {
+  return [...(offers("addPackages") ? ["builtin" as const] : []), "tile" as const,
+    ...(offers("addFile") ? ["file" as const] : []), ...(offers("addAPI") ? ["api" as const] : []),
+    ...(offers("servers") ? ["server" as const] : [])];
+}
+
+function Packages() {
   const words = useViewer((state) => state.words);
   const packages = useViewer((state) => state.packages);
   const ticks = useViewer((state) => state.packageTicks);
-  const hasRead = useViewer((state) => state.serviceRead != null);
-  const hasPackages = offers("addPackages");
   useEffect(() => {
-    if (hasPackages && !packages) void loadPackages();
-  }, [hasPackages, packages]);
-  if (hasPackages && !packages) return <Skeleton />;
-  const adding = packages ? [...ticks].filter((overlay) => !packages.rows.some((row) => row.overlay === overlay && row.isDrawn)) : [];
+    if (!packages) void loadPackages();
+  }, [packages]);
+  if (!packages) return <Skeleton />;
+  const adding = [...ticks].filter((overlay) => !packages.rows.some((row) => row.overlay === overlay && row.isDrawn));
   return (
     <>
-      {packages ? (
-        <>
-          <h2 className="title">{words.whichPackages}</h2>
-          <div className="list" id="packages">
-            {packages.rows.map((row, index) => <PackageLine key={row.overlay ?? index} row={row} />)}
-          </div>
-          <div className="foot-note">{words.tickPackages}</div>
-          <button type="button" className="action" id="addPackages" disabled={adding.length === 0}
-            onClick={() => addPackages(adding)}><Sym name="plus" />{words.add}</button>
-        </>
-      ) : null}
-      <TileAddress />
-      {offers("addFile") ? <FileLayer /> : null}
-      {offers("addAPI") ? <APILayer /> : null}
-      {hasRead ? <ServiceLayers /> : null}
-      {offers("servers") ? <><Servers /><NewServer /></> : null}
+      <h2 className="title">{words.whichPackages}</h2>
+      <div className="list" id="packages">
+        {packages.rows.map((row, index) => <PackageLine key={row.overlay ?? index} row={row} />)}
+      </div>
+      <div className="foot-note">{words.tickPackages}</div>
+      <button type="button" className="action" id="addPackages" disabled={adding.length === 0}
+        onClick={() => addPackages(adding)}><Sym name="plus" />{words.add}</button>
     </>
   );
+}
+
+/** Add layer's part for one source: the Riki packages, a tile address, a file, an API or a server. */
+export function AddLayer({ source }: { source: AddSource }) {
+  const hasRead = useViewer((state) => state.serviceRead != null);
+  switch (source) {
+    case "builtin":
+      return <Packages />;
+    case "tile":
+      return <><TileAddress />{hasRead ? <ServiceLayers /> : null}</>;
+    case "file":
+      return <FileLayer />;
+    case "api":
+      return <APILayer />;
+    case "server":
+      return <><Servers /><NewServer /></>;
+  }
 }

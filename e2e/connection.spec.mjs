@@ -4,7 +4,8 @@ import { openViewer, reset } from "./phone.mjs";
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 const GREEN = "rgb(52, 199, 89)";
-const RED = "rgb(255, 59, 48)";
+// 90 the design's red
+const RED = "rgb(201, 48, 44)";
 
 // 40 the dot by the phone's name follows the page's beat: green, red once it fails, green again
 test("the dot by the phone's name is green while it answers and red while it does not", async ({ page }) => {

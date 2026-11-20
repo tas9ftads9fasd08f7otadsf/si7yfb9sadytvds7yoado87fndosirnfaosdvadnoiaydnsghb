@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset, showAllMaps } from "./phone.mjs";
+import { openViewer, reset, showAllMaps, editTab } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -25,9 +25,9 @@ test("a computer's screen gets a header, a side bar, the map and a status line",
   // 2916: a browser that may only look gets no layer switches.
   await expect(page.locator("#layerList")).toHaveCount(0);
   await expect(page.getByRole("switch")).toHaveCount(0);
-  // 2945: its styles are the header's switcher only.
-  await expect(page.locator(".chips")).toHaveCount(0);
-  await expect(page.locator("#styleSelect option")).toHaveText(["Summer", "Winter"]);
+  // 2945: it picks among the styles; 90 from the side bar's drop-down.
+  await page.locator("#sideStyle").click();
+  await expect(page.locator("#current [role=option]")).toHaveText(["Summer", "Winter"]);
   // 41 an open map's side bar is the map alone.
   await expect(page.locator("#others")).toHaveCount(0);
   await expect(page.locator(".maplibregl-ctrl-zoom-in")).toBeVisible();
@@ -45,23 +45,47 @@ test("the pointer's place is written in the status line", async ({ page }) => {
   await expect(page.locator("#pointer")).toHaveText(/^-?\d+\.\d{5}, -?\d+\.\d{5}$/);
 });
 
-// 2945: the side bar's chips are an editing browser's.
-test("the style is picked in the header or in the side bar, and the map follows", async ({ page }) => {
+// 90 the style is picked from the side bar's drop-down or the map's switcher, and the map follows.
+test("the style is picked in the side bar or over the map, and the map follows", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
-  const select = page.locator("#styleSelect");
-  await expect(page.locator("#styleLabel")).toBeVisible();
-  await expect(select.locator("option")).toHaveText(["Summer", "Winter"]);
+  await page.locator("#sideStyle").click();
+  await expect(page.getByRole("option")).toHaveText(["Summer", "Winter"]);
 
   const asked = page.waitForRequest((request) => request.url().includes("/style?") && request.url().includes("hide="));
-  await select.selectOption({ label: "Winter" });
+  await page.getByRole("option", { name: "Winter" }).click();
   expect(new URL((await asked).url()).searchParams.get("hide")).toBe("6F1E2A10-0000-4000-8000-0000000000A2");
-  await expect(page.locator(".chips button.picked")).toHaveText("Winter");
+  await expect(page.locator("#sideStyle")).toHaveText("Winter");
+  await expect(page.locator("#switcherButton")).toHaveText("Winter");
   // 30 a style other than the one the map opens on is in the address's path.
   await expect(page).toHaveURL(/\/maps\/[^/]+\/style\/6F1E2A10-0000-4000-8000-0000000000B2#/);
 
-  await page.locator(".chips button", { hasText: "Summer" }).click();
-  await expect(select).toHaveValue("6F1E2A10-0000-4000-8000-0000000000B1");
+  await page.locator("#switcherButton").click();
+  await expect(page.getByRole("dialog", { name: "Layers" })).toBeVisible();
+  await page.locator("#switcherStyle").click();
+  await page.locator("#switcherPanel").getByRole("option", { name: "Summer" }).click();
+  await expect(page.locator("#sideStyle")).toHaveText("Summer");
   await expect(page).not.toHaveURL(/\/style\//);
+  const map = await page.locator("#map").boundingBox();
+  await page.mouse.click(map.x + map.width / 2, map.y + map.height / 2);
+  await expect(page.locator("#switcherPanel")).toHaveCount(0);
+});
+
+// 90 the map's buttons are its glass, bottom right; the style and the layers top right.
+test("the map's buttons sit bottom right and the switcher top right", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  const map = await page.locator("#map").boundingBox();
+  const zoom = await page.locator(".maplibregl-ctrl-zoom-in").boundingBox();
+  const phone = await page.locator("#phoneButton").boundingBox();
+  const switcher = await page.locator("#switcherButton").boundingBox();
+  expect(map.x + map.width - (zoom.x + zoom.width)).toBeLessThan(40);
+  expect(map.y + map.height - (phone.y + phone.height)).toBeLessThan(40);
+  expect(phone.y).toBeGreaterThan(zoom.y);
+  expect(map.x + map.width - (switcher.x + switcher.width)).toBeLessThan(40);
+  expect(switcher.y - map.y).toBeLessThan(40);
+  // 90 the credits are a line beside the scale, bottom left, not a button among the map's
+  await expect(page.locator(".maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib:not(.maplibregl-compact)"))
+    .toHaveCount(1);
+  await expect(page.locator(".maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib")).toHaveCount(0);
 });
 
 // 2916: the switches are an editing browser's.
@@ -95,7 +119,8 @@ test("another map is opened from the Maps screen's list", async ({ page }) => {
   await page.locator("#others .row", { hasText: "Bratislava" }).click();
   await expect(page.locator("#others")).toHaveCount(0);
   await expect(page.locator("#mapName")).toHaveText("Bratislava");
-  await expect(page.locator("#styleLabel")).toBeHidden();
+  // 90 a map of one style offers no drop-down
+  await expect(page.locator("#sideStyle")).toHaveCount(0);
   await expect(page.locator("#current .hero b")).toHaveText("Bratislava");
   // 30 the map's own address
   await expect(page).toHaveURL(/\/maps\/6F1E2A10-0000-4000-8000-000000000002#/);
@@ -119,6 +144,7 @@ test("a page opened from the editing address edits the map in the side bar", asy
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
+  await editTab(page, "General");
   const name = page.getByRole("textbox", { name: "Name", exact: true });
   await name.fill("Tatras in summer");
   await name.press("Enter");
@@ -177,4 +203,43 @@ test("the zoom is written on the map's top left and follows it", async ({ page }
   // 2917: both follow an eased zoom; one read of the status line mid-way caught a stale value.
   await expect.poll(async () => (await badge.textContent()) === (await page.locator("#zoom").textContent()))
     .toBe(true);
+});
+
+// 94 Edit map is W5–W9's page of tabs beside the live map; a tab is an address that a reload keeps.
+test("Edit map's tabs are addresses, beside the map as its live preview", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await page.locator("#editButton").click();
+  await expect(page.getByRole("tab", { name: "Layers" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#livePreview")).toHaveText("Live preview · Summer");
+  await expect(page.locator("#switcherButton")).toHaveCount(0);
+  const side = await page.locator("#side").boundingBox();
+  expect(side.width).toBeGreaterThanOrEqual(500);
+  await expect.poll(async () => (await page.locator("#map").boundingBox()).x)
+    .toBeGreaterThanOrEqual(side.x + side.width - 1);
+
+  await page.getByRole("tab", { name: "Sharing" }).click();
+  await expect(page).toHaveURL(/\/maps\/[^/]+\/edit\/sharing#/);
+  await expect(page.locator("#people")).toBeVisible();
+  await expect(page.locator("#editBody [data-layer]")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Sharing" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#people")).toBeVisible();
+
+  await page.locator("#editDone").click();
+  await expect(page.locator("#livePreview")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/maps\/[^/]+#/);
+});
+
+// 97 W11: the side bar's Add layer opens the window of sources over the map, the first one picked.
+test("Add layer opens its window of sources from the side bar", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await page.locator("#current .add-layer").click();
+  const dialog = page.getByRole("dialog", { name: "Add layer" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".sources [aria-pressed=true]")).toHaveId("addFrom-builtin");
+  await expect(dialog).toContainText("Into High Tatras · Summer");
+  await dialog.locator("#addFrom-tile").click();
+  await expect(dialog.locator("#tileAddress")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
 });

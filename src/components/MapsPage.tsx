@@ -4,14 +4,14 @@ import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { checkKey, importMap, makeMap, offers, pickStyle, setLayerShown, shownMapOf, showEdit, useViewer } from "@/store/viewer";
+import { checkKey, importMap, offers, openNewMap, shownMapOf, showEdit, toggleMapCard, useViewer }
+  from "@/store/viewer";
 import { DeleteMap } from "./edit/DeleteMap";
 import { MapMark, MapShelf, useLayerCount } from "./MapShelf";
-import { MarkTile } from "./ui/MarkTile";
+import { LayerToggles, StylePicker, useLayersOn, useStyleName } from "./MapLayers";
 import { railItemOf } from "./NavRail";
 import { ServerCards } from "./Servers";
 import { TileSource } from "./TileSource";
-import { Switch } from "./ui/Switch";
 import { Sym } from "./ui/Sym";
 
 /** The oldest app and viewer the map's author allows; this viewer is the phone's app. */
@@ -28,25 +28,6 @@ function Versions({ shared }: { shared: SharedMap }) {
         ? <span className="warning" role="alert">{said(words.updatePhone, minimum.browser)}</span>
         : <span>{said(words.needsViewer, minimum.browser)}</span>) : null}
     </div>
-  );
-}
-
-function LayerSwitches({ shared }: { shared: SharedMap }) {
-  const words = useViewer((state) => state.words);
-  const hidden = useViewer((state) => state.hidden);
-  return (
-    <>
-      <h2 className="title">{words.layers}</h2>
-      <div className="list" id="layerList">
-        {shared.layers.map((layer) => (
-          <div className="row" key={layer.id}>
-            <MarkTile symbol={layer.symbol} small />
-            <div className="words">{layer.name}<small>{layer.kind}</small></div>
-            <Switch isOn={!hidden.has(layer.id)} label={layer.name} onChange={(isOn) => setLayerShown(layer.id, isOn)} />
-          </div>
-        ))}
-      </div>
-    </>
   );
 }
 
@@ -72,63 +53,63 @@ export function PasswordForm({ prefix = "" }: { prefix?: string }) {
   );
 }
 
-/** The map on screen: its picture, styles, layers and Edit map. */
+/** 90 The map on screen: a card with Edit and the fold, its style and its layers under it. */
 function CurrentMap({ shared }: { shared: SharedMap }) {
   const words = useViewer((state) => state.words);
   const preview = useViewer((state) => state.pictures.get(shared.id)?.preview);
   const unread = useViewer((state) => !state.pictures.has(shared.id));
   const picking = useViewer((state) => state.picking);
-  const styles = useViewer((state) => state.portable?.styles) ?? [];
-  const styleID = useViewer((state) => state.styleID);
   const canEdit = useViewer((state) => state.editToken != null);
   const edits = useViewer((state) => state.edits);
+  const isOpen = useViewer((state) => state.mapCardOpen);
+  const styleName = useStyleName();
   const layerCount = useLayerCount();
+  const layersOn = useLayersOn(shared);
   return (
     <>
       <div className={picking ? "hero pending" : "hero"} aria-busy={picking}>
-        {preview ? <div className="picture" style={{ backgroundImage: `url("${preview}")` }}>
-          <span className="badge">{words.onMapNow}</span>
-        </div> : unread ? <div className="picture pending" /> : null}
-        <div className="lines">
-          <MapMark shared={shared} />
-          <div className="words"><b>{shared.name}</b><span className="muted">{layerCount(shared.layers.length)}</span></div>
-        </div>
-      </div>
-      <Versions shared={shared} />
-      <TileSource />
-      {canEdit && styles.length > 1 ? (
-        <div className="chips" role="group" aria-label={words.styles}>
-          {styles.map((style) => (
-            <button key={style.id} type="button" className={style.id === styleID ? "picked" : undefined}
-              aria-pressed={style.id === styleID} onClick={() => pickStyle(style.id)}>{style.name}</button>
-          ))}
-        </div>
-      ) : null}
-      {canEdit ? <LayerSwitches shared={shared} /> : null}
-      {canEdit ? (
-        <button type="button" className="action" id="editButton" onClick={() => showEdit(true)}>
-          <Sym name="slider.horizontal.3" />{words.edit}
+        <MapMark shared={shared} />
+        <div className="words"><b>{shared.name}</b><span className="muted">{layerCount(shared.layers.length)}</span></div>
+        {canEdit ? (
+          <button type="button" className="pill" id="editButton" onClick={() => showEdit(true)}>
+            <Sym name="pencil" />{words.edit}
+          </button>
+        ) : null}
+        <button type="button" className="fold" id="mapCardFold" aria-expanded={isOpen}
+          aria-label={isOpen ? words.hide : words.show} onClick={toggleMapCard}>
+          <Sym name={isOpen ? "chevron.up" : "chevron.down"} />
         </button>
-      ) : edits ? <PasswordForm /> : null}
-      <DeleteMap place="card" />
+      </div>
+      {isOpen ? (
+        <>
+          {preview ? <div className="picture" style={{ backgroundImage: `url("${preview}")` }}>
+            <span className="badge">{words.onMapNow}</span>
+          </div> : unread ? <div className="picture pending" /> : null}
+          <Versions shared={shared} />
+          <TileSource />
+          <StylePicker id="sideStyle" />
+          {canEdit ? (
+            <>
+              <div className="group-title split">
+                <span>{styleName ? filledIn(words.layersIn, "style", styleName) : words.layers}</span>
+                <span className="count">{layersOn}</span>
+              </div>
+              <LayerToggles shared={shared} id="layerList" />
+            </>
+          ) : edits ? <PasswordForm /> : null}
+          <DeleteMap place="card" />
+        </>
+      ) : null}
     </>
   );
 }
 
-/** Only for a browser allowed to change maps: the phone makes it, and shares it at once. */
+/** Only for a browser allowed to change maps: 97 New map opens its window; Import takes a file. */
 function NewMap() {
   const words = useViewer((state) => state.words);
   const canEdit = useViewer((state) => state.editToken != null);
-  const [isNaming, setNaming] = useState(false);
-  const [name, setName] = useState("");
   const file = useRef<HTMLInputElement>(null);
   if (!canEdit || !offers("newMap")) return null;
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!name.trim() || !(await makeMap(name))) return;
-    setName("");
-    setNaming(false);
-  };
   const picked = async (event: ChangeEvent<HTMLInputElement>) => {
     const chosen = event.target.files?.[0];
     event.target.value = "";
@@ -136,17 +117,9 @@ function NewMap() {
   };
   return (
     <div id="newMap" className="list">
-      {isNaming ? (
-        <form className="password" onSubmit={submit}>
-          <input id="newMapName" type="text" aria-label={words.name} placeholder={words.name} autoFocus
-            value={name} onChange={(event) => setName(event.target.value)} />
-          <button type="submit" className="action" id="newMapSave">{words.save}</button>
-        </form>
-      ) : (
-        <button type="button" className="row add" id="newMapButton" onClick={() => setNaming(true)}>
-          <Sym name="plus.circle.fill" />{words.newMap}
-        </button>
-      )}
+      <button type="button" className="row add" id="newMapButton" onClick={openNewMap}>
+        <Sym name="plus.circle.fill" />{words.newMap}
+      </button>
       <button type="button" className="row add" id="importMap" onClick={() => file.current?.click()}>
         <Sym name="square.and.arrow.down" />{words.importMap}
       </button>

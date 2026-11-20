@@ -26,6 +26,8 @@ interface Options {
   fetching?: (address: string) => Response;
   /** The style the core builds. */
   built?: unknown;
+  /** 91 The browser's languages, most wanted first. */
+  languages?: string[];
   /** The name typed in the account part, if any. */
   typed?: string;
   /** CloudKit gives no name. */
@@ -115,11 +117,14 @@ function stack(options: Options = {}) {
     const address = String(url);
     if (address in assets) return new Response(assets[address]);
     if (options.fetching && address.startsWith("https://")) return options.fetching(address);
-    if (address === "/editor/words/sk.json") return Response.json({ language: "sk", words: { maps: "Mapy" } });
+    if (address === "/editor/words/languages.json") return Response.json(["cs", "en", "sk"]);
+    if (address === "/editor/words/sk.json") return Response.json({ language: "sk", words: { maps: "Mapy", layers: "Vrstvy", noSuchMap: "Taká mapa nie je",
+      nothingToUndo: "Nie je čo vrátiť", signsInApple: "Stránka sa prihlasuje cez Apple ID", changeRefused: "Mapa sa zmenila inde." } });
+    if (address === "/editor/words/en.json") return Response.json({ language: "en", words: { maps: "Maps" } });
     return new Response("", { status: 404 });
   });
   const backend = createBackend({ cloud, config: async () => config, core: options.core ?? (async () => core), keeping, reach: options.reach ?? { answers: async () => true },
-    author: { read: () => options.typed ?? "", keep: () => {} }, fetcher: fetcher as typeof fetch, base: "/editor", language: () => "sk" });
+    author: { read: () => options.typed ?? "", keep: () => {} }, fetcher: fetcher as typeof fetch, base: "/editor", languages: () => options.languages ?? ["sk"] });
   /** Another device wrote this record: a new tag and the fields it set. */
   const elsewhere = (recordName: string, fields: Record<string, { value: unknown; type: string }>) => {
     const each = all().find((found) => found.recordName === recordName)!;
@@ -149,8 +154,37 @@ describe("WebBackend's reads", () => {
     expect(await stack().backend.unlock("x")).toMatchObject({ ok: false, status: 404 });
   });
 
-  it("reads its words from the site's own words files", async () => {
-    expect(await stack().backend.words()).toEqual({ language: "sk", words: { maps: "Mapy" } });
+  it("reads its words from the site's own words files, in the language the browser asks for", async () => {
+    const said = await stack().backend.words() as { language: string; words: Record<string, string> };
+    expect(said.language).toBe("sk");
+    expect(said.words.maps).toBe("Mapy");
+    const other = await stack({ languages: ["fr-CA", "en-GB", "en"] }).backend.words() as { language: string };
+    expect(other.language).toBe("en");
+  });
+
+  // 91 what only the phone made up, the language names and counts, is made in the browser
+  it("makes the language list, their names and the layer counts, as the phone does for itself", async () => {
+    const { words } = await stack().backend.words() as { words: Record<string, string> };
+    expect((words.languages ?? "").split(",").sort()).toEqual(["cs", "en", "sk"]);
+    expect(words["language.cs"]).toMatch(/^[ČC]e[šs]tina|^Česk/);
+    expect(words["layers.1"]).toBe("1 vrstvy");
+    expect(words["layers.99"]).toBe("99 vrstvy");
+  });
+
+  it("says what the site itself refuses with in the language it speaks", async () => {
+    const { backend } = stack();
+    await backend.words();
+    expect(await backend.map("nope").catch((e) => e)).toBeDefined();
+    expect(await backend.undo!("M")).toMatchObject({ ok: false, status: 404, said: "Nie je čo vrátiť" });
+    expect(await backend.unlock("x")).toMatchObject({ said: "Stránka sa prihlasuje cez Apple ID" });
+  });
+
+  it("says them in English before its words are read, and for a map it has not got", async () => {
+    const { backend } = stack();
+    expect(await backend.undo!("M")).toMatchObject({ said: "Nothing to undo" });
+    expect(await backend.change("no-such", null, { kind: "name", name: "x" })).toMatchObject({ status: 404, said: "No such map" });
+    await backend.words();
+    expect(await backend.change("no-such", null, { kind: "name", name: "x" })).toMatchObject({ status: 404, said: "Taká mapa nie je" });
   });
 
   it("answers the maps list from the core, named after the person when the core names none", async () => {

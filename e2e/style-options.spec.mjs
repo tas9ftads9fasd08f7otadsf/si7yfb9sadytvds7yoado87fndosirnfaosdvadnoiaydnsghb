@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, reset } from "./phone.mjs";
+import { openViewer, reset, editTab } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
@@ -12,7 +12,7 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
 test("a style's icon, colour and note are set from its options", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  await page.locator("#availability").waitFor();
+  await editTab(page, "Styling");
   await page.getByRole("button", { name: "Options Winter" }).click();
   const options = page.locator(`[data-style-options="${WINTER}"]`);
 
@@ -46,7 +46,7 @@ test("a style's icon, colour and note are set from its options", async ({ page }
 test("a style's picture is set and removed from its options", async ({ page, request }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  await page.locator("#availability").waitFor();
+  await editTab(page, "Styling");
   await page.getByRole("button", { name: "Options Winter" }).click();
   const options = page.locator(`[data-style-options="${WINTER}"]`);
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==",

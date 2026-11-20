@@ -1,0 +1,7 @@
+# Every request is the site's index.php, at a root or under a path; needs AllowOverride All.
+Options -Indexes
+DirectoryIndex index.php
+
+RewriteEngine On
+RewriteRule ^index\.php$ - [L]
+RewriteRule ^ index.php [L]

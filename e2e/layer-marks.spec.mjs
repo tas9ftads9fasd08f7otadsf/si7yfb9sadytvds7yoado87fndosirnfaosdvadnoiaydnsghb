@@ -11,7 +11,7 @@ test.beforeEach(async ({ request }) => {
 async function openMarks(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const row = page.locator("#editBody .row", { has: page.locator("input[value='Trails']") });
+  const row = page.locator(`#editBody [data-layer='${layer}']`);
   await row.getByRole("button", { name: "Options" }).click();
   return page.locator(`[data-options='${layer}']`);
 }

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset } from "./phone.mjs";
+import { openViewer, phone, pickPart, reset } from "./phone.mjs";
 
 const layer = "6F1E2A10-0000-4000-8000-0000000000A5";
 
@@ -16,9 +16,12 @@ const reread = (page) => page.waitForResponse((response) => response.url().inclu
 async function openRows(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const row = page.locator("#editBody .row", { has: page.locator("input[value='Trams']") });
+  const row = page.locator("#editBody .layer-item", { has: page.locator("input[value='Trams']") });
   await row.getByRole("button", { name: "Options" }).click();
-  return page.locator(`[data-options='${layer}'] .layout-block[data-handle='r1']`);
+  // 95 the layout opens as W16's page, the rows block's settings once its card is picked
+  await page.locator(`[data-options='${layer}'] [data-layer-details]`).click();
+  await pickPart(page, "Info rows");
+  return page.locator("#details .settings-pane .layout-block[data-handle='r1']");
 }
 
 const marks = (rows) => rows.locator(".layout-row [data-symbol]");
@@ -86,7 +89,7 @@ test("a moved layout refuses the icon", async ({ page, request }) => {
   await speed.getByRole("button", { name: "car.fill" }).click();
   await expect(page.locator("#notice")).toContainText("The layout changed on the phone");
   await read;
-  await expect(page.locator(`[data-options='${layer}'] .layout-block[data-handle='r1x']`)).toBeVisible();
+  await expect(page.locator("#details .layout-pane .layout-item[data-handle='r1x']")).toBeVisible();
 });
 
 // 80: a phone that lists no icon groups gets no picker, and its rows are still edited.

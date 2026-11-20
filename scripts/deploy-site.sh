@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# A release's web-site.zip onto the PHP server over FTPS; the server's config.php is never touched.
-# Reads FTPS_HOST, FTPS_USER, FTPS_PASSWORD, FTPS_DIR, FTPS_PORT and FTPS_CA_FILE (README).
+# A release's web-site.zip onto the PHP server over FTPS, with the config.php this run writes.
+# Reads FTPS_HOST, FTPS_USER, FTPS_PASSWORD, FTPS_DIR, FTPS_PORT, FTPS_CA_FILE, ICLOUD_API_TOKEN,
+# ICLOUD_CONTAINER and TILES_BASE (README). Needs lftp, unzip, node and php on the PATH.
 set -euo pipefail
 
 zip="${1:?usage: deploy-site.sh web-site.zip}"
@@ -15,19 +16,47 @@ fi
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+
+# Values go in through the environment and out through var_export, never through source text.
+RIKI_CONFIG_OUT="$work/config.php" php <<'PHP'
+<?php
+$fail = static function (string $why): never { fwrite(STDERR, $why . "\n"); exit(1); };
+$token = trim((string) getenv('ICLOUD_API_TOKEN'));
+if ($token === '') {
+    $fail('ICLOUD_API_TOKEN is empty: set it as a variable or secret on the site environment');
+}
+$container = trim((string) getenv('ICLOUD_CONTAINER')) ?: 'iCloud.com.rikimaps.rikimaps.maps';
+if (!preg_match('/^iCloud\.[A-Za-z0-9._-]+\z/', $container)) {
+    $fail('ICLOUD_CONTAINER is not a CloudKit container identifier (iCloud.com.example.app)');
+}
+$tiles = rtrim(trim((string) getenv('TILES_BASE')), '/');
+if ($tiles !== '' && !preg_match('~^https://[^/?#\s]+(/[^?#\s]*)?\z~', $tiles)) {
+    $fail('TILES_BASE must be an https:// URL without query or fragment, such as https://tiles.example.com');
+}
+$config = ['container' => $container, 'apiToken' => $token, 'environment' => 'production', 'tilesBase' => $tiles];
+file_put_contents((string) getenv('RIKI_CONFIG_OUT'), "<?php\n\nreturn " . var_export($config, true) . ";\n");
+PHP
 unzip -q "$zip" -d "$work/site"
-for each in index.php Site.php site.json out/index.html; do
+for each in index.php Site.php .htaccess site.json out/index.html; do
   [ -f "$work/site/$each" ] || { echo "web-site.zip has no $each" >&2; exit 1; }
 done
 if [ -e "$work/site/config.php" ]; then
-  echo "web-site.zip carries a config.php; the server's own must not be replaced" >&2
+  echo "web-site.zip carries a config.php; the deploy writes it from the repository's settings" >&2
+  exit 1
+fi
+
+# A site without the core cannot read a map; only a test address may go without (RIKI_ALLOW_NO_CORE=1).
+if [ ! -f "$work/site/out/riki-core.wasm" ] && [ "${RIKI_ALLOW_NO_CORE:-}" != "1" ]; then
+  echo "web-site.zip has no out/riki-core.wasm: the site cannot read maps without it. Pin rikiCore.ref in package.json" >&2
+  echo "and release again, or deploy to a test address with RIKI_ALLOW_NO_CORE=1" >&2
   exit 1
 fi
 
 trust=""
 if [ -n "${FTPS_CA_FILE:-}" ]; then trust="set ssl:ca-file \"$FTPS_CA_FILE\";"; fi
 
-# New assets first, then the page that names them, then what no page names any more.
+# Assets, server code, config.php (sent as .new, renamed), index.php, site.json, then deletions:
+# the new entry point goes last, and a failed config upload leaves the old one serving.
 # Every file is sent: a page of the same size, older than the server's copy, is still new.
 LFTP_PASSWORD="$FTPS_PASSWORD" lftp -c "
   set cmd:fail-exit true;
@@ -37,12 +66,18 @@ LFTP_PASSWORD="$FTPS_PASSWORD" lftp -c "
   mkdir -p -f \"$dir\"; cd \"$dir\";
   lcd \"$work/site\";
   mirror --reverse --transfer-all --no-perms --parallel=4 out out;
-  put Site.php config.example.php;
+  put Site.php;
+  put config.example.php;
+  put .htaccess;
+  put \"$work/config.php\" -o config.php.new;
+  mv config.php.new config.php;
   put index.php;
   put site.json;
   mirror --reverse --delete --no-perms out out;
-  get -O \"$work\" site.json -o deployed.json
+  get -O \"$work\" site.json -o deployed.json;
+  get -O \"$work\" config.php -o deployed-config.php
 "
+cmp -s "$work/config.php" "$work/deployed-config.php" || { echo "config.php on the server is not the one written" >&2; exit 1; }
 
 wanted="$(node -p "require('$work/site/site.json').commit")"
 landed="$(node -p "require('$work/deployed.json').commit")"

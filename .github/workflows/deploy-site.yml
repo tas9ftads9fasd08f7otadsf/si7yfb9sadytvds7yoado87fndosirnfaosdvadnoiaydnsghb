@@ -13,6 +13,10 @@ on:
         description: Release to deploy, such as v0.1.42
         type: string
         required: true
+      without_core:
+        description: A test address, which may do without riki-core.wasm; a real site cannot read maps without it
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,6 +40,13 @@ jobs:
       FTPS_PASSWORD: ${{ secrets.FTPS_PASSWORD }}
       FTPS_DIR: ${{ vars.FTPS_DIR }}
       FTPS_PORT: ${{ vars.FTPS_PORT }}
+      # A CloudKit JS API token is sent by every browser, so a variable will do; a secret works too.
+      ICLOUD_API_TOKEN: ${{ vars.ICLOUD_API_TOKEN || secrets.ICLOUD_API_TOKEN }}
+      ICLOUD_CONTAINER: ${{ vars.ICLOUD_CONTAINER || 'iCloud.com.rikimaps.rikimaps.maps' }}
+      # Optional: the maptiles host; without it Riki's own region maps do not draw.
+      TILES_BASE: ${{ vars.TILES_BASE }}
+      # The script refuses a zip without riki-core.wasm; only a run by hand may say it is a test address.
+      RIKI_ALLOW_NO_CORE: ${{ inputs.without_core && '1' || '' }}
     steps:
       - id: ready
         name: Settings and order
@@ -56,7 +67,7 @@ jobs:
       - if: steps.ready.outputs.go == 'true'
         uses: actions/checkout@v5
       - if: steps.ready.outputs.go == 'true'
-        run: sudo apt-get update -q && sudo apt-get install -y -q lftp
+        run: sudo apt-get update -q && sudo apt-get install -y -q lftp php-cli
       - if: steps.ready.outputs.go == 'true'
         run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'web-site.zip*' --dir dist
       - if: steps.ready.outputs.go == 'true'

@@ -46,7 +46,7 @@ describe("the site's deploy", () => {
     expect(job).toContain("needs: release");
     expect(job).toContain("uses: ./.github/workflows/deploy-site.yml");
     expect(job).toContain("tag: ${{ needs.release.outputs.tag }}");
-    expect(release).toMatch(/release:[\s\S]*needs: check/);
+    expect(release).toMatch(/release:[\s\S]*needs: \[check, core\]/);
     expect(release).toContain('echo "tag=v$version" >> "$GITHUB_OUTPUT"');
   });
 
@@ -67,6 +67,15 @@ describe("the site's deploy", () => {
   it("gives the release's called deploy what it needs to read releases", () => {
     const job = release.slice(release.indexOf("\n  deploy:"));
     for (const permission of asked(deploy)) expect(asked(job)).toContain(permission);
+  });
+
+  // 98 the deploy writes config.php from the environment's settings, and php-cli writes it
+  it("reads the config's settings from the site environment, production never being one", () => {
+    expect(deploy).toContain("ICLOUD_API_TOKEN: ${{ vars.ICLOUD_API_TOKEN || secrets.ICLOUD_API_TOKEN }}");
+    expect(deploy).toContain("ICLOUD_CONTAINER: ${{ vars.ICLOUD_CONTAINER || 'iCloud.com.rikimaps.rikimaps.maps' }}");
+    expect(deploy).toContain("TILES_BASE: ${{ vars.TILES_BASE }}");
+    expect(deploy).not.toMatch(/ICLOUD_ENVIRONMENT|ICLOUD_API_TOKEN:\s*["']?[^$\s]/);
+    expect(deploy).toMatch(/apt-get install -y -q lftp php-cli/);
   });
 
   it("gives CI the FTPS tools the deploy script's test needs", () => {
@@ -120,7 +129,7 @@ describe("the app's update", () => {
   it("follows the published release, which follows CI", () => {
     expect(job).toContain("needs: release");
     expect(job).toContain("uses: ./.github/workflows/update-app.yml");
-    expect(release).toMatch(/release:[\s\S]*needs: check/);
+    expect(release).toMatch(/release:[\s\S]*needs: \[check, core\]/);
   });
 
   it("runs Riki Maps' own web-editor workflow on its master", () => {
@@ -134,5 +143,89 @@ describe("the app's update", () => {
 
   it("gives the called update what it asks for", () => {
     for (const permission of asked(update)) expect(asked(job)).toContain(permission);
+  });
+});
+
+// 88 the core is built from a pinned rikimaps commit, before the site is packed, and a deploy needs it
+describe("the core's pipeline", () => {
+  const core = read("core.yml");
+  const release = read("release.yml");
+  const deploy = read("deploy-site.yml");
+
+  it("checks out the private rikimaps at the pinned commit with a secret token", () => {
+    expect(core).toContain("repository: skifahrer/rikimaps");
+    expect(core).toContain("ref: ${{ steps.pin.outputs.ref }}");
+    expect(core).toContain("token: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
+    expect(core).toContain("rikiCore.ref");
+    expect(core).not.toMatch(/token:\s*["']?[^$\s"']/);
+  });
+
+  it("caches the toolchain and the SDK, and builds with the script", () => {
+    expect(core).toContain("~/.cache/riki-swift");
+    expect(core).toContain("~/.swiftpm/swift-sdks");
+    expect(core).toContain("npm run build:core");
+    expect(core).toMatch(/workflow_call:/);
+  });
+
+  it("runs rikimaps' own core tests, which its CI no longer does, with the toolchain it built with", () => {
+    expect(core).toContain("rikimaps/tools/linux-core-tests.sh");
+    expect(core).toContain("SWIFT:");
+    expect(core.indexOf("npm run build:core")).toBeLessThan(core.indexOf("linux-core-tests.sh"));
+  });
+
+  // 91 the words are made from the same checkout, and checked against the generator they replace
+  it("makes the site's words from the same checkout and reproduces the generator's, which the release takes", () => {
+    expect(core).toContain("npm run build:words");
+    expect(core).toContain("ref: 5a7200c4fb");
+    expect(core).toContain("RIKIMAPS_WORDS_CHECK_DIR");
+    expect(core).toContain("name: riki-words");
+    expect(release).toContain("name: riki-words");
+    expect(release.indexOf("name: riki-words")).toBeLessThan(release.indexOf("npm run pack:web"));
+  });
+
+  it("lets CI pack the site without the core for its browser specs, and the release not", () => {
+    expect(read("ci.yml")).toMatch(/run: npm run pack:web\n\s+env:\n\s+RIKI_PACK_WITHOUT_CORE: "1"/);
+    expect(release).not.toContain("RIKI_PACK_WITHOUT_CORE");
+  });
+
+  it("is built by the release before the site is packed, with the secret handed on", () => {
+    expect(release).toMatch(/\n  core:[\s\S]*uses: \.\/\.github\/workflows\/core\.yml/);
+    expect(release).toContain("RIKIMAPS_READ_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
+    expect(release).toMatch(/release:[\s\S]*needs: \[check, core\]/);
+    expect(release.indexOf("name: riki-core")).toBeGreaterThan(-1);
+    expect(release.indexOf("name: riki-core")).toBeLessThan(release.indexOf("npm run pack:web"));
+  });
+
+  it("refuses a deploy without the core unless a run by hand says it is a test address", () => {
+    expect(deploy).toMatch(/workflow_dispatch:[\s\S]*without_core:[\s\S]*type: boolean[\s\S]*default: false/);
+    expect(deploy).toContain("RIKI_ALLOW_NO_CORE: ${{ inputs.without_core && '1' || '' }}");
+    expect(read("../../scripts/deploy-site.sh")).toContain("out/riki-core.wasm");
+  });
+});
+
+// 96 the core is built by hand for any rikimaps commit and kept where fetch:core finds it
+describe("the core on demand", () => {
+  const onDemand = read("core-on-demand.yml");
+
+  it("runs only by hand and publishes no release, which rikimaps would take as the editor's", () => {
+    expect(onDemand).toMatch(/^on:\n  workflow_dispatch:\n/m);
+    expect(onDemand).not.toMatch(/pull_request:|push:|schedule:|workflow_call:/);
+    expect(onDemand).not.toContain("gh release");
+    expect([...asked(onDemand)]).toEqual(["contents: read"]);
+  });
+
+  it("builds the commit asked for, or the pin, and names the artifact by the commit built", () => {
+    expect(onDemand).toContain("ASKED: ${{ inputs.ref }}");
+    expect(onDemand).not.toMatch(/run:[^\n]*\$\{\{ inputs\./);
+    expect(onDemand).toContain("RIKI_CORE_REF: ${{ steps.commit.outputs.sha }}");
+    expect(onDemand).toContain("name: riki-core-${{ steps.commit.outputs.sha }}");
+    expect(onDemand).toContain("retention-days: 90");
+    expect(onDemand).toContain("rikimaps/tools/linux-core-tests.sh");
+  });
+
+  it("is the workflow fetch:core asks for", async () => {
+    const { WORKFLOW, artifactName } = await import("./fetch-core.mjs");
+    expect(WORKFLOW).toBe("core-on-demand.yml");
+    expect(onDemand).toContain(artifactName("${{ steps.commit.outputs.sha }}"));
   });
 });

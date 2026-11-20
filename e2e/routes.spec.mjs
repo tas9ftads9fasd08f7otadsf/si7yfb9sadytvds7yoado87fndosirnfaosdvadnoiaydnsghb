@@ -36,7 +36,7 @@ test("every screen's address opens it, and a reload keeps it", async ({ page }) 
   await openViewer(page, "/e/7q4-k29");
   const screens = [
     [`/maps/${BRATISLAVA}`, async () => expect(page.locator("#mapName")).toHaveText("Bratislava")],
-    [`/maps/${TATRAS}/style/${WINTER}`, async () => expect(page.locator("#styleSelect")).toHaveValue(WINTER)],
+    [`/maps/${TATRAS}/style/${WINTER}`, async () => expect(page.locator("#sideStyle")).toHaveText("Winter")],
     [`/maps/${TATRAS}/edit/layers`, async () => expect(page.locator("#editTitle")).toHaveText("Edit map")],
     [`/servers/${ZBGIS}/general`, async () => expect(page.locator("#serverGeneral")).toContainText("zbgis.test")],
     ["/maps", async () => expect(page.locator("#railMaps")).toHaveAttribute("aria-current", "page")]
@@ -80,18 +80,17 @@ test("back and forward walk the screens", async ({ page }) => {
 });
 
 // 30 the rail. 47 the header names the map and holds one drop-down, the style switcher.
-test("the header's only drop-down is the styles; the rail lights the screen shown", async ({ page }) => {
+// 90 the header has no drop-down: the style is the side bar's and the map's; the map's name opens Maps.
+test("the header has no drop-down; the rail lights the screen shown", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
   await expect(page.locator("#railMap")).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#mapName")).toHaveText("High Tatras");
   await expect(page.locator("#mapPickerButton")).toHaveCount(0);
   await expect(page.locator("#mapMenu")).toHaveCount(0);
-  await expect(page.locator("#top select")).toHaveCount(1);
+  await expect(page.locator("#top select")).toHaveCount(0);
   await expect(page.locator("#top [aria-haspopup]")).toHaveCount(0);
-  await expect(page.locator("#styleSelect option")).toHaveText(["Summer", "Winter"]);
   await page.locator("#mapName").click();
   await expect(page.locator("#top [role=menu]")).toHaveCount(0);
-  await page.locator("#railMaps").click();
   await expect.poll(() => path(page)).toBe("/maps");
   await expect(page.locator("#railMaps")).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#railMap")).not.toHaveAttribute("aria-current", /.*/);

@@ -11,7 +11,7 @@ test.beforeEach(async ({ request }) => {
 async function openFeatures(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const row = page.locator("#editBody .row", { has: page.locator("input[value='Buses']") });
+  const row = page.locator("#editBody .layer-item", { has: page.locator("input[value='Buses']") });
   await row.getByRole("button", { name: "Options" }).click();
   return page.locator(`[data-options='${layer}']`);
 }

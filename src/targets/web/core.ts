@@ -1,4 +1,5 @@
 import { WASI } from "@bjorn3/browser_wasi_shim";
+import { CoreNotReady } from "@/backend/types";
 import type { Edit } from "@/lib/edit";
 import type { AddressReading, Device, Portable } from "@/lib/types";
 import { BASE } from "./base";
@@ -125,7 +126,10 @@ export function callJSON<T>(exports: CoreExports, call: Call, request: unknown):
   const length = new DataView(exports.memory.buffer).getUint32(output, true);
   const text = decoder.decode(new Uint8Array(exports.memory.buffer, output + 4, length));
   exports.riki_free(output, length + 4);
-  return JSON.parse(text) as T;
+  const answer = JSON.parse(text) as T;
+  // While the rules are still moving into the module, a call it cannot answer yet says so by this word.
+  if ((answer as { refused?: unknown } | null)?.refused === "coreNotReady") throw new CoreNotReady(`riki-core.wasm cannot answer ${call} yet`);
+  return answer;
 }
 
 /** The core's functions behind `Core`. */

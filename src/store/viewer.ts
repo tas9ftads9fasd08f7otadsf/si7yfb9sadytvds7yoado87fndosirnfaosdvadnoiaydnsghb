@@ -3,11 +3,11 @@ import type { Speeds } from "@/lib/traffic";
 import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
 import { DIRECT_KEY } from "@/lib/page";
-import { NotOnSite, type Answer, type ChangedElsewhere, type Feature, type Saved } from "@/backend/types";
+import { CoreNotReady, NotOnSite, type Answer, type ChangedElsewhere, type Feature, type Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
-import { type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
+import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
@@ -85,6 +85,9 @@ export interface ViewerState {
   offline: OfflinePlan | null;
   offlineAsk: OfflineAsk | null;
   offlineOpen: boolean;
+  /** 90 The layer switcher over the map, and whether the side bar's map card is folded open. */
+  switcherOpen: boolean;
+  mapCardOpen: boolean;
 }
 
 const firstState = (): ViewerState => ({
@@ -97,7 +100,8 @@ const firstState = (): ViewerState => ({
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
-  switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null
+  switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null,
+  switcherOpen: false, mapCardOpen: true
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -135,6 +139,16 @@ export const offers = (feature: Feature) => backend.offers(feature);
 
 /** The phone could not be reached: the page says so until a beat is answered again. */
 export const away = () => setConnected(false);
+
+/** 88 A call that rejected: a core not ready is told as a notice, anything else is a lost connection. */
+export function failed(error: unknown): boolean {
+  if (!(error instanceof CoreNotReady)) {
+    away();
+    return false;
+  }
+  notice(get().words.coreNotReady);
+  return true;
+}
 
 function setConnected(connected: boolean) {
   const was = get().connected;
@@ -359,10 +373,9 @@ export async function readDevice() {
   let device: Device;
   try {
     device = await backend.maps();
-  } catch {
+  } catch (error) {
     if (get().standing !== "admitted") return;
-    away();
-    setTimeout(readDevice, 5000);
+    setTimeout(readDevice, failed(error) ? 30_000 : 5000);
     return;
   }
   set({ device });
@@ -456,6 +469,26 @@ export function showSide(sideShown: boolean) {
 
 export const toggleSide = () => showSide(!get().sideShown);
 
+/** 94 One of Edit map's tabs, in the address as the design's routes have it. */
+export function showEditTab(tab: EditTab) {
+  const { mapID } = get();
+  if (mapID) go({ screen: "edit", map: mapID, tab });
+}
+
+export const showSwitcher = (switcherOpen: boolean) => set({ switcherOpen });
+export const toggleMapCard = () => set({ mapCardOpen: !get().mapCardOpen });
+/** 97 New map's window, over the screen it was opened from; its address is /new. */
+export const openNewMap = () => go({ ...get().route, modal: { kind: "new" } });
+
+export function closeModal() {
+  const { route } = get();
+  if (!route.modal) return;
+  const under: Route = { ...route };
+  delete under.modal;
+  const { mapID } = get();
+  go(under.screen === "home" && mapID ? { screen: "map", map: mapID } : under);
+}
+
 /** Edit map opens on its first tab; Done goes back to the map it edits. */
 export function showEdit(editing: boolean) {
   const { mapID, route } = get();
@@ -526,7 +559,9 @@ export async function editing<T>(asking: () => Promise<Answer<T>>, { quiet = fal
   try {
     answer = await asking();
   } catch (error) {
-    if (error instanceof NotOnSite) {
+    if (error instanceof CoreNotReady) {
+      if (!quiet) notice(get().words.coreNotReady);
+    } else if (error instanceof NotOnSite) {
       if (!quiet) notice(get().words.notOnSite);
     } else if (!quiet) away();
     return null;

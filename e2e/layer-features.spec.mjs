@@ -11,7 +11,7 @@ test.beforeEach(async ({ request }) => {
 async function openFeatures(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const row = page.locator("#editBody .row", { has: page.locator("input[value='Trails']") });
+  const row = page.locator(`#editBody [data-layer='${layer}']`);
   await row.getByRole("button", { name: "Options" }).click();
   return page.locator(`[data-options='${layer}']`);
 }
@@ -77,7 +77,7 @@ test("an open Options panel stays in place while the phone's list is read again"
   await expect.poll(() => reads).toBe(1);
   await expect(panel).toBeVisible();
   await expect(panel.getByRole("slider", { name: "Line width" })).toBeVisible();
-  const row = page.locator("#editBody .row", { has: page.locator("input[value='Trails']") });
+  const row = page.locator(`#editBody [data-layer='${layer}']`);
   await expect(row.getByRole("button", { name: "Options" })).toBeVisible();
   release();
   await expect(panel.getByRole("switch", { name: "Group features by name" })).toBeChecked();

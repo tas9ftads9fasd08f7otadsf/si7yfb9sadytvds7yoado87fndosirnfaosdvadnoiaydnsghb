@@ -40,7 +40,8 @@ test("the layer's row says so, and the layer can still be renamed", async ({ pag
   await page.locator("#current .hero").waitFor();
   await page.locator("#editButton").click();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
-  const row = (id) => page.locator(`#editBody .row[data-layer="${id}"]`);
+  // 94 a layer is an item of its row and the settings under it
+  const row = (id) => page.locator(`#editBody .layer-item[data-layer="${id}"]`);
   await expect(row("L2")).toContainText(SENTENCE);
   await expect(row("L1")).not.toContainText(SENTENCE);
   const field = row("L2").getByRole("textbox", { name: "Rename" });

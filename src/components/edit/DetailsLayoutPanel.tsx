@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import type { DetailsLayout, LayoutBlock } from "@/lib/types";
 import { setLayout, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
+import { MarkTile } from "../ui/MarkTile";
 import { Sym } from "../ui/Sym";
 import { DetailsPreview } from "./DetailsPreview";
 import { ActionsFields, BlockSettingsFields, HeaderFields } from "./DetailsSettings";
@@ -14,9 +15,10 @@ type Place = { section: number; block: number };
 
 const at = ({ section, block }: Place, handle: string) =>
   ({ section: String(section), block: String(block), was: handle });
+const atPlace = (section: number, block: number, handle: string) => at({ section, block }, handle);
 
 /** A text block's words, heading and style, or an image block's link, sent once typed. */
-function BlockFields({ block, place, words, takes, send }:
+export function BlockFields({ block, place, words, takes, send }:
   { block: LayoutBlock; place: Place; words: Record<string, string>; takes?: boolean; send: Send }) {
   const edit = (fields: Record<string, string>) => send({
     details: "edit", ...at(place, block.handle), kind: block.kind, value: block.value ?? "",
@@ -45,7 +47,7 @@ function BlockFields({ block, place, words, takes, send }:
 }
 
 /** What a section adds at its foot: a kind the page fills in, or one of the app's parts. */
-function AddContent({ layout, section, send }: { layout: DetailsLayout; section: number; send: Send }) {
+export function AddContent({ layout, section, send }: { layout: DetailsLayout; section: number; send: Send }) {
   const { words } = layout;
   const keysID = useId();
   const [kind, setKind] = useState("");
@@ -87,26 +89,67 @@ function AddContent({ layout, section, send }: { layout: DetailsLayout; section:
   );
 }
 
-/** Edit layer's Details page: sections and blocks, each change sent to the phone on its own. */
+type Picked = { kind: "header" } | { kind: "actions" } | { kind: "block"; section: number; block: number };
+
+const blockIcon: Record<string, string> = { connectionCard: "rectangle.and.text.magnifyingglass", rows: "list.bullet",
+  text: "text.alignleft", image: "photo", button: "arrow.up.forward.square", link: "link" };
+
+/** 95 W16's panes: the layout to pick a part in, the picked part's settings, the sheet it makes. */
 export function DetailsLayoutPanel({ layout, scoped }:
   { layout: DetailsLayout; scoped: (query: Record<string, string>) => Record<string, string> }) {
-  const shared = useViewer((state) => state.words);
   const send: Send = (query) => void setLayout(scoped(query));
-  const { words, sections } = layout;
-  const move = (place: Place, handle: string, to: Place) =>
-    send({ details: "move", ...at(place, handle), toSection: String(to.section), toPlace: String(to.block) });
+  const [picked, setPicked] = useState<Picked>(layout.header ? { kind: "header" }
+    : layout.actions !== undefined ? { kind: "actions" } : { kind: "block", section: 0, block: 0 });
   return (
     <div className="details-layout">
-      <DetailsPreview layout={layout} layer={scoped({}).layer ?? ""} />
-      <HeaderFields layout={layout} send={send} />
-      <ActionsFields layout={layout} send={send} />
+      <div className="details-pane layout-pane">
+        <LayoutList layout={layout} picked={picked} pick={setPicked} send={send} />
+      </div>
+      <div className="details-pane settings-pane"><Settings layout={layout} picked={picked} send={send} /></div>
+      <div className="details-pane preview-pane">
+        <div className="sheet">
+          {layout.samples ? <DetailsPreview layout={layout} layer={scoped({}).layer ?? ""} />
+            : <p className="empty">{layout.sampleNote}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LayoutList({ layout, picked, pick, send }: { layout: DetailsLayout;
+  picked: Picked; pick: (picked: Picked) => void; send: Send }) {
+  const shared = useViewer((state) => state.words);
+  const { words, sections } = layout;
+  const [adding, setAdding] = useState<number | null>(null);
+  const isPicked = (kind: Picked["kind"], section = -1, block = -1) => picked.kind === kind
+    && (picked.kind !== "block" || (picked.section === section && picked.block === block));
+  const actions = layout.actions?.items.filter((item) => item.isOn) ?? [];
+  return (
+    <>
+      {layout.header ? (
+        <button type="button" className="part-card head" aria-pressed={isPicked("header")} data-card="header"
+          onClick={() => pick({ kind: "header" })}>
+          <MarkTile symbol={layout.header.symbol || layout.header.layerSymbol} />
+          <span className="words"><small>{words.header}</small><b>{layout.header.title || words.layerIcon}</b></span>
+          <Sym name="chevron.forward" />
+        </button>
+      ) : null}
+      {layout.actions !== undefined ? (
+        <button type="button" className="part-card" aria-pressed={isPicked("actions")} data-card="actions"
+          onClick={() => pick({ kind: "actions" })}>
+          <span className="tile"><Sym name="capsule" /></span>
+          <span className="words"><small>{words.actions}</small>
+            <b>{actions.length ? actions.map((item) => item.name).join(" · ") : words.addActions}</b></span>
+          <Sym name="chevron.forward" />
+        </button>
+      ) : null}
       {sections.map((section, index) => (
         <div className="layout-section" key={index} data-section={index}>
-          <div className="row">
+          <div className="section-head">
             <CommitField value={section.title ?? ""} placeholder={section.name} aria-label={words.sectionTitle}
               onCommit={(title) => send({ details: "sectionTitle", section: String(index), title })} />
             {sections.length > 1 ? (
-              <button type="button" className="link" onClick={() =>
+              <button type="button" className="link danger" onClick={() =>
                 send({ details: "removeSection", section: String(index) })}>{words.removeSection}</button>
             ) : null}
           </div>
@@ -114,36 +157,72 @@ export function DetailsLayoutPanel({ layout, scoped }:
             takes={layout.takesTranslations}
             send={(language, text) => send({ details: "translation", target: "section", section: String(index),
               language, text })} />
-          {section.blocks.map((block, place) => {
-            const here = { section: index, block: place };
-            const last = place === section.blocks.length - 1;
-            const up = place > 0 ? { section: index, block: place - 1 }
-              : index > 0 ? { section: index - 1, block: sections[index - 1]?.blocks.length ?? 0 } : null;
-            const down = !last ? { section: index, block: place + 1 }
-              : index < sections.length - 1 ? { section: index + 1, block: 0 } : null;
-            return (
-              <div className="layout-block" key={block.handle} data-block={block.kind} data-handle={block.handle}>
-                <div className="row">
-                  <span className="words">{block.name}</span>
-                  <button type="button" aria-label={`${shared.moveUp} ${block.name}`} disabled={!up}
-                    onClick={up ? () => move(here, block.handle, up) : undefined}><Sym name="chevron.up" /></button>
-                  <button type="button" aria-label={`${shared.moveDown} ${block.name}`} disabled={!down}
-                    onClick={down ? () => move(here, block.handle, down) : undefined}><Sym name="chevron.down" /></button>
-                  <button type="button" aria-label={`${shared.remove} ${block.name}`}
-                    onClick={() => send({ details: "remove", ...at(here, block.handle) })}><Sym name="minus.circle" /></button>
-                </div>
-                <BlockFields block={block} place={here} words={words} takes={layout.takesTranslations} send={send} />
-                <BlockSettingsFields block={block} place={at(here, block.handle)} layout={layout} send={send} />
-              </div>
-            );
-          })}
-          <AddContent layout={layout} section={index} send={send} />
+          {section.blocks.map((block, place) => (
+            <div className="layout-item" key={block.handle} data-block={block.kind} data-handle={block.handle}>
+              <button type="button" className="remove" aria-label={`${shared.remove} ${block.name}`}
+                onClick={() => send({ details: "remove", ...atPlace(index, place, block.handle) })}>
+                <Sym name="minus" /></button>
+              <button type="button" className="part-card small" aria-pressed={isPicked("block", index, place)}
+                onClick={() => pick({ kind: "block", section: index, block: place })}>
+                <span className="tile"><Sym name={blockIcon[block.kind] ?? "square.text.square"} /></span>
+                <span className="words"><b>{block.name}</b><small>{blockLine(block)}</small></span>
+                <Sym name="line.3.horizontal" />
+              </button>
+            </div>
+          ))}
+          <button type="button" className="add-content-toggle" aria-expanded={adding === index}
+            onClick={() => setAdding(adding === index ? null : index)}>
+            <Sym name="plus" />{words.addContent}
+          </button>
+          {adding === index ? <AddContent layout={layout} section={index} send={send} /> : null}
         </div>
       ))}
-      <div className="row">
-        <span className="words"><small>{layout.used >= layout.limit ? words.full : words.used}</small></span>
-        <button type="button" className="link" onClick={() => send({ details: "addSection" })}>{words.addSection}</button>
+      <button type="button" className="add-section" onClick={() => send({ details: "addSection" })}>
+        <Sym name="folder.badge.plus" />{words.addSection}
+      </button>
+      <small className="used">{layout.used >= layout.limit ? words.full : words.used}</small>
+    </>
+  );
+}
+
+const blockLine = (block: LayoutBlock) => block.heading || block.value || "";
+
+function Settings({ layout, picked, send }: { layout: DetailsLayout; picked: Picked; send: Send }) {
+  const shared = useViewer((state) => state.words);
+  const { words, sections } = layout;
+  if (picked.kind === "header") {
+    return <><PaneTitle title={words.header} /><HeaderFields layout={layout} send={send} /></>;
+  }
+  if (picked.kind === "actions") {
+    return <><PaneTitle title={words.actions} /><ActionsFields layout={layout} send={send} /></>;
+  }
+  const block = sections[picked.section]?.blocks[picked.block];
+  if (!block) return <PaneTitle title={words.header} />;
+  const { section, block: place } = picked;
+  const last = place === (sections[section]?.blocks.length ?? 0) - 1;
+  const up = place > 0 ? { section, block: place - 1 }
+    : section > 0 ? { section: section - 1, block: sections[section - 1]?.blocks.length ?? 0 } : null;
+  const down = !last ? { section, block: place + 1 }
+    : section < sections.length - 1 ? { section: section + 1, block: 0 } : null;
+  const move = (to: { section: number; block: number }) => send({ details: "move",
+    ...atPlace(section, place, block.handle), toSection: String(to.section), toPlace: String(to.block) });
+  return (
+    <div className="layout-block" data-block={block.kind} data-handle={block.handle}>
+      <PaneTitle title={block.name} />
+      <div className="buttons">
+        <button type="button" className="pill" aria-label={`${shared.moveUp} ${block.name}`} disabled={!up}
+          onClick={up ? () => move(up) : undefined}><Sym name="chevron.up" />{shared.moveUp}</button>
+        <button type="button" className="pill" aria-label={`${shared.moveDown} ${block.name}`} disabled={!down}
+          onClick={down ? () => move(down) : undefined}><Sym name="chevron.down" />{shared.moveDown}</button>
       </div>
+      <BlockFields block={block} place={{ section, block: place }} words={words} takes={layout.takesTranslations}
+        send={send} />
+      <BlockSettingsFields block={block} place={atPlace(section, place, block.handle)} layout={layout} send={send} />
     </div>
   );
+}
+
+function PaneTitle({ title }: { title?: string }) {
+  const words = useViewer((state) => state.words);
+  return <div className="pane-title"><small>{words.settings}</small><b>{title}</b></div>;
 }

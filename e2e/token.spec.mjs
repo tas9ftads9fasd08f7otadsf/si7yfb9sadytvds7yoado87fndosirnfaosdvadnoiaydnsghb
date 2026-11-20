@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset } from "./phone.mjs";
+import { openViewer, phone, reset, editTab } from "./phone.mjs";
 
 test.beforeEach(async ({ request }) => { await reset(request); });
 
 async function rename(page, to) {
   await page.locator("#editButton").click();
+  await editTab(page, "General");
   const name = page.getByRole("textbox", { name: "Name", exact: true });
   await name.fill(to);
   await name.press("Enter");
@@ -42,7 +43,9 @@ test("the editing address is traded and dropped, and a reload still edits", asyn
 test("a token the phone no longer honours sends the browser back to the password", async ({ page, request }) => {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
+  await editTab(page, "Offline");
   await expect(page.locator("#coverageLine")).toBeVisible();
+  await editTab(page, "General");
   await phone(request, "new-key");
   const name = page.getByRole("textbox", { name: "Name", exact: true });
   await name.fill("Too late");

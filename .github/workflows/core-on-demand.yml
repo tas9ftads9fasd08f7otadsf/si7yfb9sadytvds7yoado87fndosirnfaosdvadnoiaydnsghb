@@ -1,0 +1,95 @@
+name: Core on demand
+
+# riki-core.wasm for the pinned or any rikimaps commit, kept 90 days as riki-core-<commit> for
+# `npm run fetch:core`. Not a release: rikimaps takes the newest release as the editor's bundle.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: rikimaps commit, branch or tag; empty builds the commit package.json pins
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-on-demand-${{ inputs.ref || 'pinned' }}
+  cancel-in-progress: false
+
+jobs:
+  core:
+    name: Build riki-core.wasm at ${{ inputs.ref || 'the pin' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - id: asked
+        name: Read the commit to build
+        env:
+          ASKED: ${{ inputs.ref }}
+        run: |
+          ref="${ASKED:-$(node -p "require('./package.json').rikiCore.ref || ''")}"
+          if [ -z "$ref" ]; then
+            echo "::error::No ref given and rikiCore.ref in package.json pins no rikimaps commit"
+            exit 1
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      # Private: the token is the repository secret RIKIMAPS_READ_TOKEN, which skifahrer creates.
+      - name: Check out rikimaps
+        uses: actions/checkout@v5
+        with:
+          repository: skifahrer/rikimaps
+          ref: ${{ steps.asked.outputs.ref }}
+          token: ${{ secrets.RIKIMAPS_READ_TOKEN }}
+          path: rikimaps
+          persist-credentials: false
+
+      # A branch or tag moves; the artifact is named by the commit it was built from.
+      - id: commit
+        name: Name the commit
+        run: echo "sha=$(git -C rikimaps rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the Swift toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/riki-swift
+          key: riki-swift-6.2-RELEASE-ubuntu24.04-8e3d63a3
+      - name: Cache the WebAssembly SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.swiftpm/swift-sdks
+          key: riki-swift-wasm-sdk-6.2-RELEASE-fe4e8648
+
+      - name: Build, optimise and load it
+        env:
+          RIKIMAPS_DIR: ${{ github.workspace }}/rikimaps
+          RIKI_CORE_REF: ${{ steps.commit.outputs.sha }}
+        run: npm run build:core
+
+      - name: Test the core at that commit
+        env:
+          SWIFT: ~/.cache/riki-swift/swift-6.2-RELEASE-ubuntu24.04/usr/bin/swift
+        run: |
+          SWIFT="${SWIFT/#\~/$HOME}" rikimaps/tools/linux-core-tests.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: riki-core-${{ steps.commit.outputs.sha }}
+          path: dist/riki-core
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Say how to take it
+        env:
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          printf '### riki-core-%s\n\n`RIKI_CORE_REF=%s npm run fetch:core`\n' "$SHA" "$SHA" >> "$GITHUB_STEP_SUMMARY"

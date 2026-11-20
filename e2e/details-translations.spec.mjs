@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openViewer, phone, reset } from "./phone.mjs";
+import { openViewer, phone, pickPart, reset } from "./phone.mjs";
 
 const layer = "6F1E2A10-0000-4000-8000-0000000000A5";
 
@@ -16,9 +16,12 @@ const reread = (page) => page.waitForResponse((response) => response.url().inclu
 async function openLayout(page) {
   await openViewer(page, "/e/7q4-k29");
   await page.locator("#editButton").click();
-  const row = page.locator("#editBody .row", { has: page.locator("input[value='Trams']") });
+  const row = page.locator("#editBody .layer-item", { has: page.locator("input[value='Trams']") });
   await row.getByRole("button", { name: "Options" }).click();
-  return page.locator(`[data-options='${layer}']`);
+  // 95 the layout opens as W16's page of its own
+  await page.locator(`[data-options='${layer}'] [data-layer-details]`).click();
+  await page.locator("#details .layout-pane").waitFor();
+  return page.locator("#details");
 }
 
 // Writes a title through the page and waits for the phone's answer to be read back.
@@ -69,8 +72,9 @@ test("the header title is translated, changed and removed", async ({ page }) => 
 test("a section, a text block and a button are translated", async ({ page }) => {
   const panel = await openLayout(page);
   const section = panel.locator(".layout-section[data-section='0']");
-  await write(page, section.locator("> .row").getByRole("textbox"), "Facts");
-  const text = panel.locator(".layout-block[data-handle='t1']");
+  await write(page, section.locator("> .section-head").getByRole("textbox"), "Facts");
+  await pickPart(page, "Text");
+  const text = panel.locator(".settings-pane .layout-block[data-handle='t1']");
   await write(page, text.getByRole("textbox", { name: "Title" }), "About");
 
   const sectionPart = section.locator("> details.translations");
@@ -90,7 +94,8 @@ test("a section, a text block and a button are translated", async ({ page }) => 
   await textPart.getByRole("textbox", { name: "Text 1.2 · German" }).press("Enter");
   expect(await asked).toMatchObject({ target: "text", section: "0", block: "1", was: "t1", language: "de", text: "Über" });
 
-  const actions = panel.locator("[data-part='actions']");
+  await pickPart(page, "Action buttons");
+  const actions = panel.locator(".settings-pane [data-part='actions']");
   await actions.getByRole("button", { name: "Add action buttons" }).click();
   await actions.getByRole("button", { name: "Add custom button" }).click();
   const button = actions.locator(".button-fields");
@@ -108,7 +113,8 @@ test("a section, a text block and a button are translated", async ({ page }) => 
   asked = sent(page);
   await button.getByRole("combobox", { name: "Place" }).selectOption("belowRows");
   await asked;
-  const placed = panel.locator(".layout-block[data-block='button']");
+  await panel.locator(".layout-pane .layout-item[data-block='button'] .part-card").click();
+  const placed = panel.locator(".settings-pane .layout-block[data-block='button']");
   const placedPart = placed.locator("details.translations");
   await expect(placedPart.locator("summary")).toHaveText("Other languages (1)");
   await placedPart.locator("summary").click();
@@ -139,7 +145,7 @@ test("an unknown language shows the phone's words", async ({ page, request }) =>
 test("a title no longer written refuses a translation", async ({ page, request }) => {
   const panel = await openLayout(page);
   const section = panel.locator(".layout-section[data-section='0']");
-  await write(page, section.locator("> .row").getByRole("textbox"), "Facts");
+  await write(page, section.locator("> .section-head").getByRole("textbox"), "Facts");
   await phone(request, "blanks-titles");
   const part = section.locator("> details.translations");
   await part.locator("summary").click();
@@ -152,7 +158,8 @@ test("a title no longer written refuses a translation", async ({ page, request }
 // 81: a layout that moved on the phone is refused, and shown again as it now stands.
 test("a moved layout refuses a translation", async ({ page, request }) => {
   const panel = await openLayout(page);
-  const text = panel.locator(".layout-block[data-handle='t1']");
+  await pickPart(page, "Text");
+  const text = panel.locator(".settings-pane .layout-block[data-handle='t1']");
   await write(page, text.getByRole("textbox", { name: "Title" }), "About");
   const part = text.locator("details.translations");
   await part.locator("summary").click();
@@ -163,7 +170,7 @@ test("a moved layout refuses a translation", async ({ page, request }) => {
   await part.getByRole("textbox", { name: "Text 1.2 · German" }).press("Enter");
   await expect(page.locator("#notice")).toContainText("The layout changed on the phone");
   await read;
-  await expect(panel.locator(".layout-block[data-handle='t1x']")).toBeVisible();
+  await expect(panel.locator(".layout-pane .layout-item[data-handle='t1x']")).toBeVisible();
 });
 
 // 81: a phone naming no languages, holding no translation, shows no translations part at all.
