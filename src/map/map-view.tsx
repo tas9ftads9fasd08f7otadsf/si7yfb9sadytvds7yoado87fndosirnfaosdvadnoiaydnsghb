@@ -85,9 +85,7 @@ export function createMapView(container: HTMLElement): MapControl {
 
   // The status line.
   function showZoom() {
-    const zoomText = `z ${map.getZoom().toFixed(1)}`;
-    badge.textContent = zoomText;
-    useViewer.setState({ zoomText });
+    badge.textContent = `z ${map.getZoom().toFixed(1)}`;
   }
   map.on("move", showZoom);
   map.on("load", showZoom);
