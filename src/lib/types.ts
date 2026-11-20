@@ -490,6 +490,14 @@ export interface ServiceRead {
   ticks: Set<string>;
 }
 
+/** 137 How far the site's first read has come: the engine's bytes, the zones, and what they held. */
+export interface Loading {
+  engine?: { done: number; total: number | null };
+  zones?: { done: number; total: number };
+  records: number;
+  files: number;
+}
+
 export interface SessionAnswer {
   standing: Standing;
   edits?: boolean;
