@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -16,6 +16,15 @@ function asked(text) {
   }
   return found;
 }
+
+// 102 bug: actions/checkout fetched the abbreviated `ref: 5a7200c4fb` as a branch or tag and failed the core job
+describe("the commits the workflows check out", () => {
+  it("are named by their full sha, which actions/checkout alone resolves", () => {
+    for (const file of readdirSync(path.join(process.cwd(), ".github/workflows"))) {
+      for (const [, ref] of read(file).matchAll(/^\s+ref:\s+([0-9a-f]+)\s*$/gm)) expect(ref, file).toMatch(/^[0-9a-f]{40}$/);
+    }
+  });
+});
 
 // 32 Release never started: CI asked to read pull requests, and Release did not grant it.
 describe("the release workflow", () => {
@@ -176,7 +185,7 @@ describe("the core's pipeline", () => {
   // 91 the words are made from the same checkout, and checked against the generator they replace
   it("makes the site's words from the same checkout and reproduces the generator's, which the release takes", () => {
     expect(core).toContain("npm run build:words");
-    expect(core).toContain("ref: 5a7200c4fb");
+    expect(core).toContain("ref: 5a7200c4fbea3ded11e7b9294e39bc35c0fd8ffe");
     expect(core).toContain("RIKIMAPS_WORDS_CHECK_DIR");
     expect(core).toContain("name: riki-words");
     expect(release).toContain("name: riki-words");

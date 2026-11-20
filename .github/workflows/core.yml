@@ -96,7 +96,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: skifahrer/rikimaps
-          ref: 5a7200c4fb
+          ref: 5a7200c4fbea3ded11e7b9294e39bc35c0fd8ffe
           token: ${{ secrets.RIKIMAPS_READ_TOKEN }}
           path: rikimaps-words-check
           persist-credentials: false
