@@ -17,6 +17,7 @@ import { MinimumVersion } from "./MinimumVersion";
 import { Offline } from "./Offline";
 import { OpensAt } from "./OpensAt";
 import { People } from "./People";
+import { Publish } from "./Publish";
 import { RegionPackagesCard } from "../RegionPackages";
 import { Styles } from "./Styles";
 import { Styling } from "./Styling";
@@ -76,7 +77,12 @@ function EditFields() {
     case "styling":
       return <Styles portable={portable} />;
     case "sharing":
-      return <People />;
+      return (
+        <>
+          <People />
+          <Publish />
+        </>
+      );
     case "offline":
       return (
         <>

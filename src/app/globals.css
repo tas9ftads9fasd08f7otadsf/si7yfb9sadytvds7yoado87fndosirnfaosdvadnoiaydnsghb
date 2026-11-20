@@ -925,3 +925,21 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #mapRegions .region-row { justify-content: space-between; }
 #editBody h2.title .count { float: right; font-weight: 400; margin-left: 8px; }
 #settings .about dt.whole { color: var(--text); font-weight: 600; }
+
+/* 136 Edit map's Publish to Gallery card: category tiles, the code while the phone waits, the three steps. */
+#publish .category-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+#publish .category-tiles button { min-height: 72px; border-radius: 16px; border: 1px solid var(--sep); background: var(--card);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 6px; }
+#publish .category-tiles button.picked { border-color: var(--accent); color: var(--accent); background: var(--cs-water); }
+#publish .promise { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+#publish .field > textarea, #publish .field > input { width: 100%; }
+#publish .foot-note.warning { color: var(--c-red); }
+#publish .foot-note.required { color: var(--c-red); }
+#publish .chips.places { padding: 6px 14px 10px; }
+#publish .chips.places span { border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; }
+#publish .publish-waiting .field { align-items: center; text-align: center; gap: 10px; padding: 18px 14px; }
+#publish .publish-waiting .code { font: 700 40px ui-monospace, Menlo, monospace; letter-spacing: 6px; }
+#publish .publish-replaces .field { gap: 8px; }
+#publish .publish-replaces #publishAgree { align-self: flex-start; font-weight: 600; display: inline-flex; gap: 6px; }
+#publishSteps .row .tile { width: 32px; height: 32px; border-radius: 16px; display: flex; align-items: center;
+  justify-content: center; background: var(--cs-water); color: var(--c-water); font-weight: 700; }
