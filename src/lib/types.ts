@@ -406,6 +406,27 @@ export interface Packages {
   ticked: string[];
 }
 
+/** 119 One layer of another map; `blocked` says why it cannot be ticked. */
+export interface OtherLayer {
+  layer: string;
+  title: string;
+  subtitle: string;
+  symbol: string;
+  blocked?: string | null;
+}
+
+export interface OtherMap {
+  map: string;
+  name: string;
+  symbol: string;
+  iconTintHex?: string | null;
+  rows: OtherLayer[];
+}
+
+export interface OtherLayers {
+  groups: OtherMap[];
+}
+
 export interface ServerPick {
   layer: string;
   [key: string]: unknown;

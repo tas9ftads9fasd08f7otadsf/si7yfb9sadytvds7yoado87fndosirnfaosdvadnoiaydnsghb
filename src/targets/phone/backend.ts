@@ -184,6 +184,9 @@ export const backend: Backend = {
   testLayer: (mapID, layerID) =>
     editing(`${ROOT}/maps/${mapID}/layer-test?${new URLSearchParams({ layer: layerID })}`, "GET"),
   packages: (mapID) => editing(`${ROOT}/maps/${mapID}/packages`, "GET"),
+  otherLayers: (mapID) => editing(`${ROOT}/maps/${mapID}/other-layers`, "GET"),
+  addCopies: (mapID, layers) =>
+    editing(`${ROOT}/maps/${mapID}/add-copies?${new URLSearchParams({ layers: layers.join(",") })}`),
   servers: () => editing(`${ROOT}/servers`, "GET"),
   addServer: (kind, address, name) => editing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`),
   importServers: async (file) => editing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer()),
