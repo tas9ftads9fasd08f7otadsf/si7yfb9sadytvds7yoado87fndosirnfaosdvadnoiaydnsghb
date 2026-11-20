@@ -7,7 +7,7 @@ import { CommitField } from "../ui/CommitField";
 import { MarkTile } from "../ui/MarkTile";
 import { Sym } from "../ui/Sym";
 import { DetailsPreview } from "./DetailsPreview";
-import { ActionsFields, BlockSettingsFields, HeaderFields } from "./DetailsSettings";
+import { ActionsFields, BlockSettingsFields, HeaderFields, TapsFields } from "./DetailsSettings";
 import { Translations } from "./DetailsTranslations";
 
 type Send = (query: Record<string, string>) => void;
@@ -181,6 +181,7 @@ function LayoutList({ layout, picked, pick, send }: { layout: DetailsLayout;
         <Sym name="folder.badge.plus" />{words.addSection}
       </button>
       <small className="used">{layout.used >= layout.limit ? words.full : words.used}</small>
+      <TapsFields layout={layout} send={send} />
     </>
   );
 }

@@ -339,6 +339,8 @@ label.action { cursor: pointer; display: flex; align-items: center; justify-cont
   padding: 6px 0; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 16px var(--shadow); border-radius: 8px; }
 .row-icon-groups small { padding: 0 14px; color: var(--sub); }
 .layout-header, .layout-actions { border-top: 1px solid var(--line); padding: 4px 0; }
+.layout-taps { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding: 8px 0; }
+.layout-taps small { color: var(--sub); }
 .field.pictured { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .field.pictured .shown { width: 44px; height: 44px; border-radius: 10px; background: center / cover; }
 .field.pictured.preview .shown { width: 100%; height: auto; aspect-ratio: 4 / 3; }
@@ -912,3 +914,4 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
   display: flex; align-items: center; }
 #mapRegions .region-row { justify-content: space-between; }
 #editBody h2.title .count { float: right; font-weight: 400; margin-left: 8px; }
+#settings .about dt.whole { color: var(--text); font-weight: 600; }

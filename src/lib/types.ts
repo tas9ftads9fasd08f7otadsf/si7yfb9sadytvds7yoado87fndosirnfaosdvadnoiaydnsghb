@@ -207,6 +207,8 @@ export interface DetailsLayout {
   /** 55: the header, the action buttons (none until added) and the choices they offer. */
   header?: { title?: string | null; symbol?: string | null; layerSymbol: string; titleTranslations?: Translated };
   actions?: LayoutActions | null;
+  /** 114: each shape and whether a tap on it opens the sheet; none from an older phone. */
+  taps?: { kind: string; name: string; isOn: boolean }[];
   symbols?: string[];
   /** 80: the icon picker's groups for a row's mark; none from a phone that cannot set it. */
   symbolGroups?: { title: string; symbols: string[] }[];

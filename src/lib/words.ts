@@ -1,7 +1,7 @@
 /** English, until the phone's own words arrive or if they never do. */
 export const ENGLISH = {
   maps: "Maps", styles: "Styles", style: "Style", layers: "Layers", layersIn: "Layers in {style}",
-  layersOn: "{on} of {all} on", livePreview: "Live preview", details: "Details", settings: "Settings",
+ livePreview: "Live preview", details: "Details", settings: "Settings",
   startFrom: "Start from", emptyMap: "Empty map", emptyMapNote: "Add its layers next",
   copyOf: "A copy of {map}", copyOfNote: "Its layers and styles, to change", importMapNote: "A .mapson file",
   newMapPlaceholder: "For example: Hiking in Malé Karpaty", createAndEdit: "Create and edit", searchPlaceholder: "Search names in this map, places or coordinates",
@@ -10,10 +10,10 @@ export const ENGLISH = {
   iconAndColour: "Icon and colour", works: "Works", previewZoom: "Preview · zoom {zoom}",
   dragToOrder: "drag to change the order", search: "Search", stylesCount: "{count} styles", allStyles: "All styles", editStyles: "Edit styles",
   hideSide: "Hide the side bar", showSideBar: "Show the side bar", data: "Data", dataNote: "Everything the shared maps use, as the phone keeps it.",
-  regions: "Regions", usedIn: "Used in", inMaps: "{count} maps", oneMap: "1 map", onThisPhone: "On the phone",
-  downloading: "Downloading", about: "About", sharedBy: "Shared by", appVersion: "Riki Maps {version}",
+  regions: "Regions", usedIn: "Used in", onThisPhone: "On the phone",
+  downloading: "Downloading", about: "About", sharedBy: "Shared by {name}", appVersion: "Riki Maps {version}",
   settingsNote: "For this browser; the maps are set on the phone that shares them.", nameNote: "Changes you make are signed with it.", regionsOf: "Regions of {map}", noneHere: "Nothing here yet.", rikiMaps: "Riki Maps", builtInNote: "Built in, from your regions",
-  tileNote: "{z}/{x}/{y}, TileJSON or WMS", fileNote: "GeoJSON, KML, GPX, PMTiles…", apiNote: "Live points from an API",
+  tileNote: "Tile address, TileJSON or WMS", fileNote: "GeoJSON, KML, GPX, PMTiles…", apiNote: "Live points from an API",
   serverNote: "WMS, WMTS, ArcGIS and more", newMap: "New map", importMap: "Import",
   nothing: "No map here can be shared.", away: "Not serving", app: "Riki Maps", allMaps: "All maps",
   sort: "Sort", nameAZ: "Name A–Z", nameZA: "Name Z–A", newFolder: "New folder", folder: "Folder",

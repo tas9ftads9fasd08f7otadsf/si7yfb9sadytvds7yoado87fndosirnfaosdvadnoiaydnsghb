@@ -35,7 +35,8 @@ describe("Data", () => {
     act(() => fireEvent.click(screen.getByRole("tab", { name: /Layers/ })));
     expect(location.pathname).toBe("/data/layers");
     const trails = screen.getByText("Trails").closest("[role=row]")!;
-    expect(trails.textContent).toContain("2 maps");
+    // 113 how many maps hold it, as a number under "Used in"
+    expect(within(trails as HTMLElement).getAllByRole("cell")[2]?.textContent).toBe("2");
     expect(trails.textContent).toContain("Tatras, Fatra");
   });
 
