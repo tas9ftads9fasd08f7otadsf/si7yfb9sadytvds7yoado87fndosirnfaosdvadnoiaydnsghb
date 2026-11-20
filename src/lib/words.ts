@@ -109,6 +109,7 @@ export const ENGLISH = {
   showLegendNote: "The legend button over this map", showWorld: "Show the world around",
   showWorldNote: "Sea, borders and country names around this map",
   hiddenEverywhere: "Hidden on every map under Settings › Map",
+  privacy: "Privacy", lockMap: "Lock this map", lockWith: "Lock with {brand}", confirmOnPhone: "Confirm it is you",
   ownerSets: "The map\u2019s owner sets the legend for everyone.", duplicateMap: "Duplicate map",
   deleteMap: "Delete map", deleteAction: "Delete",
   deleteEveryone: "Everyone you shared it with loses access to it.",

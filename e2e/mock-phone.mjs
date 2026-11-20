@@ -999,7 +999,39 @@ function switches(each) {
     groupingReorders: each.mixedSources === true && !grouped, stylesDisagree: each.stylesDisagree === true,
     differsFromDefault: each.differsFromDefault === true,
     layersWithoutStyle: each.layers.filter((layer) => !each.styles.some((style) => style.name === layer.name)).length,
-    removedStyles: each.removedStyles ?? 0, editedStyles: each.editedStyles ?? [], deletion: deletionOf(each) };
+    removedStyles: each.removedStyles ?? 0, editedStyles: each.editedStyles ?? [], deletion: deletionOf(each),
+    lock: lockOf(each) };
+}
+
+// 118: Face ID on the phone, as the test says it answers: yes or no, after a wait, or no passcode at all.
+const face = () => (phone.face ??= { answers: true, asks: 0, wait: 0, hasPasscode: true });
+
+// 118: as `PeerWebLock.offered` draws Edit map's row: only the owner of a shared map may move it.
+function lockOf(each) {
+  const mayChange = phone.ownsSettings && face().hasPasscode;
+  return { isOn: each.locked === true, mayChange, brand: "Face ID",
+    note: "Asks for Face ID or the passcode before it is shown or edited",
+    sharedNote: phone.shares[each.id]
+      ? (phone.ownsSettings ? "Everyone the map is shared with is asked too, on their own device."
+        : "The map's owner locked it for everyone it is shared with.") : null };
+}
+
+// 118: as `PeerWebLock.refusal` weighs it: asked only when the lock would change, then written.
+async function lockChange(each, query, response) {
+  const on = query.get("lock");
+  if (on !== "1" && on !== "0") return send(response, 400, "");
+  if (!phone.ownsSettings) return send(response, 403, "This map is shared with this phone to look at, not to change");
+  if ((on === "1") !== (each.locked === true)) {
+    if (!face().hasPasscode) return send(response, 409, "Set a passcode in the phone's Settings first");
+    face().asks += 1;
+    if (face().wait) await new Promise((done) => setTimeout(done, face().wait));
+    if (!face().answers) {
+      return send(response, 403, "Not confirmed on the phone: answer Face ID or the passcode there");
+    }
+    each.locked = on === "1" ? true : undefined;
+    each.revision += 1;
+  }
+  return json(response, portable(each));
 }
 
 // 62: as `PeerWebDeleteMap.offered`: the last map stays, a locked one waits for Face ID.
@@ -1759,6 +1791,9 @@ async function answer(request, response) {
   if (method === "POST" && parts[4] === "edit") {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (url.searchParams.has("lock")) return lockChange(each, url.searchParams, response);
+    // 118: a locked map takes no other edit until it is unlocked on the phone.
+    if (each.locked) return send(response, 403, "This map is locked on the phone");
     return edit(each, url.searchParams, response);
   }
   if (parts.length === 4) return json(response, portable(each));
@@ -1905,6 +1940,12 @@ function testControl(route, query, response) {
   case "/__test/legend-everywhere": phone.legendEverywhere = query.get("on") === "1"; break;
   case "/__test/reader": phone.ownsSettings = false; break;
   case "/__test/share-role": phone.shares[query.get("map")].role = query.get("role"); break;
+  // 118: what the phone's person does when Face ID is asked: answer, wait, or have no passcode.
+  case "/__test/face-id":
+    Object.assign(face(), { answers: query.get("answer") !== "0", wait: Number(query.get("wait") || 0),
+      hasPasscode: query.get("passcode") !== "0" });
+    break;
+  case "/__test/face-asks": return json(response, { asks: face().asks });
   case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
   case "/__test/shares": return json(response, phone.shares);
   case "/__test/folder":
