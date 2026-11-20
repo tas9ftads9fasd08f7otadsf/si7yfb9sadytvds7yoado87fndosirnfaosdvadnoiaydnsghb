@@ -93,6 +93,8 @@ export interface ViewerState {
   /** 100 The names the search found in the map's data, and the places the phone found. */
   nameHits: NameHit[] | null;
   foundPlaces: FoundPlace[] | null;
+  /** 107 The side bar lists the map's styles as cards in place of its layers. */
+  sideStyles: boolean;
   /** 101 The regions of the map on screen, as the Data page lists them. */
   regionList: RegionList | null;
 }
@@ -121,7 +123,7 @@ const firstState = (): ViewerState => ({
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
   switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null,
-  switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null, regionList: null
+  switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null, regionList: null, sideStyles: false
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -550,6 +552,7 @@ export function showEditTab(tab: EditTab) {
 
 export const showSwitcher = (switcherOpen: boolean) => set({ switcherOpen });
 export const toggleMapCard = () => set({ mapCardOpen: !get().mapCardOpen });
+export const showSideStyles = (sideStyles: boolean) => set({ sideStyles });
 /** 97 New map's window, over the screen it was opened from; its address is /new. */
 export const openNewMap = () => go({ ...get().route, modal: { kind: "new" } });
 

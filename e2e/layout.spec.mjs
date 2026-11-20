@@ -259,3 +259,22 @@ test("the top bar's button hides the side bar and brings it back", async ({ page
   await expect(page.locator("#side")).toBeVisible();
   await expect(page.locator("body")).not.toHaveClass(/side-hidden/);
 });
+
+// 107 W1: the card counts the styles, All styles lists them as cards; the rail's Search goes to the field.
+test("the side bar lists the styles as cards and the rail's Search finds the field", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await expect(page.locator("#current .hero .muted")).toContainText("2 styles");
+  await page.locator("#sideStyleAll").click();
+  const winter = page.locator("[data-style-card='6F1E2A10-0000-4000-8000-0000000000B2']");
+  await expect(winter).toContainText("Winter");
+  await winter.click();
+  await expect(winter).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#switcherButton")).toHaveText("Winter");
+  await page.getByRole("button", { name: "Edit styles" }).click();
+  await expect(page).toHaveURL(/\/edit\/styling#/);
+  await page.locator("#editDone").click();
+  await page.locator("#railData").click();
+  await page.locator("#railSearch").click();
+  await expect(page.locator("#data")).toHaveCount(0);
+  await expect(page.locator("#search")).toBeFocused();
+});

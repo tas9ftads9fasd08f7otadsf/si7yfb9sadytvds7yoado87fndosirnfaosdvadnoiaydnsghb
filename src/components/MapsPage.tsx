@@ -4,11 +4,11 @@ import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { checkKey, importMap, offers, openNewMap, shownMapOf, showEdit, toggleMapCard, useViewer }
+import { checkKey, importMap, offers, openNewMap, shownMapOf, showEdit, showSideStyles, toggleMapCard, useViewer }
   from "@/store/viewer";
 import { DeleteMap } from "./edit/DeleteMap";
-import { MapMark, MapShelf, useLayerCount } from "./MapShelf";
-import { LayerToggles, StylePicker, useLayersOn, useStyleName } from "./MapLayers";
+import { MapMark, MapShelf, useLayerCount, useStyleCount } from "./MapShelf";
+import { LayerToggles, StyleCards, StylePicker, useLayersOn, useStyleName } from "./MapLayers";
 import { railItemOf } from "./NavRail";
 import { SearchResults } from "./Search";
 import { ServerCards } from "./Servers";
@@ -65,11 +65,15 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
   const styleName = useStyleName();
   const layerCount = useLayerCount();
   const layersOn = useLayersOn(shared);
+  const styleCount = useStyleCount();
+  const styles = useViewer((state) => state.portable?.styles?.length ?? 0);
+  const listsStyles = useViewer((state) => state.sideStyles);
+  const counts = styles ? `${styleCount(styles)} · ${layerCount(shared.layers.length)}` : layerCount(shared.layers.length);
   return (
     <>
       <div className={picking ? "hero pending" : "hero"} aria-busy={picking}>
         <MapMark shared={shared} />
-        <div className="words"><b>{shared.name}</b><span className="muted">{layerCount(shared.layers.length)}</span></div>
+        <div className="words"><b>{shared.name}</b><span className="muted">{counts}</span></div>
         {canEdit ? (
           <button type="button" className="pill" id="editButton" onClick={() => showEdit(true)}>
             <Sym name="pencil" />{words.edit}
@@ -80,13 +84,13 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
           <Sym name={isOpen ? "chevron.up" : "chevron.down"} />
         </button>
       </div>
-      {isOpen ? (
+      {isOpen && listsStyles ? <StyleCards /> : isOpen ? (
         <>
           {preview ? <div className="picture" style={{ backgroundImage: `url("${preview}")` }}>
             <span className="badge">{words.onMapNow}</span>
           </div> : unread ? <div className="picture pending" /> : null}
           <Versions shared={shared} />
-          <StylePicker id="sideStyle" />
+          <StylePicker id="sideStyle" onAll={() => showSideStyles(true)} />
           {canEdit ? (
             <>
               <div className="group-title split">

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetViewer, useViewer } from "@/store/viewer";
 import { NavRail, railItemOf } from "./NavRail";
 
@@ -21,6 +21,8 @@ describe("NavRail", () => {
     expect(link("Map").getAttribute("href")).toBe("/maps/M1");
     expect(railItemOf({ screen: "maps" })).toBe("maps");
     expect(railItemOf({ screen: "servers", server: "S1" })).toBe("servers");
+    // 107 the rail's Search is lit for a search and a place
+    expect(railItemOf({ screen: "search", map: "M1", text: "rys" })).toBe("search");
     // 103 the gear at the rail's foot is Settings
     expect(railItemOf({ screen: "settings" })).toBe("settings");
   });
@@ -63,4 +65,20 @@ describe("NavRail", () => {
     fireEvent.click(link("Maps"), { metaKey: true });
     expect(useViewer.getState().route).toEqual({ screen: "map", map: "M1" });
   });
+
+  // 107 the rail's Search puts the cursor in the top bar's field, back on the map from a page
+  it("takes Search to the top bar's field", () => {
+    useViewer.setState({ mapID: "M1", route: { screen: "data", tab: "maps" } });
+    const field = document.createElement("input");
+    field.id = "search";
+    document.body.append(field);
+    const frame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((run) => { run(0); return 0; });
+    render(<NavRail />);
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(useViewer.getState().route).toEqual({ screen: "map", map: "M1" });
+    expect(document.activeElement).toBe(field);
+    frame.mockRestore();
+    field.remove();
+  });
 });
+
