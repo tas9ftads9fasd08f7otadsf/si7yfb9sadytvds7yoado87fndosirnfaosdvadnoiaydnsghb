@@ -87,10 +87,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 #top .start { display: flex; align-items: center; gap: 16px; min-width: 0; justify-self: start; }
 #top .end { display: flex; align-items: center; gap: 10px; min-width: 0; justify-self: end; }
 #brand { display: flex; align-items: center; gap: 10px; flex: none; }
-#brand .tile { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center;
-  justify-content: center; background: linear-gradient(160deg, #fbf3da, #ebddb2);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); font: italic 900 20px -apple-system, system-ui, sans-serif;
-  color: #2f5fb3; }
 #brand b { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; }
 .tool { border: 0; background: none; border-radius: 999px; height: 40px; min-width: 40px; padding: 0 12px;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--text); flex: none; }
@@ -167,7 +163,8 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 .hero > .mark .sym { font-size: 26px; }
 .hero .words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .hero .words b { font-size: 19px; font-weight: 700; overflow-wrap: anywhere; }
-.hero .words .muted { font-size: 13px; }
+.hero .words .muted, .hero .words .sharing { font-size: 13px; }
+.hero .words .sharing { color: var(--secondary); }
 .pill { height: 36px; padding: 0 14px 0 10px; border-radius: 18px; border: 0; background: var(--cs-water);
   color: var(--c-water); font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; flex: none; }
 .pill .sym { font-size: 14px; }
@@ -415,6 +412,8 @@ body.side-hidden #regionNeeds { left: calc(var(--rail) + 12px); }
 #gate, #small { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
   padding: 24px; background: var(--scrim); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 body.gated #gate { display: flex; }
+/* 134: no one is signed in, so the editor behind is not shown either. */
+#gate.closed { background: var(--page); }
 .sheet { width: 100%; max-width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
   box-shadow: 0 18px 50px var(--shadow); padding: 28px; text-align: center; }
 .sheet .sym { font-size: 36px; color: var(--accent); }
@@ -435,8 +434,6 @@ body.gated #gate { display: flex; }
 .skeleton .bar { flex: 1; height: 12px; border-radius: 6px; background: var(--fill); }
 #boot { position: fixed; inset: 0; z-index: 15; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 16px; background: var(--ground); color: var(--sub); }
-#boot .tile { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: 28px; }
 #boot .spinner { margin: 0; }
 #loadingBar { position: absolute; z-index: 4; top: var(--top); left: 0; right: 0; height: 3px; overflow: hidden;
   pointer-events: none; }
@@ -447,9 +444,16 @@ body.gated #gate { display: flex; }
 }
 /* Item 1994: a phone's or a small window's size is not supported; the app is the way there. */
 @media (max-width: 899px), (max-height: 499px) {
-  #small { display: flex; z-index: 30; }
-  #top, #rail, #side, #map, #status { visibility: hidden; }
+  html:not([data-any-size]) #small { display: flex; z-index: 30; }
+  html:not([data-any-size]) :is(#top, #rail, #side, #map, #status) { visibility: hidden; }
 }
+/* 131: Riki Maps' own icon, rounded as the home screen rounds it. */
+.app-icon { display: inline-block; flex: none; border-radius: 22.5%; background: center / cover no-repeat;
+  box-shadow: 0 1px 3px var(--shadow); }
+.sheet > .app-icon { display: block; margin: 0 auto 4px; }
+.sheet .gate-icon + #gateMark { margin-top: 10px; }
+.sheet a.button { display: inline-flex; align-items: center; margin-top: 16px; height: 36px; padding: 0 18px;
+  border-radius: 8px; background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none; }
 /* TestFlight AFKF: what a clicked feature carries, in the map's own popup. */
 .maplibregl-popup-content { background: var(--panel); color: var(--label); border-radius: var(--radius);
   padding: 12px 14px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22); max-width: 340px; }
@@ -792,7 +796,13 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
   text-overflow: ellipsis; white-space: nowrap; }
 #data .link-name { border: 0; background: none; padding: 0; text-align: left; font: inherit; color: inherit; }
 #data .link-name:hover { color: var(--link); }
-#data .end-cell { display: flex; justify-content: flex-end; gap: 6px; min-width: 0; }
+#data .end-cell { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; min-width: 0; }
+#data .style-chips, .row .pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.row .pills:empty, #data .style-chips:empty { display: none; }
+.row .pills .pill-tag { height: 20px; padding: 0 8px; font-size: 11px; }
+#data .style-chip { height: 22px; padding: 0 9px; border-radius: 11px; background: var(--inset); color: var(--sub);
+  font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; text-decoration: none; }
+#data .style-chip:hover { color: var(--link); }
 .pill-tag { height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-flex;
   align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .pill-tag.on { background: var(--cs-green); color: var(--c-green); }

@@ -17,6 +17,8 @@ const SHARE_ZONE = account.zones.private[1]!.zoneID.zoneName;
 
 interface Options {
   signedIn?: boolean;
+  /** 134 Apple refuses the site's API token. */
+  refused?: boolean;
   core?: () => Promise<Core>;
   apply?: (ask: Parameters<Core["apply"]>[0]) => Applied;
   changes?: () => HistoryEntry[];
@@ -95,7 +97,10 @@ function stack(options: Options = {}) {
     saveSubscriptions: vi.fn(async () => ({})), fetchDatabaseChanges: vi.fn(async () => ({ zones: [] })) };
   const shared = vi.fn<(...asked: Parameters<typeof saves>) => Promise<CKBatchResult>>(async () => ({ records: [{ recordName: "shared-doprava", recordChangeTag: "s2" }] }));
   const container = {
-    setUpAuth: async () => (options.signedIn === false ? false : account.person),
+    setUpAuth: async () => {
+      if (options.refused) throw { ckErrorCode: "AUTHENTICATION_FAILED", reason: "check the API Token" };
+      return options.signedIn === false ? false : account.person;
+    },
     discoverUserIdentityWithUserRecordName: async (name: string) => ({ users: options.nameless ? [] : [identities[name]] }),
     whenUserSignsIn: () => new Promise((resolve) => { signIn = resolve; }),
     whenUserSignsOut: () => new Promise(() => {}),
@@ -151,6 +156,12 @@ describe("WebBackend's reads", () => {
     signIn({ userRecordName: "rita" });
     await new Promise((resolve) => setTimeout(resolve));
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "admitted", edits: true, token: "icloud", device: "Rita", viewers: null } });
+  });
+
+  // 134 bug: a refused token was a lost connection, so no one was told why they could not sign in
+  it("says Apple refused the site when it refuses its token, and is not offline", async () => {
+    const { backend } = stack({ refused: true });
+    expect(await backend.session()).toEqual({ ok: true, value: { standing: "refused" } });
   });
 
   // 78 signing in is the permission to edit; the core refuses what a role forbids

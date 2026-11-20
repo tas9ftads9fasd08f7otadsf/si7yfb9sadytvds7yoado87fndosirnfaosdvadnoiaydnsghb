@@ -87,6 +87,7 @@ export function queryOf(edit: Edit): Record<string, string> {
     case "arrange": return { arrange: edit.action };
     case "groupByOrigin": return { groupByOrigin: edit.groups ? "1" : "0" };
     case "availability": return { [edit.switch]: edit.shown ? "1" : "0" };
+    case "lock": return { lock: edit.locked ? "1" : "0" };
     case "layerOptions":
     case "layerDetails": return edit.fields;
   }
@@ -184,6 +185,9 @@ export const backend: Backend = {
   testLayer: (mapID, layerID) =>
     editing(`${ROOT}/maps/${mapID}/layer-test?${new URLSearchParams({ layer: layerID })}`, "GET"),
   packages: (mapID) => editing(`${ROOT}/maps/${mapID}/packages`, "GET"),
+  otherLayers: (mapID) => editing(`${ROOT}/maps/${mapID}/other-layers`, "GET"),
+  addCopies: (mapID, layers) =>
+    editing(`${ROOT}/maps/${mapID}/add-copies?${new URLSearchParams({ layers: layers.join(",") })}`),
   servers: () => editing(`${ROOT}/servers`, "GET"),
   addServer: (kind, address, name) => editing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`),
   importServers: async (file) => editing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer()),

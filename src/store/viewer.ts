@@ -10,7 +10,7 @@ import { BY_NAME } from "@/lib/places";
 import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
+  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
   SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
@@ -69,6 +69,8 @@ export interface ViewerState {
   packageTicks: Set<string>;
   addingPackages: boolean;
   servers: ServerList | null;
+  otherLayers: OtherLayers | null;
+  copyTicks: Set<string>;
   serverID: string | null;
   serverPart: ServerPart;
   serverPicks: Map<string, ServerPick>;
@@ -123,7 +125,7 @@ const firstState = (): ViewerState => ({
   pointerText: "", addedLanguages: new Set(), startKind: null, startFound: null, coverage: null,
   coverageShown: false, coverageSide: "include", coverageOpen: new Map(), coverageQuery: "", coveragePlaces: null,
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
-  serverPicks: new Map(),
+  otherLayers: null, copyTicks: new Set(), serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
   switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null,
   switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null, regionList: null, sideStyles: false
@@ -137,7 +139,7 @@ const set = useViewer.setState;
 // Guards and timers no screen shows.
 const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof setTimeout> | undefined,
   notice: undefined as ReturnType<typeof setTimeout> | undefined, layerOptions: null as string | null,
-  packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
+  packages: null as string | null, otherLayers: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
   coverageEdits: Promise.resolve(), optionsAsked: 0,
   offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0,
   search: undefined as ReturnType<typeof setTimeout> | undefined,
@@ -148,8 +150,8 @@ export function resetViewer() {
   clearTimeout(busy.heartbeat);
   clearTimeout(busy.notice);
   clearTimeout(busy.offline);
-  Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, servers: false, coverage: null,
-    addressKey: null, coverageEdits: Promise.resolve(), noPlacesSearch: new Set<string>() });
+  Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, otherLayers: null, servers: false,
+    coverage: null, addressKey: null, coverageEdits: Promise.resolve(), noPlacesSearch: new Set<string>() });
   clearTimeout(busy.search);
   set(firstState(), true);
 }
@@ -450,7 +452,7 @@ export async function pickMap(id: string, styleID: string | null) {
   set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
     coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, offline: null, offlineAsk: null, offlineOpen: false, esri: null,
     esriOpen: null,
-    serverPicks: new Map(), serviceRead: null,
+    otherLayers: null, copyTicks: new Set(), serverPicks: new Map(), serviceRead: null,
     layerOptions: null, optionsOpen: new Set(), originsOpen: new Set() });
   let portable: Portable | null = null;
   try {
@@ -947,7 +949,7 @@ export async function setLayout(fields: Record<string, string>) {
 
 // MARK: - Add layer
 
-export const toggleAddingPackages = () => set({ addingPackages: !get().addingPackages });
+export const toggleAddingPackages = () => set({ addingPackages: !get().addingPackages, otherLayers: null, copyTicks: new Set() });
 
 export async function loadPackages() {
   const { mapID } = get();
@@ -957,6 +959,29 @@ export async function loadPackages() {
   busy.packages = null;
   if (!answer?.ok || get().mapID !== mapID) return;
   set({ packages: answer.value, packageTicks: new Set(answer.value.ticked) });
+}
+
+/** 119 The other maps' layers, asked again each time Add layer opens on them. */
+export async function loadOtherLayers() {
+  const { mapID } = get();
+  if (!mapID || busy.otherLayers === mapID) return;
+  busy.otherLayers = mapID;
+  const answer = await editing(() => backend.otherLayers(mapID));
+  busy.otherLayers = null;
+  if (!answer?.ok || get().mapID !== mapID) return;
+  set({ otherLayers: answer.value, copyTicks: new Set() });
+}
+
+export function tickCopy(layer: string) {
+  const copyTicks = new Set(get().copyTicks);
+  if (!copyTicks.delete(layer)) copyTicks.add(layer);
+  set({ copyTicks });
+}
+
+/** 119 The phone copies each ticked layer; the map comes back with them. */
+export async function addCopies() {
+  const layers = [...get().copyTicks];
+  if (await addedBy((mapID) => backend.addCopies(mapID, layers))) set({ copyTicks: new Set(), otherLayers: null });
 }
 
 /** The base map draws its parts, so ticking one unticks the other. */

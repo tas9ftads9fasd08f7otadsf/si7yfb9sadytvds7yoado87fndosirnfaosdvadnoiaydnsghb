@@ -6,6 +6,7 @@ import type { Region, SharedLayer } from "@/lib/types";
 import { filledIn } from "@/lib/words";
 import { downloadRegion, go, loadRegionList, loadServers, offers, openMap, openServer, useViewer } from "@/store/viewer";
 import { MapMark, useLayerCount } from "./MapShelf";
+import { HeldPill, OfflinePill, StyleChips } from "./MapPills";
 import { MarkTile } from "./ui/MarkTile";
 
 interface Row {
@@ -15,6 +16,9 @@ interface Row {
   sub?: string | null;
   cells: string[];
   pill?: { text: string; tone: "on" | "plain" | "busy" };
+  /** 128 Under the name, and beside the pill. */
+  chips?: ReactNode;
+  tags?: ReactNode;
   open?: () => void;
   act?: { text: string; run: () => void };
 }
@@ -65,7 +69,8 @@ export function DataPage() {
   const rows: Row[] = tab === "maps" ? maps.map((map) => ({
     key: map.id, mark: <MapMark shared={map} />, name: map.name, sub: map.stackName,
     cells: [layerCount(map.layers.length), map.stackName ?? ""],
-    pill: map.id === mapID ? { text: words.onMapNow, tone: "on" as const } : undefined, open: () => openMap(map.id) }))
+    pill: map.id === mapID ? { text: words.onMapNow, tone: "on" as const } : undefined, open: () => openMap(map.id),
+    chips: <StyleChips shared={map} />, tags: <><OfflinePill shared={map} /><HeldPill shared={map} /></> }))
     : tab === "layers" ? layers.map(({ layer, maps: holding }) => ({
       key: `${layer.name}/${layer.kind}`, mark: <MarkTile symbol={layer.symbol} small />, name: layer.name,
       sub: layer.kind, cells: [layer.kind, String(holding.length)],
@@ -116,12 +121,14 @@ export function DataPage() {
               <span className="words">
                 {row.open ? <button type="button" className="link-name" onClick={row.open}>{row.name}</button> : row.name}
                 {row.sub && row.sub !== row.cells[0] ? <small>{row.sub}</small> : null}
+                {row.chips}
               </span>
             </span>
             <span role="cell">{row.cells[0]}</span>
             <span role="cell">{row.cells[1]}</span>
             <span role="cell" className="end-cell">
               {row.pill ? <span className={`pill-tag ${row.pill.tone}`}>{row.pill.text}</span> : null}
+              {row.tags}
               {row.act ? <button type="button" className="pill" onClick={row.act.run}>{row.act.text}</button> : null}
             </span>
           </div>

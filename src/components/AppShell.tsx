@@ -1,5 +1,6 @@
 "use client";
 
+import { isAnySize } from "@/lib/any-size";
 import { useEffect, useRef } from "react";
 import { type MapControl, setMapControl } from "@/map/control";
 import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
@@ -24,6 +25,7 @@ const SMALL_SCREEN = "(max-width: 899px), (max-height: 499px)";
 export function AppShell() {
   const mapBox = useRef<HTMLDivElement>(null);
   const standing = useViewer((state) => state.standing);
+  const connected = useViewer((state) => state.connected);
   const sideShown = useViewer((state) => state.sideShown);
   const editing = useViewer((state) => state.editing);
 
@@ -32,7 +34,7 @@ export function AppShell() {
     let made: MapControl | null = null;
     const small = matchMedia(SMALL_SCREEN);
     const dark = matchMedia("(prefers-color-scheme: dark)");
-    const smallChanged = () => startSession(small.matches);
+    const smallChanged = () => startSession(small.matches && !isAnySize());
     const darkChanged = () => {
       if (useViewer.getState().theme === "auto") drawStyle();
     };
@@ -47,7 +49,7 @@ export function AppShell() {
       if (isGone || !mapBox.current) return;
       made = createMapView(mapBox.current);
       setMapControl(made);
-      startSession(small.matches);
+      startSession(small.matches && !isAnySize());
     })();
     return () => {
       isGone = true;
@@ -72,9 +74,10 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
-    document.body.classList.toggle("gated", standing != null && standing !== "admitted");
+    // 134 Before anyone is let in, a page that cannot reach its cloud shows nothing behind the gate.
+    document.body.classList.toggle("gated", standing != null ? standing !== "admitted" : connected === false);
     if (standing) document.body.dataset.standing = standing;
-  }, [standing]);
+  }, [standing, connected]);
 
   useEffect(() => {
     document.body.classList.toggle("side-hidden", !sideShown);

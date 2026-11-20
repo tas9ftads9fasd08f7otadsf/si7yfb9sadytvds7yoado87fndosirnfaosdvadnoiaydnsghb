@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Cloud, POLL_EVERY, SIGN_IN_ID, SIGN_OUT_ID, type CKContainer, type CKIdentity, type CloudKitJS } from "./cloud";
+import { Cloud, POLL_EVERY, refusesToken, SIGN_IN_ID, SIGN_OUT_ID, type CKContainer, type CKIdentity, type CloudKitJS } from "./cloud";
 import type { SiteConfig } from "./config";
 
 // 76 CloudKit JS configured once; sign-in, sign-out and notifications turn into onChanged
@@ -154,6 +154,27 @@ describe("Cloud", () => {
     expect(await cloud.start()).toEqual({ name: "Riki Tester" });
     expect(stub.cloudkit.configure).toHaveBeenCalledTimes(1);
     expect(document.querySelectorAll(`#${SIGN_IN_ID}`)).toHaveLength(slots);
+  });
+
+  // 134 bug: a refused token was asked again and again, and the page said only that it reconnects
+  it("keeps a token Apple refused refused, without asking again", async () => {
+    const stub = kit({ userRecordName: "_me" });
+    const refused = { ckErrorCode: "AUTHENTICATION_FAILED", reason: "check the API Token" };
+    vi.mocked(stub.container.setUpAuth).mockRejectedValueOnce(refused);
+    const cloud = new Cloud(async () => stub.cloudkit, async () => config);
+    await expect(cloud.start()).rejects.toBe(refused);
+    await expect(cloud.start()).rejects.toBe(refused);
+    expect(stub.container.setUpAuth).toHaveBeenCalledTimes(1);
+  });
+
+  // 134 CloudKit JS names the refusal in its code, or in the server's own
+  it("knows a refused token by either code, and nothing else as one", () => {
+    expect(refusesToken({ ckErrorCode: "AUTHENTICATION_FAILED" })).toBe(true);
+    expect(refusesToken({ ckErrorCode: "UNKNOWN_ERROR", serverErrorCode: "AUTHENTICATION_FAILED" })).toBe(true);
+    expect(refusesToken(new Error("AUTHENTICATION_FAILED"))).toBe(true);
+    expect(refusesToken({ ckErrorCode: "AUTHENTICATION_REQUIRED" })).toBe(false);
+    expect(refusesToken(new Error("network"))).toBe(false);
+    expect(refusesToken(null)).toBe(false);
   });
 
   // 87 bug: nothing saved a subscription, so Apple sent no notification at all
