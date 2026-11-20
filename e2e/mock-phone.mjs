@@ -49,7 +49,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+  tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
@@ -173,7 +173,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+    tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
@@ -1534,6 +1534,9 @@ async function answer(request, response) {
     // 21: as `PeerWebDetails` answers: the layer's layout filled from the feature, or nothing.
     const values = JSON.parse(url.searchParams.get("values") || "{}");
     phone.detailsAsked.push({ layer: url.searchParams.get("layer"), values });
+    if ((url.searchParams.get("layer") || "").toUpperCase() === "6F1E2A10-0000-4000-8000-0000000000E1") {
+      return json(response, trainSheet(values));
+    }
     const laidOut = each.layers.find((one) => one.id === url.searchParams.get("layer") && one.layout);
     if (laidOut) return json(response, filledSheet(laidOut, values));
     if (!phone.laysOutDetails) { response.writeHead(204); return response.end(); }
@@ -1812,9 +1815,36 @@ function live(each, layerID, query, response) {
   const box = (query.get("bbox") || "").split(",").map(Number);
   if (!layer || box.length !== 4 || box.some(Number.isNaN)) return send(response, 404, "");
   phone.liveAsks.push(layerID);
+  phone.liveAnsweredAt = Date.now();
   const point = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
-  json(response, { type: "FeatureCollection", features: [{ type: "Feature", properties: { Nazov: "Os 4314" },
+  json(response, { type: "FeatureCollection", features: [{ type: "Feature",
+    properties: { Nazov: "Os 4314", Line: "4314", Delay: String(phone.trainDelay) },
     geometry: { type: "Point", coordinates: point } }] }, { "Content-Type": "application/geo+json" });
+}
+
+// 130: as `PeerWebDetails` words a vehicle's connection card (`connection`, `live`) and, for a page before 3493, its `rows`.
+function trainSheet(values) {
+  const minutes = Number(values.Delay ?? 0);
+  const late = minutes > 0;
+  const clock = (extra) => `09:${String(31 + extra).padStart(2, "0")}`;
+  const delay = { minutes, sentence: late ? `${minutes} min late` : minutes < 0 ? `${-minutes} min early` : "On time",
+    short: late ? `+${minutes} min` : minutes < 0 ? `−${-minutes} min` : "On time",
+    tone: minutes >= 10 ? "veryLate" : late ? "late" : "good" };
+  const connection = { delay, station: "Hlavná stanica", route: "Lamač → Petržalka", operatorLine: "Run by DPB",
+    planned: clock(0), actual: clock(minutes), updated: "09:35", note: "Detour via Main St",
+    labels: { delay: "Delay", planned: "Planned", actual: "Actual", updated: "Updated", note: "Note from the operator" } };
+  const rows = [{ title: "Delay", value: delay.sentence }, { title: "", value: "From Lamač to Petržalka" },
+    { title: "Planned", value: connection.planned }, { title: "Actual", value: connection.actual },
+    { title: "", value: "Run by DPB" }, { title: "Note from the operator", value: connection.note }];
+  const answeredAt = phone.liveAnsweredAt;
+  const sheet = { title: values.Nazov, keys: ["Nazov", "Line", "Delay"],
+    sections: [{ blocks: [phone.rowsOnly ? { kind: "rows", rows } : { kind: "rows", rows, connection }] }] };
+  if (!phone.rowsOnly) {
+    const age = answeredAt == null ? null : Math.floor((Date.now() - answeredAt) / 1000);
+    sheet.live = { isLive: age != null && age <= phone.liveWindow, windowSeconds: phone.liveWindow, label: "LIVE",
+      notLiveLabel: "Not live", ...age == null ? {} : { ageSeconds: age } };
+  }
+  return sheet;
 }
 
 // MARK: - The phone's side
@@ -1993,6 +2023,9 @@ function testControl(route, query, response) {
   case "/__test/identified": return json(response, phone.identified);
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
   case "/__test/details-asked": return json(response, phone.detailsAsked);
+  case "/__test/train-delay": phone.trainDelay = Number(query.get("minutes")); break;
+  case "/__test/live-window": phone.liveWindow = Number(query.get("seconds")); break;
+  case "/__test/rows-only": phone.rowsOnly = true; break;
   case "/__test/offline": return json(response, { asks: phone.offlineAsks, discarded: phone.discarded });
   case "/__test/pictures": return json(response, phone.pictureKinds);
   case "/__test/dxf-adds": return json(response, phone.dxfAdds);
