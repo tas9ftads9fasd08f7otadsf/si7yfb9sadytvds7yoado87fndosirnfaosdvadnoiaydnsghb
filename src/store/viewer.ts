@@ -11,7 +11,7 @@ import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } f
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
-  SessionAnswer, SharedMap, DetailsSheet, Standing, StackLayer, Start } from "@/lib/types";
+  SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
 import { type NameHit, findNames } from "@/lib/search";
@@ -94,6 +94,8 @@ export interface ViewerState {
   /** 100 The names the search found in the map's data, and the places the phone found. */
   nameHits: NameHit[] | null;
   foundPlaces: FoundPlace[] | null;
+  /** 101 The regions of the map on screen, as the Data page lists them. */
+  regionList: RegionList | null;
 }
 
 /** 100 A feature as the place panel shows it: its tags, its layer, and its layout once the phone fills it. */
@@ -120,7 +122,7 @@ const firstState = (): ViewerState => ({
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
   switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null,
-  switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null
+  switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null, regionList: null
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -1112,12 +1114,26 @@ export async function removeLanguage(code: string, name?: string, note?: string)
 
 // MARK: - Regions the phone lacks
 
+/** 101 The map's regions, on the phone, on their way and offered; none from a target that has none. */
+export async function loadRegionList() {
+  const { mapID } = get();
+  if (!mapID) return;
+  try {
+    const regionList = await backend.regions(mapID);
+    if (mapID === get().mapID) set({ regionList });
+  } catch {
+    set({ regionList: {} });
+  }
+}
+
 export async function downloadRegion(region: Region) {
   const { mapID } = get();
   if (!mapID) return;
   const answer = await editing(() => backend.downloadRegion(mapID, region.id));
-  if (answer?.ok) mapControl()?.readRegions();
-  else if (answer) notice(answer.said);
+  if (answer?.ok) {
+    mapControl()?.readRegions();
+    if (get().regionList) void loadRegionList();
+  } else if (answer) notice(answer.said);
 }
 
 // MARK: - 67 Esri services
