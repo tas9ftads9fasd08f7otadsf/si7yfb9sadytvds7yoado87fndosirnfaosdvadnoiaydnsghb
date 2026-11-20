@@ -41,7 +41,7 @@ let trusted;
 function check(env = {}) {
   const run = spawnSync("bash", [SCRIPT], { encoding: "utf8", env: { ...process.env, GITHUB_ACTIONS: "",
     FTPS_HOST: "127.0.0.1", FTPS_PORT: String(PORT), FTPS_USER: "deploy", FTPS_PASSWORD: "s3cret",
-    FTPS_DIR: "/editor", FTPS_CA_FILE: trusted.cert, SITE_URL: "", NO_PROXY: "127.0.0.1", no_proxy: "127.0.0.1",
+    FTPS_DIR: "/editor", FTPS_CA_FILE: trusted.cert, FTPS_CERT_NAME: "", SITE_URL: "", NO_PROXY: "127.0.0.1", no_proxy: "127.0.0.1",
     ...env } });
   return { ...run, lines: run.stdout.trim().split("\n") };
 }
@@ -52,7 +52,7 @@ beforeAll(async () => {
   mkdirSync(path.join(root, "editor"), { recursive: true });
   trusted = certificate("trusted", "IP:127.0.0.1", 365);
   await ftps(PORT, trusted);
-  await ftps(STRANGER, certificate("stranger", "DNS:ftp.other.example", 365));
+  await ftps(STRANGER, certificate("stranger", "DNS:ftp.other.example,DNS:*.other.example", 365));
   const pages = path.join(work, "pages");
   mkdirSync(path.join(pages, "editor"), { recursive: true });
   writeFileSync(path.join(pages, "editor", "site.json"), JSON.stringify({ version: "0.1.5", commit: "abc123" }));
@@ -81,12 +81,22 @@ describe("checking the site's server", () => {
     expect(existsSync(path.join(root, "editor", ".riki-connection-check"))).toBe(false);
   });
 
-  // 120 bug: deploy v0.1.112 failed on a certificate issued for another name than FTPS_HOST
-  it("names the certificate's own names when FTPS_HOST is not among them, and skips the login", () => {
-    const run = check({ FTPS_PORT: String(STRANGER) });
+  // 121 bug: the host's shared certificate for *.r5.websupport.sk failed the check and the deploy
+  it("accepts a trusted certificate issued for FTPS_CERT_NAME, and logs in", () => {
+    const run = check({ FTPS_PORT: String(STRANGER), FTPS_CA_FILE: path.join(work, "stranger.pem"),
+      FTPS_CERT_NAME: "*.other.example" });
+    expect(run.status).toBe(0);
+    expect(run.lines).toContain("ok    certificate: issued for FTPS_CERT_NAME (ftp.other.example *.other.example)");
+    expect(run.lines).toContain("ok    login: FTPS_USER logs in, and writes and removes a file in /editor");
+  });
+
+  // 121: a certificate for neither FTPS_HOST nor FTPS_CERT_NAME fails, named, and skips the login
+  it("names the certificate's own names when neither name is among them, and skips the login", () => {
+    const run = check({ FTPS_PORT: String(STRANGER), FTPS_CA_FILE: path.join(work, "stranger.pem"),
+      FTPS_CERT_NAME: "*.r5.websupport.sk" });
     expect(run.status).toBe(1);
-    expect(run.lines).toContain(
-      "FAIL  certificate: issued for ftp.other.example, not for FTPS_HOST; set FTPS_HOST to one of those names");
+    expect(run.lines).toContain("FAIL  certificate: issued for ftp.other.example *.other.example, not for "
+      + "FTPS_HOST or FTPS_CERT_NAME; set one to one of those names");
     expect(run.lines).toContain(
       "skip  login: the deploy verifies the certificate, so it cannot log in until that is fixed");
   });

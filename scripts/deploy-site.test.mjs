@@ -37,7 +37,7 @@ function release(name, version, commit, assets, extra = {}, { core = true, glyph
 
 function deploy(zip, env = {}) {
   return spawnSync("bash", [SCRIPT, zip], { encoding: "utf8", env: { ...process.env, FTPS_HOST: "127.0.0.1",
-    FTPS_PORT: String(PORT), FTPS_USER: "deploy", FTPS_PASSWORD: "s3cret", FTPS_DIR: "/editor", FTPS_CA_FILE: ca,
+    FTPS_PORT: String(PORT), FTPS_USER: "deploy", FTPS_PASSWORD: "s3cret", FTPS_DIR: "/editor", FTPS_CA_FILE: ca, FTPS_CERT_NAME: "",
     ICLOUD_API_TOKEN: "tok-123", ICLOUD_CONTAINER: "", TILES_BASE: "", REGIONS_CATALOG: "", ...env } });
 }
 
@@ -250,5 +250,54 @@ describe("the config.php the deploy writes", () => {
     const run = deploy(zip);
     expect(run.status).not.toBe(0);
     expect(run.stderr).toContain(".htaccess");
+  }, 60000);
+});
+
+// 121 bug: the host's shared certificate for *.r5.websupport.sk stopped every deploy
+describe("deploying to a server whose certificate names other hosts", () => {
+  let shared, sharedRoot;
+  const SHARED = PORT + 13;
+
+  beforeAll(async () => {
+    sharedRoot = path.join(work, "shared-server");
+    mkdirSync(path.join(sharedRoot, "editor"), { recursive: true });
+    const cert = path.join(work, "shared.pem");
+    const key = path.join(work, "shared.key");
+    execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj",
+      "/CN=*.r5.websupport.sk", "-addext", "subjectAltName=DNS:*.r5.websupport.sk", "-keyout", key, "-out", cert],
+      { stdio: "ignore" });
+    shared = spawn("python3", [path.join(process.cwd(), "e2e", "ftps-server.py"), sharedRoot, String(SHARED), cert,
+      key], { stdio: ["ignore", "pipe", "ignore"] });
+    await new Promise((resolve, reject) => {
+      shared.stdout.on("data", (data) => { if (String(data).includes("ready")) resolve(); });
+      shared.on("exit", (code) => reject(new Error(`the FTPS server stopped: ${code}`)));
+    });
+  }, 30000);
+
+  afterAll(() => shared?.kill());
+
+  const onShared = () => JSON.parse(readFileSync(path.join(sharedRoot, "editor", "site.json"), "utf8")).commit;
+  const toShared = (env) => ({ FTPS_PORT: String(SHARED), FTPS_CA_FILE: path.join(work, "shared.pem"), ...env });
+
+  // 121: lftp alone checks the certificate against FTPS_HOST, and refuses it
+  it("refuses the certificate without FTPS_CERT_NAME", () => {
+    const run = deploy(release("shared-a", "0.1.20", "sss120", ["s.js"]), toShared());
+    expect(run.status).not.toBe(0);
+    expect(existsSync(path.join(sharedRoot, "editor", "site.json"))).toBe(false);
+  }, 60000);
+
+  // 121: only the certificate's own name is accepted, not any trusted one
+  it("refuses a certificate not issued for FTPS_CERT_NAME, and changes nothing", () => {
+    const run = deploy(release("shared-b", "0.1.20", "sss120", ["s.js"]), toShared({ FTPS_CERT_NAME: "*.example" }));
+    expect(run.status).not.toBe(0);
+    expect(run.stderr).toContain("issued for *.r5.websupport.sk, not for FTPS_HOST or FTPS_CERT_NAME");
+    expect(existsSync(path.join(sharedRoot, "editor", "site.json"))).toBe(false);
+  }, 60000);
+
+  // 121: a trusted certificate issued for FTPS_CERT_NAME takes the deploy
+  it("deploys when the certificate is trusted and issued for FTPS_CERT_NAME", () => {
+    const run = deploy(release("shared", "0.1.21", "sss121", ["s.js"]), toShared({ FTPS_CERT_NAME: "*.r5.websupport.sk" }));
+    expect(run.status).toBe(0);
+    expect(onShared()).toBe("sss121");
   }, 60000);
 });

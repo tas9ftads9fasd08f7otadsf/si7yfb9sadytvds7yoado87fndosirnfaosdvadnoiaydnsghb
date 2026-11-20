@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Whether the site's FTPS server takes a deploy, layer by layer; any FAIL exits 1.
-# Reads FTPS_HOST, FTPS_USER, FTPS_PASSWORD, FTPS_DIR, FTPS_PORT, FTPS_CA_FILE, SITE_URL.
+# Reads FTPS_HOST, FTPS_USER, FTPS_PASSWORD, FTPS_DIR, FTPS_PORT, FTPS_CA_FILE, FTPS_CERT_NAME, SITE_URL.
 # Needs lftp, openssl and curl on the PATH.
 set -uo pipefail
 
@@ -17,10 +17,10 @@ warn() { echo "warn  $1"; [ -n "${GITHUB_ACTIONS:-}" ] && echo "::warning::$1"; 
 fail() { echo "FAIL  $1"; [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::$1"; failed=1; }
 skip() { echo "skip  $1"; }
 
-is_ip=0
-[[ "$host" =~ ^[0-9.]+$ || "$host" == *:* ]] && is_ip=1
+# shellcheck source=scripts/ftps-certificate.sh
+source "$(dirname "$0")/ftps-certificate.sh"
 
-if [ "$is_ip" = 1 ]; then
+if ftps_is_address "$host"; then
   ok "name: FTPS_HOST is an address, nothing to look up"
 elif addresses="$(getent ahosts "$host" | awk '{print $1}' | sort -u | paste -sd' ')" && [ -n "$addresses" ]; then
   ok "name: FTPS_HOST resolves to $addresses"
@@ -36,28 +36,19 @@ else
   exit 1
 fi
 
-trust=()
-[ -n "${FTPS_CA_FILE:-}" ] && trust=(-CAfile "$FTPS_CA_FILE")
-sni=()
-[ "$is_ip" = 0 ] && sni=(-servername "$host")
-openssl s_client -starttls ftp -connect "$host:$port" "${sni[@]}" "${trust[@]}" -showcerts \
-  </dev/null >"$work/tls.txt" 2>&1
-if ! openssl x509 -in "$work/tls.txt" -out "$work/cert.pem" 2>/dev/null; then
+if ! ftps_fetch_certificate "$host" "$port" "$work"; then
   fail "certificate: the server sent none after AUTH TLS; it may not offer explicit FTPS on $port"
   exit 1
 fi
 
-names="$(openssl x509 -in "$work/cert.pem" -noout -ext subjectAltName 2>/dev/null | tail -n +2 \
-  | tr ',' '\n' | sed 's/^ *//; s/^DNS://; s/^IP Address://' | paste -sd' ')"
-[ -n "$names" ] || names="$(openssl x509 -in "$work/cert.pem" -noout -subject -nameopt multiline \
-  | sed -n 's/^ *commonName *= *//p')"
-check=(-checkhost "$host")
-[ "$is_ip" = 1 ] && check=(-checkip "$host")
+names="$(ftps_certificate_names "$work/cert.pem")"
 cert_ok=1
-if openssl x509 -in "$work/cert.pem" -noout "${check[@]}" | grep -q "does match"; then
+if ftps_issued_for_host "$work/cert.pem" "$host"; then
   ok "certificate: issued for FTPS_HOST ($names)"
+elif ftps_issued_for_cert_name "$work/cert.pem"; then
+  ok "certificate: issued for FTPS_CERT_NAME ($names)"
 else
-  fail "certificate: issued for $names, not for FTPS_HOST; set FTPS_HOST to one of those names"
+  fail "certificate: issued for $names, not for FTPS_HOST or FTPS_CERT_NAME; set one to one of those names"
   cert_ok=0
 fi
 
@@ -85,6 +76,8 @@ if [ "$cert_ok" = 0 ]; then
 else
   ca=""
   [ -n "${FTPS_CA_FILE:-}" ] && ca="set ssl:ca-file \"$FTPS_CA_FILE\";"
+  # lftp knows only FTPS_HOST; the name was checked above, as the deploy checks it.
+  [ -n "${FTPS_CERT_NAME:-}" ] && ca="$ca set ssl:check-hostname false;"
   echo "$(date -u +%FT%TZ)" >"$work/$probe"
   # The deploy's own settings, so a pass here means the deploy connects the same way.
   if LFTP_PASSWORD="$FTPS_PASSWORD" lftp -c "

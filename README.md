@@ -158,6 +158,7 @@ Set it up once in Settings › Environments › `site`:
 | `FTPS_PASSWORD` | secret | its password |
 | `FTPS_DIR` | variable | the site's folder on the server, `/` when unset |
 | `FTPS_PORT` | variable | `21` when unset (explicit FTPS) |
+| `FTPS_CERT_NAME` | variable | a name the server's certificate holds, accepted in place of `FTPS_HOST`; `*.r5.websupport.sk` when unset |
 | `ICLOUD_API_TOKEN` | variable (a secret works too) | the container's CloudKit JS API token; every browser sends it, so it is no secret; required |
 | `ICLOUD_CONTAINER` | variable | `iCloud.com.rikimaps.rikimaps.maps` when unset |
 | `TILES_BASE` | variable | the maptiles host, `https://…`; optional, and without it Riki's own region maps do not draw |
@@ -166,15 +167,16 @@ Set it up once in Settings › Environments › `site`:
 | `RIKIMAPS_READ_TOKEN` | repository secret | reads the private rikimaps repository for the core and the words; the release build, not the deploy |
 
 Until the three FTPS secrets are set, the deploy job says so and skips. The server's certificate must
-be valid for its host name. Add required reviewers to the `site` environment to approve each
+be signed by a trusted authority and issued for `FTPS_HOST` or `FTPS_CERT_NAME`: shared hosting shows one
+certificate for every site on the server, which never names the site's own host. Add required reviewers to the `site` environment to approve each
 deploy by hand.
 
 #### Checking the server
 
 `.github/workflows/check-server.yml` runs `scripts/check-server.sh` each morning, by hand (Actions › Check
 server › Run workflow), and as the deploy's step before it uploads anything. It checks, in order: that
-`FTPS_HOST` resolves, that `FTPS_PORT` answers, that the certificate is issued for `FTPS_HOST` (naming the
-names it does hold when not), trusted and not expiring within 14 days (a warning), that `FTPS_USER` logs in
+`FTPS_HOST` resolves, that `FTPS_PORT` answers, that the certificate is issued for `FTPS_HOST` or `FTPS_CERT_NAME`
+(naming the names it does hold when not), trusted and not expiring within 14 days (a warning), that `FTPS_USER` logs in
 and can write and remove a file in `FTPS_DIR`, and, with `SITE_URL` set, which release the site serves. Each
 line reads `ok`, `warn`, `skip` or `FAIL`, and any `FAIL` fails the run, so GitHub mails it. Locally, with the
 same variables set: `bash scripts/check-server.sh`.
