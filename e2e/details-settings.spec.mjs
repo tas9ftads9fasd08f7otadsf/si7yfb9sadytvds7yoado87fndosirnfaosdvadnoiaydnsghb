@@ -36,9 +36,11 @@ test("the Details header takes a title and an icon", async ({ page }) => {
   await read;
 
   asked = sent(page);
-  await header.getByRole("combobox", { name: "Header Icon" }).selectOption("tram.fill");
+  // 111 W16's icon tiles in place of a drop-down
+  await header.getByRole("group", { name: "Header Icon" }).getByRole("button", { name: "tram.fill" }).click();
   expect(await asked).toMatchObject({ details: "header", title: "{line}", symbol: "tram.fill" });
-  await expect(header.getByRole("combobox", { name: "Header Icon" })).toHaveValue("tram.fill");
+  await expect(header.getByRole("group", { name: "Header Icon" }).getByRole("button", { name: "tram.fill" }))
+    .toHaveAttribute("aria-pressed", "true");
 });
 
 // 55: the action buttons are added, switched, given a custom button that is edited, and removed.
@@ -51,7 +53,7 @@ test("the action buttons and a custom button are set", async ({ page }) => {
   expect(await asked).toMatchObject({ details: "addActions" });
 
   asked = sent(page);
-  await actions.getByRole("checkbox", { name: "Copy" }).click();
+  await actions.getByRole("switch", { name: "Copy" }).click();
   expect(await asked).toMatchObject({ details: "action", name: "copy", on: "1" });
   await expect(actions.getByRole("button", { name: "Move up Copy" })).toBeVisible();
 
@@ -91,9 +93,9 @@ test("a block's own settings and rows are set", async ({ page }) => {
   const panel = await openLayout(page);
   await pickPart(page, "Text");
   let asked = sent(page);
-  await panel.getByRole("checkbox", { name: "A note icon before the text" }).click();
+  await panel.getByRole("switch", { name: "A note icon before the text" }).click();
   expect(await asked).toMatchObject({ details: "blockSettings", block: "1", was: "t1", icon: "1" });
-  await expect(panel.getByRole("checkbox", { name: "A note icon before the text" })).toBeChecked();
+  await expect(panel.getByRole("switch", { name: "A note icon before the text" })).toBeChecked();
 
   await pickPart(page, "Info rows");
   const rows = panel.locator(".settings-pane .layout-block[data-handle='r1']");

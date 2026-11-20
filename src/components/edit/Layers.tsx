@@ -118,7 +118,6 @@ export function Layers({ portable }: { portable: Portable }) {
   const hidden = useViewer((state) => state.hidden);
   const grouping = useViewer((state) => state.switches);
   const originsOpen = useViewer((state) => state.originsOpen);
-  const styleName = useViewer((state) => state.portable?.styles?.find((each) => each.id === state.styleID)?.name);
   const sharedLayers = useViewer((state) => shownMapOf(state)?.layers) ?? [];
   const ground = groundID(portable.id);
   const stack = portable.stack ?? [];
@@ -147,7 +146,8 @@ export function Layers({ portable }: { portable: Portable }) {
   return (
     <>
       <div className="title-row">
-        <h2 className="title">{words.layers + (styleName ? ` · ${styleName}` : "")}</h2>
+        <h2 className="title">{`${words.layers} · ${words.dragToOrder}`}
+          <span className="count">{switchable.length}</span></h2>
         <button type="button" className="text-button" id="allLayers" disabled={switchable.length === 0}
           onClick={() => change({ kind: "layersShown", shown: !allOn })}>{allOn ? words.allLayersOff : words.allLayersOn}</button>
       </div>

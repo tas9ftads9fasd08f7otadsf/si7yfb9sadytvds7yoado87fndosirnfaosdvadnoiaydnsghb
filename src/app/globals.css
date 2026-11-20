@@ -879,3 +879,26 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #editBody .map-actions .tile { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center;
   justify-content: center; background: var(--cs-water); }
 #editBody .map-actions + .action, #editBody .map-actions ~ .confirm-delete { margin-top: 10px; }
+
+/* 111 W16's icon tiles and switch rows; W11's tile slots and preview; W9's regions. */
+.symbol-tiles { display: flex; flex-wrap: wrap; gap: 8px; }
+.symbol-tiles button { width: 48px; height: 48px; border-radius: 14px; border: 0; background: var(--card);
+  box-shadow: var(--lift); display: flex; align-items: center; justify-content: center; color: var(--text); }
+.symbol-tiles button[aria-pressed=true] { background: var(--cs-water); color: var(--c-water);
+  box-shadow: inset 0 0 0 2px var(--c-water); }
+.symbol-tiles .sym { font-size: 20px; }
+#details .settings-pane .switch-row { justify-content: space-between; }
+.switch-row { display: flex; align-items: center; gap: 12px; }
+.switch-row .words { flex: 1; min-width: 0; }
+.chips.slots { padding: 8px 0 0; }
+.chips.slots button { font: 500 12px ui-monospace, Menlo, monospace; }
+.tile-address .field { display: flex; align-items: center; gap: 8px; }
+.tile-address .field input { flex: 1; }
+.tile-preview { position: relative; margin-top: 14px; width: 220px; height: 220px; border-radius: 20px; overflow: hidden;
+  box-shadow: var(--lift); background: var(--fill); }
+.tile-preview .tile-image { position: absolute; inset: 0; background: center / cover no-repeat; }
+.tile-preview > span:last-child { position: absolute; left: 10px; bottom: 10px; height: 26px; padding: 0 10px;
+  border-radius: 13px; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; }
+#mapRegions .region-row { justify-content: space-between; }
+#editBody h2.title .count { float: right; font-weight: 400; margin-left: 8px; }

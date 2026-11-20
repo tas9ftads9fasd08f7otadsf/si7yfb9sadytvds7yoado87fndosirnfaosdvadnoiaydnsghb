@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import type { OfflinePlan, OfflineRow } from "@/lib/types";
-import { chooseOfflineArea, discardStored, loadOffline, offlineDownload, openOffline, setOfflineZoom, stopOffline,
+import type { OfflinePlan, OfflineRow, Region } from "@/lib/types";
+import { chooseOfflineArea, discardStored, downloadRegion, loadOffline, loadRegionList, offlineDownload, openOffline, setOfflineZoom, stopOffline,
   tickOfflineLayer, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
@@ -17,10 +17,11 @@ export function Offline() {
     void loadOffline();
     return stopOffline;
   }, [mapID]);
-  if (!plan) return null;
+  if (!plan) return <MapRegions />;
   const stored = plan.rows.filter((row) => row.stored > 0);
   return (
     <>
+      <MapRegions />
       <h2 className="title">{words.offline}</h2>
       <div className="list" id="offlineStored">
         {stored.map((row) => <StoredRow row={row} key={row.id} />)}
@@ -30,6 +31,39 @@ export function Offline() {
         </button>
       </div>
       {open ? <DownloadTiles plan={plan} /> : null}
+    </>
+  );
+}
+
+/** 111 W9: the map's regions as a table, on the phone or on their way, a Download for the rest. */
+function MapRegions() {
+  const words = useViewer((state) => state.words);
+  const regionList = useViewer((state) => state.regionList);
+  const mapID = useViewer((state) => state.mapID);
+  useEffect(() => {
+    void loadRegionList();
+  }, [mapID]);
+  const rows: { region: Region; state: "drawn" | "downloading" | "downloadable" }[] = [
+    ...(regionList?.drawn ?? []).map((region) => ({ region, state: "drawn" as const })),
+    ...(regionList?.downloading ?? []).map((region) => ({ region, state: "downloading" as const })),
+    ...(regionList?.downloadable ?? []).map((region) => ({ region, state: "downloadable" as const }))];
+  if (!rows.length) return null;
+  return (
+    <>
+      <h2 className="title">{words.regions}</h2>
+      <div className="list" id="mapRegions" role="table" aria-label={words.regions}>
+        {rows.map(({ region, state }) => (
+          <div className="row region-row" role="row" key={region.id} data-region={region.id}>
+            <span className="words" role="cell">{region.name}</span>
+            <span role="cell">
+              {state === "downloadable" ? (
+                <button type="button" className="pill" onClick={() => void downloadRegion(region)}>{words.download}</button>
+              ) : <span className={`pill-tag ${state === "drawn" ? "on" : "busy"}`}>
+                {state === "drawn" ? words.onThisPhone : words.downloading}</span>}
+            </span>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
