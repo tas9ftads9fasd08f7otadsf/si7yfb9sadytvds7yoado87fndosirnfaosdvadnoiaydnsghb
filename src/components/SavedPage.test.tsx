@@ -96,4 +96,13 @@ describe("the place panel on a saved place", () => {
     expect(screen.getByText("48.10000 N, 17.10000 E")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Copy" })).toBeTruthy();
   });
+
+  // 135 bug: a panel selector that made a new list each time looped forever with no saved listing read
+  it("still shows a tapped feature while no saved places are read", () => {
+    useViewer.setState({ saved: null,
+      place: { found: [{ properties: { name: "Hut" }, layer: "Huts" }], lng: 17.1, lat: 48.1 } });
+    render(<PlacePanel />);
+    expect(screen.getByRole("heading", { name: "Hut" })).toBeTruthy();
+    expect(screen.getByText("Huts", { selector: ".kind" })).toBeTruthy();
+  });
 });

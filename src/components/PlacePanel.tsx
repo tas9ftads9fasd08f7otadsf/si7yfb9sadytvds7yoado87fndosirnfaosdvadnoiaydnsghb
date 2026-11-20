@@ -32,7 +32,7 @@ export function PlacePanel() {
   const place = useViewer((state) => state.place);
   const editing = useViewer((state) => state.editing
     || ["details", "data", "settings"].includes(state.route.screen));
-  const folders = useViewer((state) => state.saved?.folders ?? []);
+  const savedFolders = useViewer((state) => state.saved?.folders);
   if (!place || editing) return null;
   const [first] = place.found;
   const saved = place.saved;
@@ -42,7 +42,7 @@ export function PlacePanel() {
   return (
     <section id="placePanel" aria-label={title || words.coordinates}>
       <div className="place-head">
-        <span className="kind">{saved ? savedLine(saved, folders) || words.savedTitle : first?.layer ?? ""}</span>
+        <span className="kind">{saved ? savedLine(saved, savedFolders ?? []) || words.savedTitle : first?.layer ?? ""}</span>
         <h2>{title || coordinates}</h2>
         <button type="button" className="tool round" id="placeClose" aria-label={words.close}
           onClick={() => showPlace(null)}><Sym name="xmark" /></button>
