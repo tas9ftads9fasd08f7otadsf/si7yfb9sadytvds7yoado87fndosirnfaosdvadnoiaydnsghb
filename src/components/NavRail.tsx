@@ -5,9 +5,9 @@ import { THEMES, go, nextTheme, offers, showSide, toggleSide, useViewer } from "
 import { Link } from "./ui/Link";
 import { Sym } from "./ui/Sym";
 
-type Item = "map" | "maps" | "data" | "servers";
+type Item = "map" | "maps" | "data" | "servers" | "settings";
 
-/** The item lit for a screen; Search, Saved and Settings join as their screens arrive. */
+/** The item lit for a screen; Search and Saved join as their screens arrive. */
 export function railItemOf(route: Route): Item | null {
   switch (route.screen) {
     case "home":
@@ -23,6 +23,8 @@ export function railItemOf(route: Route): Item | null {
       return "data";
     case "servers":
       return "servers";
+    case "settings":
+      return "settings";
     default:
       return null;
   }
@@ -64,6 +66,12 @@ export function NavRail() {
         <Link to={{ screen: "servers" }} id="railServers" current={lit === "servers"}
           onFollow={followSide({ screen: "servers" })}>
           <Sym name="server.rack" /><span>{words.servers}</span>
+        </Link>
+      ) : null}
+      {offers("pairing") ? (
+        <Link to={{ screen: "settings" }} id="railSettings" className="foot" current={lit === "settings"}
+          onFollow={followSide({ screen: "settings" })}>
+          <Sym name="gearshape" /><span>{words.settings}</span>
         </Link>
       ) : null}
       <button id="themeToggle" className="foot" type="button" title={themeLabel} aria-label={themeLabel}

@@ -21,7 +21,17 @@ describe("NavRail", () => {
     expect(link("Map").getAttribute("href")).toBe("/maps/M1");
     expect(railItemOf({ screen: "maps" })).toBe("maps");
     expect(railItemOf({ screen: "servers", server: "S1" })).toBe("servers");
-    expect(railItemOf({ screen: "settings" })).toBeNull();
+    // 92 Settings arrived, with the QR code that lets a browser edit
+    expect(railItemOf({ screen: "settings" })).toBe("settings");
+  });
+
+  // 92 Settings stands at the rail's foot, above the theme button
+  it("offers Settings, which opens the Settings page", () => {
+    render(<NavRail />);
+    fireEvent.click(link("Settings"));
+    expect(location.pathname).toBe("/settings");
+    expect(useViewer.getState().route).toEqual({ screen: "settings" });
+    expect(link("Settings").getAttribute("aria-current")).toBe("page");
   });
 
   // 30 decision 6: a rail item with nothing behind it is left out

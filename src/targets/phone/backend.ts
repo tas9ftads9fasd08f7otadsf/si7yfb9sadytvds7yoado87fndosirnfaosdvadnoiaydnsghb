@@ -1,9 +1,9 @@
-import type { Answer, Backend, Saved } from "@/backend/types";
+import type { Answer, Backend, PairStarted, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { peoplePathOf, peopleQueryOf } from "@/lib/people";
 import { startQuery } from "@/lib/places";
 import type { APIAsk, APIRead, EsriChange, OfflineAsk, Portable, SessionAnswer } from "@/lib/types";
-import { EDIT_CHECK, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
+import { EDIT_CHECK, PAIR, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
 
 let token: () => string | null = () => null;
 
@@ -127,6 +127,13 @@ export const backend: Backend = {
 
   unlock: async (key) => answered(
     await fetch(EDIT_CHECK, { method: "POST", cache: "no-store", headers: { "X-Riki-Edit": key } }), json<{ token: string }>),
+
+  pair: async () => answered(await fetch(PAIR, { method: "POST", cache: "no-store" }), json<PairStarted>),
+
+  pairState: async (id) => answered(await fetch(`${PAIR}/${id}`, { cache: "no-store" }),
+    json<{ waiting: true } | { token: string }>),
+
+  pairPicture: (id) => `${PAIR}/${id}.png`,
 
   useToken(get) {
     token = get;

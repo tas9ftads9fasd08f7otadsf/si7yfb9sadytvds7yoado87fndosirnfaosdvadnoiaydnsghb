@@ -5,6 +5,13 @@ import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageS
   SharePeople } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
+/** 92 An ask to edit, shown as a QR code and the four letters the phone shows too. */
+export interface PairStarted {
+  id: string;
+  code: string;
+  expiresIn: number;
+}
+
 export type Answer<T> = { ok: true; value: T } | { ok: false; status: number; said: string };
 
 /** 82 A call the target does not do yet: the page says so, and the connection is not lost. */
@@ -15,7 +22,7 @@ export class CoreNotReady extends NotOnSite {}
 
 /** 82 The parts of the page a target may not answer yet; a screen offers only what it does. 86 `addLayer` is the panel
  * with a tile address and a service's layers; its packages, files, API layers and servers are offered apart. */
-export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "coverage";
+export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "coverage" | "pairing";
 
 /** 78 A map whose rows another device changed, and the author its history names, if any. */
 export interface ChangedElsewhere {
@@ -72,6 +79,12 @@ export interface Backend {
   askToJoin(): Promise<Answer<SessionAnswer>>;
   /** Trades the edit password for a token; 429 when tried too often. */
   unlock(key: string): Promise<Answer<{ token: string }>>;
+  /** 92 Asks the phone for a QR code it can scan to let this browser edit. */
+  pair?(): Promise<Answer<PairStarted>>;
+  /** 92 Waiting until the phone said yes, then the token; 403 refused, 410 ran out. */
+  pairState?(id: string): Promise<Answer<{ waiting: true } | { token: string }>>;
+  /** 92 The address of the ask's QR code, drawn by the phone. */
+  pairPicture?(id: string): string;
   /** The token later calls carry, read when each is made. */
   useToken(token: () => string | null): void;
   /** 76 Told when the maps changed elsewhere, or the person signed in or out; returns how to stop. */
