@@ -90,7 +90,7 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ steps.week.outputs.week }}
-      # The browser's system libraries come from apt every run; the browser itself only on a miss.
+      # Its system libraries come from apt every run; the browser only on a miss.
       - if: steps.browser.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
       - if: steps.browser.outputs.cache-hit == 'true'
@@ -100,7 +100,7 @@ jobs:
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-ftps-${{ steps.week.outputs.week }}
-      # The deploy script's test runs it on a stand-in FTPS server; apt's lists are fresh from above.
+      # The deploy script's test runs it on a stand-in FTPS server; apt's lists are fresh.
       - run: sudo apt-get install -y -q lftp && pip install pyftpdlib pyopenssl
       - run: npm run lint
       - run: npm run typecheck
