@@ -10,12 +10,13 @@ import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types
 import { type Named, pointOn } from "@/lib/search";
 import { setNeeds } from "@/store/regions";
 import { type ShownFeature, drawStyle, failed, isDark, notice, showPlace, shownMapOf, useViewer } from "@/store/viewer";
-import type { MapControl } from "./control";
+import type { MapControl, SavedMark } from "./control";
 import { heightModel, threeDView } from "./three-d";
 
 const PICK = 6;
 const MOST_ANSWERS = 20;
 const CUSTOM = "riki-custom-";
+const SAVED = "riki-saved";
 
 export function createMapView(container: HTMLElement): MapControl {
   const get = useViewer.getState;
@@ -307,10 +308,44 @@ export function createMapView(container: HTMLElement): MapControl {
     }
   }
 
+  // 135 The saved points and the open shape live in sources of their own, put back after each style.
+  const saved = { marks: null as SavedMark[] | null, shape: null as { type: string; coordinates: unknown } | null };
+  function drawSaved() {
+    try {
+      if (!map.getStyle()) return;
+      const points = { type: "FeatureCollection", features: (saved.marks ?? []).map((mark) => ({ type: "Feature",
+        geometry: { type: "Point", coordinates: [mark.lng, mark.lat] }, properties: { id: mark.id, ink: mark.ink || "#d6452b" } })) };
+      const shape = { type: "FeatureCollection", features: saved.shape
+        ? [{ type: "Feature", geometry: saved.shape, properties: {} }] : [] };
+      if (!saved.marks) {
+        for (const id of [`${SAVED}-marks`, `${SAVED}-line`, `${SAVED}-area`]) if (map.getLayer(id)) map.removeLayer(id);
+        for (const id of [`${SAVED}-points`, `${SAVED}-shape`]) if (map.getSource(id)) map.removeSource(id);
+        return;
+      }
+      for (const [id, data] of [[`${SAVED}-points`, points], [`${SAVED}-shape`, shape]] as const) {
+        const source = map.getSource(id) as maplibregl.GeoJSONSource | undefined;
+        if (source) source.setData(data as GeoJSON.FeatureCollection);
+        else map.addSource(id, { type: "geojson", data: data as GeoJSON.FeatureCollection });
+      }
+      if (!map.getLayer(`${SAVED}-area`)) {
+        map.addLayer({ id: `${SAVED}-area`, type: "fill", source: `${SAVED}-shape`, filter: ["==", ["geometry-type"], "Polygon"],
+          paint: { "fill-color": "#d6452b", "fill-opacity": 0.25 } });
+        map.addLayer({ id: `${SAVED}-line`, type: "line", source: `${SAVED}-shape`,
+          paint: { "line-color": "#d6452b", "line-width": 4 } });
+        map.addLayer({ id: `${SAVED}-marks`, type: "circle", source: `${SAVED}-points`,
+          paint: { "circle-radius": 7, "circle-color": ["get", "ink"], "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
+      }
+    } catch { /* the style is not ready; its next load draws them */ }
+  }
+  map.on("styledata", () => {
+    if (saved.marks && !map.getSource(`${SAVED}-points`)) drawSaved();
+  });
+
   // A click shows what the feature under it carries, a layer's own first.
   function featureAt(point: { x: number; y: number }): MapGeoJSONFeature | null {
     const box: [PointLike, PointLike] = [[point.x - PICK, point.y - PICK], [point.x + PICK, point.y + PICK]];
-    const found = map.queryRenderedFeatures(box).filter((feature) => Object.keys(feature.properties ?? {}).length);
+    const found = map.queryRenderedFeatures(box).filter((feature) => !feature.source.startsWith(SAVED)
+      && Object.keys(feature.properties ?? {}).length);
     return found.find((feature) => feature.source.startsWith(CUSTOM)) ?? found[0] ?? null;
   }
 
@@ -414,6 +449,11 @@ export function createMapView(container: HTMLElement): MapControl {
     flyTo(lng, lat, box) {
       if (box) map.fitBounds([[box[0], box[1]], [box[2], box[3]]], { padding: 60, maxZoom: 16 });
       else map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15) });
+    },
+    showSaved(marks, shape) {
+      saved.marks = marks;
+      saved.shape = shape;
+      drawSaved();
     },
     draw: drawBusy,
     resize: () => map.resize(),

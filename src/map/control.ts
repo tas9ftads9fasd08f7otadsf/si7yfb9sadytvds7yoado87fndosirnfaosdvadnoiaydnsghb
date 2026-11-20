@@ -1,6 +1,14 @@
 import type { Named } from "@/lib/search";
 
 /** What the store asks of the map, which loads after it. */
+/** 135 A saved point as the map draws it: its spot and the ink its mark wears. */
+export interface SavedMark {
+  id: string;
+  lng: number;
+  lat: number;
+  ink?: string;
+}
+
 export interface MapControl {
   draw(): void;
   resize(): void;
@@ -18,6 +26,8 @@ export interface MapControl {
   namedFeatures(): Named[];
   /** 100 To a point, or to a box when one is known. */
   flyTo(lng: number, lat: number, box?: [number, number, number, number]): void;
+  /** 135 The saved points, and the open line's or area's shape, in layers of their own; null takes them off. */
+  showSaved(marks: SavedMark[] | null, shape: { type: string; coordinates: unknown } | null): void;
 }
 
 let control: MapControl | null = null;
