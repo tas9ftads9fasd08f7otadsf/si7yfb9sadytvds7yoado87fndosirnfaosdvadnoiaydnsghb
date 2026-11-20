@@ -5,15 +5,16 @@ import { go, offers, showSide, toggleSide, useViewer } from "@/store/viewer";
 import { Link } from "./ui/Link";
 import { Sym } from "./ui/Sym";
 
-type Item = "map" | "maps" | "data" | "servers" | "settings";
+type Item = "map" | "search" | "maps" | "data" | "servers" | "settings";
 
-/** The item lit for a screen; Search and Saved join as their screens arrive. */
+/** The item lit for a screen; Saved joins once the phone shares saved points. */
 export function railItemOf(route: Route): Item | null {
   switch (route.screen) {
-    case "home":
-    case "map":
     case "search":
     case "place":
+      return "search";
+    case "home":
+    case "map":
     case "edit":
     case "details":
       return "map";
@@ -28,6 +29,14 @@ export function railItemOf(route: Route): Item | null {
     default:
       return null;
   }
+}
+
+/** 107 The rail's Search: back on the map where a page covers it, the cursor in the top bar's field. */
+function focusSearch(mapRoute: Route) {
+  const { route } = useViewer.getState();
+  if (route.screen !== "map" && route.screen !== "search" && route.screen !== "place") go(mapRoute);
+  showSide(true);
+  requestAnimationFrame(() => document.getElementById("search")?.focus());
 }
 
 export function NavRail() {
@@ -54,6 +63,12 @@ export function NavRail() {
         title={onMap ? `${sideShown ? words.hide : words.show} · ${words.maps} ( [ )` : undefined}>
         <Sym name="map" /><span>{words.map}</span>
       </Link>
+      {mapID ? (
+        <button type="button" id="railSearch" aria-current={lit === "search" ? "page" : undefined}
+          onClick={() => focusSearch(mapRoute)}>
+          <Sym name="magnifyingglass" /><span>{words.search}</span>
+        </button>
+      ) : null}
       <Link to={{ screen: "maps" }} id="railMaps" current={lit === "maps"} onFollow={followSide({ screen: "maps" })}>
         <Sym name="square.grid.2x2" /><span>{words.maps}</span>
       </Link>

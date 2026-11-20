@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { offers, pickStyle, setLayerShown, showEdit, showSwitcher, shownMapOf, toggleAddingPackages, useViewer }
-  from "@/store/viewer";
+import { change, go, offers, pickStyle, setLayerShown, showEdit, showSideStyles, showSwitcher, shownMapOf, toggleAddingPackages,
+  useViewer } from "@/store/viewer";
 import { MarkTile } from "./ui/MarkTile";
 import { Switch } from "./ui/Switch";
 import { Sym } from "./ui/Sym";
@@ -12,8 +12,8 @@ import { Sym } from "./ui/Sym";
 export const useStyleName = () => useViewer((state) =>
   state.portable?.styles?.find((each) => each.id === state.styleID)?.name ?? "");
 
-/** 90 The style on the map, as a drop-down whose list folds out under it. */
-export function StylePicker({ id }: { id: string }) {
+/** 90 The style on the map, as a drop-down whose list folds out under it; 107 All styles beside its title. */
+export function StylePicker({ id, onAll }: { id: string; onAll?: () => void }) {
   const words = useViewer((state) => state.words);
   const styles = useViewer((state) => state.portable?.styles) ?? [];
   const styleID = useViewer((state) => state.styleID);
@@ -31,7 +31,11 @@ export function StylePicker({ id }: { id: string }) {
   if (styles.length < 2) return null;
   return (
     <div className="style-picker" ref={box}>
-      <span className="group-title" id={`${id}Title`}>{words.style}</span>
+      <span className="group-title split">
+        <span id={`${id}Title`}>{words.style}</span>
+        {onAll ? <button type="button" className="text-link" id={`${id}All`} onClick={onAll}>{words.allStyles}</button>
+          : null}
+      </span>
       <button type="button" id={id} className="picker" aria-haspopup="listbox" aria-expanded={isOpen}
         aria-labelledby={`${id}Title ${id}`} onClick={() => setOpen(!isOpen)}
         onKeyDown={(event) => {
@@ -155,5 +159,54 @@ export function LivePreview() {
     <span id="livePreview" className="glass" role="status">
       <Sym name="eye" />{name ? `${words.livePreview} · ${name}` : words.livePreview}
     </span>
+  );
+}
+
+/** 107 The side bar's Styles: a card a style, its picture, how many layers it draws, the one on the map. */
+export function StyleCards() {
+  const words = useViewer((state) => state.words);
+  const portable = useViewer((state) => state.portable);
+  const styleID = useViewer((state) => state.styleID);
+  const canEdit = useViewer((state) => state.editToken != null);
+  const mapID = useViewer((state) => state.mapID);
+  const styles = portable?.styles ?? [];
+  const all = (portable?.stack ?? []).length;
+  const toStyling = () => {
+    showSideStyles(false);
+    if (mapID) go({ screen: "edit", map: mapID, tab: "styling" });
+  };
+  return (
+    <div id="styleCards">
+      <div className="cards-head">
+        <button type="button" className="tool round" aria-label={words.layers} onClick={() => showSideStyles(false)}>
+          <Sym name="chevron.backward" />
+        </button>
+        <h2>{words.styles}</h2>
+        {canEdit ? <button type="button" className="text-link" onClick={toStyling}>{words.editStyles}</button> : null}
+      </div>
+      {styles.map((style) => {
+        const hidden = style.arrangement?.hidden?.length ?? 0;
+        const isOn = style.id === styleID;
+        return (
+          <button type="button" key={style.id} className="style-card" aria-pressed={isOn} data-style-card={style.id}
+            onClick={() => pickStyle(style.id)}>
+            {style.iconPicture ? <span className="cover" style={{ backgroundImage:
+              `url("data:image/jpeg;base64,${style.iconPicture}")` }} /> : null}
+            <span className="lines">
+              <MarkTile symbol={style.symbol || "map"} tint={style.iconTintHex} small />
+              <span className="words">{style.name}
+                <small>{filledIn(filledIn(words.groupLayersOn, "on", String(all - hidden)), "count", String(all))}</small>
+              </span>
+              {isOn ? <span className="pill-tag busy">{words.onMapNow}</span> : null}
+            </span>
+          </button>
+        );
+      })}
+      {canEdit ? (
+        <button type="button" className="new-style" onClick={async () => {
+          if (await change({ kind: "addStyle", name: `${words.newStyle} ${styles.length + 1}` })) toStyling();
+        }}><Sym name="plus" />{words.newStyle}</button>
+      ) : null}
+    </div>
   );
 }

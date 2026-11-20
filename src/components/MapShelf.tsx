@@ -3,7 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { movedInFolder, movedOrder, type ShelfItem, shelfOf } from "@/lib/shelf";
 import type { SharedMap } from "@/lib/types";
-import { listed } from "@/lib/words";
+import { filledIn, listed } from "@/lib/words";
 import { offers, openMap, shelve, useViewer } from "@/store/viewer";
 import { FolderPeople, FolderShareButton } from "./FolderSharing";
 import { Swatch } from "./edit/Styling";
@@ -14,6 +14,12 @@ import { Sym } from "./ui/Sym";
 export function useLayerCount() {
   const words = useViewer((state) => state.words);
   return (count: number) => words[`layers.${count}`] ?? String(count);
+}
+
+/** 107 "3 styles" as the phone counts them in its language; its English until it does. */
+export function useStyleCount() {
+  const words = useViewer((state) => state.words);
+  return (count: number) => words[`styles.${count}`] ?? filledIn(words.stylesCount, "count", String(count));
 }
 
 export function MapMark({ shared }: { shared: SharedMap }) {

@@ -75,4 +75,21 @@ describe("map layers", () => {
     const { container } = render(<LayerSwitcher />);
     expect(container.innerHTML).toBe("");
   });
+
+  // 107 the card counts the styles; All styles lists them as cards, one picked by its card
+  it("counts the styles and lists them as cards", () => {
+    show({ editToken: "t", portable: { ...portable, stack: [{ id: "t", name: "Trails" }, { id: "h", name: "Huts" }] } });
+    render(<MapsPage />);
+    expect(screen.getByText("2 styles · 2")).toBeTruthy();
+    act(() => fireEvent.click(screen.getByRole("button", { name: "All styles" })));
+    expect(screen.queryByRole("switch")).toBeNull();
+    const winter = screen.getByRole("button", { name: /^Winter/ });
+    expect(winter.textContent).toContain("1 of 2 on");
+    act(() => fireEvent.click(winter));
+    expect(useViewer.getState().styleID).toBe("w");
+    expect(winter.getAttribute("aria-pressed")).toBe("true");
+    act(() => fireEvent.click(screen.getByRole("button", { name: "Layers" })));
+    expect(screen.getByRole("switch", { name: "Trails" })).toBeTruthy();
+  });
 });
+

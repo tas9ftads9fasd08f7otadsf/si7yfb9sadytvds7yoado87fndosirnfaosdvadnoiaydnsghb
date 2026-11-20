@@ -823,3 +823,21 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 /* 104 The side bar's own button beside the logo, lit while the side bar is shown. */
 #sideToggle .sym { font-size: 18px; }
 #sideToggle[aria-expanded=true] { background: var(--cs-water); color: var(--c-water); }
+
+/* 107 The side bar's Styles: a card a style, as the design's W1 lists them. */
+.text-link { border: 0; background: none; padding: 0; font-size: 14px; font-weight: 600; color: var(--link); }
+.style-picker .group-title.split { display: flex; justify-content: space-between; align-items: baseline; }
+#styleCards { display: flex; flex-direction: column; gap: 12px; }
+#styleCards .cards-head { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+#styleCards .cards-head h2 { flex: 1; margin: 0; font-size: 22px; font-weight: 700; }
+#styleCards .cards-head .tool.round { width: 36px; height: 36px; }
+.style-card { width: 100%; border: 0; padding: 0; border-radius: 22px; overflow: hidden; background: var(--card);
+  box-shadow: var(--lift); text-align: left; color: var(--text); display: flex; flex-direction: column; }
+.style-card[aria-pressed=true] { box-shadow: inset 0 0 0 2px var(--c-water), var(--lift); }
+.style-card .cover { display: block; height: 96px; background: var(--fill) center / cover no-repeat; }
+.style-card .lines { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.style-card .mark.small { width: 32px; height: 32px; border-radius: 16px; }
+.style-card .words { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 16px; font-weight: 600; }
+.style-card .words small { font-size: 12px; font-weight: 400; color: var(--sub); }
+#styleCards .new-style { height: 44px; border-radius: 22px; border: 0; background: var(--cs-water); color: var(--c-water);
+  font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; }
