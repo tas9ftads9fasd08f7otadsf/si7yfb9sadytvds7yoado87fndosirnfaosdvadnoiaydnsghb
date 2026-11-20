@@ -902,3 +902,4 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
   display: flex; align-items: center; }
 #mapRegions .region-row { justify-content: space-between; }
 #editBody h2.title .count { float: right; font-weight: 400; margin-left: 8px; }
+#settings .about dt.whole { color: var(--text); font-weight: 600; }

@@ -61,7 +61,6 @@ export function DataPage() {
   const tab: DataTab = tabs.includes(route.tab) ? route.tab : "maps";
   const counts: Record<DataTab, number | null> = { maps: maps.length, layers: layers.length,
     servers: servers?.length ?? null, regions: regionList ? regions.length : null };
-  const inMaps = (count: number) => count === 1 ? words.oneMap : filledIn(words.inMaps, "count", String(count));
 
   const rows: Row[] = tab === "maps" ? maps.map((map) => ({
     key: map.id, mark: <MapMark shared={map} />, name: map.name, sub: map.stackName,
@@ -69,7 +68,7 @@ export function DataPage() {
     pill: map.id === mapID ? { text: words.onMapNow, tone: "on" as const } : undefined, open: () => openMap(map.id) }))
     : tab === "layers" ? layers.map(({ layer, maps: holding }) => ({
       key: `${layer.name}/${layer.kind}`, mark: <MarkTile symbol={layer.symbol} small />, name: layer.name,
-      sub: layer.kind, cells: [layer.kind, inMaps(holding.length)],
+      sub: layer.kind, cells: [layer.kind, String(holding.length)],
       pill: { text: holding.slice(0, 2).join(", ") + (holding.length > 2 ? "…" : ""), tone: "plain" as const } }))
       : tab === "servers" ? (servers ?? []).map((server) => ({
         key: server.id, mark: <MarkTile symbol={server.symbol || "server.rack"} tint={server.iconTintHex} small />,

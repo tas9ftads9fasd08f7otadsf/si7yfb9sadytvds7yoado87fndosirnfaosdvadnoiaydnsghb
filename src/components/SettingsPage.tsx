@@ -48,8 +48,8 @@ export function SettingsPage() {
         <section aria-labelledby="aboutTitle">
           <span className="group-title" id="aboutTitle">{words.about}</span>
           <dl className="group about">
-            <dt>{words.sharedBy}</dt>
-            <dd id="aboutDevice">{device.name}{connected == null ? null
+            <dt className="whole" id="aboutDevice">{filledIn(words.sharedBy, "name", device.name)}</dt>
+            <dd>{connected == null ? null
               : <i className={connected ? "dot on" : "dot off"} role="img"
                 aria-label={connected ? words.connected : words.notConnected} />}</dd>
             {device.appVersion ? <><dt>{words.app}</dt>

@@ -15,7 +15,8 @@ test("the rail's Data lists the maps, layers, servers and regions", async ({ pag
 
   await page.getByRole("tab", { name: /Layers/ }).click();
   await expect(page).toHaveURL(/\/data\/layers#/);
-  await expect(table.getByRole("row", { name: /Trails/ })).toContainText("1 map");
+  // 113 how many maps hold it, as a number under "Used in"
+  await expect(table.getByRole("row", { name: /Trails/ }).getByRole("cell").nth(2)).toHaveText("1");
 
   await page.getByRole("tab", { name: /Servers/ }).click();
   await expect(table.getByRole("button", { name: "View" }).first()).toBeVisible();
