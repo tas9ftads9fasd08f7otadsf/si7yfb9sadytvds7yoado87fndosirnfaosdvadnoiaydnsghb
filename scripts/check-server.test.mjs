@@ -159,26 +159,26 @@ describe("checking the site's server", () => {
     expect(run.lines).toEqual(["FAIL  name: FTPS_HOST does not resolve; check the secret for a typo"]);
   });
 
-  // 126: the site's address must answer with its site.json, its status said
-  it("fails a site address that does not serve site.json, with its status", () => {
+  // 126: a site that does not serve its site.json yet warns, its status said, and the check passes
+  it("warns of a site address that does not serve site.json, with its status", () => {
     const run = check({ SITE_URL: `${siteURL}/elsewhere` });
-    expect(run.status).toBe(1);
-    expect(run.lines.at(-1)).toBe(`FAIL  site: ${siteURL}/elsewhere/site.json answers 404; `
+    expect(run.status).toBe(0);
+    expect(run.lines.at(-1)).toBe(`warn  site: ${siteURL}/elsewhere/site.json answers 404; `
       + "no release is deployed there, or SITE_URL is not the site");
   });
 
   // 126 bug: SITE_URL set to maps.example without its scheme failed as "not the site's"
-  it("names a site address without its scheme", () => {
+  it("warns of a site address without its scheme", () => {
     const run = check({ SITE_URL: "maps.example" });
-    expect(run.status).toBe(1);
-    expect(run.lines.at(-1)).toBe("FAIL  site: SITE_URL (maps.example) has no scheme; set it to https://maps.example");
+    expect(run.status).toBe(0);
+    expect(run.lines.at(-1)).toBe("warn  site: SITE_URL (maps.example) has no scheme; set it to https://maps.example");
   });
 
   // 126: a page that is not the site's site.json says what it is instead
-  it("says what answers in place of the site's site.json", () => {
+  it("warns of what answers in place of the site's site.json", () => {
     const run = check({ SITE_URL: `${siteURL}/other` });
-    expect(run.status).toBe(1);
-    expect(run.lines.at(-1)).toBe(`FAIL  site: ${siteURL}/other/site.json answers 200 application/json, `
+    expect(run.status).toBe(0);
+    expect(run.lines.at(-1)).toBe(`warn  site: ${siteURL}/other/site.json answers 200 application/json, `
       + "not the site's site.json; is SITE_URL the site's address?");
   });
 

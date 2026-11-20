@@ -109,11 +109,12 @@ else
   fi
 fi
 
+# 126 A site that does not answer yet warns: the deploy only needs the server to take it.
 site="${SITE_URL%/}"
 if [ -z "$site" ]; then
   skip "site: SITE_URL is not set"
 elif [[ "$site" != http://* && "$site" != https://* ]]; then
-  fail "site: SITE_URL ($site) has no scheme; set it to https://$site"
+  warn "site: SITE_URL ($site) has no scheme; set it to https://$site"
 elif answer="$(curl -sS -L --max-time 20 -o "$work/site.json" -w '%{http_code} %{url_effective} %{content_type}' \
     "$site/site.json" 2>"$work/curl.txt")"; then
   read -r status landed type <<<"$answer"
@@ -122,14 +123,14 @@ elif answer="$(curl -sS -L --max-time 20 -o "$work/site.json" -w '%{http_code} %
   moved=""
   [ "$landed" != "$site/site.json" ] && moved=", redirected to $landed"
   if [ "${status:0:1}" != 2 ]; then
-    fail "site: $site/site.json answers $status$moved; no release is deployed there, or SITE_URL is not the site"
+    warn "site: $site/site.json answers $status$moved; no release is deployed there, or SITE_URL is not the site"
   elif [ -n "$version" ]; then
     ok "site: $site serves $version ($commit)"
   else
-    fail "site: $site/site.json answers $status ${type:-without a type}$moved, not the site's site.json; is SITE_URL the site's address?"
+    warn "site: $site/site.json answers $status ${type:-without a type}$moved, not the site's site.json; is SITE_URL the site's address?"
   fi
 else
-  fail "site: $site/site.json: $(tail -1 "$work/curl.txt")"
+  warn "site: $site/site.json: $(tail -1 "$work/curl.txt")"
 fi
 
 exit "$failed"

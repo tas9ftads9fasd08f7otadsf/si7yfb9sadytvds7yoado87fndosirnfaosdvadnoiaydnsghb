@@ -181,7 +181,7 @@ deploy by hand.
 server › Run workflow), and as the deploy's step before it uploads anything. It checks, in order: that
 `FTPS_HOST` resolves, that `FTPS_PORT` answers, that the certificate is issued for `FTPS_HOST` or `FTPS_CERT_NAME`
 (naming the names it does hold when not), trusted and not expiring within 14 days (a warning), that `FTPS_USER` logs in
-and can write and remove a file in `FTPS_DIR`, and, with `SITE_URL` set, which release the site serves. Each
+and can write and remove a file in `FTPS_DIR`, and, with `SITE_URL` set, which release the site serves (a warning when it serves none). Each
 line reads `ok`, `warn`, `skip` or `FAIL`, and any `FAIL` fails the run, so GitHub mails it. Locally, with the
 same variables set: `bash scripts/check-server.sh`.
 
