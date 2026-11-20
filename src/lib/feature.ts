@@ -7,6 +7,11 @@ export function featureTitle(properties: Record<string, unknown>): string {
   return "";
 }
 
+/** A feature's values as text, as the phone's `details` asks them. */
+export function textValues(properties: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(Object.entries(properties).map(([key, value]) => [key, String(value)]));
+}
+
 /** What a feature's card lists: at most forty, none of the app's own. */
 export function featureRows(properties: Record<string, unknown>): [string, string][] {
   return Object.entries(properties)
