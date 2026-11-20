@@ -10,6 +10,7 @@ import { DeleteMap } from "./edit/DeleteMap";
 import { MapMark, MapShelf, useLayerCount, useStyleCount } from "./MapShelf";
 import { LayerToggles, StyleCards, StylePicker, useLayersOn, useStyleName } from "./MapLayers";
 import { railItemOf } from "./NavRail";
+import { SavedPage } from "./SavedPage";
 import { SearchResults } from "./Search";
 import { ServerCards } from "./Servers";
 import { Sym } from "./ui/Sym";
@@ -137,8 +138,10 @@ export function MapsPage() {
   const shown = useViewer(shownMapOf);
   const onMap = useViewer((state) => railItemOf(state.route) === "map");
   const searching = useViewer((state) => state.route.screen === "search");
+  const showsSaved = useViewer((state) => state.route.screen === "saved");
   const maps = device?.maps ?? [];
   if (searching) return <div id="current"><SearchResults /></div>;
+  if (showsSaved) return <div id="current"><SavedPage /></div>;
   return (
     <>
       <div id="current">

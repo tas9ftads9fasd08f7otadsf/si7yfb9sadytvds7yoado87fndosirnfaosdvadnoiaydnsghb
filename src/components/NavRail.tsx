@@ -1,13 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import type { Route } from "@/lib/route";
-import { go, offers, showSide, toggleSide, useViewer } from "@/store/viewer";
+import { go, loadSaved, offers, showSide, toggleSide, useViewer } from "@/store/viewer";
 import { Link } from "./ui/Link";
 import { Sym } from "./ui/Sym";
 
-type Item = "map" | "search" | "maps" | "data" | "servers" | "settings";
+type Item = "map" | "search" | "saved" | "maps" | "data" | "servers" | "settings";
 
-/** The item lit for a screen; Saved joins once the phone shares saved points. */
+/** The item lit for a screen. */
 export function railItemOf(route: Route): Item | null {
   switch (route.screen) {
     case "search":
@@ -18,6 +19,8 @@ export function railItemOf(route: Route): Item | null {
     case "edit":
     case "details":
       return "map";
+    case "saved":
+      return "saved";
     case "maps":
       return "maps";
     case "data":
@@ -45,6 +48,12 @@ export function NavRail() {
   const mapID = useViewer((state) => state.mapID);
   const sideShown = useViewer((state) => state.sideShown);
   const canEdit = useViewer((state) => state.editToken != null);
+  const readsSaved = useViewer((state) => state.savedReadable);
+  const hasSaved = canEdit && readsSaved && offers("saved");
+  // 135 Read once the browser may edit, so a phone that answers 404 leaves the item out.
+  useEffect(() => {
+    if (hasSaved) void loadSaved();
+  }, [hasSaved]);
   const lit = railItemOf(route);
   const onMap = route.screen === "map";
   const mapRoute: Route = mapID ? { screen: "map", map: mapID } : { screen: "maps" };
@@ -68,6 +77,11 @@ export function NavRail() {
           onClick={() => focusSearch(mapRoute)}>
           <Sym name="magnifyingglass" /><span>{words.search}</span>
         </button>
+      ) : null}
+      {hasSaved ? (
+        <Link to={{ screen: "saved" }} id="railSaved" current={lit === "saved"} onFollow={followSide({ screen: "saved" })}>
+          <Sym name="star" /><span>{words.savedTitle}</span>
+        </Link>
       ) : null}
       <Link to={{ screen: "maps" }} id="railMaps" current={lit === "maps"} onFollow={followSide({ screen: "maps" })}>
         <Sym name="square.grid.2x2" /><span>{words.maps}</span>
