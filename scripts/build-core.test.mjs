@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import account from "../e2e/fixtures/cloud-account.json";
 import { fakeCoreWasm } from "../e2e/fake-core.mjs";
-import { CONTRACT, checkoutProblem, readPin, sha256Of, sizes, smoke, verifyPinned, verifySum } from "./build-core.mjs";
+import { CONTRACT, checkoutProblem, pinFor, readPin, sha256Of, sizes, smoke, verifyPinned, verifySum } from "./build-core.mjs";
 
 // 88 the pieces of the core's build that need no Swift
 describe("the pin", () => {
@@ -12,6 +12,17 @@ describe("the pin", () => {
     expect(readPin({ ref: null, sha256: null })).toEqual({ ref: null, sha256: null });
     expect(readPin(undefined)).toEqual({ ref: null, sha256: null });
     expect(readPin({ ref: "abc123", sha256: "f".repeat(64) })).toEqual({ ref: "abc123", sha256: "f".repeat(64) });
+  });
+
+  // 96 bug: RIKI_CORE_REF kept the pinned sum, so another commit's module was always refused
+  it("drops the pinned sum for another commit and keeps it for the pinned one, short or full", () => {
+    const pinned = { ref: "b60e9e4c95a00d747580d89a777fdc34818324ff", sha256: "f".repeat(64) };
+    expect(pinFor(pinned, "0123456789abcdef0123456789abcdef01234567"))
+      .toEqual({ ref: "0123456789abcdef0123456789abcdef01234567", sha256: null });
+    expect(pinFor(pinned, undefined)).toEqual(pinned);
+    expect(pinFor(pinned, "b60e9e4c95")).toEqual(pinned);
+    expect(pinFor(pinned, pinned.ref)).toEqual(pinned);
+    expect(pinFor(undefined, "abc123")).toEqual({ ref: "abc123", sha256: null });
   });
 
   it("names the contract rikimaps documents: the package, the product, both downloads and their sums", () => {

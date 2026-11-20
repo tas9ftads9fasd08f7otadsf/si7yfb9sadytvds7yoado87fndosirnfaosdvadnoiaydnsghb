@@ -193,3 +193,30 @@ describe("the core's pipeline", () => {
     expect(read("../../scripts/deploy-site.sh")).toContain("out/riki-core.wasm");
   });
 });
+
+// 96 the core is built by hand for any rikimaps commit and kept where fetch:core finds it
+describe("the core on demand", () => {
+  const onDemand = read("core-on-demand.yml");
+
+  it("runs only by hand and publishes no release, which rikimaps would take as the editor's", () => {
+    expect(onDemand).toMatch(/^on:\n  workflow_dispatch:\n/m);
+    expect(onDemand).not.toMatch(/pull_request:|push:|schedule:|workflow_call:/);
+    expect(onDemand).not.toContain("gh release");
+    expect([...asked(onDemand)]).toEqual(["contents: read"]);
+  });
+
+  it("builds the commit asked for, or the pin, and names the artifact by the commit built", () => {
+    expect(onDemand).toContain("ASKED: ${{ inputs.ref }}");
+    expect(onDemand).not.toMatch(/run:[^\n]*\$\{\{ inputs\./);
+    expect(onDemand).toContain("RIKI_CORE_REF: ${{ steps.commit.outputs.sha }}");
+    expect(onDemand).toContain("name: riki-core-${{ steps.commit.outputs.sha }}");
+    expect(onDemand).toContain("retention-days: 90");
+    expect(onDemand).toContain("rikimaps/tools/linux-core-tests.sh");
+  });
+
+  it("is the workflow fetch:core asks for", async () => {
+    const { WORKFLOW, artifactName } = await import("./fetch-core.mjs");
+    expect(WORKFLOW).toBe("core-on-demand.yml");
+    expect(onDemand).toContain(artifactName("${{ steps.commit.outputs.sha }}"));
+  });
+});

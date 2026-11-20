@@ -72,6 +72,11 @@ CI builds them in `.github/workflows/core.yml`, which `release.yml` calls before
 repository secret `RIKIMAPS_READ_TOKEN` (a token that reads it) has to exist. With a commit pinned, `pack:web` fails
 where the module was not built; `RIKI_PACK_WITHOUT_CORE=1` packs without it for the browser specs, which stand in for the
 core (CI does, and `npm run check`).
+Without Swift, run `.github/workflows/core-on-demand.yml` by hand (`gh workflow run core-on-demand.yml`, with
+`-f ref=<rikimaps commit, branch or tag>` for another than the pin): it builds and tests the core and keeps
+`dist/riki-core/` for 90 days as the artifact `riki-core-<commit>`. `npm run fetch:core` (or
+`RIKI_CORE_REF=<40-character sha> npm run fetch:core`) downloads it with `gh` into `dist/riki-core/` and checks it as
+a build is. It is not a release, since rikimaps takes the newest release as the editor's bundle.
 
 The API token (CloudKit Console, the container's API Access) needs two settings: **Sign-In Callback** set to
 `postMessage`, and the site's origin (scheme, host and port) in its allowed origins, once per address and
