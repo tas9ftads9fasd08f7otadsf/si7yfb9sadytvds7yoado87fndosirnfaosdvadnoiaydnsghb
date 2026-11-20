@@ -1,6 +1,7 @@
 "use client";
 
 import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
+import { sharingLine } from "@/lib/maps";
 import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
@@ -69,12 +70,14 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
   const styleCount = useStyleCount();
   const styles = useViewer((state) => state.portable?.styles?.length ?? 0);
   const listsStyles = useViewer((state) => state.sideStyles);
+  const sharing = sharingLine(shared, words);
   const counts = styles ? `${styleCount(styles)} · ${layerCount(shared.layers.length)}` : layerCount(shared.layers.length);
   return (
     <>
       <div className={picking ? "hero pending" : "hero"} aria-busy={picking}>
         <MapMark shared={shared} />
-        <div className="words"><b>{shared.name}</b><span className="muted">{counts}</span></div>
+        <div className="words"><b>{shared.name}</b><span className="muted">{counts}</span>
+          {sharing ? <span className="sharing" id="mapSharing">{sharing}</span> : null}</div>
         {canEdit ? (
           <button type="button" className="pill" id="editButton" onClick={() => showEdit(true)}>
             <Sym name="pencil" />{words.edit}

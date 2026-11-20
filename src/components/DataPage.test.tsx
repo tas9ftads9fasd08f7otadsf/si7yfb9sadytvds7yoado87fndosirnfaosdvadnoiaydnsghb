@@ -55,4 +55,19 @@ describe("Data", () => {
     act(() => fireEvent.click(screen.getByRole("button", { name: "Fatra" })));
     expect(useViewer.getState().route).toEqual({ screen: "map", map: "b" });
   });
+
+  // 128 the Maps tab draws a map's offline state, size and style chips where the phone sent them
+  it("draws the pills and style chips beside a map that sent them", () => {
+    useViewer.setState({ device: { name: "iPad", maps: [
+      { id: "a", name: "Tatras", layers: [], offline: "ready", bytes: 1_200_000_000, styles: ["Summer"], styleIDs: ["s1"] },
+      { id: "b", name: "Fatra", layers: [] }] } });
+    render(<DataPage />);
+    const tatras = screen.getByText("Tatras").closest("[role=row]") as HTMLElement;
+    expect(within(tatras).getByText("Ready offline")).toBeTruthy();
+    expect(within(tatras).getByText("1.2 GB")).toBeTruthy();
+    expect(within(tatras).getByRole("link", { name: "Summer" }).getAttribute("href")).toBe("/maps/a/style/s1");
+    const fatra = screen.getByText("Fatra").closest("[role=row]") as HTMLElement;
+    expect(within(fatra).queryByRole("link")).toBeNull();
+    expect(fatra.querySelector(".pill-tag")).toBeNull();
+  });
 });

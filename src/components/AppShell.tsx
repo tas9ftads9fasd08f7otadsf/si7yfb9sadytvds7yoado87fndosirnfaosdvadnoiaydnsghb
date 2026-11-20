@@ -25,6 +25,7 @@ const SMALL_SCREEN = "(max-width: 899px), (max-height: 499px)";
 export function AppShell() {
   const mapBox = useRef<HTMLDivElement>(null);
   const standing = useViewer((state) => state.standing);
+  const connected = useViewer((state) => state.connected);
   const sideShown = useViewer((state) => state.sideShown);
   const editing = useViewer((state) => state.editing);
 
@@ -74,9 +75,10 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
-    document.body.classList.toggle("gated", standing != null && standing !== "admitted");
+    // 134 Before anyone is let in, a page that cannot reach its cloud shows nothing behind the gate.
+    document.body.classList.toggle("gated", standing != null ? standing !== "admitted" : connected === false);
     if (standing) document.body.dataset.standing = standing;
-  }, [standing]);
+  }, [standing, connected]);
 
   useEffect(() => {
     document.body.classList.toggle("side-hidden", !sideShown);

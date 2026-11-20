@@ -2,7 +2,7 @@ import type { Answer, Backend, PairStarted, Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { peoplePathOf, peopleQueryOf } from "@/lib/people";
 import { startQuery } from "@/lib/places";
-import type { APIAsk, APIRead, EsriChange, OfflineAsk, Portable, SessionAnswer } from "@/lib/types";
+import type { APIAsk, APIRead, EsriChange, OfflineAsk, PhonePlace, Portable, SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, PAIR, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
 
 let token: () => string | null = () => null;
@@ -185,6 +185,9 @@ export const backend: Backend = {
   testLayer: (mapID, layerID) =>
     editing(`${ROOT}/maps/${mapID}/layer-test?${new URLSearchParams({ layer: layerID })}`, "GET"),
   packages: (mapID) => editing(`${ROOT}/maps/${mapID}/packages`, "GET"),
+  otherLayers: (mapID) => editing(`${ROOT}/maps/${mapID}/other-layers`, "GET"),
+  addCopies: (mapID, layers) =>
+    editing(`${ROOT}/maps/${mapID}/add-copies?${new URLSearchParams({ layers: layers.join(",") })}`),
   servers: () => editing(`${ROOT}/servers`, "GET"),
   addServer: (kind, address, name) => editing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`),
   importServers: async (file) => editing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer()),
@@ -253,6 +256,18 @@ export const backend: Backend = {
   details(mapID, layerID, values) {
     const query = new URLSearchParams({ layer: layerID, values: JSON.stringify(values) });
     return readJSONIfAny(`${ROOT}/maps/${mapID}/details?${query}`);
+  },
+
+  async search(mapID, text, near) {
+    const query = new URLSearchParams({ q: text });
+    if (near) {
+      query.set("lat", near.lat.toFixed(5));
+      query.set("lon", near.lng.toFixed(5));
+    }
+    const answer = await fetch(`${ROOT}/maps/${mapID}/search?${query}`, { cache: "no-store" });
+    if (answer.status === 404) return null;
+    if (!answer.ok) throw new Error(await answer.text());
+    return ((await answer.json()) as { places?: PhonePlace[] }).places ?? [];
   },
 
   phoneLocation: () => readJSON(`${ROOT}/location`),

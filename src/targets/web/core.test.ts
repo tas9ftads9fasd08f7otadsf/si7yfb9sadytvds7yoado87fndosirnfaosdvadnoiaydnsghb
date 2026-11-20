@@ -102,6 +102,24 @@ describe("the core's wrapper", () => {
     expect(await loadCore(fetcher as typeof fetch, "/editor")).toBe(core);
   });
 
+  // 137 the loading screen counts the engine's megabytes as they arrive
+  it("tells the bytes of the module as they arrive, and the whole once it is in", async () => {
+    forgetCore();
+    const bytes = fakeCoreWasm(account.core).slice();
+    const half = Math.floor(bytes.length / 2);
+    const fetcher = async () => new Response(new ReadableStream({ start(controller) {
+      controller.enqueue(bytes.slice(0, half));
+      controller.enqueue(bytes.slice(half));
+      controller.close();
+    } }), { status: 200, headers: { "content-length": String(bytes.length) } });
+    const told: [number, number | null][] = [];
+    const core = await loadCore(fetcher as typeof fetch, "/editor", (done, total) => told.push([done, total]));
+    expect(core.maps([]).maps).toHaveLength(2);
+    expect(told).toEqual([[0, bytes.length], [half, bytes.length], [bytes.length, bytes.length],
+      [bytes.length, bytes.length]]);
+    forgetCore();
+  });
+
   it("says plainly that riki-core.wasm is missing, and tries again next time", async () => {
     const missing = async () => new Response("", { status: 404 });
     await expect(loadCore(missing as typeof fetch, "/editor")).rejects.toThrow(CoreMissing);

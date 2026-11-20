@@ -1,5 +1,5 @@
 /** `signedOut` is the site's: no Apple Account is signed in yet. */
-export type Standing = "admitted" | "waiting" | "removed" | "signedOut";
+export type Standing = "admitted" | "waiting" | "removed" | "signedOut" | "refused";
 export type Box = [number, number, number, number];
 
 export interface MinimumVersion {
@@ -37,7 +37,22 @@ export interface SharedMap {
   /** 56 The folder's mark and ground as the phone's Maps sheet draws them. */
   stackSymbol?: string | null;
   stackIconTintHex?: string | null;
+  /** 128 The style names and, in the same order, their ids; older phones send no ids. */
+  styles?: string[];
+  styleIDs?: string[];
+  /** 128 The note cut to a card's line, whose it is, and how many others it is shared with. */
+  note?: string | null;
+  role?: MapRole;
+  people?: number;
+  isLocked?: boolean;
+  offline?: MapOffline;
+  /** What the map holds on the phone, and when the phone last wrote it, in Unix seconds. */
+  bytes?: number;
+  changedAt?: number;
 }
+
+export type MapRole = "own" | "edit" | "view";
+export type MapOffline = "ready" | "partly" | "online" | "update";
 
 export interface Device {
   name: string;
@@ -212,6 +227,23 @@ export interface FoundPlace {
   start: Start;
   title: string;
   detail?: string | null;
+  /** 129 Set for a place of the phone's search, which opens in the place panel with these tags. */
+  kind?: string | null;
+  properties?: Record<string, string>;
+}
+
+/** 129 One answer of `GET …/search` (`PeerWebSearch.Place`): the map's own feature, with a `layer`, or an indexed place. */
+export interface PhonePlace {
+  title: string;
+  detail?: string | null;
+  kind?: string | null;
+  layer?: string | null;
+  layerID?: string | null;
+  lat: number;
+  lon: number;
+  /** West, south, east, north. */
+  box?: number[] | null;
+  properties: Record<string, string>;
 }
 
 export interface OptionChoice {
@@ -333,6 +365,30 @@ export interface DetailsSheet {
   sections: { title?: string | null; blocks: DetailsBlock[] }[];
   /** What the layout read, which the card's tag list leaves out. */
   keys: string[];
+  /** 130 The phone's LIVE pill, for a layer that answers live; none from a phone before 3493. */
+  live?: DetailsLive | null;
+}
+
+/** 130 `ageSeconds` is since the layer last answered, nil if it never has; the page counts it on from asking. */
+export interface DetailsLive {
+  isLive: boolean;
+  ageSeconds?: number | null;
+  windowSeconds: number;
+  label: string;
+  notLiveLabel: string;
+}
+
+/** 130 A vehicle's running state, every part worded by the phone; `tone` is `good`, `late` or `veryLate`. */
+export interface DetailsConnection {
+  delay?: { minutes: number; sentence: string; short: string; tone: string } | null;
+  station?: string | null;
+  route?: string | null;
+  operatorLine?: string | null;
+  planned?: string | null;
+  actual?: string | null;
+  updated?: string | null;
+  note?: string | null;
+  labels: { delay: string; planned: string; actual: string; updated: string; note: string };
 }
 
 /** `rows`, `text`, `link`, `image` or `allTags`; a kind this page does not know is skipped. */
@@ -342,6 +398,8 @@ export interface DetailsBlock {
   title?: string | null;
   text?: string | null;
   warning?: boolean | null;
+  /** 130 A connection card whole; `rows` still holds what a phone from before 3493 sends alone. */
+  connection?: DetailsConnection | null;
 }
 
 /** What the layers' servers said of a tap on empty ground, top layer's first. */
@@ -460,6 +518,27 @@ export interface Packages {
   ticked: string[];
 }
 
+/** 119 One layer of another map; `blocked` says why it cannot be ticked. */
+export interface OtherLayer {
+  layer: string;
+  title: string;
+  subtitle: string;
+  symbol: string;
+  blocked?: string | null;
+}
+
+export interface OtherMap {
+  map: string;
+  name: string;
+  symbol: string;
+  iconTintHex?: string | null;
+  rows: OtherLayer[];
+}
+
+export interface OtherLayers {
+  groups: OtherMap[];
+}
+
 export interface ServerPick {
   layer: string;
   [key: string]: unknown;
@@ -506,6 +585,14 @@ export interface ServiceRead {
   address: string;
   reading: AddressReading;
   ticks: Set<string>;
+}
+
+/** 137 How far the site's first read has come: the engine's bytes, the zones, and what they held. */
+export interface Loading {
+  engine?: { done: number; total: number | null };
+  zones?: { done: number; total: number };
+  records: number;
+  files: number;
 }
 
 export interface SessionAnswer {

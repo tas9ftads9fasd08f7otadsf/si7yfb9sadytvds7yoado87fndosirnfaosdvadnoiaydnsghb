@@ -4,12 +4,12 @@ import { BASE } from "@base";
 export type EditTab = "layers" | "general" | "styling" | "sharing" | "offline";
 export type DataTab = "maps" | "layers" | "servers" | "regions";
 export type ServerPart = "layers" | "general" | "sharing";
-export type AddSource = "tile" | "server" | "builtin" | "file";
+export type AddSource = "tile" | "server" | "builtin" | "file" | "copy";
 
 export const EDIT_TABS: EditTab[] = ["layers", "general", "styling", "sharing", "offline"];
 export const DATA_TABS: DataTab[] = ["maps", "layers", "servers", "regions"];
 export const SERVER_PARTS: ServerPart[] = ["layers", "general", "sharing"];
-export const ADD_SOURCES: AddSource[] = ["tile", "server", "builtin", "file"];
+export const ADD_SOURCES: AddSource[] = ["tile", "server", "builtin", "file", "copy"];
 
 export { PAGE_SEGMENTS } from "./segments";
 

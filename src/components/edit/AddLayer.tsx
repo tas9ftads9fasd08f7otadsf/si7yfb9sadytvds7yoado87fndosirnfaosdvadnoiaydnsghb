@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { DXFReading, PackageRow, ServerRow } from "@/lib/types";
-import { FILE_KINDS, SERVER_KINDS, addFile, isDXF, readDXF, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
-  exportServers, importServers, loadPackages, loadServers, offers, tickPackage, tickServerRow, tickServiceLayer,
+import type { DXFReading, OtherMap, PackageRow, ServerRow } from "@/lib/types";
+import { FILE_KINDS, SERVER_KINDS, addCopies, addFile, isDXF, readDXF, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
+  exportServers, importServers, loadOtherLayers, loadPackages, loadServers, offers, tickCopy, tickPackage, tickServerRow, tickServiceLayer,
   useViewer } from "@/store/viewer";
 import { mapControl } from "@/map/control";
 import { filledIn } from "@/lib/words";
@@ -280,13 +280,76 @@ function Servers() {
   );
 }
 
-export type AddSource = "builtin" | "tile" | "file" | "api" | "server";
+/** 119 A map's name keeps all its layers; a layer's words keep only that layer. */
+export function matchingLayers(groups: OtherMap[], query: string): OtherMap[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return groups;
+  const names = (...texts: (string | null | undefined)[]) => texts.some((text) => text?.toLowerCase().includes(needle));
+  return groups.flatMap((group) => {
+    if (names(group.name)) return [group];
+    const rows = group.rows.filter((row) => names(row.title, row.subtitle));
+    return rows.length ? [{ ...group, rows }] : [];
+  });
+}
+
+function CopyLine({ layer }: { layer: OtherMap["rows"][number] }) {
+  const isTicked = useViewer((state) => state.copyTicks.has(layer.layer));
+  const lines = <span className="words">{layer.title}<small>{layer.blocked || layer.subtitle}</small></span>;
+  if (layer.blocked) return <div className="row dimmed" data-copy-layer={layer.layer}><MarkTile symbol={layer.symbol} small />{lines}</div>;
+  return (
+    <button type="button" className={isTicked ? "row picked" : "row"} aria-pressed={isTicked}
+      data-copy-layer={layer.layer} onClick={() => tickCopy(layer.layer)}>
+      <MarkTile symbol={layer.symbol} small />{lines}<Sym name={tickName(isTicked)} />
+    </button>
+  );
+}
+
+/** 119 W11's From another map: a card for each other map, its layers ticked. */
+function FromMaps() {
+  const words = useViewer((state) => state.words);
+  const other = useViewer((state) => state.otherLayers);
+  const ticked = useViewer((state) => state.copyTicks.size);
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (!other) void loadOtherLayers();
+  }, [other]);
+  if (!other) return <Skeleton />;
+  const shown = matchingLayers(other.groups, query);
+  return (
+    <>
+      <h2 className="title">{words.anotherMap}</h2>
+      {other.groups.length === 0 ? <div className="foot-note" id="copyNone">{words.noOtherLayers}</div> : (
+        <>
+          <div className="card"><div className="field">
+            <input type="search" id="copySearch" autoComplete="off" spellCheck={false} placeholder={words.searchMapsLayers}
+              aria-label={words.searchMapsLayers} value={query} onChange={(event) => setQuery(event.target.value)} />
+          </div></div>
+          {shown.length === 0 ? (
+            <div className="foot-note" id="copyNoMatch">{filledIn(words.noLayerMatches, "query", query.trim())}</div>
+          ) : shown.map((group) => (
+            <div className="card" data-copy-map={group.map} key={group.map}>
+              <div className="row"><MarkTile symbol={group.symbol} tint={group.iconTintHex} small />
+                <span className="words">{group.name}</span></div>
+              {group.rows.map((row) => <CopyLine key={row.layer} layer={row} />)}
+            </div>
+          ))}
+          <div className="foot-note" id="copyTicked">{ticked ? "" : words.nothingSelected}</div>
+          <button type="button" className="action" id="addCopies" disabled={ticked === 0} onClick={addCopies}>
+            <Sym name="plus" />{ticked ? filledIn(words.addCount, "count", String(ticked)) : words.add}
+          </button>
+        </>
+      )}
+    </>
+  );
+}
+
+export type AddSource = "builtin" | "tile" | "file" | "api" | "server" | "copy";
 
 /** 97 The sources this phone or site adds from, in the order Add layer lists them. */
 export function addSources(): AddSource[] {
   return [...(offers("addPackages") ? ["builtin" as const] : []), "tile" as const,
     ...(offers("addFile") ? ["file" as const] : []), ...(offers("addAPI") ? ["api" as const] : []),
-    ...(offers("servers") ? ["server" as const] : [])];
+    ...(offers("servers") ? ["server" as const] : []), ...(offers("fromMaps") ? ["copy" as const] : [])];
 }
 
 function Packages() {
@@ -311,7 +374,7 @@ function Packages() {
   );
 }
 
-/** Add layer's part for one source: the Riki packages, a tile address, a file, an API or a server. */
+/** Add layer's part for one source: packages, tiles, a file, an API, a server, a map. */
 export function AddLayer({ source }: { source: AddSource }) {
   const hasRead = useViewer((state) => state.serviceRead != null);
   switch (source) {
@@ -325,5 +388,7 @@ export function AddLayer({ source }: { source: AddSource }) {
       return <APILayer />;
     case "server":
       return <><Servers /><NewServer /></>;
+    case "copy":
+      return <FromMaps />;
   }
 }

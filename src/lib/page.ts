@@ -1,6 +1,8 @@
 export const HEARTBEAT_EVERY = 5000;
 export const RETRY_EVERY = 2000;
 export const LIVE_EVERY = 60000;
+/** 130 How often an open panel of a live layer reads the layer's answer again. */
+export const PLACE_LIVE_EVERY = 15000;
 export const PHONE_EVERY = 5000;
 export const REGIONS_EVERY = 10000;
 /** 92 How often the page asks whether the phone has said yes to its QR code. */

@@ -5,17 +5,19 @@ import { backend } from "@backend";
 import { DIRECT_KEY } from "@/lib/page";
 import { CoreNotReady, NotOnSite, type Answer, type ChangedElsewhere, type Feature, type Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
-import { HEARTBEAT_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
+import { HEARTBEAT_EVERY, PLACE_LIVE_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
 import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
-  SavedListing, SavedRow, SavedShape, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
+  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
+  Loading, SavedListing, SavedRow, SavedShape, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { NO_FILTER, type SavedFilter, savedBox, shownSaved } from "@/lib/saved";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
-import { type NameHit, findNames } from "@/lib/search";
+import { type NameHit, findNames, indexedPlaces, pointOn, withPhoneHits, worthAsking } from "@/lib/search";
+import { textValues } from "@/lib/feature";
+import { sameFeature } from "@/lib/live";
 
 export type Theme = "auto" | "light" | "dark";
 export { SERVER_PARTS, type ServerPart } from "@/lib/route";
@@ -25,6 +27,9 @@ export interface ViewerState {
   route: Route;
   words: Words;
   standing: Standing | null;
+  /** 137 How far the site's first read has come, and why it last stopped. */
+  loading: Loading | null;
+  loadFailed: string | null;
   edits: boolean;
   /** The phone lets a browser load tiles from their source. */
   directAllowed: boolean;
@@ -70,6 +75,8 @@ export interface ViewerState {
   packageTicks: Set<string>;
   addingPackages: boolean;
   servers: ServerList | null;
+  otherLayers: OtherLayers | null;
+  copyTicks: Set<string>;
   serverID: string | null;
   serverPart: ServerPart;
   serverPicks: Map<string, ServerPick>;
@@ -111,6 +118,12 @@ export interface ShownFeature {
   properties: Record<string, unknown>;
   layer: string;
   details?: DetailsSheet | null;
+  /** 130 The layer's id, for the live answer an open panel keeps reading; and when its Details arrived. */
+  layerID?: string;
+  asked?: number;
+  /** 129 What a search listed it as, when its tags hold no name; and an indexed place's category. */
+  title?: string;
+  kind?: string;
 }
 
 export interface Place {
@@ -122,14 +135,14 @@ export interface Place {
 }
 
 const firstState = (): ViewerState => ({
-  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "", picking: false, mapBusy: false, undrawn: new Set(),
+  route: { screen: "home" }, words: ENGLISH, standing: null, loading: null, loadFailed: null, edits: false, viewers: null, connected: null, gateDevice: "", picking: false, mapBusy: false, undrawn: new Set(),
   editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, traffic: null, regionOffer: null,
   pointerText: "", addedLanguages: new Set(), startKind: null, startFound: null, coverage: null,
   coverageShown: false, coverageSide: "include", coverageOpen: new Map(), coverageQuery: "", coveragePlaces: null,
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
-  serverPicks: new Map(),
+  otherLayers: null, copyTicks: new Set(), serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
   switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null,
   switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null, regionList: null, sideStyles: false,
@@ -144,17 +157,23 @@ const set = useViewer.setState;
 // Guards and timers no screen shows.
 const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof setTimeout> | undefined,
   notice: undefined as ReturnType<typeof setTimeout> | undefined, layerOptions: null as string | null,
-  packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
+  packages: null as string | null, otherLayers: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
   coverageEdits: Promise.resolve(), optionsAsked: 0,
   offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0,
-  search: undefined as ReturnType<typeof setTimeout> | undefined, saved: false, savedAsked: 0, inSaved: false, savedDrawn: false };
+  search: undefined as ReturnType<typeof setTimeout> | undefined, saved: false, savedAsked: 0, inSaved: false, savedDrawn: false,
+  placeLive: undefined as ReturnType<typeof setTimeout> | undefined,
+  /** 129 The maps whose phone answered 404 to the places search, which an older phone does. */
+  noPlacesSearch: new Set<string>() };
 
 export function resetViewer() {
   clearTimeout(busy.heartbeat);
   clearTimeout(busy.notice);
   clearTimeout(busy.offline);
-  Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, servers: false, coverage: null,
-    addressKey: null, coverageEdits: Promise.resolve(), saved: false, savedAsked: 0, inSaved: false, savedDrawn: false });
+  clearTimeout(busy.placeLive);
+  Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, otherLayers: null, servers: false,
+    coverage: null, addressKey: null, coverageEdits: Promise.resolve(), noPlacesSearch: new Set<string>(), saved: false,
+    savedAsked: 0, inSaved: false, savedDrawn: false });
+  clearTimeout(busy.search);
   set(firstState(), true);
 }
 
@@ -312,6 +331,7 @@ export function applySession(answer: SessionAnswer) {
 export function startSession(isSmall: boolean) {
   if (busy.sessionStarted || isSmall) return;
   busy.sessionStarted = true;
+  backend.loading?.((loading) => set({ loading }));
   void heartbeat();
   // 76 A change made elsewhere, or a sign-in, is read without waiting for the next beat.
   backend.onChanged((changed) => {
@@ -409,10 +429,11 @@ export async function readDevice() {
     device = await backend.maps();
   } catch (error) {
     if (get().standing !== "admitted") return;
+    set({ loadFailed: error instanceof Error ? error.message : String(error) });
     setTimeout(readDevice, failed(error) ? 30_000 : 5000);
     return;
   }
-  set({ device });
+  set({ device, loadFailed: null });
   const { words, mapID, styleID, route } = get();
   document.title = `${device.name} · ${words.app}`;
   const named = (id: string | null | undefined) => device.maps.find((each) => each.id === id);
@@ -455,7 +476,7 @@ export async function pickMap(id: string, styleID: string | null) {
   set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
     coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, offline: null, offlineAsk: null, offlineOpen: false, esri: null,
     esriOpen: null,
-    serverPicks: new Map(), serviceRead: null,
+    otherLayers: null, copyTicks: new Set(), serverPicks: new Map(), serviceRead: null,
     layerOptions: null, optionsOpen: new Set(), originsOpen: new Set() });
   let portable: Portable | null = null;
   try {
@@ -507,11 +528,43 @@ export const toggleSide = () => showSide(!get().sideShown);
 
 export function showPlace(place: Place | null) {
   const { route, place: was } = get();
+  clearTimeout(busy.placeLive);
   set({ place });
+  if (place?.found.some((one) => one.layerID && one.details?.live)) {
+    busy.placeLive = setTimeout(() => void readLive(place), PLACE_LIVE_EVERY);
+  }
   if (place || !was?.saved) return;
   set({ savedShape: null });
   drawSaved();
   if (route.screen === "saved" && route.id) go({ screen: "saved" }, { replace: true });
+}
+
+/** 130 An open panel of a live layer reads the layer's live answer again and asks for the feature's Details anew,
+ * which is what renews the pill's age; the phone's `details` only words the values it is given. */
+async function readLive(shown: Place) {
+  const { mapID, editing: isEditing, route } = get();
+  if (!mapID || get().place !== shown) return;
+  if (isEditing || ["details", "data", "settings"].includes(route.screen)) return showPlace(shown);
+  const box = mapControl()?.box();
+  let at: [number, number] = [shown.lng, shown.lat];
+  const found = await Promise.all(shown.found.map(async (one) => {
+    if (!one.layerID || !one.details?.live) return one;
+    let properties = one.properties;
+    try {
+      const answer = box?.length === 4
+        ? await backend.live(mapID, one.layerID, box.map((value) => value.toFixed(5)).join(",")) : null;
+      const same = sameFeature(one.properties, answer, [shown.lng, shown.lat]);
+      if (!same?.properties) return one;
+      properties = same.properties;
+      at = pointOn(same.geometry) ?? at;
+      const details = await backend.details(mapID, one.layerID, textValues(properties));
+      return details ? { ...one, properties, details, asked: Date.now() } : one;
+    } catch {
+      return one;
+    }
+  }));
+  if (get().place !== shown) return;
+  showPlace({ found, lng: at[0], lat: at[1] });
 }
 
 const SEARCH_WAIT = 250;
@@ -531,12 +584,32 @@ export function search(text: string) {
   set({ nameHits: point ? [{ name: typed, layer: get().words.coordinates, lat: point[0], lng: point[1], properties: {} }]
     : findNames(mapControl()?.namedFeatures() ?? [], typed), foundPlaces: null });
   clearTimeout(busy.search);
-  if (!get().editToken || !offers("places")) return;
-  busy.search = setTimeout(async () => {
-    const answer = await editing(() => backend.startPlaces("city", typed), { quiet: true });
+  busy.search = setTimeout(() => void askPlaces(mapID, typed, point != null), SEARCH_WAIT);
+}
+
+/** 129 The phone's places search, with the centre of the map; where the phone has none, the cities of an editing browser. */
+async function askPlaces(mapID: string, typed: string, isPoint: boolean) {
+  const stands = () => {
     const now = get().route;
-    if (answer?.ok && now.screen === "search" && now.text === typed) set({ foundPlaces: answer.value });
-  }, SEARCH_WAIT);
+    return get().mapID === mapID && now.screen === "search" && now.text === typed;
+  };
+  if (!isPoint && !busy.noPlacesSearch.has(mapID)) {
+    if (!worthAsking(typed)) return;
+    try {
+      const centre = mapControl()?.camera();
+      const places = await backend.search(mapID, typed, centre ? { lat: centre.lat, lng: centre.lng } : null);
+      if (places) {
+        if (stands()) set({ nameHits: withPhoneHits(get().nameHits ?? [], places), foundPlaces: indexedPlaces(places) });
+        return;
+      }
+      busy.noPlacesSearch.add(mapID);
+    } catch {
+      return;
+    }
+  }
+  if (!get().editToken || !offers("places")) return;
+  const answer = await editing(() => backend.startPlaces("city", typed), { quiet: true });
+  if (answer?.ok && stands()) set({ foundPlaces: answer.value });
 }
 
 /** 100 Latitude and longitude typed as people write them, "48.1486, 17.1077". */
@@ -550,16 +623,39 @@ export function coordinatesIn(typed: string): [number, number] | null {
 
 /** 100 A name found: the map goes there and the panel shows what it carries. */
 export function openHit(hit: NameHit) {
-  mapControl()?.flyTo(hit.lng, hit.lat);
-  showPlace({ found: [{ properties: hit.properties, layer: hit.layer }], lng: hit.lng, lat: hit.lat });
+  if (hit.box) mapControl()?.flyTo(hit.lng, hit.lat, hit.box);
+  else mapControl()?.flyTo(hit.lng, hit.lat);
+  const shown: Place = { found: [{ properties: hit.properties, layer: hit.layer, ...hit.layerID ? { title: hit.name } : {} }],
+    lng: hit.lng, lat: hit.lat };
+  showPlace(shown);
+  if (hit.layerID) void wearDetails(shown, hit.layerID);
 }
 
-/** 100 A place the phone found: the map frames it. */
+/** 129 A feature of the map's own wears its layer's Details, as a tap's card does. */
+async function wearDetails(shown: Place, layerID: string) {
+  const { mapID } = get();
+  const [first] = shown.found;
+  if (!mapID || !first) return;
+  const values = Object.fromEntries(Object.entries(first.properties).map(([key, value]) => [key, String(value)]));
+  let details: DetailsSheet | null;
+  try {
+    details = await backend.details(mapID, layerID, values);
+  } catch {
+    return;
+  }
+  if (details && get().place === shown) showPlace({ ...shown, found: [{ ...first, details }] });
+}
+
+/** 100 A place the phone found: the map frames it, and one of the phone's search opens in the panel. */
 export function openFound(found: FoundPlace) {
   const { start } = found;
   const box = start.box ? [start.box.minLon, start.box.minLat, start.box.maxLon, start.box.maxLat] as [number, number, number, number]
     : undefined;
-  if (start.longitude != null && start.latitude != null) mapControl()?.flyTo(start.longitude, start.latitude, box);
+  if (start.longitude == null || start.latitude == null) return;
+  mapControl()?.flyTo(start.longitude, start.latitude, box);
+  if (!found.properties) return;
+  showPlace({ found: [{ properties: found.properties, layer: "", title: found.title, ...found.kind ? { kind: found.kind } : {} }],
+    lng: start.longitude, lat: start.latitude });
 }
 
 // MARK: - 135 Saved
@@ -988,7 +1084,7 @@ export async function setLayout(fields: Record<string, string>) {
 
 // MARK: - Add layer
 
-export const toggleAddingPackages = () => set({ addingPackages: !get().addingPackages });
+export const toggleAddingPackages = () => set({ addingPackages: !get().addingPackages, otherLayers: null, copyTicks: new Set() });
 
 export async function loadPackages() {
   const { mapID } = get();
@@ -998,6 +1094,29 @@ export async function loadPackages() {
   busy.packages = null;
   if (!answer?.ok || get().mapID !== mapID) return;
   set({ packages: answer.value, packageTicks: new Set(answer.value.ticked) });
+}
+
+/** 119 The other maps' layers, asked again each time Add layer opens on them. */
+export async function loadOtherLayers() {
+  const { mapID } = get();
+  if (!mapID || busy.otherLayers === mapID) return;
+  busy.otherLayers = mapID;
+  const answer = await editing(() => backend.otherLayers(mapID));
+  busy.otherLayers = null;
+  if (!answer?.ok || get().mapID !== mapID) return;
+  set({ otherLayers: answer.value, copyTicks: new Set() });
+}
+
+export function tickCopy(layer: string) {
+  const copyTicks = new Set(get().copyTicks);
+  if (!copyTicks.delete(layer)) copyTicks.add(layer);
+  set({ copyTicks });
+}
+
+/** 119 The phone copies each ticked layer; the map comes back with them. */
+export async function addCopies() {
+  const layers = [...get().copyTicks];
+  if (await addedBy((mapID) => backend.addCopies(mapID, layers))) set({ copyTicks: new Set(), otherLayers: null });
 }
 
 /** The base map draws its parts, so ticking one unticks the other. */

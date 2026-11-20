@@ -50,3 +50,39 @@ describe("FeatureCard", () => {
     expect(pictures[0]?.style.backgroundImage).toContain("https://img.example/hut.jpg");
   });
 });
+
+// 130 the phone's connection card and LIVE pill in the panel's card
+describe("FeatureCard's live connection", () => {
+  const connection = { delay: { minutes: 3, sentence: "3 min late", short: "+3 min", tone: "late" },
+    route: "Lamač → Petržalka", planned: "09:31", actual: "09:34",
+    labels: { delay: "Delay", planned: "Planned", actual: "Actual", updated: "Updated", note: "Note" } };
+  const rows = [{ title: "Delay", value: "3 min late" }, { title: "", value: "From Lamač to Petržalka" }];
+  const live = { isLive: true, ageSeconds: 10, windowSeconds: 120, label: "LIVE", notLiveLabel: "Not live" };
+  const sheet = (more: Partial<DetailsSheet> = {}, block: object = { kind: "rows", rows, connection }): DetailsSheet =>
+    ({ title: "Os 4314", keys: [], sections: [{ blocks: [block as never] }], ...more });
+
+  // 130
+  it("draws a card block's connection in place of its rows, and the LIVE pill from live", () => {
+    const { container } = render(
+      <FeatureCard properties={{}} layer="Trains" details={sheet({ live })} asked={Date.now()} />);
+    expect(container.querySelector(".connection")?.textContent).toContain("Lamač → Petržalka");
+    expect(screen.queryByText("From Lamač to Petržalka")).toBeNull();
+    expect(screen.getByText("LIVE")).toBeTruthy();
+  });
+
+  // 130 a phone from before 3493 sends only rows, which are drawn as they were, with no pill
+  it("draws the rows when the block has no connection, and no pill when the sheet has no live", () => {
+    const { container } = render(<FeatureCard properties={{}} layer="Trains"
+      details={sheet({}, { kind: "rows", rows })} />);
+    expect(screen.getByText("From Lamač to Petržalka")).toBeTruthy();
+    expect(container.querySelector(".connection")).toBeNull();
+    expect(container.querySelector(".live-pill")).toBeNull();
+  });
+
+  // 130 the pill says the phone's Not live when the layer's answers stopped
+  it("says the phone's Not live for a layer that has not answered in time", () => {
+    render(<FeatureCard properties={{}} layer="Trains"
+      details={sheet({ live: { ...live, isLive: false, ageSeconds: 500 } })} asked={Date.now()} />);
+    expect(screen.getByText("Not live")).toBeTruthy();
+  });
+});

@@ -36,13 +36,13 @@ export function PlacePanel() {
   if (!place || editing) return null;
   const [first] = place.found;
   const saved = place.saved;
-  const title = saved?.name || first?.details?.title || featureTitle(first?.properties ?? {});
+  const title = saved?.name || first?.details?.title || first?.title || featureTitle(first?.properties ?? {});
   const coordinates = coordinateText(place.lat, place.lng);
   const layers = [...new Set(place.found.map((each) => each.layer).filter(Boolean))].join(" · ");
   return (
     <section id="placePanel" aria-label={title || words.coordinates}>
       <div className="place-head">
-        <span className="kind">{saved ? savedLine(saved, savedFolders ?? []) || words.savedTitle : first?.layer ?? ""}</span>
+        <span className="kind">{saved ? savedLine(saved, savedFolders ?? []) || words.savedTitle : first?.layer || first?.kind || ""}</span>
         <h2>{title || coordinates}</h2>
         <button type="button" className="tool round" id="placeClose" aria-label={words.close}
           onClick={() => showPlace(null)}><Sym name="xmark" /></button>
@@ -56,7 +56,8 @@ export function PlacePanel() {
       </div>
       <div className="place-body">
         {saved ? <SavedBody row={saved} /> : place.found.map((one, index) => (
-          <FeatureCard key={index} properties={one.properties} layer={one.layer} details={one.details} />
+          <FeatureCard key={index} properties={one.properties} layer={one.layer || one.kind || ""} details={one.details}
+            asked={one.asked} title={one.title} />
         ))}
       </div>
       <dl className="place-foot">

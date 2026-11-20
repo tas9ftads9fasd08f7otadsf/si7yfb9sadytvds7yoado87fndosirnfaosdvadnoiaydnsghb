@@ -31,7 +31,8 @@ function freshMaps() {
   const layer = (id, name, kind, symbol) => ({ id, name, kind, symbol, isEnabled: true });
   return [
     { id: "6F1E2A10-0000-4000-8000-000000000001", name: "High Tatras", symbol: "mountain.2", iconTintHex: "#3a7d44",
-      revision: 1, note: "Summer trails", minimumVersion: { app: "0.18.0", browser: "0.30.0" }, drawsRelief: true,
+      revision: 1, note: "Summer trails", sendsNewFields: true, offlineState: "ready", bytes: 1_200_000_000,
+      changedAt: 1_700_000_000, minimumVersion: { app: "0.18.0", browser: "0.30.0" }, drawsRelief: true,
       layers: [layer("6F1E2A10-0000-4000-8000-0000000000A1", "Trails", "Vector tiles", "figure.hiking"),
         layer("6F1E2A10-0000-4000-8000-0000000000A2", "Huts", "Points", "house")],
       styles: [{ id: "6F1E2A10-0000-4000-8000-0000000000B1", name: "Summer", arrangement: { hidden: [] } },
@@ -49,7 +50,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+  tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
@@ -173,7 +174,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+    tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
@@ -325,7 +326,18 @@ function catalog() {
       stackIconTintHex: each.stackID ? each.stackIconTintHex : undefined,
       layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive,
         // 58: as `MapDefinition.origin(of:)` falls back to a layer's kind.
-        origin: { key: `kind:${kind}`, title: kind, symbol } })) })) };
+        origin: { key: `kind:${kind}`, title: kind, symbol } })),
+      ...newFields(each) })) };
+}
+
+// 128: as `PeerSharedMap` carries them since 3490; a map without `sendsNewFields` answers as an older phone.
+function newFields(each) {
+  if (!each.sendsNewFields) return {};
+  const share = phone.shares[each.id];
+  const others = (share?.people ?? []).filter((person) => person.role !== "owner").length;
+  return { styles: each.styles.map((style) => style.name), styleIDs: each.styles.map((style) => style.id),
+    note: each.note || undefined, role: share?.role === "reader" ? "view" : share?.role === "editor" ? "edit" : "own",
+    people: others, isLocked: false, offline: each.offlineState, bytes: each.bytes, changedAt: each.changedAt };
 }
 
 // 2957: as `PeerWebCoverage` answers: the places to pick, and a map's choices said in a line.
@@ -948,6 +960,32 @@ function coverageSummary(each) {
   return { coverage, line, required: requires ? "Its layers require Vysoké Tatry" : null, warnings };
 }
 
+// 129: as `PeerWebSearch.answer` reads an ask: no text is 400, under three letters only a number answers.
+const SEARCHED_HUTS = "6F1E2A10-0000-4000-8000-0000000000A2";
+const SEARCHED_TRAINS = "6F1E2A10-0000-4000-8000-0000000000E1";
+const searchFolded = (text) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+
+function placesSearch(query) {
+  if (!query.has("q")) return null;
+  const text = searchFolded(query.get("q"));
+  const isLine = /^\d+$/.test(text);
+  if (!isLine && text.length < 3) return { places: [] };
+  const own = [
+    { title: "Chata pod Rysmi", layer: "Huts", layerID: SEARCHED_HUTS, lat: 49.1794, lon: 20.0881,
+      properties: { Nazov: "Chata pod Rysmi", Elevation: "2250", Beds: "40" } },
+    { title: "Zbojnícka chata", layer: "Huts", layerID: SEARCHED_HUTS, lat: 49.2005, lon: 20.1115,
+      properties: { Nazov: "Zbojnícka chata", Elevation: "1960", Beds: "30" } },
+    { title: "Os 4314", layer: "Trains", layerID: SEARCHED_TRAINS, lat: 49.06, lon: 20.29,
+      properties: { Nazov: "Os 4314", Line: "4314" } }];
+  const indexed = [
+    { title: "Poprad", detail: "Prešov Region", kind: "city", lat: 49.06, lon: 20.3, box: [20.2, 49.0, 20.4, 49.1],
+      properties: { name: "Poprad", population: "50000" } },
+    { title: "Popradské pleso", detail: "High Tatras", kind: "lake", lat: 49.0675, lon: 20.0711,
+      properties: { name: "Popradské pleso", ele: "1494" } }];
+  const found = (each) => searchFolded(each.title).includes(text) || (isLine && searchFolded(each.title).endsWith(text));
+  return { places: [...own.filter(found), ...isLine ? [] : indexed.filter(found)] };
+}
+
 // 2949: as `PeerWebStartPlaces` answers: the phone's regions and countries, its search's cities.
 function startPlaces(kind, wanted) {
   if (kind === "region") {
@@ -1070,6 +1108,17 @@ async function lockChange(each, query, response) {
 function deletionOf(each) {
   if (phone.maps.length < 2 || each.locked) return undefined;
   return phone.ownsSettings ? "onlyYou" : "yourList";
+}
+
+// 119: as `PeerWebFromMaps.listing`: unlocked maps only; what this map draws is blocked.
+const ALREADY = "Already in this map";
+
+function otherLayers(each) {
+  const groups = phone.maps.filter((one) => one.id !== each.id && !one.locked).map((one) => ({
+    map: one.id, name: one.name, symbol: one.symbol ?? "map", iconTintHex: one.iconTintHex ?? null,
+    rows: [...one.layers].reverse().map((layer) => ({ layer: layer.id, title: layer.name, subtitle: layer.kind,
+      symbol: layer.symbol, blocked: each.layers.some((mine) => mine.name === layer.name) ? ALREADY : null })) }));
+  return { groups: groups.filter((group) => group.rows.some((row) => !row.blocked)) };
 }
 
 const AVAILABILITY = { picker: "hiddenFromPicker", carPlay: "hiddenFromCarPlay", legend: "hidesLegend",
@@ -1576,10 +1625,20 @@ async function answer(request, response) {
     return response.end(JSON.stringify({ $schema: "https://skifahrer.github.io/schemas/mapson.json",
       name: each.name, stack: portable(each).stack }));
   }
+  if (method === "GET" && parts[4] === "search" && parts.length === 5) {
+    // 129: any browser the phone let in, no edit password; a phone from before 3492 has no such answer.
+    if (phone.searchMissing) return send(response, 404, "");
+    phone.searchAsks.push({ ...Object.fromEntries(url.searchParams), bearer: Boolean(request.headers.authorization) });
+    const answered = placesSearch(url.searchParams);
+    return answered ? json(response, answered) : send(response, 400, "");
+  }
   if (method === "GET" && parts[4] === "details" && parts.length === 5) {
     // 21: as `PeerWebDetails` answers: the layer's layout filled from the feature, or nothing.
     const values = JSON.parse(url.searchParams.get("values") || "{}");
     phone.detailsAsked.push({ layer: url.searchParams.get("layer"), values });
+    if ((url.searchParams.get("layer") || "").toUpperCase() === "6F1E2A10-0000-4000-8000-0000000000E1") {
+      return json(response, trainSheet(values));
+    }
     const laidOut = each.layers.find((one) => one.id === url.searchParams.get("layer") && one.layout);
     if (laidOut) return json(response, filledSheet(laidOut, values));
     if (!phone.laysOutDetails) { response.writeHead(204); return response.end(); }
@@ -1627,6 +1686,11 @@ async function answer(request, response) {
       return send(response, 403, "Your role on this map does not allow that");
     }
     return json(response, roster(each.id));
+  }
+  if (parts[4] === "other-layers" && parts.length === 5) {
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    return json(response, otherLayers(each));
   }
   if (parts[4] === "switches" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -1727,6 +1791,27 @@ async function answer(request, response) {
     each.layers.push(...found.map((row) => ({ id: randomUUID().toUpperCase(), name: row.title,
       kind: "WMS", symbol: "square.grid.3x3", isEnabled: true })));
     each.revision += 1;
+    return json(response, portable(each));
+  }
+  if (method === "POST" && parts[4] === "add-copies") {
+    // 119: as `PeerWebFromMaps.copies`: a layer the picker would not tick is refused.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (each.locked) return send(response, 403, "This map is locked on the phone");
+    const asked = (url.searchParams.get("layers") || "").split(",").filter(Boolean);
+    if (!asked.length) return send(response, 409, "Tick one or more layers of another map");
+    const rows = otherLayers(each).groups.flatMap((group) => group.rows);
+    const made = [];
+    for (const id of new Set(asked)) {
+      const row = rows.find((one) => one.layer === id);
+      if (!row) return send(response, 409, "No other map this browser may see has that layer");
+      if (row.blocked) return send(response, 409, row.blocked);
+      const source = phone.maps.flatMap((one) => one.layers).find((layer) => layer.id === id);
+      made.push({ ...structuredClone(source), id: randomUUID().toUpperCase() });
+    }
+    each.layers.push(...made);
+    each.revision += 1;
+    phone.copies = [...(phone.copies ?? []), ...made.map((layer) => layer.name)];
     return json(response, portable(each));
   }
   if (method === "POST" && parts[4] === "add-server-layers") {
@@ -1858,9 +1943,36 @@ function live(each, layerID, query, response) {
   const box = (query.get("bbox") || "").split(",").map(Number);
   if (!layer || box.length !== 4 || box.some(Number.isNaN)) return send(response, 404, "");
   phone.liveAsks.push(layerID);
+  phone.liveAnsweredAt = Date.now();
   const point = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
-  json(response, { type: "FeatureCollection", features: [{ type: "Feature", properties: { Nazov: "Os 4314" },
+  json(response, { type: "FeatureCollection", features: [{ type: "Feature",
+    properties: { Nazov: "Os 4314", Line: "4314", Delay: String(phone.trainDelay) },
     geometry: { type: "Point", coordinates: point } }] }, { "Content-Type": "application/geo+json" });
+}
+
+// 130: as `PeerWebDetails` words a vehicle's connection card (`connection`, `live`) and, for a page before 3493, its `rows`.
+function trainSheet(values) {
+  const minutes = Number(values.Delay ?? 0);
+  const late = minutes > 0;
+  const clock = (extra) => `09:${String(31 + extra).padStart(2, "0")}`;
+  const delay = { minutes, sentence: late ? `${minutes} min late` : minutes < 0 ? `${-minutes} min early` : "On time",
+    short: late ? `+${minutes} min` : minutes < 0 ? `−${-minutes} min` : "On time",
+    tone: minutes >= 10 ? "veryLate" : late ? "late" : "good" };
+  const connection = { delay, station: "Hlavná stanica", route: "Lamač → Petržalka", operatorLine: "Run by DPB",
+    planned: clock(0), actual: clock(minutes), updated: "09:35", note: "Detour via Main St",
+    labels: { delay: "Delay", planned: "Planned", actual: "Actual", updated: "Updated", note: "Note from the operator" } };
+  const rows = [{ title: "Delay", value: delay.sentence }, { title: "", value: "From Lamač to Petržalka" },
+    { title: "Planned", value: connection.planned }, { title: "Actual", value: connection.actual },
+    { title: "", value: "Run by DPB" }, { title: "Note from the operator", value: connection.note }];
+  const answeredAt = phone.liveAnsweredAt;
+  const sheet = { title: values.Nazov, keys: ["Nazov", "Line", "Delay"],
+    sections: [{ blocks: [phone.rowsOnly ? { kind: "rows", rows } : { kind: "rows", rows, connection }] }] };
+  if (!phone.rowsOnly) {
+    const age = answeredAt == null ? null : Math.floor((Date.now() - answeredAt) / 1000);
+    sheet.live = { isLive: age != null && age <= phone.liveWindow, windowSeconds: phone.liveWindow, label: "LIVE",
+      notLiveLabel: "Not live", ...age == null ? {} : { ageSeconds: age } };
+  }
+  return sheet;
 }
 
 // MARK: - The phone's side
@@ -1999,6 +2111,7 @@ function testControl(route, query, response) {
     break;
   case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
   case "/__test/shares": return json(response, phone.shares);
+  case "/__test/copies": return json(response, phone.copies ?? []);
   case "/__test/folder":
     for (const each of phone.maps) Object.assign(each, { stackID: "F01DE500-0000-4000-8000-000000000001", stackName: "Hills" });
     break;
@@ -2044,6 +2157,11 @@ function testControl(route, query, response) {
   case "/__test/identified": return json(response, phone.identified);
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
   case "/__test/details-asked": return json(response, phone.detailsAsked);
+  case "/__test/train-delay": phone.trainDelay = Number(query.get("minutes")); break;
+  case "/__test/live-window": phone.liveWindow = Number(query.get("seconds")); break;
+  case "/__test/rows-only": phone.rowsOnly = true; break;
+  case "/__test/search-missing": phone.searchMissing = true; break;
+  case "/__test/search-asked": return json(response, phone.searchAsks);
   case "/__test/offline": return json(response, { asks: phone.offlineAsks, discarded: phone.discarded });
   case "/__test/pictures": return json(response, phone.pictureKinds);
   case "/__test/dxf-adds": return json(response, phone.dxfAdds);

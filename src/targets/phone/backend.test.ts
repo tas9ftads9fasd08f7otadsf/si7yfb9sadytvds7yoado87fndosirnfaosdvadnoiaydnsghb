@@ -265,3 +265,33 @@ describe("esriQueryOf", () => {
     expect(esriQueryOf("G", { kind: "forget" })).toEqual({ service: "G", forget: "1" });
   });
 });
+
+// 129 the places search is a plain read with the words and the centre of the map; an older phone's 404 is null
+describe("search", () => {
+  it("asks the phone without a token, with the centre, and reads the places", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ places: [{ title: "Poprad", lat: 49.06, lon: 20.3, properties: {} }] })));
+    vi.stubGlobal("fetch", fetcher);
+    const places = await backend.search("M", "Pop rad", { lat: 49.123456789, lng: 20.1 });
+    const [path, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit | undefined];
+    const address = new URL(path, "http://phone");
+    expect(address.pathname).toBe("/riki/v1/maps/M/search");
+    expect(Object.fromEntries(address.searchParams)).toEqual({ q: "Pop rad", lat: "49.12346", lon: "20.10000" });
+    expect(init?.headers).toBeUndefined();
+    expect(places?.map((place) => place.title)).toEqual(["Poprad"]);
+  });
+
+  it("leaves the centre out when the map has none, and reads an answer with no places as none", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await backend.search("M", "pop", null)).toEqual([]);
+    const [path] = fetcher.mock.calls[0] as unknown as [string];
+    expect([...new URL(path, "http://phone").searchParams.keys()]).toEqual(["q"]);
+  });
+
+  it("answers null from a phone that has no such answer, and rejects any other refusal", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
+    expect(await backend.search("M", "pop", null)).toBeNull();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("Busy", { status: 503 })));
+    await expect(backend.search("M", "pop", null)).rejects.toThrow("Busy");
+  });
+});

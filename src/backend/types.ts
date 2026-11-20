@@ -2,7 +2,7 @@ import type { Protocol } from "pmtiles";
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk, Sharer } from "@/lib/people";
 import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing, SavedListing, SavedShape,
-  LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
+  LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
   SharePeople, RegionNeed, RegionRow } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
@@ -23,8 +23,9 @@ export class CoreNotReady extends NotOnSite {}
 
 /** 82 The parts of the page a target may not answer yet; a screen offers only what it does. 86 `addLayer` is the panel
  * with a tile address and a service's layers; its packages, files, API layers and servers are offered apart.
- * 108 `people` reads who a map is shared with. 135 `saved` reads the phone's saved places. */
-export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "coverage" | "pairing" | "people" | "regionPackages" | "saved";
+ * 108 `people` reads who shares a map. 119 `fromMaps` copies the other maps' layers. 135 `saved` reads the phone's
+ * saved places. */
+export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "fromMaps" | "coverage" | "pairing" | "people" | "regionPackages" | "saved";
 
 /** 112 Why a region package did not come: no room, the host said no, the connection, a wrong size or an unreadable zip. */
 export class RegionFailed extends Error {
@@ -118,6 +119,8 @@ export interface Backend {
   useToken(token: () => string | null): void;
   /** 76 Told when the maps changed elsewhere, or the person signed in or out; returns how to stop. */
   onChanged(listener: (changed?: ChangedElsewhere[]) => void): () => void;
+  /** 137 Told how far the site's first read has come; the phone has nothing to tell. */
+  loading?(listener: (loading: Loading) => void): () => void;
   /** 76 The site's Sign in with Apple or sign-out button, put in this element; the phone has none. */
   mountAccount?(button: "in" | "out", into: HTMLElement): void;
   /** 83 The name the site's changes are made under, typed in its account part; the phone has none. */
@@ -155,6 +158,10 @@ export interface Backend {
   /** 60 The layer's address asked as the phone's Test asks it. */
   testLayer(mapID: string, layerID: string): Promise<Answer<LayerTest>>;
   packages(mapID: string): Promise<Answer<Packages>>;
+  /** 119 The other maps' layers, as Add layer's picker on the phone lists them. */
+  otherLayers(mapID: string): Promise<Answer<OtherLayers>>;
+  /** 119 The ticked layers taken as copies; the map comes back. */
+  addCopies(mapID: string, layers: string[]): Promise<Answer<Portable>>;
   servers(): Promise<Answer<ServerList>>;
   addServer(kind: string, address: string, name: string): Promise<Answer<ServerList>>;
   importServers(file: Blob): Promise<Answer<ServerList>>;
@@ -190,6 +197,8 @@ export interface Backend {
   live(mapID: string, layerID: string, box: string): Promise<unknown>;
   identify(mapID: string, ask: AddressAsk): Promise<IdentifyListing>;
   details(mapID: string, layerID: string, values: Record<string, string>): Promise<DetailsSheet | null>;
+  /** 129 The phone's places for the words, near where the map looks; null from a phone that has no such answer. */
+  search(mapID: string, text: string, near: { lat: number; lng: number } | null): Promise<PhonePlace[] | null>;
   phoneLocation(): Promise<{ lat: number; lon: number }>;
   icon(name: string): Promise<Icon | null>;
   /** A CSS `url(…)` of a symbol, laid on as a mask. */

@@ -1,4 +1,5 @@
 import { featureTitle } from "./feature";
+import type { FoundPlace, PhonePlace } from "./types";
 
 /** 100 A name found in the map's own data, where it lies and the layer that drew it. */
 export interface NameHit {
@@ -7,6 +8,10 @@ export interface NameHit {
   lng: number;
   lat: number;
   properties: Record<string, unknown>;
+  /** 129 The layer's id, from the phone's search, so the hit can wear the layer's Details. */
+  layerID?: string;
+  /** 129 West, south, east, north of a line or an area. */
+  box?: [number, number, number, number];
 }
 
 /** A feature as the map hands it over: its tags, a point on it and the layer it came from. */
@@ -65,4 +70,41 @@ export function distanceText(from: { lng: number; lat: number }, to: { lng: numb
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(from.lat * rad) * Math.cos(to.lat * rad) * Math.sin(dLng / 2) ** 2;
   const metres = 2 * 6371000 * Math.asin(Math.sqrt(a));
   return metres < 1000 ? `${Math.round(metres / 10) * 10} m` : `${(metres / 1000).toFixed(metres < 10000 ? 1 : 0)} km`;
+}
+
+/** 129 As the phone's own field starts matching: three letters, or a number, which is a line. */
+export function worthAsking(typed: string): boolean {
+  const text = typed.trim();
+  return text.length <= 100 && (text.length >= 3 || /^\d+$/.test(text));
+}
+
+const hitKey = (name: string, lng: number, lat: number) => `${folded(name)}\u0000${lng.toFixed(3)}\u0000${lat.toFixed(3)}`;
+
+/** West, south, east, north; nothing for a point. */
+function framed(box?: number[] | null): [number, number, number, number] | undefined {
+  return box?.length === 4 ? [box[0]!, box[1]!, box[2]!, box[3]!] : undefined;
+}
+
+/** 129 The map's own features the phone found, joined to the names read off the map: a name in one spot is
+ * listed once, as the phone's, which can ask the layer for its Details. */
+export function withPhoneHits(local: NameHit[], places: PhonePlace[]): NameHit[] {
+  const own = places.filter((place) => place.layer).map((place): NameHit => {
+    const box = framed(place.box);
+    return { name: place.title, layer: place.layer ?? "", lng: place.lon, lat: place.lat, properties: place.properties,
+      ...place.layerID ? { layerID: place.layerID } : {}, ...box ? { box } : {} };
+  });
+  const phones = new Map(own.map((hit) => [hitKey(hit.name, hit.lng, hit.lat), hit]));
+  const kept = local.map((hit) => phones.get(hitKey(hit.name, hit.lng, hit.lat)) ?? hit);
+  const listed = new Set(kept.map((hit) => hitKey(hit.name, hit.lng, hit.lat)));
+  return [...kept, ...own.filter((hit) => !listed.has(hitKey(hit.name, hit.lng, hit.lat)))];
+}
+
+/** 129 The phone's places that are no layer's feature, as the "Places" list draws them. */
+export function indexedPlaces(places: PhonePlace[]): FoundPlace[] {
+  return places.filter((place) => !place.layer).map((place) => {
+    const box = framed(place.box);
+    return { start: { kind: "coordinates", name: place.title, latitude: place.lat, longitude: place.lon,
+      ...box ? { box: { minLon: box[0], minLat: box[1], maxLon: box[2], maxLat: box[3] } } : {} },
+    title: place.title, detail: place.detail ?? null, kind: place.kind ?? null, properties: place.properties };
+  });
 }
