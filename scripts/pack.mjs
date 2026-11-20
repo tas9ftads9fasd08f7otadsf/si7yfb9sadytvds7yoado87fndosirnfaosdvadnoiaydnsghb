@@ -49,11 +49,18 @@ export const infoPlist = (version) => `<?xml version="1.0" encoding="UTF-8"?>
 </plist>
 `;
 
+/** The phone pack's own outputs in dist; the site's core and words live there too and stay. */
+export const PHONE_OUTPUTS = ["WebEditor.bundle", "web-editor.zip", "web-editor.zip.sha256"];
+
+export async function clearPhoneOutputs(dist) {
+  for (const name of PHONE_OUTPUTS) await rm(path.join(dist, name), { recursive: true, force: true });
+}
+
 async function main() {
   const out = path.join(ROOT, "out");
   const dist = path.join(ROOT, "dist");
   const bundle = path.join(dist, "WebEditor.bundle");
-  await rm(dist, { recursive: true, force: true });
+  await clearPhoneOutputs(dist);
   await mkdir(bundle, { recursive: true });
 
   const files = (await readdir(out, { recursive: true, withFileTypes: true }))
