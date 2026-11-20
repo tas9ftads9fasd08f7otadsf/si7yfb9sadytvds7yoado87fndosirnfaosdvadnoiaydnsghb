@@ -109,3 +109,17 @@ test("a block's own settings and rows are set", async ({ page }) => {
   expect(await asked).toMatchObject({ details: "removeRow", row: "0" });
   await expect(rows.locator(".layout-row")).toHaveCount(1);
 });
+
+// 114 TestFlight ANfx: a shape is switched off and the panel reads it back off.
+test("taps on the layer's areas are switched off", async ({ page }) => {
+  const panel = await openLayout(page);
+  const taps = panel.getByRole("group", { name: "A tap opens Details on" });
+  await expect(taps.getByRole("checkbox")).toHaveCount(3);
+  const asked = sent(page);
+  const read = reread(page);
+  await taps.getByRole("checkbox", { name: "Areas" }).click();
+  expect(await asked).toMatchObject({ layer, details: "taps", kind: "areas", on: "0" });
+  await read;
+  await expect(taps.getByRole("checkbox", { name: "Areas" })).not.toBeChecked();
+  await expect(taps.getByRole("checkbox", { name: "Points" })).toBeChecked();
+});

@@ -14,7 +14,8 @@ const words = { addContent: "Add content", addSection: "Add section", removeSect
   hidesButton: "Hide when a key is empty", textIcon: "A note icon before the text", hidesText: "Hide when empty",
   nameAndValue: "Name and value", rowIcons: "A small icon before each row", hidesRows: "Hide empty rows",
   addRow: "Add a row", liveFor: "Live for", card: "What the card shows", place: "Place",
-  withActions: "With action buttons", belowRows: "Below the rows" };
+  withActions: "With action buttons", belowRows: "Below the rows", taps: "A tap opens Details on",
+  tapsNote: "A tap on a shape that is off goes through" };
 
 const button = { id: "b1", label: "Timetable", look: "tinted", action: "link", template: "https://t.test/{id}",
   hides: false };
@@ -130,6 +131,23 @@ describe("Details settings", () => {
     pick("Action buttons");
     fireEvent.click(screen.getByRole("checkbox", { name: "Highlight the first one" }));
     expect(query()).toMatchObject({ details: "actionsLook", labels: "iconAndLabel", highlight: "1" });
+  });
+
+  // 114 TestFlight ANfx: a shape switched off is sent by its kind
+  it("switches taps on a layer's areas", () => {
+    const query = asked();
+    show({ ...layout(), taps: [{ kind: "points", name: "Points", isOn: true },
+      { kind: "paths", name: "Paths", isOn: true }, { kind: "areas", name: "Areas", isOn: true }] });
+    const group = screen.getByRole("group", { name: "A tap opens Details on" });
+    expect(group.querySelectorAll("input[type=checkbox]")).toHaveLength(3);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Areas" }));
+    expect(query()).toMatchObject({ details: "taps", kind: "areas", on: "0", layer: "L" });
+  });
+
+  // 114: an older phone lists no taps, so the page offers no switch
+  it("offers no tap switches to a phone that lists none", () => {
+    show();
+    expect(screen.queryByRole("group", { name: "A tap opens Details on" })).toBeNull();
   });
 
   // 55: a block's settings go with its place and handle.

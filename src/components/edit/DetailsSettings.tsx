@@ -195,6 +195,22 @@ export function ActionsFields({ layout, send }: { layout: DetailsLayout; send: S
   );
 }
 
+/** 114: TestFlight ANfx, which of the layer's shapes a tap opens the sheet on. */
+export function TapsFields({ layout, send }: { layout: DetailsLayout; send: Send }) {
+  const { words, taps } = layout;
+  if (!taps?.length) return null;
+  return (
+    <div className="layout-taps" data-part="taps" role="group" aria-label={words.taps}>
+      <span className="words">{words.taps}</span>
+      {taps.map((tap) => (
+        <Check key={tap.kind} label={tap.name} isOn={tap.isOn}
+          onChange={(on) => send({ details: "taps", kind: tap.kind, on: flag(on) })} />
+      ))}
+      <small>{words.tapsNote}</small>
+    </div>
+  );
+}
+
 /** A block's own settings beyond its words: by its kind, each sent with its place and handle. */
 export function BlockSettingsFields({ block, place, layout, send }:
   { block: LayoutBlock; place: Place; layout: DetailsLayout; send: Send }) {
