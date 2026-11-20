@@ -24,15 +24,17 @@ test("a clicked feature shows what it carries, as text", async ({ page }) => {
   const box = await page.locator("#map").boundingBox();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
-  const card = page.locator(".maplibregl-popup .feature");
+  const card = page.locator("#placePanel .feature");
   await expect(card.locator("b")).toHaveText("Chata pod Rysmi");
   await expect(card.locator("small")).toHaveText("Huts");
   await expect(card.locator("dd", { hasText: "2250" })).toHaveCount(1);
   await expect(card.locator("dd", { hasText: "<b>open</b>" })).toHaveCount(1);
   await expect(card.locator("dt", { hasText: "riki_stack" })).toHaveCount(0);
 
+  // 100 the place panel beside the map, as the design's W2; empty ground closes it
+  await expect(page.locator("#placePanel h2")).toHaveText("Chata pod Rysmi");
   await page.mouse.click(box.x + 20, box.y + 20);
-  await expect(page.locator(".maplibregl-popup")).toHaveCount(0);
+  await expect(page.locator("#placePanel")).toHaveCount(0);
 });
 
 // 3001: empty ground is asked of the layers' servers through the phone, every answer shown.
@@ -42,7 +44,7 @@ test("a click on empty ground shows what the servers answer", async ({ page, req
   const box = await page.locator("#map").boundingBox();
   await page.mouse.click(box.x + box.width / 3, box.y + box.height / 3);
 
-  const cards = page.locator(".maplibregl-popup .feature");
+  const cards = page.locator("#placePanel .feature");
   await expect(cards).toHaveCount(2);
   await expect(cards.first().locator("b")).toHaveText("Granite");
   await expect(cards.first().locator("small")).toHaveText("Geology");
@@ -60,7 +62,7 @@ test("a clicked feature wears its layer's layout", async ({ page, request }) => 
   const box = await page.locator("#map").boundingBox();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
-  const card = page.locator(".maplibregl-popup .feature");
+  const card = page.locator("#placePanel .feature");
   await expect(card.locator("b")).toHaveText("Hut Chata pod Rysmi");
   await expect(card.locator("h4")).toHaveText(["About", "Source"]);
   await expect(card.locator("dd", { hasText: "2250 m" })).toHaveCount(1);
@@ -70,4 +72,20 @@ test("a clicked feature wears its layer's layout", async ({ page, request }) => 
   const asked = (await phone(request, "details-asked"))[0];
   expect(asked.layer).toBe("6f1e2a10-0000-4000-8000-0000000000a2");
   expect(asked.values.Beds).toBe("40");
+});
+
+// 100 W1's search finds the map's own names; a result opens the place panel, Escape ends the search.
+test("the search finds a name on the map and opens it in the place panel", async ({ page }) => {
+  await openViewer(page);
+  await showHuts(page, { Nazov: "Chata pod Rysmi", Elevation: "2250" });
+  await page.locator("#search").fill("chata");
+  await expect(page).toHaveURL(/\/search\/chata#/);
+  const results = page.locator("#searchResults");
+  await expect(results).toContainText("Results for “chata”");
+  await results.getByRole("button", { name: /Chata pod Rysmi/ }).click();
+  await expect(page.locator("#placePanel h2")).toHaveText("Chata pod Rysmi");
+  await expect(page.locator("#placePanel .place-foot")).toContainText("Huts");
+  await page.locator("#search").press("Escape");
+  await expect(page.locator("#current .hero")).toBeVisible();
+  await expect(page).not.toHaveURL(/\/search\//);
 });

@@ -6,6 +6,7 @@ import { go, offers, openNewMap, shareAddress, showSide, shownMapOf, useViewer }
 import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
+import { SearchField } from "./Search";
 import { Traffic } from "./Traffic";
 
 /** 90 The map on screen, named; it opens the maps to pick another. */
@@ -82,6 +83,7 @@ export function TopBar() {
         <div id="brand"><span className="tile" aria-hidden="true">R</span><b id="appName">{words.app}</b></div>
         <ShownMap />
       </div>
+      <SearchField />
       <div className="end">
         <Traffic />
         <span id="viewers" role="status" title={viewing} aria-label={viewing}
