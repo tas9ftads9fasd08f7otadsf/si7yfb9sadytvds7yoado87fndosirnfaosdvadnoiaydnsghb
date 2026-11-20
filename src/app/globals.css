@@ -411,6 +411,8 @@ body.side-hidden #regionNeeds { left: calc(var(--rail) + 12px); }
 #gate, #small { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
   padding: 24px; background: var(--scrim); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 body.gated #gate { display: flex; }
+/* 134: no one is signed in, so the editor behind is not shown either. */
+#gate.closed { background: var(--page); }
 .sheet { width: 100%; max-width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
   box-shadow: 0 18px 50px var(--shadow); padding: 28px; text-align: center; }
 .sheet .sym { font-size: 36px; color: var(--accent); }

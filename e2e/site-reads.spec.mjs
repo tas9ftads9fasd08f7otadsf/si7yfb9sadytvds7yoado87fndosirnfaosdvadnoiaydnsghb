@@ -9,6 +9,8 @@ test("signed out, the site asks for an Apple Account and shows the maps after si
   await page.goto("./");
   await expect(page.locator("#gate")).toBeVisible();
   await expect(page.locator("#gateTitle")).toHaveText("Sign in to iCloud");
+  // 134 signed out, the editor is not seen behind the gate
+  await expect(page.locator("#gate")).toHaveClass(/closed/);
   await page.locator("#signIn button").click();
   await expect(page.locator("#gate")).toBeHidden();
   await expect(page.locator("#device")).toContainText("Riki Tester");
