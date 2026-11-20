@@ -192,6 +192,16 @@ describe("the core's pipeline", () => {
     expect(release.indexOf("name: riki-words")).toBeLessThan(release.indexOf("npm run pack:web"));
   });
 
+  // 110 the glyphs and the base sprite are made from the same checkout, and the release packs them
+  it("makes the site's glyphs and sprite from the same checkout, which the release takes before it packs", () => {
+    expect(core).toContain("npm run build:assets");
+    expect(core).toContain("name: riki-assets");
+    expect(core).toContain("scripts/build-assets.mjs");
+    expect(release).toContain("name: riki-assets");
+    expect(release.indexOf("name: riki-assets")).toBeLessThan(release.indexOf("npm run pack:web"));
+    expect(read("../../scripts/deploy-site.sh")).toContain("out/glyphs");
+  });
+
   it("lets CI pack the site without the core for its browser specs, and the release not", () => {
     expect(read("ci.yml")).toMatch(/run: npm run pack:web\n\s+env:\n\s+RIKI_PACK_WITHOUT_CORE: "1"/);
     expect(release).not.toContain("RIKI_PACK_WITHOUT_CORE");

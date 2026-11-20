@@ -5,9 +5,13 @@ import type { AddressReading, Device, Portable, ShareRole } from "@/lib/types";
 import { BASE } from "./base";
 import type { CoreRow, CoreWrite } from "./records";
 
-/** What the style is built for: the theme, the layers hidden and where the pipeline's files are. */
+/** What the style is built for: the theme, the layers hidden and where the pipeline's and the site's files are. */
 export interface StyleCatalog {
   tilesBase: string;
+  /** 110 The site's glyphs, to which the core adds `/{fontstack}/{range}.pbf`; absolute. */
+  glyphsBase: string;
+  /** 110 The site's base sprite without its extension, as a style's `sprite` names it; absolute. */
+  spriteBase: string;
   theme: "light" | "dark";
   hidden: string[];
   tiles: string;

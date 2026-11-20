@@ -1,6 +1,6 @@
 // The site as a deploy serves it: dist/web-site.zip unpacked, under `php -S`, at the root or a path.
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,6 +12,15 @@ const folder = path.join(served, under);
 rmSync(served, { recursive: true, force: true });
 mkdirSync(folder, { recursive: true });
 execFileSync("unzip", ["-q", path.join(ROOT, "dist", "web-site.zip"), "-d", folder]);
+// 110 A zip packed without the rikimaps checkout has no glyphs or sprite; the specs get stand-ins, as they get a core.
+if (!existsSync(path.join(folder, "out", "glyphs"))) {
+  mkdirSync(path.join(folder, "out", "glyphs", "Noto Sans Regular"), { recursive: true });
+  mkdirSync(path.join(folder, "out", "sprites"), { recursive: true });
+  writeFileSync(path.join(folder, "out", "glyphs", "Noto Sans Regular", "0-255.pbf"), Buffer.alloc(0));
+  writeFileSync(path.join(folder, "out", "sprites", "temaki-sprite.json"), "{}");
+  writeFileSync(path.join(folder, "out", "sprites", "temaki-sprite.png"),
+    Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64"));
+}
 // The deploy's own file, with a token the mock CloudKit takes.
 const config = { container: "iCloud.com.rikimaps.rikimaps.maps", apiToken: "test-token", environment: "development",
   tilesBase: "https://tiles.example" };
