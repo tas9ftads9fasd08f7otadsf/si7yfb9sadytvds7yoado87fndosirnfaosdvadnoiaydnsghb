@@ -5,6 +5,8 @@ interface Props {
   properties: Record<string, unknown>;
   layer: string;
   details?: DetailsSheet | null;
+  /** 129 What a search listed it as, for a feature whose tags hold no name. */
+  title?: string;
 }
 
 function Rows({ rows }: { rows: [string, string][] }) {
@@ -54,8 +56,8 @@ function Block({ block, tags }: { block: DetailsBlock; tags: [string, string][] 
 }
 
 /** Values are a server's words: they go in as text, never as markup. 21: a layout's sections first. */
-export function FeatureCard({ properties, layer, details }: Props) {
-  const title = details?.title || featureTitle(properties);
+export function FeatureCard({ properties, layer, details, title: listed }: Props) {
+  const title = details?.title || listed || featureTitle(properties);
   if (!details) {
     return (
       <div className="feature">

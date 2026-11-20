@@ -2,7 +2,7 @@ import type { Protocol } from "pmtiles";
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk, Sharer } from "@/lib/people";
 import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing,
-  LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
+  LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
   SharePeople, RegionNeed, RegionRow } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
@@ -193,6 +193,8 @@ export interface Backend {
   live(mapID: string, layerID: string, box: string): Promise<unknown>;
   identify(mapID: string, ask: AddressAsk): Promise<IdentifyListing>;
   details(mapID: string, layerID: string, values: Record<string, string>): Promise<DetailsSheet | null>;
+  /** 129 The phone's places for the words, near where the map looks; null from a phone that has no such answer. */
+  search(mapID: string, text: string, near: { lat: number; lng: number } | null): Promise<PhonePlace[] | null>;
   phoneLocation(): Promise<{ lat: number; lon: number }>;
   icon(name: string): Promise<Icon | null>;
   /** A CSS `url(…)` of a symbol, laid on as a mask. */

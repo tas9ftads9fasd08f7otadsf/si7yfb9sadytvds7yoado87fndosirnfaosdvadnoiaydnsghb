@@ -50,7 +50,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+  tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
@@ -174,7 +174,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+    tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
@@ -928,6 +928,32 @@ function coverageSummary(each) {
   return { coverage, line, required: requires ? "Its layers require Vysoké Tatry" : null, warnings };
 }
 
+// 129: as `PeerWebSearch.answer` reads an ask: no text is 400, under three letters only a number answers.
+const SEARCHED_HUTS = "6F1E2A10-0000-4000-8000-0000000000A2";
+const SEARCHED_TRAINS = "6F1E2A10-0000-4000-8000-0000000000E1";
+const searchFolded = (text) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+
+function placesSearch(query) {
+  if (!query.has("q")) return null;
+  const text = searchFolded(query.get("q"));
+  const isLine = /^\d+$/.test(text);
+  if (!isLine && text.length < 3) return { places: [] };
+  const own = [
+    { title: "Chata pod Rysmi", layer: "Huts", layerID: SEARCHED_HUTS, lat: 49.1794, lon: 20.0881,
+      properties: { Nazov: "Chata pod Rysmi", Elevation: "2250", Beds: "40" } },
+    { title: "Zbojnícka chata", layer: "Huts", layerID: SEARCHED_HUTS, lat: 49.2005, lon: 20.1115,
+      properties: { Nazov: "Zbojnícka chata", Elevation: "1960", Beds: "30" } },
+    { title: "Os 4314", layer: "Trains", layerID: SEARCHED_TRAINS, lat: 49.06, lon: 20.29,
+      properties: { Nazov: "Os 4314", Line: "4314" } }];
+  const indexed = [
+    { title: "Poprad", detail: "Prešov Region", kind: "city", lat: 49.06, lon: 20.3, box: [20.2, 49.0, 20.4, 49.1],
+      properties: { name: "Poprad", population: "50000" } },
+    { title: "Popradské pleso", detail: "High Tatras", kind: "lake", lat: 49.0675, lon: 20.0711,
+      properties: { name: "Popradské pleso", ele: "1494" } }];
+  const found = (each) => searchFolded(each.title).includes(text) || (isLine && searchFolded(each.title).endsWith(text));
+  return { places: [...own.filter(found), ...isLine ? [] : indexed.filter(found)] };
+}
+
 // 2949: as `PeerWebStartPlaces` answers: the phone's regions and countries, its search's cities.
 function startPlaces(kind, wanted) {
   if (kind === "region") {
@@ -1553,6 +1579,13 @@ async function answer(request, response) {
     return response.end(JSON.stringify({ $schema: "https://skifahrer.github.io/schemas/mapson.json",
       name: each.name, stack: portable(each).stack }));
   }
+  if (method === "GET" && parts[4] === "search" && parts.length === 5) {
+    // 129: any browser the phone let in, no edit password; a phone from before 3492 has no such answer.
+    if (phone.searchMissing) return send(response, 404, "");
+    phone.searchAsks.push({ ...Object.fromEntries(url.searchParams), bearer: Boolean(request.headers.authorization) });
+    const answered = placesSearch(url.searchParams);
+    return answered ? json(response, answered) : send(response, 400, "");
+  }
   if (method === "GET" && parts[4] === "details" && parts.length === 5) {
     // 21: as `PeerWebDetails` answers: the layer's layout filled from the feature, or nothing.
     const values = JSON.parse(url.searchParams.get("values") || "{}");
@@ -2043,6 +2076,8 @@ function testControl(route, query, response) {
   case "/__test/identified": return json(response, phone.identified);
   case "/__test/lays-out-details": phone.laysOutDetails = true; break;
   case "/__test/details-asked": return json(response, phone.detailsAsked);
+  case "/__test/search-missing": phone.searchMissing = true; break;
+  case "/__test/search-asked": return json(response, phone.searchAsks);
   case "/__test/offline": return json(response, { asks: phone.offlineAsks, discarded: phone.discarded });
   case "/__test/pictures": return json(response, phone.pictureKinds);
   case "/__test/dxf-adds": return json(response, phone.dxfAdds);

@@ -173,6 +173,23 @@ export interface FoundPlace {
   start: Start;
   title: string;
   detail?: string | null;
+  /** 129 Set for a place of the phone's search, which opens in the place panel with these tags. */
+  kind?: string | null;
+  properties?: Record<string, string>;
+}
+
+/** 129 One answer of `GET …/search` (`PeerWebSearch.Place`): the map's own feature, with a `layer`, or an indexed place. */
+export interface PhonePlace {
+  title: string;
+  detail?: string | null;
+  kind?: string | null;
+  layer?: string | null;
+  layerID?: string | null;
+  lat: number;
+  lon: number;
+  /** West, south, east, north. */
+  box?: number[] | null;
+  properties: Record<string, string>;
 }
 
 export interface OptionChoice {

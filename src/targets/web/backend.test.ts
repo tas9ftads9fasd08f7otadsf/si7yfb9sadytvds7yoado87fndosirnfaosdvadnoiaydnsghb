@@ -272,6 +272,12 @@ describe("WebBackend's reads", () => {
     await expect(backend.newMap("x")).rejects.toThrow("step 4");
     await expect(backend.addFile("M", new File([], "a.gpx"))).rejects.toThrow("step 5");
   });
+
+  // 129 the site has no phone to search, so the page keeps the names it has loaded
+  it("answers no places search, as a phone from before 3492 does", async () => {
+    const { backend } = stack();
+    expect(await backend.search("M", "pop", null)).toBeNull();
+  });
 });
 
 describe("WebBackend's edits", () => {
