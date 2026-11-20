@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import type { CKContainer, CKError, CKReading, CKRecord, CKRecordList, CKZoneChanges } from "./cloud";
+import { Progress } from "./progress";
 import { indexedKeeping, MIRROR_ZONE, OWN_SHARE_PREFIX, Zones, type Keeping } from "./zones";
 
 // 76 zone changes by token, private mirror and shared zones, kept for offline
@@ -78,6 +79,17 @@ describe("Zones", () => {
       "shared:Share:Share-doprava", "shared:SharedMap:shared-doprava", "shared:SharedMapMember:member-marek",
       "shared:SharedMapMember:member-me"]);
     expect(rows.find((row) => row.id === "shared-doprava")).toMatchObject({ owner: "_friki", zone: "share-doprava", tag: "s1" });
+  });
+
+  // 137 the loading screen says how many zones there are, how many are read, and what they held
+  it("tells the zones to read and read, each record and each file it fetched", async () => {
+    const { container } = cloud();
+    const progress = new Progress();
+    const told: string[] = [];
+    progress.listen((loading) => told.push(`${loading.zones?.done ?? "-"}/${loading.zones?.total ?? "-"}`));
+    await new Zones(container, keeping, fetcher, progress).rows();
+    expect([...new Set(told)]).toEqual(["-/-", "0/1", "1/1", "1/2", "2/2"]);
+    progress.listen((loading) => expect(loading).toEqual({ records: 8, files: 2, zones: { done: 2, total: 2 } }));
   });
 
   // 108 a shared zone's share and its member rows are kept with the map, so the core can read who holds it

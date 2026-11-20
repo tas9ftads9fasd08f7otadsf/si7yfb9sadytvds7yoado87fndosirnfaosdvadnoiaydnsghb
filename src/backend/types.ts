@@ -2,7 +2,7 @@ import type { Protocol } from "pmtiles";
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk, Sharer } from "@/lib/people";
 import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing,
-  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
+  LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
   SharePeople, RegionNeed, RegionRow } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
@@ -118,6 +118,8 @@ export interface Backend {
   useToken(token: () => string | null): void;
   /** 76 Told when the maps changed elsewhere, or the person signed in or out; returns how to stop. */
   onChanged(listener: (changed?: ChangedElsewhere[]) => void): () => void;
+  /** 137 Told how far the site's first read has come; the phone has nothing to tell. */
+  loading?(listener: (loading: Loading) => void): () => void;
   /** 76 The site's Sign in with Apple or sign-out button, put in this element; the phone has none. */
   mountAccount?(button: "in" | "out", into: HTMLElement): void;
   /** 83 The name the site's changes are made under, typed in its account part; the phone has none. */

@@ -57,7 +57,7 @@ jobs:
       group: check-${{ github.head_ref || github.ref }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       # 132 The ISO week in a key makes a new cache each Monday, so none outlives a week.
@@ -82,6 +82,85 @@ jobs:
           path: server/vendor
           key: composer-${{ runner.os }}-${{ hashFiles('server/composer.lock') }}
       - run: composer install --working-dir=server --no-interaction --no-progress
+      - name: Cache pip's downloads
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-ftps-${{ steps.week.outputs.week }}
+      # The deploy script's test runs it on a stand-in FTPS server.
+      - run: sudo apt-get update -q && sudo apt-get install -y -q lftp && pip install pyftpdlib pyopenssl
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:php
+      - name: Cache the build's own cache
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.ts') }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+      - run: npm run build
+      - run: npm run pack
+      - run: npm run build:web
+      # The browser specs answer riki-core.wasm with a stand-in; the real one is built by core.yml, for the release.
+      - run: npm run pack:web
+        env:
+          RIKI_PACK_WITHOUT_CORE: "1"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: web-editor
+          path: dist/web-editor.zip*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v6
+        with:
+          name: web-site
+          path: dist/web-site.zip*
+          if-no-files-found: error
+
+  # 139 The browser specs share one stand-in phone, so each runner takes a share of them with its own.
+  browser:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Browser tests (${{ matrix.target }} ${{ matrix.shard }})
+    concurrency:
+      group: browser-${{ github.head_ref || github.ref }}-${{ matrix.target }}-${{ matrix.shard }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: phone, shard: 1/4 }
+          - { target: phone, shard: 2/4 }
+          - { target: phone, shard: 3/4 }
+          - { target: phone, shard: 4/4 }
+          - { target: web, shard: 1/2 }
+          - { target: web, shard: 2/2 }
+    env:
+      RIKI_TARGET: ${{ matrix.target == 'web' && 'web' || '' }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: week
+        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Cache the packages
+        id: modules
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - name: Cache the server's packages
+        uses: actions/cache@v5
+        with:
+          path: server/vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('server/composer.lock') }}
+      - run: composer install --working-dir=server --no-interaction --no-progress
       - id: playwright
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright's browser
@@ -95,46 +174,23 @@ jobs:
         run: npx playwright install --with-deps chromium
       - if: steps.browser.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
-      - name: Cache pip's downloads
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ runner.os }}-ftps-${{ steps.week.outputs.week }}
-      # The deploy script's test runs it on a stand-in FTPS server; apt's lists are fresh.
-      - run: sudo apt-get install -y -q lftp && pip install pyftpdlib pyopenssl
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run test:php
       - name: Cache the build's own cache
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: .next/cache
           key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.ts') }}
           restore-keys: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-      - run: npm run build
-      - run: npm run test:e2e
-      - run: npm run pack
-      - run: npm run build:web
-      # The browser specs answer riki-core.wasm with a stand-in; the real one is built by core.yml, for the release.
-      - run: npm run pack:web
+      - if: matrix.target == 'phone'
+        run: npm run build
+      - if: matrix.target == 'web'
+        run: npm run build:web && npm run pack:web
         env:
           RIKI_PACK_WITHOUT_CORE: "1"
-      - run: npm run test:e2e:web
-      - uses: actions/upload-artifact@v6
-        with:
-          name: web-editor
-          path: dist/web-editor.zip*
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v6
-        with:
-          name: web-site
-          path: dist/web-site.zip*
-          if-no-files-found: error
+      - run: npx playwright test --shard=${{ matrix.shard }}
       - uses: actions/upload-artifact@v6
         if: ${{ failure() }}
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.target }}-${{ strategy.job-index }}
           path: |
             playwright-report/
             test-results/

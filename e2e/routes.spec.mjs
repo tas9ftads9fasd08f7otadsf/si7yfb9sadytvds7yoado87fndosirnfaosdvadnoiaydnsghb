@@ -112,6 +112,8 @@ test("an old edit link unlocks nothing", async ({ page }) => {
 test("Share copies the page's address", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await openViewer(page);
+  // 138 bug: `/` moves to the map's address a moment after the map loads; read it once it has
+  await expect(page).toHaveURL(/\/maps\/6F1E2A10-0000-4000-8000-000000000001#/);
   const shown = page.url().split("#")[0];
   await page.locator("#shareButton").click();
   await expect(page.locator("#notice")).toHaveText("Link copied");
