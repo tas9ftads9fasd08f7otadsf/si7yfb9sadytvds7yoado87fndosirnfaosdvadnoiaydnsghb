@@ -161,12 +161,23 @@ Set it up once in Settings › Environments › `site`:
 | `ICLOUD_API_TOKEN` | variable (a secret works too) | the container's CloudKit JS API token; every browser sends it, so it is no secret; required |
 | `ICLOUD_CONTAINER` | variable | `iCloud.com.rikimaps.rikimaps.maps` when unset |
 | `TILES_BASE` | variable | the maptiles host, `https://…`; optional, and without it Riki's own region maps do not draw |
+| `SITE_URL` | variable | the site's address, whose `site.json` the server check reads; optional |
 | `REGIONS_CATALOG` | variable | the region catalog (maptiles' `maps.json`), `https://…`; optional, and without it the site offers no region downloads |
 | `RIKIMAPS_READ_TOKEN` | repository secret | reads the private rikimaps repository for the core and the words; the release build, not the deploy |
 
 Until the three FTPS secrets are set, the deploy job says so and skips. The server's certificate must
 be valid for its host name. Add required reviewers to the `site` environment to approve each
 deploy by hand.
+
+#### Checking the server
+
+`.github/workflows/check-server.yml` runs `scripts/check-server.sh` each morning, by hand (Actions › Check
+server › Run workflow), and as the deploy's step before it uploads anything. It checks, in order: that
+`FTPS_HOST` resolves, that `FTPS_PORT` answers, that the certificate is issued for `FTPS_HOST` (naming the
+names it does hold when not), trusted and not expiring within 14 days (a warning), that `FTPS_USER` logs in
+and can write and remove a file in `FTPS_DIR`, and, with `SITE_URL` set, which release the site serves. Each
+line reads `ok`, `warn`, `skip` or `FAIL`, and any `FAIL` fails the run, so GitHub mails it. Locally, with the
+same variables set: `bash scripts/check-server.sh`.
 
 What stays in CloudKit Console, for the container: Web Services on for it; the API token's **Sign-In Callback** set
 to `postMessage` and the site's origin (scheme, host and port) among its allowed origins; the schema deployed to
