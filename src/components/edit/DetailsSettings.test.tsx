@@ -76,12 +76,12 @@ describe("Details settings", () => {
     expect(query()).toMatchObject({ layer: "L", details: "header", symbol: "tram.fill", title: "" });
   });
 
-  // 55: a layout without action buttons offers to add them, and nothing else of them.
+  // 55, 117: a layout without action buttons offers to add them, and nothing else of them.
   it("adds the action buttons", () => {
     const query = asked();
     show();
     pick("Action buttons");
-    expect(screen.queryByRole("checkbox", { name: "Copy" })).toBeNull();
+    expect(screen.queryByRole("switch", { name: "Copy" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Add action buttons" }));
     expect(query()).toMatchObject({ details: "addActions" });
   });
@@ -134,14 +134,14 @@ describe("Details settings", () => {
     expect(query()).toMatchObject({ details: "actionsLook", labels: "iconAndLabel", highlight: "1" });
   });
 
-  // 114 TestFlight ANfx: a shape switched off is sent by its kind
+  // 114 TestFlight ANfx, 117: a shape switched off is sent by its kind
   it("switches taps on a layer's areas", () => {
     const query = asked();
     show({ ...layout(), taps: [{ kind: "points", name: "Points", isOn: true },
       { kind: "paths", name: "Paths", isOn: true }, { kind: "areas", name: "Areas", isOn: true }] });
     const group = screen.getByRole("group", { name: "A tap opens Details on" });
     expect(group.querySelectorAll("input[type=checkbox]")).toHaveLength(3);
-    fireEvent.click(screen.getByRole("checkbox", { name: "Areas" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Areas" }));
     expect(query()).toMatchObject({ details: "taps", kind: "areas", on: "0", layer: "L" });
   });
 
