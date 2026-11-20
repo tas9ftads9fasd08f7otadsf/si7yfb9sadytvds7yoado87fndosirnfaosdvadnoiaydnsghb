@@ -41,6 +41,15 @@ test("the account part names the Apple Account for a name not typed, and keeps o
   await expect(name).toHaveValue("Friki");
 });
 
+// 136 publishing goes through the phone's person, so the site's Sharing tab has no Gallery card
+test("the Sharing tab has no Gallery card on the site", async ({ page }) => {
+  await mockCloud(page, { signedIn: true });
+  await openEdit(page);
+  await page.locator("#editTabs").getByRole("tab", { name: "Sharing", exact: true }).click();
+  await expect(page.locator("#editTabs [aria-selected=true]")).toHaveText("Sharing");
+  await expect(page.locator("#publish")).toHaveCount(0);
+});
+
 test("a change is made under the typed name, else under the Apple Account's", async ({ page }) => {
   const asks = await recordCoreAsks(page);
   await mockCloud(page, { signedIn: true });
