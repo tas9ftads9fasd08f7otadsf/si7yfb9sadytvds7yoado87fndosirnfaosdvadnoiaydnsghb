@@ -110,6 +110,26 @@ describe("the phone backend", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  // 136 the Gallery's four calls: the offer, the request as JSON, the ask polled, and the ask taken back
+  it("asks the phone to publish with the token, as JSON, and polls and cancels the ask", async () => {
+    const fetcher = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    backend.useToken(() => "t");
+    await backend.publishOffer("M");
+    await backend.publishSend("M", { texts: { en: { title: "Tatras", body: "Hikes" } }, replaces: true });
+    await backend.publishAnswer("M", "a b");
+    await backend.publishCancel("M", "a b");
+    const calls = fetcher.mock.calls as unknown as [string, RequestInit][];
+    expect(calls.map(([url, init]) => `${init.method} ${url}`)).toEqual([
+      "GET /riki/v1/maps/M/publish", "POST /riki/v1/maps/M/publish", "GET /riki/v1/maps/M/publish?ask=a%20b",
+      "POST /riki/v1/maps/M/publish?cancel=a%20b"]);
+    expect(JSON.parse(calls[1]![1].body as string)).toEqual({ texts: { en: { title: "Tatras", body: "Hikes" } }, replaces: true });
+    expect((calls[1]![1].headers as Record<string, string>)["Content-Type"]).toBe("application/json");
+    expect((calls[0]![1].headers as Record<string, string>).Authorization).toBe("Bearer t");
+    backend.useToken(() => null);
+    expect(await backend.publishOffer("M")).toEqual({ ok: false, status: 401, said: "" });
+  });
+
   // 36 the token is read when each call is made, and a refusal keeps the phone's words
   it("sends an edit with the style and the current token, and keeps a refusal's words", async () => {
     const fetcher = vi.fn(async () => new Response("A name cannot be blank", { status: 400 }));

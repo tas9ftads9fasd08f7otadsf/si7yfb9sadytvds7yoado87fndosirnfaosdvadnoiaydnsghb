@@ -370,6 +370,7 @@ export function createBackend(parts: Parts): Backend {
     addServer: adding, importServers: adding, exportServers: adding, addServerLayers: adding, readAPI: adding,
     addAPI: adding, addFile: adding, readDXF: adding, esriServices: adding,
     changeEsriService: adding, coverage: adding, coveragePlaces: adding,
+    publishOffer: adding, publishSend: adding, publishAnswer: adding, publishCancel: adding,
     startPlaces: adding, downloadRegion: adding, offlinePlan: adding, offlineDownload: adding, discardStored: adding,
     live: adding, identify: adding, details: adding, phoneLocation: adding,
     iconURL: () => "",

@@ -169,6 +169,68 @@ export interface CoveragePlaces {
   mountains: string;
 }
 
+/** 136 A name and a description, in one language, as the Gallery's sheet writes them. */
+export interface PublishText {
+  title: string;
+  body: string;
+}
+
+export interface PublishCategory {
+  id: string;
+  name: string;
+  symbol: string;
+}
+
+/** 136 Why the phone refuses, or what the sheet still lacks, in the order its Send says them. */
+export type PublishRefusal = "noSuchMap" | "notYours" | "locked" | "builtIn" | "off" | "unsigned" | "notSignedIn"
+  | "name" | "category" | "summary" | "coverage" | "changes" | "keysNote" | "manual" | "replaces" | "language"
+  | "publicName" | "notConfirmed" | "busy" | "expired";
+
+/** 136 `PeerWebPublish.Offer`: the sheet as the phone would open it, in the phone's language. */
+export interface PublishOffer {
+  refusal?: PublishRefusal | null;
+  /** The phone's own language, whose text is the map's name and description. */
+  language: string;
+  isUpdate: boolean;
+  texts: Record<string, PublishText>;
+  categories: PublishCategory[];
+  coverage?: Coverage | null;
+  coverageLine: string;
+  places: string[];
+  leftOut: string[];
+  keysNote: string;
+  manualURL: string;
+  hasPreview: boolean;
+  publicName: string;
+  needsPublicName: boolean;
+}
+
+/** 136 `PeerWebPublish.Request`: the sheet's fields, sent only once the phone's person says yes. */
+export interface PublishRequest {
+  texts: Record<string, PublishText>;
+  category?: string;
+  coverage?: Coverage;
+  keysNote?: string;
+  manualURL?: string;
+  changes?: string;
+  replaces?: boolean;
+  publicName?: string;
+}
+
+export interface PublishStarted {
+  ask: string;
+  /** Shown here and on the phone, so its person says yes to the browser meant. */
+  code: string;
+  expiresIn: number;
+}
+
+export interface PublishAnswer {
+  state: "waiting" | "sending" | "sent" | "refused" | "failed";
+  refusal?: PublishRefusal | null;
+  message?: string | null;
+  submission?: string | null;
+}
+
 export interface FoundPlace {
   start: Start;
   title: string;
