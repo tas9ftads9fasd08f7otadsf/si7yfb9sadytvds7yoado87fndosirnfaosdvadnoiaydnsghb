@@ -1040,6 +1040,17 @@ function deletionOf(each) {
   return phone.ownsSettings ? "onlyYou" : "yourList";
 }
 
+// 119: as `PeerWebFromMaps.listing`: unlocked maps only; what this map draws is blocked.
+const ALREADY = "Already in this map";
+
+function otherLayers(each) {
+  const groups = phone.maps.filter((one) => one.id !== each.id && !one.locked).map((one) => ({
+    map: one.id, name: one.name, symbol: one.symbol ?? "map", iconTintHex: one.iconTintHex ?? null,
+    rows: [...one.layers].reverse().map((layer) => ({ layer: layer.id, title: layer.name, subtitle: layer.kind,
+      symbol: layer.symbol, blocked: each.layers.some((mine) => mine.name === layer.name) ? ALREADY : null })) }));
+  return { groups: groups.filter((group) => group.rows.some((row) => !row.blocked)) };
+}
+
 const AVAILABILITY = { picker: "hiddenFromPicker", carPlay: "hiddenFromCarPlay", legend: "hidesLegend",
   world: "hidesWorldAround" };
 
@@ -1582,6 +1593,11 @@ async function answer(request, response) {
     }
     return json(response, roster(each.id));
   }
+  if (parts[4] === "other-layers" && parts.length === 5) {
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    return json(response, otherLayers(each));
+  }
   if (parts[4] === "switches" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -1681,6 +1697,27 @@ async function answer(request, response) {
     each.layers.push(...found.map((row) => ({ id: randomUUID().toUpperCase(), name: row.title,
       kind: "WMS", symbol: "square.grid.3x3", isEnabled: true })));
     each.revision += 1;
+    return json(response, portable(each));
+  }
+  if (method === "POST" && parts[4] === "add-copies") {
+    // 119: as `PeerWebFromMaps.copies`: a layer the picker would not tick is refused.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    if (each.locked) return send(response, 403, "This map is locked on the phone");
+    const asked = (url.searchParams.get("layers") || "").split(",").filter(Boolean);
+    if (!asked.length) return send(response, 409, "Tick one or more layers of another map");
+    const rows = otherLayers(each).groups.flatMap((group) => group.rows);
+    const made = [];
+    for (const id of new Set(asked)) {
+      const row = rows.find((one) => one.layer === id);
+      if (!row) return send(response, 409, "No other map this browser may see has that layer");
+      if (row.blocked) return send(response, 409, row.blocked);
+      const source = phone.maps.flatMap((one) => one.layers).find((layer) => layer.id === id);
+      made.push({ ...structuredClone(source), id: randomUUID().toUpperCase() });
+    }
+    each.layers.push(...made);
+    each.revision += 1;
+    phone.copies = [...(phone.copies ?? []), ...made.map((layer) => layer.name)];
     return json(response, portable(each));
   }
   if (method === "POST" && parts[4] === "add-server-layers") {
@@ -1948,6 +1985,7 @@ function testControl(route, query, response) {
   case "/__test/face-asks": return json(response, { asks: face().asks });
   case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
   case "/__test/shares": return json(response, phone.shares);
+  case "/__test/copies": return json(response, phone.copies ?? []);
   case "/__test/folder":
     for (const each of phone.maps) Object.assign(each, { stackID: "F01DE500-0000-4000-8000-000000000001", stackName: "Hills" });
     break;

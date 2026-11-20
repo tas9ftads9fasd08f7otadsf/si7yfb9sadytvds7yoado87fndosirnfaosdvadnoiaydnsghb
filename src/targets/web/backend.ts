@@ -358,6 +358,7 @@ export function createBackend(parts: Parts): Backend {
     newMap: editing, importMap: editing, exportMap: editing, duplicateMap: editing,
     deleteMap: editing, shelve: editing, switches: editing, askPeople: editing, setPicture: editing,
     layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
+    otherLayers: adding, addCopies: adding,
     readAddress,
     addTiles: (mapID, template) => addLayer(mapID, template, (replies) => ({ kind: "tiles", address: template, replies })),
     addServiceLayers: (mapID, address, picks) =>
