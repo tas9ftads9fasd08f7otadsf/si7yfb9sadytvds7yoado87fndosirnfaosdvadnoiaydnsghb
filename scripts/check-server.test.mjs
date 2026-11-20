@@ -68,6 +68,14 @@ afterAll(() => {
 
 // 120 the server's connection is checked layer by layer, as the deploy connects
 describe("checking the site's server", () => {
+  // 127 bug: the deploy has no SITE_URL, and `set -u` stopped the check after the login
+  it("skips the site, and passes, when SITE_URL is not in the environment at all", () => {
+    const run = check({ SITE_URL: undefined });
+    expect(run.stderr).not.toContain("unbound variable");
+    expect(run.status).toBe(0);
+    expect(run.lines.at(-1)).toBe("skip  site: SITE_URL is not set");
+  });
+
   it("passes every layer of a server the deploy can reach, and leaves nothing behind", () => {
     const run = check({ SITE_URL: `${siteURL}/editor/` });
     expect(run.status).toBe(0);

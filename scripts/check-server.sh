@@ -110,7 +110,8 @@ else
 fi
 
 # 126 A site that does not answer yet warns: the deploy only needs the server to take it.
-site="${SITE_URL%/}"
+site="${SITE_URL:-}"
+site="${site%/}"
 if [ -z "$site" ]; then
   skip "site: SITE_URL is not set"
 elif [[ "$site" != http://* && "$site" != https://* ]]; then
