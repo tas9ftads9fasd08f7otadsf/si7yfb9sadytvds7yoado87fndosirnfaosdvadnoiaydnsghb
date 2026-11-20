@@ -12,6 +12,7 @@ import { DeleteMap } from "./DeleteMap";
 import { EsriServices } from "./EsriServices";
 import { Languages } from "./Languages";
 import { Layers } from "./Layers";
+import { Lock } from "./Lock";
 import { MinimumVersion } from "./MinimumVersion";
 import { Offline } from "./Offline";
 import { OpensAt } from "./OpensAt";
@@ -115,6 +116,7 @@ function EditFields() {
           <OpensAt portable={portable} />
           <MinimumVersion />
           {switches ? <Availability switches={switches} /> : null}
+          {switches?.lock ? <Lock lock={switches.lock} /> : null}
         </>
       );
   }

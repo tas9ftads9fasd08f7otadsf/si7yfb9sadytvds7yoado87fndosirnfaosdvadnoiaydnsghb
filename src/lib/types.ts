@@ -486,6 +486,18 @@ export interface MapSwitches {
   editedStyles?: string[];
   /** 62 Who loses the map deleted, as the Maps sheet asks; absent where it offers no Delete. */
   deletion?: "onlyYou" | "everyone" | "yourList";
+  /** 118 Edit map's lock, asked of the phone's person when switched; absent from older phones. */
+  lock?: LockOffer;
+}
+
+/** 118 `PeerWebLock.Offer`: the row's state, and the phone's own lines under it. */
+export interface LockOffer {
+  isOn: boolean;
+  mayChange: boolean;
+  /** Apple's name for how the phone asks; none is the passcode. */
+  brand?: string | null;
+  note: string;
+  sharedNote?: string | null;
 }
 
 /** 112 A region package the style would draw from and this browser does not hold; the core names it. */
