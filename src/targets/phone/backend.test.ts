@@ -96,6 +96,17 @@ describe("shelfQueryOf", () => {
 describe("the phone backend", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  // 122 bug: a viewer's Edit map asked the phone with "Bearer null", filling the console with 401s
+  it("asks nothing that needs the edit password while the browser holds no token", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    backend.useToken(() => null);
+    expect(await backend.switches("M")).toEqual({ ok: false, status: 401, said: "" });
+    expect(await backend.layerOptions("M")).toEqual({ ok: false, status: 401, said: "" });
+    expect(await backend.coveragePlaces()).toEqual({ ok: false, status: 401, said: "" });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   // 36 the token is read when each call is made, and a refusal keeps the phone's words
   it("sends an edit with the style and the current token, and keeps a refusal's words", async () => {
     const fetcher = vi.fn(async () => new Response("A name cannot be blank", { status: 400 }));

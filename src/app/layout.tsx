@@ -3,7 +3,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
-export const metadata: Metadata = { title: "Riki Maps", icons: { icon: [] } };
+export const metadata: Metadata = { title: "Riki Maps", icons: { icon: "data:," } };
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 // Before the first paint, or a dark page flashes light.
