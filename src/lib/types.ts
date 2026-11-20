@@ -37,7 +37,22 @@ export interface SharedMap {
   /** 56 The folder's mark and ground as the phone's Maps sheet draws them. */
   stackSymbol?: string | null;
   stackIconTintHex?: string | null;
+  /** 128 The style names and, in the same order, their ids; older phones send no ids. */
+  styles?: string[];
+  styleIDs?: string[];
+  /** 128 The note cut to a card's line, whose it is, and how many others it is shared with. */
+  note?: string | null;
+  role?: MapRole;
+  people?: number;
+  isLocked?: boolean;
+  offline?: MapOffline;
+  /** What the map holds on the phone, and when the phone last wrote it, in Unix seconds. */
+  bytes?: number;
+  changedAt?: number;
 }
+
+export type MapRole = "own" | "edit" | "view";
+export type MapOffline = "ready" | "partly" | "online" | "update";
 
 export interface Device {
   name: string;

@@ -11,6 +11,8 @@ export const ENGLISH = {
   dragToOrder: "drag to change the order", search: "Search", stylesCount: "{count} styles", allStyles: "All styles", editStyles: "Edit styles",
   hideSide: "Hide the side bar", showSideBar: "Show the side bar", data: "Data", dataNote: "Everything the shared maps use, as the phone keeps it.",
   regions: "Regions", usedIn: "Used in", onThisPhone: "On the phone",
+  sharedWith: "Shared with {count}", offlineReady: "Ready offline", offlinePartly: "Partly offline",
+  offlineOnline: "Online only", offlineUpdate: "Update",
   downloading: "Downloading", about: "About", sharedBy: "Shared by {name}", appVersion: "Riki Maps {version}",
   settingsNote: "For this browser; the maps are set on the phone that shares them.", nameNote: "Changes you make are signed with it.", regionsOf: "Regions of {map}", noneHere: "Nothing here yet.", rikiMaps: "Riki Maps", builtInNote: "Built in, from your regions",
   tileNote: "Tile address, TileJSON or WMS", fileNote: "GeoJSON, KML, GPX, PMTiles…", apiNote: "Live points from an API",

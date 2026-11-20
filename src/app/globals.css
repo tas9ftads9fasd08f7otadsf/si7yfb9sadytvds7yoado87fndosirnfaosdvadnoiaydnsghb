@@ -163,7 +163,8 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 .hero > .mark .sym { font-size: 26px; }
 .hero .words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .hero .words b { font-size: 19px; font-weight: 700; overflow-wrap: anywhere; }
-.hero .words .muted { font-size: 13px; }
+.hero .words .muted, .hero .words .sharing { font-size: 13px; }
+.hero .words .sharing { color: var(--secondary); }
 .pill { height: 36px; padding: 0 14px 0 10px; border-radius: 18px; border: 0; background: var(--cs-water);
   color: var(--c-water); font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; flex: none; }
 .pill .sym { font-size: 14px; }
@@ -793,7 +794,13 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
   text-overflow: ellipsis; white-space: nowrap; }
 #data .link-name { border: 0; background: none; padding: 0; text-align: left; font: inherit; color: inherit; }
 #data .link-name:hover { color: var(--link); }
-#data .end-cell { display: flex; justify-content: flex-end; gap: 6px; min-width: 0; }
+#data .end-cell { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; min-width: 0; }
+#data .style-chips, .row .pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.row .pills:empty, #data .style-chips:empty { display: none; }
+.row .pills .pill-tag { height: 20px; padding: 0 8px; font-size: 11px; }
+#data .style-chip { height: 22px; padding: 0 9px; border-radius: 11px; background: var(--inset); color: var(--sub);
+  font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; text-decoration: none; }
+#data .style-chip:hover { color: var(--link); }
 .pill-tag { height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-flex;
   align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .pill-tag.on { background: var(--cs-green); color: var(--c-green); }
