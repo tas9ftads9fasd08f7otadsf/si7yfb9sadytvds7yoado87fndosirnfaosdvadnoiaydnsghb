@@ -39,6 +39,15 @@ describe("Layers", () => {
     expect(screen.getByRole("button", { name: "All on" })).toBeTruthy();
   });
 
+  // 115 W5's heading in place of the style's name, counting the layers the list switches
+  it("heads the list with how it is ordered and how many layers it holds", () => {
+    show([]);
+    render(<Layers portable={portable} />);
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading.textContent).toBe("Layers · drag to change the order3");
+    expect(heading.querySelector(".count")!.textContent).toBe("3");
+  });
+
   // 85 a row says so when its service does not answer browsers; the layer stays editable
   it("says on a layer's row that its service does not answer browsers, and keeps its fields", () => {
     show([]);
