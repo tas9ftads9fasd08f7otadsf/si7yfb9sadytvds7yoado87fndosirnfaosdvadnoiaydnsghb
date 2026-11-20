@@ -38,6 +38,9 @@ const EDITS: [Edit, Record<string, string>][] = [
   [{ kind: "groupByOrigin", groups: true }, { groupByOrigin: "1" }],
   [{ kind: "availability", switch: "carPlay", shown: false }, { carPlay: "0" }],
   [{ kind: "availability", switch: "world", shown: true }, { world: "1" }],
+  // 118 the lock reaches the phone as `lock=1|0`
+  [{ kind: "lock", locked: true }, { lock: "1" }],
+  [{ kind: "lock", locked: false }, { lock: "0" }],
   // 81 a title's translation is the layout change `details=translation`, text always sent
   [{ kind: "layerDetails", fields: { layer: "L", details: "translation", target: "text", section: "0", block: "1",
     was: "t1", language: "sk", text: "O mieste" } },

@@ -27,3 +27,36 @@ test("a window made wide enough drops the notice and joins", async ({ page, requ
   await page.locator("#current .hero").waitFor();
   await expect.poll(async () => (await phone(request, "guests")).viewers).toBe(1);
 });
+
+// 131: the notice wears the app's icon and, on an iPhone, opens the app.
+test("an iPhone is offered the app under its icon", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
+  const page = await context.newPage();
+  await page.goto("/");
+  await expect(page.locator("#small [data-app-icon]")).toBeVisible();
+  await expect(page.locator("#openInApp")).toHaveAttribute("href", "rikimaps://open");
+  await expect(page.locator("#openInApp")).toHaveText("Open Riki Maps");
+  await context.close();
+});
+
+test("a small window on a computer is not offered the app", async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 800 });
+  await page.goto("/");
+  await expect(page.locator("#small")).toBeVisible();
+  await expect(page.locator("#openInApp")).toHaveCount(0);
+});
+
+// 131: debug=1 lets a phone-sized window in, the next visit too, until debug=0.
+test("debug=1 lets a small window in for a day, and debug=0 ends it", async ({ page, request }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?debug=1");
+  await expect(page.locator("#small")).toBeHidden();
+  await page.locator("#current .hero").waitFor();
+  await expect.poll(async () => (await phone(request, "guests")).viewers).toBe(1);
+  await page.goto("/");
+  await expect(page.locator("#small")).toBeHidden();
+  await expect(page.locator("#top")).toBeVisible();
+  await page.goto("/?debug=0");
+  await expect(page.locator("#small")).toBeVisible();
+});

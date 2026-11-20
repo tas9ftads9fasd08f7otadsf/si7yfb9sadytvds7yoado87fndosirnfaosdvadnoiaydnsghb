@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { APP_LINK, opensTheApp } from "@/lib/any-size";
+import { AppIcon } from "./ui/AppIcon";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { backend } from "@backend";
 import { downloadRegion, askToJoin, shownMapOf, useViewer } from "@/store/viewer";
@@ -21,7 +23,7 @@ export function Boot() {
   if (settled) return null;
   return (
     <div id="boot" role="status">
-      <span className="tile"><Sym name="map" /></span>
+      <AppIcon size={56} />
       <div className="spinner" />
       <p>{filledIn(words.loadingApp, "app", words.app)}</p>
     </div>
@@ -115,6 +117,7 @@ export function Gate() {
     return (
       <div id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
         <div className="sheet">
+          <AppIcon size={48} className="gate-icon" />
           <div id="gateMark"><Sym name="person.crop.circle" /></div>
           <h1 id="gateTitle">{words.signInTitle}</h1>
           <p id="gateText">{words.signInText}</p>
@@ -126,6 +129,7 @@ export function Gate() {
   return (
     <div id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
       <div className="sheet">
+        <AppIcon size={48} className="gate-icon" />
         <div id="gateMark">{removed ? <Sym name="person.crop.circle.badge.xmark" /> : <div className="spinner" />}</div>
         <h1 id="gateTitle">{removed ? words.removedTitle : words.waiting}</h1>
         <p id="gateText">{removed ? words.removedText : words.waitingText}</p>
@@ -136,14 +140,23 @@ export function Gate() {
   );
 }
 
+const noChange = () => () => undefined;
+
+/** Read in the browser; the export's own render has no navigator and offers nothing. */
+function useOpensTheApp(): boolean {
+  return useSyncExternalStore(noChange, () => opensTheApp(navigator.userAgent, navigator.maxTouchPoints), () => false);
+}
+
 export function SmallScreen() {
   const words = useViewer((state) => state.words);
+  const inApp = useOpensTheApp();
   return (
     <div id="small" role="dialog" aria-modal="true" aria-labelledby="smallTitle">
       <div className="sheet">
-        <Sym name="desktopcomputer" />
+        <AppIcon size={64} />
         <h1 id="smallTitle">{words.smallTitle}</h1>
         <p id="smallText">{words.smallText}</p>
+        {inApp ? <a id="openInApp" className="button" href={APP_LINK}>{words.openInApp}</a> : null}
       </div>
     </div>
   );

@@ -26,7 +26,26 @@ test("the page and every file it asks for are served, under the site's own path"
 test("the page names its own icon, so the browser asks the site for no favicon", async ({ page }) => {
   await page.goto("./");
   await expect(page.locator("#appName")).toHaveText("Riki Maps");
-  await expect(page.locator('head link[rel="icon"]')).toHaveAttribute("href", "data:,");
+  // 131 the icon is now Riki Maps' own, still inline, so the site is still asked for none
+  await expect(page.locator('head link[rel="icon"]')).toHaveAttribute("href", /^data:image\/png;base64,/);
+  await expect(page.locator("#brand [data-app-icon]")).toBeVisible();
+});
+
+// 131 a phone sees the app's icon and its link; debug=1 lets it in for a day
+test("a phone is offered the app, and debug=1 lets it in", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, hasTouch: true,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
+  const page = await context.newPage();
+  await mockCloud(page, { signedIn: true });
+  await page.goto("./");
+  await expect(page.locator("#small [data-app-icon]")).toBeVisible();
+  await expect(page.locator("#openInApp")).toHaveAttribute("href", "rikimaps://open");
+  await page.goto("./?debug=1");
+  await expect(page.locator("#small")).toBeHidden();
+  await expect(page.locator("#appName")).toBeVisible();
+  await page.goto("./");
+  await expect(page.locator("#small")).toBeHidden();
+  await context.close();
 });
 
 test("a screen's address opens the page and survives a reload", async ({ page, baseURL }) => {
