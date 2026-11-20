@@ -122,8 +122,9 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
         ?? { serverErrorCode: "NOT_FOUND", reason: "no such user" }) });
     }
     if (endpoint === "zones/list") {
-      return reply(route, 200, { zones: account.zones.filter((zone) => zone.database === "shared" && database === "shared")
-        .map(({ zoneID }) => ({ zoneID })) });
+      // 116 The private database lists its zones too: the mirror's and one for each map the person shares.
+      return reply(route, 200, { zones: account.zones.filter((zone) => zone.database === database
+        && !gone.has(`${database}/${zone.zoneID.zoneName}`)).map(({ zoneID }) => ({ zoneID })) });
     }
     if (endpoint === "changes/zone") {
       // What the library builds from a zone's options; a zone without its id is a bad request as a whole.
