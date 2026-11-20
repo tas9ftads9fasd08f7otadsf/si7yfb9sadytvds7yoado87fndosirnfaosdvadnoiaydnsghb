@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DetailsLayout } from "@/lib/types";
 import { resetViewer, useViewer } from "@/store/viewer";
@@ -70,7 +70,8 @@ describe("Details settings", () => {
   it("sets the header's icon", () => {
     const query = asked();
     show();
-    fireEvent.change(screen.getByRole("combobox", { name: "Header Icon" }), { target: { value: "tram.fill" } });
+    // 111 W16's icon tiles in place of a drop-down
+    fireEvent.click(within(screen.getByRole("group", { name: "Header Icon" })).getByRole("button", { name: "tram.fill" }));
     expect(query()).toMatchObject({ layer: "L", details: "header", symbol: "tram.fill", title: "" });
   });
 
@@ -90,7 +91,7 @@ describe("Details settings", () => {
     show(layout(row));
     pick("Action buttons");
     expect(screen.queryByRole("button", { name: "Move up Copy" })).toBeNull();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Copy" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Copy" }));
     expect(query()).toMatchObject({ details: "action", name: "copy", on: "1" });
   });
 
@@ -128,7 +129,7 @@ describe("Details settings", () => {
     const query = asked();
     show(layout(row));
     pick("Action buttons");
-    fireEvent.click(screen.getByRole("checkbox", { name: "Highlight the first one" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Highlight the first one" }));
     expect(query()).toMatchObject({ details: "actionsLook", labels: "iconAndLabel", highlight: "1" });
   });
 
@@ -137,7 +138,7 @@ describe("Details settings", () => {
     const query = asked();
     show();
     pick("Text");
-    fireEvent.click(screen.getByRole("checkbox", { name: "A note icon before the text" }));
+    fireEvent.click(screen.getByRole("switch", { name: "A note icon before the text" }));
     expect(query()).toMatchObject({ details: "blockSettings", section: "0", block: "2", was: "t1", icon: "1" });
   });
 

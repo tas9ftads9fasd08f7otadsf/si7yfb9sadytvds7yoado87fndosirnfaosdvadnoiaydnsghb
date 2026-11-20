@@ -54,6 +54,11 @@ jobs:
         with:
           name: riki-words
           path: dist/words
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: riki-assets
+          path: dist/assets
       # Two zips: the app takes web-editor.zip, the site's deploy web-site.zip.
       - name: Pack and publish
         id: publish

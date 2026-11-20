@@ -216,7 +216,9 @@ describe("WebBackend's reads", () => {
     expect((await backend.map("6F1E2A10-0000-4000-8000-000000000001")).name).toBe("High Tatras");
     const style = await backend.style({ mapID: "M", styleID: "B1", hidden: ["L2"], theme: "dark", tiles: "3x2" });
     expect(style).toEqual({ ok: true, value: account.core.riki_style });
-    expect(seen.at(-1)).toEqual(["M", "B1", { tilesBase: "https://tiles.example", stored: [], theme: "dark", hidden: ["L2"], tiles: "3x2" }]);
+    // 110 the glyphs and the sprite are the site's own, under its path; 112 nothing is held
+    expect(seen.at(-1)).toEqual(["M", "B1", { tilesBase: "https://tiles.example", glyphsBase: `${location.origin}/editor/glyphs`,
+      spriteBase: `${location.origin}/editor/sprites/temaki-sprite`, stored: [], theme: "dark", hidden: ["L2"], tiles: "3x2" }]);
     expect(changes.mock.calls.length).toBe(reads);
   });
 

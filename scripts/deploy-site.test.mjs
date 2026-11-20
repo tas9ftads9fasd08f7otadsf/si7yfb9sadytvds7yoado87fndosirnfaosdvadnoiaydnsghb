@@ -9,11 +9,17 @@ const PORT = 2121 + (process.pid % 200) * 25;
 let work, root, server, ca;
 
 /** A release's zip as pack-web lays it out, with the files named. */
-function release(name, version, commit, assets, extra = {}, { core = true } = {}) {
+function release(name, version, commit, assets, extra = {}, { core = true, glyphs = true } = {}) {
   const folder = path.join(work, name);
   mkdirSync(path.join(folder, "out", "_next", "static"), { recursive: true });
   writeFileSync(path.join(folder, "out", "index.html"), `<html>${version}</html>`);
   if (core) writeFileSync(path.join(folder, "out", "riki-core.wasm"), "\0asm");
+  if (glyphs) {
+    mkdirSync(path.join(folder, "out", "glyphs", "Noto Sans Regular"), { recursive: true });
+    mkdirSync(path.join(folder, "out", "sprites"), { recursive: true });
+    writeFileSync(path.join(folder, "out", "glyphs", "Noto Sans Regular", "0-255.pbf"), "pbf");
+    writeFileSync(path.join(folder, "out", "sprites", "temaki-sprite.json"), "{}");
+  }
   for (const asset of assets) writeFileSync(path.join(folder, "out", "_next", "static", asset), asset);
   writeFileSync(path.join(folder, "index.php"), "<?php // page");
   writeFileSync(path.join(folder, "Site.php"), "<?php // site");
@@ -113,6 +119,23 @@ describe("deploying the site over FTPS", () => {
     expect(run.stderr).toContain("config.php");
     expect(onServer("config.php")).toContain("tok-123");
     expect(JSON.parse(onServer("site.json")).commit).toBe("bbb222");
+  }, 60000);
+
+  // 110 a site without its glyphs and sprite draws no labels or icons, so a real deploy is refused too
+  it("refuses a zip without the glyphs and the sprite, unless a test address says so", () => {
+    const zip = release("glyphless", "0.1.10", "jjj000", ["k.js"], {}, { glyphs: false });
+    const run = deploy(zip);
+    expect(run.status).not.toBe(0);
+    expect(run.stderr).toContain("no out/glyphs or out/sprites");
+    expect(JSON.parse(onServer("site.json")).commit).toBe("bbb222");
+    expect(deploy(zip, { RIKI_ALLOW_NO_CORE: "1" }).stderr).not.toContain("out/glyphs");
+  }, 60000);
+
+  it("puts the glyphs, a font stack's spaces kept, and the sprite on the server", () => {
+    const run = deploy(release("glyphed", "0.1.11", "kkk111", ["l.js"]));
+    expect(run.status).toBe(0);
+    expect(onServer("out/glyphs/Noto Sans Regular/0-255.pbf")).toBe("pbf");
+    expect(onServer("out/sprites/temaki-sprite.json")).toBe("{}");
   }, 60000);
 
   // 88 a site without the core cannot read maps, so a real deploy is refused before anything is sent

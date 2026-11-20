@@ -14,9 +14,13 @@ export interface StoredPackage {
   contents: string | null;
 }
 
-/** What the style is built for: the theme, the layers hidden and where the pipeline's files are. */
+/** What the style is built for: the theme, the layers hidden and where the pipeline's and the site's files are. */
 export interface StyleCatalog {
   tilesBase: string;
+  /** 110 The site's glyphs, to which the core adds `/{fontstack}/{range}.pbf`; absolute. */
+  glyphsBase: string;
+  /** 110 The site's base sprite without its extension, as a style's `sprite` names it; absolute. */
+  spriteBase: string;
   /** 112 The region packages held in this browser; the core draws from them and names the ones it lacks in `riki:needs`. */
   stored: StoredPackage[];
   theme: "light" | "dark";

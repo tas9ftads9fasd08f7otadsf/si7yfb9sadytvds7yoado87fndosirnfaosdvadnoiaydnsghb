@@ -62,6 +62,26 @@ export async function pinnedWords(pin, dir, { optional = false } = {}) {
   return { files, said: `${names.length - 1} languages of words from rikimaps ${pin.ref.slice(0, 10)}` };
 }
 
+/**
+ * The glyphs and base sprite `npm run build:assets` made in dist/assets, as {path under out/: file}; none while no
+ * rikimaps commit is pinned, and a failure once one is pinned but they are missing, unless the pack is for the specs.
+ */
+export async function pinnedAssets(pin, dir, { optional = false } = {}) {
+  if (!pin?.ref) return { files: {}, said: "the site's glyphs and sprite are not pinned in package.json (rikiCore.ref): the site is packed without them" };
+  const files = {};
+  try {
+    for (const each of (await readdir(dir, { recursive: true, withFileTypes: true })).filter((entry) => entry.isFile())) {
+      const file = path.join(each.parentPath, each.name);
+      files[path.relative(dir, file).split(path.sep).join("/")] = file;
+    }
+    if (!Object.keys(files).some((name) => name.startsWith("glyphs/")) || !files["sprites/temaki-sprite.json"]) throw new Error("incomplete");
+  } catch {
+    if (optional) return { files: {}, said: `the site's glyphs and sprite are pinned to rikimaps ${pin.ref.slice(0, 10)} but were not made: the site is packed without them` };
+    throw new Error(`the site's glyphs and sprite are pinned to rikimaps ${pin.ref} but ${dir} has none: run npm run build:assets first`);
+  }
+  return { files, said: `${Object.keys(files).length} glyph and sprite files from rikimaps ${pin.ref.slice(0, 10)}` };
+}
+
 async function main() {
   const out = path.join(ROOT, "out");
   const work = path.join(ROOT, "dist", "web-site");
@@ -95,6 +115,9 @@ async function main() {
     await mkdir(path.dirname(path.join(work, "out", file)), { recursive: true });
     await writeFile(path.join(work, "out", file), text);
   }
+  const assets = await pinnedAssets(own.rikiCore, process.env.RIKI_ASSETS_DIR || path.join(ROOT, "dist", "assets"), { optional });
+  if (!Object.keys(assets.files).length) console.warn(`warning: ${assets.said}`);
+  for (const [file, source] of Object.entries(assets.files)) await cp(source, path.join(work, "out", file));
   const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
   const site = { version: process.env.WEB_EDITOR_VERSION || own.version, commit, pageSegments: PAGE_SEGMENTS };
   await writeFile(path.join(work, "site.json"), `${JSON.stringify(site, null, 2)}\n`);

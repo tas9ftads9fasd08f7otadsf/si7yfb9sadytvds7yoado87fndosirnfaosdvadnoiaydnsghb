@@ -332,7 +332,9 @@ export function createBackend(parts: Parts): Backend {
     async style(ask) {
       const [core, read, config] = await Promise.all([parts.core(), rows(), parts.config()]);
       const style = core.style(read, ask.mapID, ask.styleID,
-        { tilesBase: config.tilesBase, stored: await regions.stored(), theme: ask.theme, hidden: ask.hidden, tiles: ask.tiles });
+        { tilesBase: config.tilesBase, glyphsBase: `${location.origin}${parts.base}/glyphs`,
+          spriteBase: `${location.origin}${parts.base}/sprites/temaki-sprite`, stored: await regions.stored(), theme: ask.theme,
+          hidden: ask.hidden, tiles: ask.tiles });
       const own = [hostOf(config.tilesBase), location.origin].filter((each) => each !== null);
       return { ok: true, value: await drawnHere(style, parts.reach, own) };
     },

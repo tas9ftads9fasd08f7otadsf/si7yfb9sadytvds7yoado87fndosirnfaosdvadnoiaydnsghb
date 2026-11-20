@@ -5,6 +5,8 @@ import type { DXFReading, PackageRow, ServerRow } from "@/lib/types";
 import { FILE_KINDS, SERVER_KINDS, addFile, isDXF, readDXF, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
   exportServers, importServers, loadPackages, loadServers, offers, tickPackage, tickServerRow, tickServiceLayer,
   useViewer } from "@/store/viewer";
+import { mapControl } from "@/map/control";
+import { filledIn } from "@/lib/words";
 import { Skeleton } from "../Overlays";
 import { APILayer } from "./APILayer";
 import { MarkTile } from "../ui/MarkTile";
@@ -24,20 +26,63 @@ function PackageLine({ row }: { row: PackageRow }) {
   );
 }
 
+const SLOTS = ["{z}", "{x}", "{y}", "{s}", "{r}", "{quadkey}"];
+
+/** 111 W11: a tile address with its slots, and one tile of it where the map looks, at zoom 14. */
 function TileAddress() {
   const words = useViewer((state) => state.words);
   const [address, setAddress] = useState("");
+  const [works, setWorks] = useState<string | null>(null);
+  const camera = mapControl()?.camera();
+  const preview = camera ? tileAt(address.trim(), camera.lng, camera.lat, 14) : null;
+  useEffect(() => {
+    if (!preview) return;
+    let current = true;
+    const probe = new Image();
+    probe.onload = () => current && setWorks(preview);
+    probe.src = preview;
+    return () => { current = false; };
+  }, [preview]);
   return (
     <>
       <h2 className="title">{`${words.tileURL} · TileJSON`}</h2>
-      <div className="card"><div className="field">
+      <div className="card tile-address"><div className="field">
         <input type="url" id="tileAddress" autoComplete="off" spellCheck={false} placeholder="https://…/{z}/{x}/{y}.png"
           aria-label={words.tileURL} value={address} onChange={(event) => setAddress(event.target.value)} />
+        {preview && works === preview ? <span className="pill-tag on" id="tileWorks">{words.works}</span> : null}
       </div></div>
+      <div className="chips slots" role="group" aria-label={words.tileURL}>
+        {SLOTS.map((slot) => (
+          <button type="button" key={slot} onClick={() => setAddress(address + slot)}>{slot}</button>
+        ))}
+      </div>
+      {preview ? (
+        <div className="tile-preview">
+          <span className="tile-image" role="img" aria-label={words.sheetPreview}
+            style={{ backgroundImage: `url(${JSON.stringify(preview)})` }} />
+          <span>{filledIn(words.previewZoom, "zoom", "14")}</span>
+        </div>
+      ) : null}
       <button type="button" className="action" id="addTiles" disabled={!address.trim()}
         onClick={() => addTiles(address.trim())}><Sym name="plus" />{words.add}</button>
     </>
   );
+}
+
+/** 111 One tile's address where the map looks, for an XYZ template; none for anything else. */
+export function tileAt(template: string, lng: number, lat: number, zoom: number): string | null {
+  if (!/^https?:\/\//.test(template) || !template.includes("{z}") || !template.includes("{x}")) return null;
+  const n = 2 ** zoom;
+  const x = Math.floor(((lng + 180) / 360) * n);
+  const rad = (lat * Math.PI) / 180;
+  const y = Math.floor(((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n);
+  let quadkey = "";
+  for (let level = zoom; level > 0; level -= 1) {
+    const bit = 1 << (level - 1);
+    quadkey += String((x & bit ? 1 : 0) + (y & bit ? 2 : 0));
+  }
+  return template.replaceAll("{z}", String(zoom)).replaceAll("{x}", String(x)).replaceAll("{y}", String(y))
+    .replaceAll("{s}", "a").replaceAll("{r}", "").replaceAll("{quadkey}", quadkey);
 }
 
 /** 3409 A DXF waits for its coordinate system, picked from the phone's own list. */

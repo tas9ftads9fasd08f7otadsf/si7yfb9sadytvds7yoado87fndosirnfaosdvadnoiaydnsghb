@@ -60,6 +60,13 @@ if [ ! -f "$work/site/out/riki-core.wasm" ] && [ "${RIKI_ALLOW_NO_CORE:-}" != "1
   exit 1
 fi
 
+# 110 Its labels and icons come from the site's own glyphs and sprite; without them every map is unlabelled.
+if { [ ! -d "$work/site/out/glyphs" ] || [ ! -f "$work/site/out/sprites/temaki-sprite.json" ]; } && [ "${RIKI_ALLOW_NO_CORE:-}" != "1" ]; then
+  echo "web-site.zip has no out/glyphs or out/sprites: maps would have no labels or icons. Pin rikiCore.ref in package.json" >&2
+  echo "and release again, or deploy to a test address with RIKI_ALLOW_NO_CORE=1" >&2
+  exit 1
+fi
+
 trust=""
 if [ -n "${FTPS_CA_FILE:-}" ]; then trust="set ssl:ca-file \"$FTPS_CA_FILE\";"; fi
 

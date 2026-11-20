@@ -122,6 +122,43 @@ describe("the site's core", async () => {
   });
 });
 
+// 110 the site's glyphs and sprite are the made files, or none while no commit is pinned
+describe("the site's glyphs and sprite", async () => {
+  const { mkdir, mkdtemp, writeFile } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const path = await import("node:path");
+  const { pinnedAssets } = await import("./pack-web.mjs");
+  const made = async (names) => {
+    const dir = await mkdtemp(path.join(tmpdir(), "assets-"));
+    for (const name of names) {
+      await mkdir(path.dirname(path.join(dir, name)), { recursive: true });
+      await writeFile(path.join(dir, name), name);
+    }
+    return dir;
+  };
+  const whole = ["glyphs/Noto Sans Regular/0-255.pbf", "sprites/temaki-sprite.json", "sprites/temaki-sprite.png"];
+
+  it("is none while no commit is pinned", async () => {
+    const answer = await pinnedAssets({ ref: null }, await made(whole));
+    expect(answer.files).toEqual({});
+    expect(answer.said).toContain("not pinned");
+  });
+
+  it("is the made files under their paths in out/, a font stack's spaces kept", async () => {
+    const dir = await made(whole);
+    const answer = await pinnedAssets({ ref: "0123456789abcdef" }, dir);
+    expect(Object.keys(answer.files).sort()).toEqual([...whole].sort());
+    expect(answer.files["glyphs/Noto Sans Regular/0-255.pbf"]).toBe(path.join(dir, "glyphs", "Noto Sans Regular", "0-255.pbf"));
+  });
+
+  it("fails when pinned ones are not made or half made, unless the pack is for the specs", async () => {
+    for (const dir of [await made([]), await made(["sprites/temaki-sprite.json"]), await made(["glyphs/Noto Sans Regular/0-255.pbf"])]) {
+      await expect(pinnedAssets({ ref: "0123456789abcdef" }, dir)).rejects.toThrow("npm run build:assets");
+      expect((await pinnedAssets({ ref: "0123456789abcdef" }, dir, { optional: true })).files).toEqual({});
+    }
+  });
+});
+
 // 91 the site's words are the made files, or English alone while none are pinned
 describe("the site's words", async () => {
   const { mkdtemp, writeFile } = await import("node:fs/promises");

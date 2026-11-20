@@ -112,6 +112,30 @@ final class SiteTest extends TestCase
         $this->assertSame(404, $site->answer('GET', '/regions/catalog.json', '/editor/index.php')->status, 'outside the base');
     }
 
+    // 110 the glyphs and the base sprite are the site's own files, a font stack's name with spaces among them
+    public function testTheGlyphsAndTheSpriteAreServedWithTheirTypes(): void
+    {
+        mkdir($this->folder . '/out/glyphs/Noto Sans Regular', 0777, true);
+        mkdir($this->folder . '/out/sprites', 0777, true);
+        file_put_contents($this->folder . '/out/glyphs/Noto Sans Regular/0-255.pbf', "\x0a\x10glyphs");
+        file_put_contents($this->folder . '/out/sprites/temaki-sprite@2x.png', "\x89PNG");
+        file_put_contents($this->folder . '/out/sprites/temaki-sprite.json', '{"a":{}}');
+
+        $glyph = $this->ask('/glyphs/Noto%20Sans%20Regular/0-255.pbf', '/editor/index.php');
+        $this->assertSame(404, $glyph->status, 'outside the base it is not the site');
+        $glyph = $this->ask('/editor/glyphs/Noto%20Sans%20Regular/0-255.pbf', '/editor/index.php');
+        $this->assertSame(200, $glyph->status);
+        $this->assertSame('application/x-protobuf', $glyph->headers['Content-Type']);
+        $this->assertSame("\x0a\x10glyphs", $glyph->body);
+        $this->assertSame('public, max-age=86400', $glyph->headers['Cache-Control']);
+
+        $png = $this->ask('/sprites/temaki-sprite@2x.png');
+        $this->assertSame('image/png', $png->headers['Content-Type']);
+        $this->assertSame('application/json; charset=utf-8', $this->ask('/sprites/temaki-sprite.json')->headers['Content-Type']);
+        $this->assertSame(404, $this->ask('/glyphs/Noto%20Sans%20Bold/0-255.pbf')->status);
+        $this->assertSame(404, $this->ask('/glyphs/../secret.txt')->status);
+    }
+
     public function testAnUnchangedFileIsAnsweredWithItsTagAlone(): void
     {
         $first = $this->ask('/_next/static/chunks/a.js');
