@@ -6,7 +6,6 @@ import { change, duplicateMap, exportMap, loadCoverage, loadLayerOptions, loadSw
   from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
-import { AddLayer } from "./AddLayer";
 import { Availability } from "./Availability";
 import { CoverageCard } from "./CoverageCard";
 import { DeleteMap } from "./DeleteMap";
@@ -59,7 +58,6 @@ export function EditTabs() {
 function EditFields() {
   const words = useViewer((state) => state.words);
   const portable = useViewer((state) => state.portable);
-  const adding = useViewer((state) => state.addingPackages);
   const switches = useViewer((state) => state.switches);
   const tab = useViewer((state) => tabOf(state.route));
   if (!portable) return null;
@@ -69,7 +67,6 @@ function EditFields() {
         <>
           <Layers portable={portable} />
           <EsriServices />
-          {adding ? <AddLayer /> : null}
           {portable.styles?.length ? <div className="foot-note">{words.layerCap}</div> : null}
         </>
       );

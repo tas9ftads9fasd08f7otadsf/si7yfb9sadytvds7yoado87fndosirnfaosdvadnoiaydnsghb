@@ -528,33 +528,33 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #editBody { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 28px 28px; }
 
 /* 94 The design's grouped lists and fields, wherever a page still uses the older pieces. */
-#editBody h2.title, #serverBody h2.title, #others h2.title { margin: 18px 4px 8px; font-size: 15px; font-weight: 600;
+:is(#editBody, .source-part) h2.title, #serverBody h2.title, #others h2.title { margin: 18px 4px 8px; font-size: 15px; font-weight: 600;
   text-transform: none; letter-spacing: 0; color: var(--sub); }
-#editBody .title-row .text-button { margin: 18px 4px 8px; font-size: 14px; font-weight: 600; color: var(--link); }
-#editBody .card, #serverBody .card { margin: 0; border: 0; border-radius: 20px; background: var(--card);
+:is(#editBody, .source-part) .title-row .text-button { margin: 18px 4px 8px; font-size: 14px; font-weight: 600; color: var(--link); }
+:is(#editBody, .source-part) .card, #serverBody .card { margin: 0; border: 0; border-radius: 20px; background: var(--card);
   box-shadow: var(--lift); padding: 4px 0; }
-#editBody .list, #serverBody .list { margin: 0; background: var(--card); border-radius: 20px; box-shadow: var(--lift);
+:is(#editBody, .source-part) .list, #serverBody .list { margin: 0; background: var(--card); border-radius: 20px; box-shadow: var(--lift);
   overflow: hidden; padding: 4px 0; }
-#editBody .row, #serverBody .row { min-height: 52px; padding: 6px 14px; border-radius: 0; gap: 12px; }
-#editBody .row .mark.small, #serverBody .row .mark.small { width: 34px; height: 34px; border-radius: 10px; }
-#editBody .row .mark.small .sym { font-size: 17px; }
-#editBody .row .words { font-size: 15px; }
-#editBody .field label { font-size: 13px; font-weight: 600; color: var(--sub); margin-bottom: 4px; }
-#editBody .field input[type=text], #editBody .field textarea { font-size: 15px; }
-#editBody .action, #serverBody .action { margin: 12px 0 0; width: 100%; height: 48px; border: 0; border-radius: 24px;
+:is(#editBody, .source-part) .row, #serverBody .row { min-height: 52px; padding: 6px 14px; border-radius: 0; gap: 12px; }
+:is(#editBody, .source-part) .row .mark.small, #serverBody .row .mark.small { width: 34px; height: 34px; border-radius: 10px; }
+:is(#editBody, .source-part) .row .mark.small .sym { font-size: 17px; }
+:is(#editBody, .source-part) .row .words { font-size: 15px; }
+:is(#editBody, .source-part) .field label { font-size: 13px; font-weight: 600; color: var(--sub); margin-bottom: 4px; }
+:is(#editBody, .source-part) .field input[type=text], :is(#editBody, .source-part) .field textarea { font-size: 15px; }
+:is(#editBody, .source-part) .action, #serverBody .action { margin: 12px 0 0; width: 100%; height: 48px; border: 0; border-radius: 24px;
   background: var(--cs-water); color: var(--c-water); font-size: 15px; font-weight: 600; }
-#editBody .action.danger, #serverBody .action.danger { background: var(--cs-red); color: var(--danger); }
-#editBody .action:disabled { background: var(--inset); color: var(--tertiary); }
-#editBody .foot-note { margin: 8px 4px; font-size: 13px; }
-#editBody .chips { padding: 8px 0 0; }
-#editBody .chips button { height: 28px; padding: 0 11px; border: 0; box-shadow: inset 0 0 0 1px var(--sep);
+:is(#editBody, .source-part) .action.danger, #serverBody .action.danger { background: var(--cs-red); color: var(--danger); }
+:is(#editBody, .source-part) .action:disabled { background: var(--inset); color: var(--tertiary); }
+:is(#editBody, .source-part) .foot-note { margin: 8px 4px; font-size: 13px; }
+:is(#editBody, .source-part) .chips { padding: 8px 0 0; }
+:is(#editBody, .source-part) .chips button { height: 28px; padding: 0 11px; border: 0; box-shadow: inset 0 0 0 1px var(--sep);
   font-size: 13px; font-weight: 600; }
-#editBody .chips button.picked { background: var(--cs-water); color: var(--c-water); box-shadow: none; }
-#editBody .swatches button { width: 36px; height: 36px; border-radius: 12px; border: 0; }
-#editBody .icon-button { width: 32px; height: 32px; border-radius: 16px; align-items: center; justify-content: center;
+:is(#editBody, .source-part) .chips button.picked { background: var(--cs-water); color: var(--c-water); box-shadow: none; }
+:is(#editBody, .source-part) .swatches button { width: 36px; height: 36px; border-radius: 12px; border: 0; }
+:is(#editBody, .source-part) .icon-button { width: 32px; height: 32px; border-radius: 16px; align-items: center; justify-content: center;
   padding: 0; }
-#editBody .icon-button:not(.danger) { background: var(--inset); color: var(--text); }
-#editBody select { height: 36px; border-radius: 12px; border: 0; background: var(--inset); padding: 0 10px; }
+:is(#editBody, .source-part) .icon-button:not(.danger) { background: var(--inset); color: var(--text); }
+:is(#editBody, .source-part) select { height: 36px; border-radius: 12px; border: 0; background: var(--inset); padding: 0 10px; }
 /* 94 A layer's row: the handle, the layer and its switch, its settings folding out under it. */
 #editBody .layer-item + .layer-item, #editBody .layer-item + .row { box-shadow: inset 0 1px 0 var(--sep); }
 #editBody .layer-item .row { padding: 6px 14px 6px 8px; }
@@ -641,3 +641,63 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
   background: var(--card); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22); padding: 26px 20px 20px; }
 #details .preview-pane .details-preview .feature { border: 0; background: none; padding: 0; }
 #details .preview-pane .details-preview > .row { padding: 0 0 12px; }
+
+/* 97 New map and Add layer: windows over a dimmed page, W10 and W11. */
+.scrim { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.38); }
+.modal { width: 680px; max-width: calc(100vw - 48px); max-height: calc(100vh - 48px); overflow: auto;
+  border-radius: 30px; background: var(--ground); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35); padding: 24px 26px;
+  display: flex; flex-direction: column; gap: 18px; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.modal-head h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; }
+.modal-head .tool.round { width: 36px; height: 36px; }
+.modal .name-line { display: flex; gap: 14px; align-items: flex-end; }
+.modal .name-line > .mark { width: 64px; height: 64px; border-radius: 18px; }
+.modal .name-line > .mark .sym { font-size: 30px; }
+.modal label { flex: 1; display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600;
+  color: var(--sub); }
+.modal label input { height: 46px; border-radius: 14px; border: 0; outline: 0; background: var(--card);
+  box-shadow: var(--lift); padding: 0 14px; font-size: 16px; font-weight: 500; color: var(--text); }
+.modal .tints { display: flex; flex-wrap: wrap; gap: 8px; }
+.modal .tints button { width: 34px; height: 34px; border-radius: 17px; border: 0; padding: 0; }
+.modal .tints button[aria-pressed=true] { box-shadow: 0 0 0 2px var(--ground), 0 0 0 4px var(--c-water); }
+.modal .starts { display: flex; flex-direction: column; gap: 8px; }
+.modal .starts .group-title { font-size: 13px; padding: 0; }
+.modal .starts .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.modal .starts button { border: 0; border-radius: 20px; background: var(--card); box-shadow: var(--lift); padding: 14px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-align: left; color: var(--text); }
+.modal .starts button[aria-pressed=true] { box-shadow: inset 0 0 0 2px var(--c-water), var(--lift); }
+.modal .starts .tile { width: 36px; height: 36px; border-radius: 11px; display: flex; align-items: center;
+  justify-content: center; background: var(--cs-water); color: var(--c-water); }
+.modal .starts b { font-size: 15px; }
+.modal .starts small { font-size: 12px; line-height: 1.35; color: var(--sub); }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+.modal-foot button { height: 46px; padding: 0 22px; border-radius: 23px; border: 0; font-size: 15px; font-weight: 700; }
+.modal-foot .secondary { background: var(--inset); color: var(--text); font-weight: 600; }
+.modal-foot .primary { background: var(--c-water); color: var(--on-accent); }
+.modal-foot .primary:disabled { background: var(--inset); color: var(--tertiary); }
+.modal.wide { width: 940px; height: 640px; padding: 0; flex-direction: row; gap: 0; overflow: hidden; }
+.modal .sources { width: 260px; flex: none; padding: 22px 14px; display: flex; flex-direction: column; gap: 6px;
+  background: var(--card); box-shadow: 1px 0 0 var(--sep); overflow-y: auto; }
+.modal .sources h1 { margin: 0; padding: 0 10px 10px; font-size: 22px; font-weight: 700; }
+.modal .sources button { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 16px; border: 0;
+  background: none; text-align: left; color: var(--text); }
+.modal .sources button:hover { background: var(--hover); }
+.modal .sources button[aria-pressed=true] { background: var(--cs-water); }
+.modal .sources button[aria-pressed=true] .words { color: var(--c-water); }
+.modal .sources .mark.small { width: 34px; height: 34px; border-radius: 10px; }
+.modal .sources .words { display: flex; flex-direction: column; font-size: 15px; font-weight: 600; }
+.modal .sources .words small { font-size: 12px; font-weight: 400; color: var(--sub); }
+.modal .source-body { flex: 1; min-width: 0; padding: 22px 26px; display: flex; flex-direction: column; gap: 8px;
+  overflow: hidden; }
+.modal .source-body .into { font-size: 15px; color: var(--sub); }
+.modal .source-body .into b { color: var(--text); }
+.modal .source-part { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
+.modal .source-part h2.title:first-child { margin-top: 4px; }
+.group > .add-layer { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 0 14px;
+  border: 0; background: none; text-align: left; font-size: 15px; font-weight: 500; color: var(--c-water);
+  position: relative; }
+.group > .add-layer::before { content: ""; position: absolute; top: 0; left: 62px; right: 0; height: 1px;
+  background: var(--sep); }
+.group > .add-layer .tile { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; background: var(--cs-water); }

@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { pickStyle, setLayerShown, showEdit, showSwitcher, shownMapOf, useViewer } from "@/store/viewer";
+import { offers, pickStyle, setLayerShown, showEdit, showSwitcher, shownMapOf, toggleAddingPackages, useViewer }
+  from "@/store/viewer";
 import { MarkTile } from "./ui/MarkTile";
 import { Switch } from "./ui/Switch";
 import { Sym } from "./ui/Sym";
@@ -64,7 +65,19 @@ export function useLayersOn(shared: SharedMap) {
   return filledIn(filledIn(words.layersOn, "on", String(on)), "all", String(shared.layers.length));
 }
 
-/** The map's layers, each with its switch. */
+/** 97 Add layer's window, where the browser may add one. */
+function AddLayerButton() {
+  const words = useViewer((state) => state.words);
+  if (!offers("addLayer")) return null;
+  return (
+    <button type="button" className="add-layer" onClick={() => {
+      showSwitcher(false);
+      toggleAddingPackages();
+    }}><span className="tile"><Sym name="plus" /></span>{words.addLayer}</button>
+  );
+}
+
+/** The map's layers, each with its switch; 97 Add layer at its foot. */
 export function LayerToggles({ shared, id }: { shared: SharedMap; id?: string }) {
   const hidden = useViewer((state) => state.hidden);
   return (
@@ -76,6 +89,7 @@ export function LayerToggles({ shared, id }: { shared: SharedMap; id?: string })
           <Switch isOn={!hidden.has(layer.id)} label={layer.name} onChange={(isOn) => setLayerShown(layer.id, isOn)} />
         </div>
       ))}
+      <AddLayerButton />
     </div>
   );
 }

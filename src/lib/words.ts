@@ -1,7 +1,12 @@
 /** English, until the phone's own words arrive or if they never do. */
 export const ENGLISH = {
   maps: "Maps", styles: "Styles", style: "Style", layers: "Layers", layersIn: "Layers in {style}",
-  layersOn: "{on} of {all} on", livePreview: "Live preview", details: "Details", settings: "Settings", newMap: "New map", importMap: "Import",
+  layersOn: "{on} of {all} on", livePreview: "Live preview", details: "Details", settings: "Settings",
+  startFrom: "Start from", emptyMap: "Empty map", emptyMapNote: "Add its layers next",
+  copyOf: "A copy of {map}", copyOfNote: "Its layers and styles, to change", importMapNote: "A .mapson file",
+  newMapPlaceholder: "For example: Hiking in Malé Karpaty", createAndEdit: "Create and edit", rikiMaps: "Riki Maps", builtInNote: "Built in, from your regions",
+  tileNote: "{z}/{x}/{y}, TileJSON or WMS", fileNote: "GeoJSON, KML, GPX, PMTiles…", apiNote: "Live points from an API",
+  serverNote: "WMS, WMTS, ArcGIS and more", newMap: "New map", importMap: "Import",
   nothing: "No map here can be shared.", away: "Not serving", app: "Riki Maps", allMaps: "All maps",
   sort: "Sort", nameAZ: "Name A–Z", nameZA: "Name Z–A", newFolder: "New folder", folder: "Folder",
   outOfFolder: "Out of the folder", into: "Into", folderSymbols: "",

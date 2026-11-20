@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Feature } from "@/backend/types";
 import type { SharedMap } from "@/lib/types";
 import { resetViewer, useViewer } from "@/store/viewer";
-import { AddLayer } from "./edit/AddLayer";
+import { AddLayerModal } from "./edit/AddLayerModal";
 import { Layers } from "./edit/Layers";
 import { Styling } from "./edit/Styling";
 import { MapShelf } from "./MapShelf";
@@ -56,7 +56,11 @@ describe("the parts a target does not answer", () => {
   // 86 the site adds a tile address; its packages, files, API layers and servers stay off until it answers them
   it("shows Add layer with only what the target answers", () => {
     fake.offered = new Set(["addLayer"]);
-    render(<AddLayer />);
+    // 97 the window lists the sources the target answers, the tile address alone here
+    useViewer.setState({ addingPackages: true });
+    render(<AddLayerModal />);
+    expect(screen.getAllByRole("button", { pressed: true }).map((each) => each.id)).toEqual(["addFrom-tile"]);
+    expect(document.querySelectorAll(".sources [aria-pressed]")).toHaveLength(1);
     expect(document.querySelector("#tileAddress")).toBeTruthy();
     for (const id of ["#packages", "#addPackages", "#layerFile", "#serverAddress", "#addServer", "#exportServers"]) {
       expect(document.querySelector(id)).toBeNull();
@@ -77,7 +81,9 @@ describe("the parts a target does not answer", () => {
       <Styling portable={{ id: "a", name: "Alps" }} /></>);
     expect(screen.getByRole("button", { name: /New map/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Servers" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Add layer/ })).toBeTruthy();
+    // 97 Edit map's Add layer, and the side bar's beside the map's layers
+    expect(screen.getAllByRole("button", { name: /Add layer/ }).length).toBeGreaterThan(0);
+    expect(document.querySelector("#addLayer")).toBeTruthy();
     expect(screen.getByText("Choose a picture for this icon")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Name A–Z/ })).toBeTruthy();
   });

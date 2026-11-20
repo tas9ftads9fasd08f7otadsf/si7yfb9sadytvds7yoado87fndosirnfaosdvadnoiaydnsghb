@@ -4,7 +4,7 @@ import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import { isOlder } from "@/lib/version";
 import type { SharedMap } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { checkKey, importMap, makeMap, nameNewMap, offers, shownMapOf, showEdit, toggleMapCard, useViewer }
+import { checkKey, importMap, offers, openNewMap, shownMapOf, showEdit, toggleMapCard, useViewer }
   from "@/store/viewer";
 import { DeleteMap } from "./edit/DeleteMap";
 import { MapMark, MapShelf, useLayerCount } from "./MapShelf";
@@ -103,21 +103,12 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
   );
 }
 
-/** Only for a browser allowed to change maps: the phone makes it, and shares it at once. */
+/** Only for a browser allowed to change maps: 97 New map opens its window; Import takes a file. */
 function NewMap() {
   const words = useViewer((state) => state.words);
   const canEdit = useViewer((state) => state.editToken != null);
-  const isNaming = useViewer((state) => state.namingMap);
-  const setNaming = nameNewMap;
-  const [name, setName] = useState("");
   const file = useRef<HTMLInputElement>(null);
   if (!canEdit || !offers("newMap")) return null;
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!name.trim() || !(await makeMap(name))) return;
-    setName("");
-    setNaming(false);
-  };
   const picked = async (event: ChangeEvent<HTMLInputElement>) => {
     const chosen = event.target.files?.[0];
     event.target.value = "";
@@ -125,17 +116,9 @@ function NewMap() {
   };
   return (
     <div id="newMap" className="list">
-      {isNaming ? (
-        <form className="password" onSubmit={submit}>
-          <input id="newMapName" type="text" aria-label={words.name} placeholder={words.name} autoFocus
-            value={name} onChange={(event) => setName(event.target.value)} />
-          <button type="submit" className="action" id="newMapSave">{words.save}</button>
-        </form>
-      ) : (
-        <button type="button" className="row add" id="newMapButton" onClick={() => setNaming(true)}>
-          <Sym name="plus.circle.fill" />{words.newMap}
-        </button>
-      )}
+      <button type="button" className="row add" id="newMapButton" onClick={openNewMap}>
+        <Sym name="plus.circle.fill" />{words.newMap}
+      </button>
       <button type="button" className="row add" id="importMap" onClick={() => file.current?.click()}>
         <Sym name="square.and.arrow.down" />{words.importMap}
       </button>

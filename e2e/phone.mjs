@@ -29,3 +29,9 @@ export async function pickPart(page, name) {
   await page.locator("#details .layout-pane .part-card", { hasText: name }).first().click();
   await page.locator("#details .settings-pane .pane-title", { hasText: name }).waitFor();
 }
+
+// 97 Add layer is a window of sources; each spec picks the one it adds from.
+export async function addFrom(page, source) {
+  await page.locator(`#addFrom-${source}`).click();
+  await page.locator(`#addFrom-${source}[aria-pressed=true]`).waitFor();
+}

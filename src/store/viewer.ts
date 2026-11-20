@@ -85,8 +85,6 @@ export interface ViewerState {
   offline: OfflinePlan | null;
   offlineAsk: OfflineAsk | null;
   offlineOpen: boolean;
-  /** 90 New map's name field is open on the maps screen. */
-  namingMap: boolean;
   /** 90 The layer switcher over the map, and whether the side bar's map card is folded open. */
   switcherOpen: boolean;
   mapCardOpen: boolean;
@@ -103,7 +101,7 @@ const firstState = (): ViewerState => ({
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
   switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null,
-  namingMap: false, switcherOpen: false, mapCardOpen: true
+  switcherOpen: false, mapCardOpen: true
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -479,7 +477,17 @@ export function showEditTab(tab: EditTab) {
 
 export const showSwitcher = (switcherOpen: boolean) => set({ switcherOpen });
 export const toggleMapCard = () => set({ mapCardOpen: !get().mapCardOpen });
-export const nameNewMap = (namingMap: boolean) => set({ namingMap });
+/** 97 New map's window, over the screen it was opened from; its address is /new. */
+export const openNewMap = () => go({ ...get().route, modal: { kind: "new" } });
+
+export function closeModal() {
+  const { route } = get();
+  if (!route.modal) return;
+  const under: Route = { ...route };
+  delete under.modal;
+  const { mapID } = get();
+  go(under.screen === "home" && mapID ? { screen: "map", map: mapID } : under);
+}
 
 /** Edit map opens on its first tab; Done goes back to the map it edits. */
 export function showEdit(editing: boolean) {
