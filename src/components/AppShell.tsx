@@ -9,6 +9,7 @@ import { DetailsScreen } from "./edit/DetailsScreen";
 import { LayerSwitcher, LivePreview } from "./MapLayers";
 import { NavRail } from "./NavRail";
 import { NewMapModal } from "./NewMapModal";
+import { PlacePanel } from "./PlacePanel";
 import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar, UndrawnNote } from "./Overlays";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
@@ -88,6 +89,7 @@ export function AppShell() {
       <div id="map" ref={mapBox} />
       <LayerSwitcher />
       <LivePreview />
+      <PlacePanel />
       <DetailsScreen />
       <NewMapModal />
       <AddLayerModal />

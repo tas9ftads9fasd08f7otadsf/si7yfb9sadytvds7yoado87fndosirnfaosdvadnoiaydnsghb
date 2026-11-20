@@ -81,7 +81,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* 90 the top bar: the app and the map on screen, then the tools; the rail of screens under it. */
 #top { position: absolute; top: 0; left: 0; right: 0; height: var(--top); z-index: 5; display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto); align-items: center; column-gap: 16px;
+  grid-template-columns: minmax(max-content, 1fr) minmax(200px, 560px) minmax(max-content, 1fr); align-items: center;
+  column-gap: 16px;
   padding: 0 20px 0 16px; background: var(--card); box-shadow: 0 1px 0 var(--sep); }
 #top .start { display: flex; align-items: center; gap: 16px; min-width: 0; justify-self: start; }
 #top .end { display: flex; align-items: center; gap: 10px; min-width: 0; justify-self: end; }
@@ -702,6 +703,46 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
   background: var(--sep); }
 .group > .add-layer .tile { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center;
   justify-content: center; background: var(--cs-water); }
+
+/* 100 W1's search in the top bar, W2's results in the side bar and the place panel beside the map. */
+#searchBox { width: 100%; height: 42px; border-radius: 21px; background: var(--inset); display: flex; align-items: center;
+  gap: 10px; padding: 0 16px; justify-self: center; }
+#searchBox > .sym { font-size: 16px; color: var(--sub); }
+#searchBox input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 15px; color: var(--text); }
+#searchBox input::placeholder { color: #8e8e93; }
+#searchBox input::-webkit-search-cancel-button { display: none; }
+#searchBox kbd { font: 600 12px inherit; color: var(--sub); padding: 2px 7px; border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--sep); }
+#searchBox:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+#searchResults { display: flex; flex-direction: column; gap: 12px; }
+#searchResults .group > .row.hit { width: 100%; min-height: 60px; border: 0; background: none; text-align: left;
+  color: var(--text); }
+#searchResults .group > .row.hit.picked { background: var(--cs-water); }
+#searchResults .row.hit .tile { width: 34px; height: 34px; border-radius: 17px; flex: none; display: flex;
+  align-items: center; justify-content: center; background: var(--cs-red); color: var(--c-red); }
+#searchResults .row.hit .words { font-size: 15px; font-weight: 600; }
+#searchResults .row.hit .distance { font-size: 12px; color: var(--sub); }
+#placePanel { position: absolute; right: 16px; top: calc(var(--top) + 72px); bottom: 16px; z-index: 5; width: 380px;
+  border-radius: 26px; background: var(--card); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25); overflow: hidden;
+  display: flex; flex-direction: column; }
+#placePanel .place-head { position: relative; padding: 18px 60px 0 18px; display: flex; flex-direction: column; gap: 4px; }
+#placePanel .place-head .kind { font-size: 13px; font-weight: 600; color: var(--c-red); }
+#placePanel .place-head h2 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.15;
+  overflow-wrap: anywhere; }
+#placePanel .place-head .tool.round { position: absolute; right: 12px; top: 12px; width: 36px; height: 36px; }
+#placePanel .place-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 14px 14px 0; }
+#placePanel .place-actions button { height: 62px; border-radius: 16px; border: 0; background: var(--cs-water);
+  color: var(--c-water); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-size: 12px; font-weight: 600; }
+#placePanel .place-actions .sym { font-size: 18px; }
+#placePanel .place-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 18px 0; }
+#placePanel .place-body .feature:only-child > b, #placePanel .place-body .feature:only-child > small:first-of-type {
+  display: none; }
+#placePanel .place-body .feature dl { max-height: none; font-size: 13px; border-radius: 18px; background: var(--inset);
+  padding: 10px 14px; }
+#placePanel .place-foot { margin: 0; padding: 14px 18px 18px; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px;
+  font-size: 13px; color: var(--sub); box-shadow: inset 0 1px 0 var(--sep); }
+#placePanel .place-foot dd { margin: 0; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
 
 /* 92 The QR code the phone scans; white under it, so a dark theme's code still reads. */
 .pair { display: grid; justify-items: center; gap: 10px; margin: 16px; text-align: center; }
