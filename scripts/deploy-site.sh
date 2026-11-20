@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # A release's web-site.zip onto the PHP server over FTPS, with the config.php this run writes.
-# Reads FTPS_HOST, FTPS_USER, FTPS_PASSWORD, FTPS_DIR, FTPS_PORT, FTPS_CA_FILE, ICLOUD_API_TOKEN,
-# ICLOUD_CONTAINER, TILES_BASE and REGIONS_CATALOG (README). Needs lftp, unzip, node and php on the PATH.
+# Reads FTPS_HOST, FTPS_USER, FTPS_PASSWORD, FTPS_DIR, FTPS_PORT, FTPS_CA_FILE, FTPS_CERT_NAME,
+# ICLOUD_API_TOKEN, ICLOUD_CONTAINER, TILES_BASE and REGIONS_CATALOG (README).
+# Needs lftp, openssl, unzip, node and php on the PATH.
 set -euo pipefail
 
 zip="${1:?usage: deploy-site.sh web-site.zip}"
@@ -70,13 +71,25 @@ fi
 trust=""
 if [ -n "${FTPS_CA_FILE:-}" ]; then trust="set ssl:ca-file \"$FTPS_CA_FILE\";"; fi
 
+# shellcheck source=scripts/ftps-certificate.sh
+source "$(dirname "$0")/ftps-certificate.sh"
+# lftp can check a certificate only against FTPS_HOST, so FTPS_CERT_NAME is checked here.
+if [ -n "${FTPS_CERT_NAME:-}" ]; then
+  ftps_fetch_certificate "$FTPS_HOST" "$port" "$work" \
+    || { echo "the server sent no certificate after AUTH TLS" >&2; exit 1; }
+  if ! ftps_issued_for_host "$work/cert.pem" "$FTPS_HOST" && ! ftps_issued_for_cert_name "$work/cert.pem"; then
+    echo "the certificate is issued for $(ftps_certificate_names "$work/cert.pem"), not for FTPS_HOST or FTPS_CERT_NAME" >&2
+    exit 1
+  fi
+  trust="$trust set ssl:check-hostname false;"
+fi
+
 # Assets, server code, config.php (sent as .new, renamed), index.php, site.json, then deletions:
 # the new entry point goes last, and a failed config upload leaves the old one serving.
 # Every file is sent: a page of the same size, older than the server's copy, is still new.
-# 121 The host's shared certificate names its own servers, not FTPS_HOST: only its trust is checked.
 LFTP_PASSWORD="$FTPS_PASSWORD" lftp -c "
   set cmd:fail-exit true;
-  set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true; set ssl:check-hostname false; $trust
+  set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true; $trust
   set net:max-retries 3; set net:timeout 30; set net:reconnect-interval-base 5;
   open --env-password -u \"$FTPS_USER\" -p $port \"$FTPS_HOST\";
   mkdir -p -f \"$dir\"; cd \"$dir\";

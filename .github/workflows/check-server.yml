@@ -22,6 +22,8 @@ jobs:
       FTPS_PASSWORD: ${{ secrets.FTPS_PASSWORD }}
       FTPS_DIR: ${{ vars.FTPS_DIR }}
       FTPS_PORT: ${{ vars.FTPS_PORT }}
+      # The host's shared certificate names its own servers, not FTPS_HOST.
+      FTPS_CERT_NAME: ${{ vars.FTPS_CERT_NAME || '*.r5.websupport.sk' }}
       # Optional: the site's address, whose site.json says which release it serves.
       SITE_URL: ${{ vars.SITE_URL }}
     steps:
