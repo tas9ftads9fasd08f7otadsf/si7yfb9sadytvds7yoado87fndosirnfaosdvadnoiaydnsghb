@@ -1,6 +1,8 @@
 export const ROOT = "/riki/v1";
 export const SESSION = "/web/session";
 export const EDIT_CHECK = "/web/edit-check";
+/** 92 Where the phone hands out the QR code that lets a browser edit. */
+export const PAIR = "/web/pair";
 export const WORDS_PATH = "/web/words";
 
 export async function readJSON<T>(path: string): Promise<T> {

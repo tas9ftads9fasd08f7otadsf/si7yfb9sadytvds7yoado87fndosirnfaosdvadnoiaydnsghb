@@ -502,6 +502,11 @@ export async function checkKey(typed: string) {
   }
 }
 
+/** 92 The token the phone gave once it was scanned and said yes. */
+export function allowEditing(token: string) {
+  keepToken(token);
+}
+
 function keepToken(token: string | null) {
   set({ editToken: token || null });
   try {

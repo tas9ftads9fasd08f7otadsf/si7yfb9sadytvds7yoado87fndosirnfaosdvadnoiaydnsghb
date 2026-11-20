@@ -50,7 +50,8 @@ function LayerSwitches({ shared }: { shared: SharedMap }) {
   );
 }
 
-function PasswordForm() {
+/** 92 `prefix` keeps the ids apart where Settings shows the form beside the Maps page. */
+export function PasswordForm({ prefix = "" }: { prefix?: string }) {
   const words = useViewer((state) => state.words);
   const [typed, setTyped] = useState("");
   const [checking, setChecking] = useState(false);
@@ -61,9 +62,9 @@ function PasswordForm() {
     setChecking(false);
   };
   return (
-    <form className="password" id="passwordForm" onSubmit={submit}>
-      <label htmlFor="passwordField">{words.typePassword}</label>
-      <input type="text" id="passwordField" placeholder="7Q4 K29" maxLength={12} autoComplete="off"
+    <form className="password" id={`${prefix}passwordForm`} onSubmit={submit}>
+      <label htmlFor={`${prefix}passwordField`}>{words.typePassword}</label>
+      <input type="text" id={`${prefix}passwordField`} placeholder="7Q4 K29" maxLength={12} autoComplete="off"
         autoCapitalize="characters" spellCheck={false} aria-label={words.password} value={typed}
         onChange={(event) => setTyped(event.target.value)} />
       <button type="submit" className="action" disabled={checking}><Sym name="lock.open" />{words.unlock}</button>

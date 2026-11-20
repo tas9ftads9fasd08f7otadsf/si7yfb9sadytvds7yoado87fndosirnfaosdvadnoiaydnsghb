@@ -3,7 +3,7 @@
 // rules of `PeerWebGuestBook`; `/__test/*` is the phone's side, for the specs to press.
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { PAGE_SEGMENTS } from "../src/lib/segments.ts";
@@ -44,7 +44,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+  tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
@@ -168,7 +168,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: freshMaps(), served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+    tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
@@ -1313,6 +1313,24 @@ async function answer(request, response) {
     return send(response, 200, file, TYPES[path.extname(route)] ?? "application/octet-stream");
   }
   if (refuses(request)) return send(response, 403, "This phone has not let this browser in");
+  // 92: the QR code the phone scans to let this browser edit, as `PeerWebPairing` answers.
+  if (route === "/web/pair" && method === "POST") {
+    const id = randomBytes(16).toString("hex");
+    phone.pairs.set(id, "waiting");
+    return json(response, { id, code: id.slice(0, 4).toUpperCase(), expiresIn: 300 });
+  }
+  if (route.startsWith("/web/pair/")) {
+    const id = route.slice("/web/pair/".length).replace(/\.png$/, "");
+    const state = phone.pairs.get(id);
+    if (!state) return send(response, 410, "This code ran out; ask for a new one");
+    if (route.endsWith(".png")) return send(response, 200, PIXEL, "image/png");
+    if (state === "waiting") return send(response, 202, JSON.stringify({ waiting: true }), TYPES[".json"]);
+    phone.pairs.delete(id);
+    if (state === "refused") return send(response, 403, "The phone did not let this browser edit");
+    const token = "mock." + randomUUID();
+    phone.tokens.add(token);
+    return json(response, { token, expiresIn: 43200 });
+  }
   if (route.startsWith("/web/icons/") && /^\/web\/icons\/[a-z]{2}\.ts\./.test(route)) {
     // 69: a road sign is cut from its sheet, as `PeerWebIcons` answers.
     response.writeHead(200, { "Content-Type": "image/png" });
@@ -1819,6 +1837,12 @@ function testControl(route, query, response) {
   }
   case "/__test/guests": break;
   case "/__test/new-key": phone.tokens.clear(); break;
+  // 92: the phone scanned the newest code and said yes or no.
+  case "/__test/pair": {
+    const newest = [...phone.pairs.keys()].pop();
+    if (newest) phone.pairs.set(newest, query.get("allow") === "1" ? "allowed" : "refused");
+    return json(response, { id: newest ?? null });
+  }
   case "/__test/start-city":
     phone.maps[0].start = { kind: "city", latitude: 49.06, longitude: 20.3, name: "Poprad" };
     break;
