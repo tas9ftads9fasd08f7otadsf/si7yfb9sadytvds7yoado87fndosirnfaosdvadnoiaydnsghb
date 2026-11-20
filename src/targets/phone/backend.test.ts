@@ -117,7 +117,7 @@ describe("the phone backend", () => {
     backend.useToken(() => "t");
     await backend.saved();
     await backend.savedFeature("A/B");
-    const [list, one] = fetcher.mock.calls as unknown as [string, RequestInit][];
+    const [list, one] = fetcher.mock.calls as unknown as [[string, RequestInit], [string, RequestInit]];
     expect(list[0]).toBe("/riki/v1/saved");
     expect(one[0]).toBe("/riki/v1/saved/A%2FB");
     expect((one[1].headers as Record<string, string>).Authorization).toBe("Bearer t");

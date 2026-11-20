@@ -23,6 +23,7 @@ export type Screen =
   | { screen: "details"; map: string; layer: string }
   | { screen: "data"; tab: DataTab }
   | { screen: "servers"; server?: string; part?: ServerPart }
+  | { screen: "saved"; id?: string }
   | { screen: "settings" }
   | { screen: "unlock"; key: string };
 
@@ -80,6 +81,8 @@ function readSegments(segments: string[]): Route {
     case "servers":
       if (!second) return { screen: "servers" };
       return { screen: "servers", server: second, part: isOneOf(SERVER_PARTS, third) ? third : "layers" };
+    case "saved":
+      return second ? { screen: "saved", id: second } : { screen: "saved" };
     case "settings":
       return { screen: "settings" };
     case "new":
@@ -126,6 +129,8 @@ function screenPath(route: Screen): string {
       return join("data", route.tab);
     case "servers":
       return route.server ? join("servers", route.server, route.part ?? "layers") : "/servers";
+    case "saved":
+      return route.id ? join("saved", route.id) : "/saved";
     case "settings":
       return "/settings";
     case "unlock":
