@@ -249,3 +249,38 @@ describe("the core on demand", () => {
     expect(onDemand).toContain(artifactName("${{ steps.commit.outputs.sha }}"));
   });
 });
+
+// 120 the site's server connection is checked each day and before each deploy
+describe("the server check", () => {
+  const check = read("check-server.yml");
+  const deploy = read("deploy-site.yml");
+
+  it("runs each day, by hand, and when another workflow calls it", () => {
+    expect(check).toMatch(/schedule:\s*\n\s*- cron: "[0-9]+ [0-9]+ \* \* \*"/);
+    expect(check).toContain("workflow_dispatch:");
+    expect(check).toContain("workflow_call:");
+  });
+
+  it("reads the deploy's own settings from the site environment, the password from a secret", () => {
+    expect(check).toContain("environment: site");
+    for (const name of ["FTPS_HOST", "FTPS_USER", "FTPS_PASSWORD"]) {
+      expect(check).toContain(`${name}: \${{ secrets.${name} }}`);
+    }
+    for (const name of ["FTPS_DIR", "FTPS_PORT", "SITE_URL"]) expect(check).toContain(`${name}: \${{ vars.${name} }}`);
+  });
+
+  it("fails rather than skips when the settings are missing, so a daily run is never green for nothing", () => {
+    expect(check).toMatch(/are not all set on the site environment"\s*\n\s*exit 1/);
+  });
+
+  it("installs the deploy's FTPS client and runs the script", () => {
+    expect(check).toContain("apt-get install -y -q lftp");
+    expect(check).toContain("run: bash scripts/check-server.sh");
+  });
+
+  it("runs in the deploy before anything is uploaded", () => {
+    const checked = deploy.indexOf("run: bash scripts/check-server.sh");
+    expect(checked).toBeGreaterThan(-1);
+    expect(checked).toBeLessThan(deploy.indexOf("run: bash scripts/deploy-site.sh"));
+  });
+});

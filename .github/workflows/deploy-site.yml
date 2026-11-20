@@ -73,4 +73,7 @@ jobs:
       - if: steps.ready.outputs.go == 'true'
         run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'web-site.zip*' --dir dist
       - if: steps.ready.outputs.go == 'true'
+        name: Check the server
+        run: bash scripts/check-server.sh
+      - if: steps.ready.outputs.go == 'true'
         run: bash scripts/deploy-site.sh dist/web-site.zip
