@@ -11,9 +11,10 @@ import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } f
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
-  SessionAnswer, SharedMap, Standing, StackLayer, Start } from "@/lib/types";
+  SessionAnswer, SharedMap, DetailsSheet, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
+import { type NameHit, findNames } from "@/lib/search";
 
 export type Theme = "auto" | "light" | "dark";
 export { SERVER_PARTS, type ServerPart } from "@/lib/route";
@@ -88,6 +89,24 @@ export interface ViewerState {
   /** 90 The layer switcher over the map, and whether the side bar's map card is folded open. */
   switcherOpen: boolean;
   mapCardOpen: boolean;
+  /** 100 What a tap or a search found, shown in the place panel. */
+  place: Place | null;
+  /** 100 The names the search found in the map's data, and the places the phone found. */
+  nameHits: NameHit[] | null;
+  foundPlaces: FoundPlace[] | null;
+}
+
+/** 100 A feature as the place panel shows it: its tags, its layer, and its layout once the phone fills it. */
+export interface ShownFeature {
+  properties: Record<string, unknown>;
+  layer: string;
+  details?: DetailsSheet | null;
+}
+
+export interface Place {
+  found: ShownFeature[];
+  lng: number;
+  lat: number;
 }
 
 const firstState = (): ViewerState => ({
@@ -101,7 +120,7 @@ const firstState = (): ViewerState => ({
   serverPicks: new Map(),
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
   switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null,
-  switcherOpen: false, mapCardOpen: true
+  switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null
 });
 
 export const useViewer = create<ViewerState>(firstState);
@@ -114,7 +133,8 @@ const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof 
   notice: undefined as ReturnType<typeof setTimeout> | undefined, layerOptions: null as string | null,
   packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
   coverageEdits: Promise.resolve(), optionsAsked: 0,
-  offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0 };
+  offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0,
+  search: undefined as ReturnType<typeof setTimeout> | undefined };
 
 export function resetViewer() {
   clearTimeout(busy.heartbeat);
@@ -469,6 +489,58 @@ export function showSide(sideShown: boolean) {
 
 export const toggleSide = () => showSide(!get().sideShown);
 
+// MARK: - Search and places
+
+export const showPlace = (place: Place | null) => set({ place });
+
+const SEARCH_WAIT = 250;
+
+/** 100 The words typed: the map's own names at once, the phone's places when it may be asked; "" ends it. */
+export function search(text: string) {
+  const { mapID, route } = get();
+  const typed = text.trim();
+  if (!mapID) return;
+  if (!typed) {
+    set({ nameHits: null, foundPlaces: null });
+    if (route.screen === "search") go({ screen: "map", map: mapID }, { replace: true });
+    return;
+  }
+  go({ screen: "search", map: mapID, text: typed }, { replace: route.screen === "search" });
+  const point = coordinatesIn(typed);
+  set({ nameHits: point ? [{ name: typed, layer: get().words.coordinates, lat: point[0], lng: point[1], properties: {} }]
+    : findNames(mapControl()?.namedFeatures() ?? [], typed), foundPlaces: null });
+  clearTimeout(busy.search);
+  if (!get().editToken || !offers("places")) return;
+  busy.search = setTimeout(async () => {
+    const answer = await editing(() => backend.startPlaces("city", typed), { quiet: true });
+    const now = get().route;
+    if (answer?.ok && now.screen === "search" && now.text === typed) set({ foundPlaces: answer.value });
+  }, SEARCH_WAIT);
+}
+
+/** 100 Latitude and longitude typed as people write them, "48.1486, 17.1077". */
+export function coordinatesIn(typed: string): [number, number] | null {
+  const match = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/.exec(typed);
+  if (!match) return null;
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
+  return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? [lat, lng] : null;
+}
+
+/** 100 A name found: the map goes there and the panel shows what it carries. */
+export function openHit(hit: NameHit) {
+  mapControl()?.flyTo(hit.lng, hit.lat);
+  showPlace({ found: [{ properties: hit.properties, layer: hit.layer }], lng: hit.lng, lat: hit.lat });
+}
+
+/** 100 A place the phone found: the map frames it. */
+export function openFound(found: FoundPlace) {
+  const { start } = found;
+  const box = start.box ? [start.box.minLon, start.box.minLat, start.box.maxLon, start.box.maxLat] as [number, number, number, number]
+    : undefined;
+  if (start.longitude != null && start.latitude != null) mapControl()?.flyTo(start.longitude, start.latitude, box);
+}
+
 /** 94 One of Edit map's tabs, in the address as the design's routes have it. */
 export function showEditTab(tab: EditTab) {
   const { mapID } = get();
@@ -708,7 +780,7 @@ export function showServerPart(part: ServerPart) {
 export const shareAddress = () => copyText(location.href);
 
 /** 59 Copied, and said so, as the page copies its own address. */
-export async function copyText(text: string) {
+export async function copyText(text: string, said?: string) {
   try {
     await navigator.clipboard.writeText(text);
   } catch {
@@ -720,7 +792,7 @@ export async function copyText(text: string) {
     document.execCommand("copy");
     field.remove();
   }
-  notice(get().words.linkCopied);
+  notice(said ?? get().words.linkCopied);
 }
 
 /** The map a click in a list opens; the address names it. */

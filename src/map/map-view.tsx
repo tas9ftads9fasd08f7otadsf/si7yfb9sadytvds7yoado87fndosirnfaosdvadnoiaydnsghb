@@ -1,8 +1,5 @@
 import maplibregl, { type MapGeoJSONFeature, type PointLike, type StyleSpecification } from "maplibre-gl";
 import { Protocol } from "pmtiles";
-import { flushSync } from "react-dom";
-import { createRoot } from "react-dom/client";
-import { FeatureCard } from "@/components/FeatureCard";
 import { leftOpening, OPENING } from "@/lib/camera";
 import { drawable, undrawnOf } from "@/lib/drawable";
 import { watchTraffic, workerCounter } from "@/lib/traffic";
@@ -10,7 +7,8 @@ import { backend } from "@backend";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY } from "@/lib/page";
 import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
-import { drawStyle, failed, isDark, notice, shownMapOf, useViewer } from "@/store/viewer";
+import { type Named, pointOn } from "@/lib/search";
+import { type ShownFeature, drawStyle, failed, isDark, notice, showPlace, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
 import { heightModel, threeDView } from "./three-d";
 
@@ -316,17 +314,10 @@ export function createMapView(container: HTMLElement): MapControl {
     return shownMapOf(get())?.layers.find((layer) => layer.id.toLowerCase() === id)?.name ?? "";
   }
 
-  let shownFeature: maplibregl.Popup | null = null;
-  type Shown = { properties: Record<string, unknown>; layer: string; details?: DetailsSheet | null };
+  // 100 What a tap found opens the place panel beside the map, as the design's W2 has it.
+  type Shown = ShownFeature;
   function showFeatures(found: Shown[], at: maplibregl.LngLat) {
-    const card = document.createElement("div");
-    const root = createRoot(card);
-    flushSync(() => root.render(found.map((one, index) =>
-      <FeatureCard key={index} properties={one.properties} layer={one.layer} details={one.details} />)));
-    shownFeature = new maplibregl.Popup({ maxWidth: "360px", focusAfterOpen: false, closeButton: true })
-      .setLngLat(at).setDOMContent(card).addTo(map);
-    shownFeature.on("close", () => queueMicrotask(() => root.unmount()));
-    shownFeature.getElement().querySelector(".maplibregl-popup-close-button")?.setAttribute("aria-label", get().words.close);
+    showPlace({ found, lng: at.lng, lat: at.lat });
   }
 
   // Empty ground is asked of the layers' servers, through the phone, as its own tap asks them.
@@ -363,14 +354,12 @@ export function createMapView(container: HTMLElement): MapControl {
       return;
     }
     if (asked !== asking || !details) return;
-    shownFeature?.remove();
     showFeatures([{ ...shown, details }], at);
   }
 
   map.on("click", (event) => {
     const feature = featureAt(event.point);
-    shownFeature?.remove();
-    shownFeature = null;
+    showPlace(null);
     asking += 1;
     if (feature) {
       const shown = { properties: feature.properties ?? {}, layer: layerName(feature) };
@@ -392,7 +381,35 @@ export function createMapView(container: HTMLElement): MapControl {
   // The browser specs read the live map and state through this.
   Object.assign(window, { __riki: { map, state: get } });
 
+  // 100 Every source layer the style draws, read as loaded; a layer's own name where the map lists it.
+  function namedFeatures(): Named[] {
+    const asked = new Map<string, { source: string; sourceLayer?: string }>();
+    for (const layer of map.getStyle()?.layers ?? []) {
+      if (!("source" in layer) || typeof layer.source !== "string") continue;
+      const sourceLayer = "source-layer" in layer ? layer["source-layer"] : undefined;
+      asked.set(`${layer.source}/${sourceLayer ?? ""}`, { source: layer.source, sourceLayer });
+    }
+    const listed = shownMapOf(get())?.layers ?? [];
+    const named: Named[] = [];
+    for (const { source, sourceLayer } of asked.values()) {
+      const kind = map.getSource(source)?.type;
+      if (kind !== "vector" && kind !== "geojson") continue;
+      const own = source.startsWith(CUSTOM)
+        ? listed.find((layer) => layer.id.toLowerCase() === source.slice(CUSTOM.length))?.name : undefined;
+      const label = own ?? (sourceLayer ? sourceLayer.replace(/[_-]/g, " ") : source);
+      for (const feature of map.querySourceFeatures(source, sourceLayer ? { sourceLayer } : undefined)) {
+        named.push({ properties: feature.properties ?? {}, layer: label, at: pointOn(feature.geometry) });
+      }
+    }
+    return named;
+  }
+
   return {
+    namedFeatures,
+    flyTo(lng, lat, box) {
+      if (box) map.fitBounds([[box[0], box[1]], [box[2], box[3]]], { padding: 60, maxZoom: 16 });
+      else map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15) });
+    },
     draw: drawBusy,
     resize: () => map.resize(),
     stopLive: () => clearTimeout(liveTimer),
