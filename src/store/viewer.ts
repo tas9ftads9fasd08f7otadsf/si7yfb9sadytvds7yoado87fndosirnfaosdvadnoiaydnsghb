@@ -14,7 +14,7 @@ import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces,
   SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
-import { type NameHit, findNames } from "@/lib/search";
+import { type NameHit, findNames, indexedPlaces, withPhoneHits, worthAsking } from "@/lib/search";
 
 export type Theme = "auto" | "light" | "dark";
 export { SERVER_PARTS, type ServerPart } from "@/lib/route";
@@ -104,6 +104,9 @@ export interface ShownFeature {
   properties: Record<string, unknown>;
   layer: string;
   details?: DetailsSheet | null;
+  /** 129 What a search listed it as, when its tags hold no name; and an indexed place's category. */
+  title?: string;
+  kind?: string;
 }
 
 export interface Place {
@@ -137,14 +140,17 @@ const busy = { sessionStarted: false, heartbeat: undefined as ReturnType<typeof 
   packages: null as string | null, servers: false, coverage: null as string | null, addressKey: null as string | null,
   coverageEdits: Promise.resolve(), optionsAsked: 0,
   offline: undefined as ReturnType<typeof setTimeout> | undefined, offlineAsked: 0,
-  search: undefined as ReturnType<typeof setTimeout> | undefined };
+  search: undefined as ReturnType<typeof setTimeout> | undefined,
+  /** 129 The maps whose phone answered 404 to the places search, which an older phone does. */
+  noPlacesSearch: new Set<string>() };
 
 export function resetViewer() {
   clearTimeout(busy.heartbeat);
   clearTimeout(busy.notice);
   clearTimeout(busy.offline);
   Object.assign(busy, { sessionStarted: false, layerOptions: null, packages: null, servers: false, coverage: null,
-    addressKey: null, coverageEdits: Promise.resolve() });
+    addressKey: null, coverageEdits: Promise.resolve(), noPlacesSearch: new Set<string>() });
+  clearTimeout(busy.search);
   set(firstState(), true);
 }
 
@@ -513,12 +519,32 @@ export function search(text: string) {
   set({ nameHits: point ? [{ name: typed, layer: get().words.coordinates, lat: point[0], lng: point[1], properties: {} }]
     : findNames(mapControl()?.namedFeatures() ?? [], typed), foundPlaces: null });
   clearTimeout(busy.search);
-  if (!get().editToken || !offers("places")) return;
-  busy.search = setTimeout(async () => {
-    const answer = await editing(() => backend.startPlaces("city", typed), { quiet: true });
+  busy.search = setTimeout(() => void askPlaces(mapID, typed, point != null), SEARCH_WAIT);
+}
+
+/** 129 The phone's places search, with the centre of the map; where the phone has none, the cities of an editing browser. */
+async function askPlaces(mapID: string, typed: string, isPoint: boolean) {
+  const stands = () => {
     const now = get().route;
-    if (answer?.ok && now.screen === "search" && now.text === typed) set({ foundPlaces: answer.value });
-  }, SEARCH_WAIT);
+    return get().mapID === mapID && now.screen === "search" && now.text === typed;
+  };
+  if (!isPoint && !busy.noPlacesSearch.has(mapID)) {
+    if (!worthAsking(typed)) return;
+    try {
+      const centre = mapControl()?.camera();
+      const places = await backend.search(mapID, typed, centre ? { lat: centre.lat, lng: centre.lng } : null);
+      if (places) {
+        if (stands()) set({ nameHits: withPhoneHits(get().nameHits ?? [], places), foundPlaces: indexedPlaces(places) });
+        return;
+      }
+      busy.noPlacesSearch.add(mapID);
+    } catch {
+      return;
+    }
+  }
+  if (!get().editToken || !offers("places")) return;
+  const answer = await editing(() => backend.startPlaces("city", typed), { quiet: true });
+  if (answer?.ok && stands()) set({ foundPlaces: answer.value });
 }
 
 /** 100 Latitude and longitude typed as people write them, "48.1486, 17.1077". */
@@ -532,16 +558,39 @@ export function coordinatesIn(typed: string): [number, number] | null {
 
 /** 100 A name found: the map goes there and the panel shows what it carries. */
 export function openHit(hit: NameHit) {
-  mapControl()?.flyTo(hit.lng, hit.lat);
-  showPlace({ found: [{ properties: hit.properties, layer: hit.layer }], lng: hit.lng, lat: hit.lat });
+  if (hit.box) mapControl()?.flyTo(hit.lng, hit.lat, hit.box);
+  else mapControl()?.flyTo(hit.lng, hit.lat);
+  const shown: Place = { found: [{ properties: hit.properties, layer: hit.layer, ...hit.layerID ? { title: hit.name } : {} }],
+    lng: hit.lng, lat: hit.lat };
+  showPlace(shown);
+  if (hit.layerID) void wearDetails(shown, hit.layerID);
 }
 
-/** 100 A place the phone found: the map frames it. */
+/** 129 A feature of the map's own wears its layer's Details, as a tap's card does. */
+async function wearDetails(shown: Place, layerID: string) {
+  const { mapID } = get();
+  const [first] = shown.found;
+  if (!mapID || !first) return;
+  const values = Object.fromEntries(Object.entries(first.properties).map(([key, value]) => [key, String(value)]));
+  let details: DetailsSheet | null;
+  try {
+    details = await backend.details(mapID, layerID, values);
+  } catch {
+    return;
+  }
+  if (details && get().place === shown) showPlace({ ...shown, found: [{ ...first, details }] });
+}
+
+/** 100 A place the phone found: the map frames it, and one of the phone's search opens in the panel. */
 export function openFound(found: FoundPlace) {
   const { start } = found;
   const box = start.box ? [start.box.minLon, start.box.minLat, start.box.maxLon, start.box.maxLat] as [number, number, number, number]
     : undefined;
-  if (start.longitude != null && start.latitude != null) mapControl()?.flyTo(start.longitude, start.latitude, box);
+  if (start.longitude == null || start.latitude == null) return;
+  mapControl()?.flyTo(start.longitude, start.latitude, box);
+  if (!found.properties) return;
+  showPlace({ found: [{ properties: found.properties, layer: "", title: found.title, ...found.kind ? { kind: found.kind } : {} }],
+    lng: start.longitude, lat: start.latitude });
 }
 
 /** 94 One of Edit map's tabs, in the address as the design's routes have it. */

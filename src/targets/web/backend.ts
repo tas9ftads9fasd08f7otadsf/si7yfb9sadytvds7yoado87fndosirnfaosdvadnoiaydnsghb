@@ -366,6 +366,7 @@ export function createBackend(parts: Parts): Backend {
     changeEsriService: adding, coverage: adding, coveragePlaces: adding,
     startPlaces: adding, downloadRegion: adding, offlinePlan: adding, offlineDownload: adding, discardStored: adding,
     live: adding, identify: adding, details: adding, phoneLocation: adding,
+    search: async () => null,
     iconURL: () => "",
     regions: async () => ({}),
     icon: async () => null,
