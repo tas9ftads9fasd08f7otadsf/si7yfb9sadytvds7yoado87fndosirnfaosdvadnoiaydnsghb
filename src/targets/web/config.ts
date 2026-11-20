@@ -7,6 +7,8 @@ export interface SiteConfig {
   environment: "development" | "production";
   /** Where archives, glyphs and sprites are fetched from; empty until the deploy sets it. */
   tilesBase: string;
+  /** 112 The region catalog the site's server fetches; empty turns region downloads off. */
+  regionsCatalog: string;
 }
 
 let kept: Promise<SiteConfig> | null = null;
@@ -22,7 +24,8 @@ export function readConfig(fetcher: typeof fetch = fetch, base = BASE): Promise<
       container: read.container,
       apiToken: read.apiToken ?? "",
       environment: read.environment === "production" ? "production" : "development",
-      tilesBase: (read.tilesBase ?? "").replace(/\/+$/, "")
+      tilesBase: (read.tilesBase ?? "").replace(/\/+$/, ""),
+      regionsCatalog: read.regionsCatalog ?? ""
     };
   })();
   kept.catch(() => { kept = null; });

@@ -45,6 +45,8 @@ jobs:
       ICLOUD_CONTAINER: ${{ vars.ICLOUD_CONTAINER || 'iCloud.com.rikimaps.rikimaps.maps' }}
       # Optional: the maptiles host; without it Riki's own region maps do not draw.
       TILES_BASE: ${{ vars.TILES_BASE }}
+      # Optional: the region catalog (maps.json); without it the site offers no region downloads.
+      REGIONS_CATALOG: ${{ vars.REGIONS_CATALOG }}
       # The script refuses a zip without riki-core.wasm; only a run by hand may say it is a test address.
       RIKI_ALLOW_NO_CORE: ${{ inputs.without_core && '1' || '' }}
     steps:

@@ -37,9 +37,10 @@ describe("the core's wrapper", () => {
     const exports = echo();
     const core = coreOf(exports);
     expect(core.map([], "M")).toEqual({ rows: [], id: "M" });
-    // 110 the site's glyphs and sprite go with the catalog, for the core to put in the style
-    const catalog = { tilesBase: "t", glyphsBase: "https://s/glyphs", spriteBase: "https://s/sprites/temaki-sprite", theme: "dark" as const,
-      hidden: ["h"], tiles: "2x2" };
+    // 110 the site's glyphs and sprite and 112 the region packages held go with the catalog, for the core to put in the style
+    const stored = [{ region: "tatry", piece: "base", version: 7, files: ["contents.json", "base.pmtiles"], contents: "{}" }];
+    const catalog = { tilesBase: "t", glyphsBase: "https://s/glyphs", spriteBase: "https://s/sprites/temaki-sprite", stored,
+      theme: "dark" as const, hidden: ["h"], tiles: "2x2" };
     expect(core.style([], "M", "S", catalog)).toEqual({ rows: [], mapID: "M", styleID: "S", catalog });
   });
 

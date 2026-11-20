@@ -1,8 +1,9 @@
+import type { Protocol } from "pmtiles";
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk, Sharer } from "@/lib/people";
 import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing,
   LayerOptions, LayerTest, MapSwitches, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
-  SharePeople } from "@/lib/types";
+  SharePeople, RegionNeed, RegionRow } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
 /** 92 An ask to edit, shown as a QR code and the four letters the phone shows too. */
@@ -23,7 +24,31 @@ export class CoreNotReady extends NotOnSite {}
 /** 82 The parts of the page a target may not answer yet; a screen offers only what it does. 86 `addLayer` is the panel
  * with a tile address and a service's layers; its packages, files, API layers and servers are offered apart.
  * 108 `people` reads who a map is shared with. */
-export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "coverage" | "pairing" | "people";
+export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "coverage" | "pairing" | "people" | "regionPackages";
+
+/** 112 Why a region package did not come: no room, the host said no, the connection, a wrong size or an unreadable zip. */
+export class RegionFailed extends Error {
+  constructor(readonly why: "full" | "host" | "network" | "size" | "unreadable", detail = "") {
+    super(detail || why);
+  }
+}
+
+/** 112 Region packages a target downloads and keeps, which the style it draws from is built from. */
+export interface RegionPackages {
+  /** The regions of these needs and of what is held, with what each lacks. */
+  rows(needs: RegionNeed[]): Promise<RegionRow[]>;
+  /** Fetches what the region lacks, one piece after another; rejects with `RegionFailed`. */
+  download(region: string, needs: RegionNeed[], progress: (done: number, total: number) => void, signal?: AbortSignal): Promise<void>;
+  remove(region: string): Promise<void>;
+}
+
+/** 112 What the map asks of a target that keeps packages: its archives and sprite sheets, read from where they are kept. */
+export interface StoredDrawing {
+  /** Makes the archives a style names readable by the pmtiles protocol, before the style is set. */
+  prepare(style: unknown, protocol: Protocol): Promise<void>;
+  /** Answers MapLibre's request for a stored sprite sheet. */
+  load(params: { url: string; type?: string }): Promise<{ data: unknown }>;
+}
 
 /** 78 A map whose rows another device changed, and the author its history names, if any. */
 export interface ChangedElsewhere {
@@ -72,6 +97,9 @@ export interface AddressAsk {
  */
 export interface Backend {
   readonly target: "phone" | "web";
+  /** 112 Region packages kept in the browser; the site's, when its server fetches them. */
+  readonly regionPackages?: RegionPackages;
+  readonly stored?: StoredDrawing;
   /** 82 Whether this target answers the calls behind a part of the page. */
   offers(feature: Feature): boolean;
 
