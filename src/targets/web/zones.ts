@@ -4,6 +4,9 @@ import { READ_TYPES, SHARE_TYPE, rowOf, shareRowOf, type CoreRow } from "./recor
 /** The mirror's zone in the person's private database. */
 export const MIRROR_ZONE = "com.apple.coredata.cloudkit.zone";
 
+/** 116 A map the person shares is moved into a private zone of its own, named by this prefix. */
+export const OWN_SHARE_PREFIX = "com.apple.coredata.cloudkit.share.";
+
 /** Where rows and tokens are kept between visits. */
 export interface Keeping {
   load<T>(key: string): Promise<T | undefined>;
@@ -67,7 +70,8 @@ export class Zones {
     const rows: CoreRow[] = [];
     try {
       const { privateCloudDatabase, sharedCloudDatabase } = await this.container();
-      rows.push(...await this.sync("private", privateCloudDatabase, [{ zoneName: MIRROR_ZONE }]));
+      const own = await this.ownShareZones(privateCloudDatabase);
+      rows.push(...await this.sync("private", privateCloudDatabase, [{ zoneName: MIRROR_ZONE }, ...own]));
       const shared = (await sharedCloudDatabase.fetchAllRecordZones()).zones ?? [];
       await this.keeping.save("shared/zones", shared.map((each) => each.zoneID));
       rows.push(...await this.sync("shared", sharedCloudDatabase, shared.map((each) => each.zoneID)));
@@ -79,8 +83,21 @@ export class Zones {
     return rows;
   }
 
+  /** The private zones of the maps the person shares; one that is gone has stopped sharing, its rows are dropped. */
+  private async ownShareZones(db: CKReading): Promise<ZoneID[]> {
+    const listed = (await db.fetchAllRecordZones()).zones ?? [];
+    const now = listed.map((each) => each.zoneID.zoneName).filter((name) => name.startsWith(OWN_SHARE_PREFIX));
+    const before = (await this.keeping.load<string[]>("private/zones")) ?? [];
+    // The rows of a stopped share are in the mirror zone again; a zone name that returns starts afresh.
+    for (const name of before) if (!now.includes(name)) await this.keeping.save(zoneKey("private", { zoneName: name }), { rows: {} });
+    await this.keeping.save("private/zones", now);
+    return now.map((zoneName) => ({ zoneName }));
+  }
+
   private async kept(): Promise<CoreRow[]> {
+    const own = (await this.keeping.load<string[]>("private/zones")) ?? [];
     const zones = [{ database: "private", zone: { zoneName: MIRROR_ZONE } },
+      ...own.map((zoneName) => ({ database: "private", zone: { zoneName } })),
       ...((await this.keeping.load<ZoneID[]>("shared/zones")) ?? []).map((zone) => ({ database: "shared", zone }))];
     const all = await Promise.all(zones.map(({ database, zone }) =>
       this.keeping.load<Kept>(zoneKey(database, zone))));

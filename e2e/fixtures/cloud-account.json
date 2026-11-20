@@ -3,6 +3,7 @@
   "identities": { "_me": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } } },
   "assets": {
     "https://cvws.icloud-content.com/own-tatras/payload": "{\"symbol\":\"mountain.2\"}",
+    "https://cvws.icloud-content.com/own-beskydy/payload": "{\"symbol\":\"leaf\"}",
     "https://cvws.icloud-content.com/shared-doprava/payload": "{\"symbol\":\"tram\"}"
   },
   "zones": {
@@ -40,6 +41,65 @@
             "CD_schemaVersion": { "value": 1, "type": "INT64" },
             "CD_payload": { "value": "eyJhdXRob3IiOiJSaWtpIFRlc3RlciIsImxpbmVzIjpbIlRyYWlscyBhZGRlZCJdfQ==", "type": "BYTES" },
             "CD_map": { "value": { "recordName": "own-tatras" }, "type": "REFERENCE" }
+          } }
+      ]
+    }, {
+      "zoneID": { "zoneName": "com.apple.coredata.cloudkit.share.5B7D2C10-3E6A-4F1B-9C42-7A0D1E8F2B63" },
+      "syncToken": "private-1",
+      "records": [
+        { "recordName": "own-beskydy", "recordType": "CD_SharedMap", "recordChangeTag": "o1",
+          "fields": {
+            "CD_entityName": { "value": "SharedMap", "type": "STRING" },
+            "CD_id": { "value": "6F1E2A10-0000-4000-8000-000000000003", "type": "STRING" },
+            "CD_name": { "value": "Beskydy", "type": "STRING" },
+            "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_schemaVersion": { "value": 1, "type": "INT64" },
+            "CD_payload_ckAsset": { "value": { "downloadURL": "https://cvws.icloud-content.com/own-beskydy/${f}" }, "type": "ASSETID" }
+          } },
+        { "recordName": "own-beskydy-layer", "recordType": "CD_SharedMapLayer", "recordChangeTag": "o2",
+          "fields": {
+            "CD_entityName": { "value": "SharedMapLayer", "type": "STRING" },
+            "CD_id": { "value": "6F1E2A10-0000-4000-8000-0000000000B1", "type": "STRING" },
+            "CD_order": { "value": 0, "type": "INT64" },
+            "CD_layerJSON": { "value": "{\"id\":\"L3\",\"name\":\"Forest roads\"}", "type": "STRING" },
+            "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_schemaVersion": { "value": 1, "type": "INT64" },
+            "CD_payload": { "value": "e30=", "type": "BYTES" },
+            "CD_map": { "value": { "recordName": "own-beskydy" }, "type": "REFERENCE" }
+          } },
+        { "recordName": "Share-beskydy", "recordType": "cloudkit.share", "recordChangeTag": "o3",
+          "fields": { "cloudkit.title": { "value": "Beskydy", "type": "STRING" } },
+          "participants": [
+            { "userIdentity": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } },
+              "permission": "READ_WRITE", "type": "OWNER", "acceptanceStatus": "ACCEPTED" },
+            { "userIdentity": { "userRecordName": "_jana", "nameComponents": { "givenName": "Jana" },
+                "lookupInfo": { "emailAddress": "jana@example.com" } },
+              "permission": "READ_WRITE", "type": "USER", "acceptanceStatus": "ACCEPTED" },
+            { "userIdentity": { "userRecordName": "_petr", "lookupInfo": { "emailAddress": "petr@example.com" } },
+              "permission": "READ_ONLY", "type": "USER", "acceptanceStatus": "PENDING" }
+          ],
+          "owner": { "userIdentity": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } },
+            "permission": "READ_WRITE", "type": "OWNER", "acceptanceStatus": "ACCEPTED" },
+          "currentUserParticipant": { "userIdentity": { "userRecordName": "_me", "nameComponents": { "givenName": "Riki", "familyName": "Tester" } },
+            "permission": "READ_WRITE", "type": "OWNER", "acceptanceStatus": "ACCEPTED" },
+          "publicPermission": "NONE" },
+        { "recordName": "member-jana", "recordType": "CD_SharedMapMember", "recordChangeTag": "o4",
+          "fields": {
+            "CD_entityName": { "value": "SharedMapMember", "type": "STRING" },
+            "CD_participantID": { "value": "_jana", "type": "STRING" },
+            "CD_roleRaw": { "value": "editor", "type": "STRING" },
+            "CD_displayName": { "value": "Jana", "type": "STRING" },
+            "CD_addedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_map": { "value": { "recordName": "own-beskydy" }, "type": "REFERENCE" }
+          } },
+        { "recordName": "member-petr", "recordType": "CD_SharedMapMember", "recordChangeTag": "o5",
+          "fields": {
+            "CD_entityName": { "value": "SharedMapMember", "type": "STRING" },
+            "CD_participantID": { "value": "_petr", "type": "STRING" },
+            "CD_roleRaw": { "value": "reader", "type": "STRING" },
+            "CD_displayName": { "value": "petr@example.com", "type": "STRING" },
+            "CD_addedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
+            "CD_map": { "value": { "recordName": "own-beskydy" }, "type": "REFERENCE" }
           } }
       ]
     }],

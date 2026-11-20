@@ -51,8 +51,9 @@ test("a token the server forgot is dropped and the zone is read again from the s
   await cloud.push();
   await expect(page.locator("#notice")).toHaveText("High Tatras was changed on another device");
   // 87 the notice can come before the read from the start has reached the mock, so the requests are waited for
-  const tokens = () => cloud.asked.filter((each) => each.endpoint === "changes/zone" && each.database === "private")
-    .map((each) => each.body.zones[0].syncToken ?? null);
+  // 116 the private database has a share zone beside the mirror zone, so only the mirror zone's reads count
+  const tokens = () => cloud.asked.filter((each) => each.endpoint === "changes/zone" && each.database === "private"
+    && each.body.zones[0].zoneID.zoneName === "com.apple.coredata.cloudkit.zone").map((each) => each.body.zones[0].syncToken ?? null);
   await expect.poll(() => tokens().slice(-3)).toEqual([expect.any(String), null, expect.any(String)]);
 });
 

@@ -85,6 +85,7 @@ owner, reader for a read-only participant, else the member row's `roleRaw` (not 
 `invite:<address>` is an invited person; `name` is null where neither CloudKit nor the row names them; people come in
 `MapSharePeople.ordered`'s order; `linkRole` is reader or editor for a `publicPermission` of `READ_ONLY` or
 `READ_WRITE`, else null. The `Share` and member rows of a map are those of its own zone.
+A map the person shares is moved by Core Data into a private zone of its own, `com.apple.coredata.cloudkit.share.<UUID>`, so the site reads that zone beside the mirror zone and the shared database's.
 Without Swift, run `.github/workflows/core-on-demand.yml` by hand (`gh workflow run core-on-demand.yml`, with
 `-f ref=<rikimaps commit, branch or tag>` for another than the pin): it builds and tests the core and keeps
 `dist/riki-core/` for 90 days as the artifact `riki-core-<commit>`. `npm run fetch:core` (or
