@@ -12,8 +12,8 @@ const coordinateText = (lat: number, lng: number) =>
 export function PlacePanel() {
   const words = useViewer((state) => state.words);
   const place = useViewer((state) => state.place);
-  const editing = useViewer((state) => state.editing || state.route.screen === "details"
-    || state.route.screen === "data");
+  const editing = useViewer((state) => state.editing
+    || ["details", "data", "settings"].includes(state.route.screen));
   if (!place || editing) return null;
   const [first] = place.found;
   const title = first?.details?.title || featureTitle(first?.properties ?? {});

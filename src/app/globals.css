@@ -114,7 +114,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 #device .sym { font-size: 16px; color: var(--sub); }
 #device .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
 #device .dot.on { background: var(--switch-on); }
-#accountName { width: 160px; height: 40px; border-radius: 20px; border: 0; background: var(--inset);
+#accountName { width: 100%; height: 48px; border-radius: 16px; border: 0; background: var(--card); box-shadow: var(--lift);
   padding: 0 14px; font-size: 15px; }
 #viewers, #traffic { display: none; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 20px;
   background: var(--inset); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -779,3 +779,32 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 .pill-tag.busy { background: var(--cs-water); color: var(--c-water); }
 .pill-tag.plain { background: var(--inset); color: var(--sub); }
 #data .data-table > .empty { padding: 18px 20px; }
+
+/* 103 Settings, from the rail's gear: this browser's own choices and the phone that shares the maps. */
+#settings { position: absolute; top: var(--top); left: var(--rail); right: 0; bottom: 0; z-index: 5; overflow-y: auto;
+  background: var(--ground); padding: 28px 36px; display: flex; flex-direction: column; gap: 22px; }
+#settings > * { width: 100%; max-width: 640px; }
+#settings h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
+#settings .settings-head p { margin: 4px 0 0; font-size: 15px; color: var(--sub); }
+#settings section { display: flex; flex-direction: column; gap: 8px; }
+#settings .segments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px;
+  border-radius: 20px; background: var(--card); box-shadow: var(--lift); }
+#settings .segments button { height: 40px; border-radius: 16px; border: 0; background: none; color: var(--text);
+  font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
+#settings .segments button[aria-checked=true] { background: var(--cs-water); color: var(--c-water); }
+#settings #tileSource { display: flex; flex-direction: column; gap: 8px; }
+#settings #tileSource h2.title { margin: 0; padding: 0 4px; font-size: 15px; font-weight: 600; text-transform: none;
+  letter-spacing: 0; color: var(--sub); }
+#settings #tileSource .chips { padding: 4px; gap: 4px; border-radius: 20px; background: var(--card); box-shadow: var(--lift);
+  display: grid; grid-template-columns: 1fr 1fr; }
+#settings #tileSource .chips button { height: 40px; border: 0; border-radius: 16px; font-size: 14px; font-weight: 600;
+  background: none; }
+#settings #tileSource .chips button.picked { background: var(--cs-water); color: var(--c-water); }
+#settings .foot-note { margin: 0 4px; font-size: 13px; color: var(--sub); }
+#settings .about { margin: 0; display: grid; grid-template-columns: auto 1fr; padding: 4px 16px; }
+#settings .about dt, #settings .about dd { margin: 0; min-height: 48px; display: flex; align-items: center; font-size: 15px; }
+#settings .about dt { color: var(--sub); }
+#settings .about dd { justify-content: flex-end; gap: 8px; font-weight: 600; }
+#settings .about dt + dd ~ dt, #settings .about dt + dd ~ dd { box-shadow: inset 0 1px 0 var(--sep); }
+#settings .about .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+#settings .about .dot.on { background: var(--switch-on); }

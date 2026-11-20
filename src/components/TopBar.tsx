@@ -39,7 +39,7 @@ function NewMapButton() {
 }
 
 /** 83 The name the site's changes are made under; blank leaves it to the Apple Account's. */
-function AccountName() {
+export function AccountName() {
   const words = useViewer((state) => state.words);
   const admitted = useViewer((state) => state.standing === "admitted");
   const account = useViewer((state) => state.gateDevice);
@@ -64,7 +64,6 @@ function Account() {
   }, []);
   return (
     <>
-      <AccountName />
       <span id="account" ref={into} />
     </>
   );

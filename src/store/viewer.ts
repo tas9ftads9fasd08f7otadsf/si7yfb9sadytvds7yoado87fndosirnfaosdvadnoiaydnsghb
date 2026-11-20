@@ -244,9 +244,9 @@ function applyTheme() {
   else document.documentElement.dataset.theme = theme;
 }
 
-export function nextTheme() {
-  const order = Object.keys(THEMES) as Theme[];
-  const theme = order[(order.indexOf(get().theme) + 1) % order.length] ?? "auto";
+/** 103 Light, dark or the computer's, as Settings picks it; kept for the next visit. */
+export function setTheme(theme: Theme) {
+  if (theme === get().theme) return;
   set({ theme });
   try {
     localStorage.setItem(THEME_KEY, theme);

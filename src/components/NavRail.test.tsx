@@ -21,7 +21,8 @@ describe("NavRail", () => {
     expect(link("Map").getAttribute("href")).toBe("/maps/M1");
     expect(railItemOf({ screen: "maps" })).toBe("maps");
     expect(railItemOf({ screen: "servers", server: "S1" })).toBe("servers");
-    expect(railItemOf({ screen: "settings" })).toBeNull();
+    // 103 the gear at the rail's foot is Settings
+    expect(railItemOf({ screen: "settings" })).toBe("settings");
   });
 
   // 30 decision 6: a rail item with nothing behind it is left out
