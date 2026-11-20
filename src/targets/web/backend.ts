@@ -1,4 +1,5 @@
 import { NotOnSite, type Answer, type Backend, type ChangedElsewhere, type Feature } from "@/backend/types";
+import { siteSymbolURL } from "./symbols";
 import { createRegionPackages } from "./regions/packages";
 import { loadStored, registerArchives } from "./regions/source";
 import { browserStore, type PackageStore } from "./regions/store";
@@ -369,7 +370,7 @@ export function createBackend(parts: Parts): Backend {
     iconURL: () => "",
     regions: async () => ({}),
     icon: async () => null,
-    symbolURL: () => "none"
+    symbolURL: siteSymbolURL
   };
 }
 

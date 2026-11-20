@@ -34,6 +34,7 @@
     "@bjorn3/browser_wasi_shim": "0.4.2",
     "@maplibre/maplibre-gl-style-spec": "20.4.0",
     "fflate": "0.8.2",
+    "lucide-static": "1.70.0",
     "maplibre-gl": "4.7.1",
     "next": "16.4.5",
     "pmtiles": "4.5.0",
