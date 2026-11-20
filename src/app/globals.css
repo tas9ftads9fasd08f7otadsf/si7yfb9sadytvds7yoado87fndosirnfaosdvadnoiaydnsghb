@@ -435,6 +435,11 @@ body.gated #gate { display: flex; }
 #boot { position: fixed; inset: 0; z-index: 15; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 16px; background: var(--ground); color: var(--sub); }
 #boot .spinner { margin: 0; }
+#boot p { margin: 0; }
+#bootSteps { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; justify-items: center;
+  font-size: 13px; font-variant-numeric: tabular-nums; }
+#bootSteps li.done::after { content: " ✓"; color: var(--accent); }
+#bootStopped { max-width: 420px; padding: 0 24px; text-align: center; color: var(--danger); }
 #loadingBar { position: absolute; z-index: 4; top: var(--top); left: 0; right: 0; height: 3px; overflow: hidden;
   pointer-events: none; }
 #loadingBar i { display: block; width: 30%; height: 100%; background: var(--accent); animation: slide 1.1s linear infinite; }

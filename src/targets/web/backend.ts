@@ -15,6 +15,7 @@ import { loadCore, type AddressRead, type Adding, type Applied, type Core, type 
 import { peopleOf, type Say } from "./people";
 import { createReach, hostOf, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
+import { Progress } from "./progress";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
 import type { CoreRow, CoreWrite } from "./records";
 import { changedFields, Conflict, stamped, write, type Plan } from "./writes";
@@ -68,6 +69,8 @@ export interface Parts {
   languages: () => readonly string[];
   /** 112 Where region packages are kept; the browser's own file system, or IndexedDB without one. */
   regions?: PackageStore;
+  /** 137 What the first read has done, for the loading screen. */
+  progress?: Progress;
 }
 
 const ownerOf = (row: CoreRow) => (row.entity === "SharedMap" ? row.id : String(row.fields.map ?? ""));
@@ -85,7 +88,8 @@ export function createBackend(parts: Parts): Backend {
   const regions = createRegionPackages({ store: kept, fetcher: parts.fetcher, base: parts.base });
   /** 112 Whether the server was set up to fetch region packages; known once the session has read the config. */
   let regionsOn = false;
-  const zones = new Zones(async () => (await parts.cloud.databases()).container, parts.keeping, parts.fetcher);
+  const zones = new Zones(async () => (await parts.cloud.databases()).container, parts.keeping, parts.fetcher,
+    parts.progress);
   const listeners = new Set<(changed?: ChangedElsewhere[]) => void>();
   let reading: Promise<CoreRow[]> | null = null;
   let known: Known | null = null;
@@ -323,6 +327,7 @@ export function createBackend(parts: Parts): Backend {
       return () => listeners.delete(listener);
     },
     mountAccount: (button, into) => parts.cloud.mount(button, into),
+    loading: (listener) => parts.progress?.listen(listener) ?? (() => undefined),
     author: parts.author,
 
     async maps() {
@@ -382,8 +387,9 @@ export function createBackend(parts: Parts): Backend {
 const languages = () => (navigator.languages?.length ? navigator.languages : [navigator.language]);
 
 const keeping = indexedKeeping();
+const progress = new Progress();
 
 export const backend: Backend = createBackend({
-  cloud: new Cloud(), config: readConfig, core: () => loadCore(), keeping, reach: createReach(keeping), author: storedAuthor(),
-  fetcher: (...asked) => fetch(...asked), base: BASE, languages
+  cloud: new Cloud(), config: readConfig, core: () => loadCore(fetch, BASE, (done, total) => progress.engine(done, total)), keeping, reach: createReach(keeping), author: storedAuthor(),
+  fetcher: (...asked) => fetch(...asked), base: BASE, languages, progress
 });

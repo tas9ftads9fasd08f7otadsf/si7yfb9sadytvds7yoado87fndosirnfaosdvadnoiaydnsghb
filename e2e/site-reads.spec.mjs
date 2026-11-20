@@ -71,3 +71,17 @@ test("nothing of the site's reading asks the page's own origin for the phone's A
   expect(asked).toContain(`${base(baseURL)}/riki-core.wasm`);
   expect(asked).toContain(`${base(baseURL)}/config.json`);
 });
+
+// 137 bug: the loading screen said only that it loads, so a long first read looked stuck
+test("while the first read lasts, the loading screen says what it has read so far", async ({ page }) => {
+  await mockCloud(page, { signedIn: true });
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  await page.route(/\/changes\/zone/, async (route) => { await held; await route.fallback(); });
+  await page.goto("./");
+  await expect(page.locator("#bootSteps li.done")).toContainText("Map engine");
+  await expect(page.locator("#bootSteps")).toContainText(/iCloud zones: 0 of \d/);
+  release();
+  await expect(page.locator("#boot")).toBeHidden();
+  await page.locator("#current .hero").waitFor();
+});

@@ -11,7 +11,7 @@ import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } f
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
   LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
-  SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
+  Loading, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
 import { mapControl } from "@/map/control";
 import { type NameHit, findNames } from "@/lib/search";
@@ -24,6 +24,9 @@ export interface ViewerState {
   route: Route;
   words: Words;
   standing: Standing | null;
+  /** 137 How far the site's first read has come, and why it last stopped. */
+  loading: Loading | null;
+  loadFailed: string | null;
   edits: boolean;
   /** The phone lets a browser load tiles from their source. */
   directAllowed: boolean;
@@ -115,7 +118,7 @@ export interface Place {
 }
 
 const firstState = (): ViewerState => ({
-  route: { screen: "home" }, words: ENGLISH, standing: null, edits: false, viewers: null, connected: null, gateDevice: "", picking: false, mapBusy: false, undrawn: new Set(),
+  route: { screen: "home" }, words: ENGLISH, standing: null, loading: null, loadFailed: null, edits: false, viewers: null, connected: null, gateDevice: "", picking: false, mapBusy: false, undrawn: new Set(),
   editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, traffic: null, regionOffer: null,
@@ -304,6 +307,7 @@ export function applySession(answer: SessionAnswer) {
 export function startSession(isSmall: boolean) {
   if (busy.sessionStarted || isSmall) return;
   busy.sessionStarted = true;
+  backend.loading?.((loading) => set({ loading }));
   void heartbeat();
   // 76 A change made elsewhere, or a sign-in, is read without waiting for the next beat.
   backend.onChanged((changed) => {
@@ -400,10 +404,11 @@ export async function readDevice() {
     device = await backend.maps();
   } catch (error) {
     if (get().standing !== "admitted") return;
+    set({ loadFailed: error instanceof Error ? error.message : String(error) });
     setTimeout(readDevice, failed(error) ? 30_000 : 5000);
     return;
   }
-  set({ device });
+  set({ device, loadFailed: null });
   const { words, mapID, styleID, route } = get();
   document.title = `${device.name} · ${words.app}`;
   const named = (id: string | null | undefined) => device.maps.find((each) => each.id === id);
