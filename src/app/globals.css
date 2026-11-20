@@ -743,6 +743,15 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
   font-size: 13px; color: var(--sub); box-shadow: inset 0 1px 0 var(--sep); }
 #placePanel .place-foot dd { margin: 0; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
 
+/* 92 The QR code the phone scans; white under it, so a dark theme's code still reads. */
+.pair { display: grid; justify-items: center; gap: 10px; margin: 16px; text-align: center; }
+.pair p { margin: 0; font-size: 14px; }
+.pair-picture, .pair-wait { width: 220px; height: 220px; border: 10px solid #fff; border-radius: 16px;
+  background: #fff center / contain no-repeat; image-rendering: pixelated; }
+.pair-code { display: grid; gap: 2px; }
+.pair-code small { font-size: 12px; color: var(--secondary); }
+.pair-code b { font: 600 22px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.2em; }
+
 /* 101 The Data page, W4: what the phone shares, its counts and one table a tab. */
 #data { position: absolute; top: var(--top); left: var(--rail); right: 0; bottom: 0; z-index: 5; overflow-y: auto;
   background: var(--ground); padding: 28px 36px 28px; display: flex; flex-direction: column; gap: 18px; }

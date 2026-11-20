@@ -25,6 +25,15 @@ describe("NavRail", () => {
     expect(railItemOf({ screen: "settings" })).toBe("settings");
   });
 
+  // 92 Settings opens from the rail's foot; 103 as the gear, in place of the theme button
+  it("offers Settings, which opens the Settings page", () => {
+    render(<NavRail />);
+    fireEvent.click(link("Settings"));
+    expect(location.pathname).toBe("/settings");
+    expect(useViewer.getState().route).toEqual({ screen: "settings" });
+    expect(link("Settings").getAttribute("aria-current")).toBe("page");
+  });
+
   // 30 decision 6: a rail item with nothing behind it is left out
   it("offers Servers only to a browser that may edit", () => {
     render(<NavRail />);

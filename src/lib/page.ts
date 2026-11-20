@@ -3,6 +3,8 @@ export const RETRY_EVERY = 2000;
 export const LIVE_EVERY = 60000;
 export const PHONE_EVERY = 5000;
 export const REGIONS_EVERY = 10000;
+/** 92 How often the page asks whether the phone has said yes to its QR code. */
+export const PAIR_EVERY = 2000;
 export const TOKEN_KEY = "riki-edit-token";
 export const THEME_KEY = "riki-theme";
 export const DIRECT_KEY = "riki-tiles-direct";
