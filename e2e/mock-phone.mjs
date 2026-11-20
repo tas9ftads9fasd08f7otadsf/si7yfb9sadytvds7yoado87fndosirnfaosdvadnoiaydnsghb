@@ -31,7 +31,8 @@ function freshMaps() {
   const layer = (id, name, kind, symbol) => ({ id, name, kind, symbol, isEnabled: true });
   return [
     { id: "6F1E2A10-0000-4000-8000-000000000001", name: "High Tatras", symbol: "mountain.2", iconTintHex: "#3a7d44",
-      revision: 1, note: "Summer trails", minimumVersion: { app: "0.18.0", browser: "0.30.0" }, drawsRelief: true,
+      revision: 1, note: "Summer trails", sendsNewFields: true, offlineState: "ready", bytes: 1_200_000_000,
+      changedAt: 1_700_000_000, minimumVersion: { app: "0.18.0", browser: "0.30.0" }, drawsRelief: true,
       layers: [layer("6F1E2A10-0000-4000-8000-0000000000A1", "Trails", "Vector tiles", "figure.hiking"),
         layer("6F1E2A10-0000-4000-8000-0000000000A2", "Huts", "Points", "house")],
       styles: [{ id: "6F1E2A10-0000-4000-8000-0000000000B1", name: "Summer", arrangement: { hidden: [] } },
@@ -293,7 +294,18 @@ function catalog() {
       stackIconTintHex: each.stackID ? each.stackIconTintHex : undefined,
       layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive,
         // 58: as `MapDefinition.origin(of:)` falls back to a layer's kind.
-        origin: { key: `kind:${kind}`, title: kind, symbol } })) })) };
+        origin: { key: `kind:${kind}`, title: kind, symbol } })),
+      ...newFields(each) })) };
+}
+
+// 128: as `PeerSharedMap` carries them since 3490; a map without `sendsNewFields` answers as an older phone.
+function newFields(each) {
+  if (!each.sendsNewFields) return {};
+  const share = phone.shares[each.id];
+  const others = (share?.people ?? []).filter((person) => person.role !== "owner").length;
+  return { styles: each.styles.map((style) => style.name), styleIDs: each.styles.map((style) => style.id),
+    note: each.note || undefined, role: share?.role === "reader" ? "view" : share?.role === "editor" ? "edit" : "own",
+    people: others, isLocked: false, offline: each.offlineState, bytes: each.bytes, changedAt: each.changedAt };
 }
 
 // 2957: as `PeerWebCoverage` answers: the places to pick, and a map's choices said in a line.
