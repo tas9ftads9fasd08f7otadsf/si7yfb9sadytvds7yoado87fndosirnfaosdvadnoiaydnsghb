@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { asked, infoPlist, phoneLeaks, ships, styleFacts } from "./pack.mjs";
+import { asked, clearPhoneOutputs, infoPlist, phoneLeaks, ships, styleFacts } from "./pack.mjs";
 
 describe("what the bundle carries", () => {
   it("takes the page and its assets, not Next's route payloads", () => {
@@ -154,5 +154,25 @@ describe("the site's words", async () => {
     const empty = await made([]);
     await expect(pinnedWords({ ref: "0123456789abcdef" }, empty)).rejects.toThrow("npm run build:words");
     expect((await pinnedWords({ ref: "0123456789abcdef" }, empty, { optional: true })).englishOnly).toBe(true);
+  });
+});
+
+// 106 bug: the phone pack wiped dist, so Release packed the site without the core it had built.
+describe("the phone pack's clean-up", async () => {
+  const { mkdtemp, mkdir, writeFile } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+
+  it("removes its own outputs and keeps the site's core and words", async () => {
+    const dist = await mkdtemp(path.join(tmpdir(), "pack-dist-"));
+    for (const dir of ["WebEditor.bundle", "riki-core", "words"]) await mkdir(path.join(dist, dir));
+    for (const file of ["web-editor.zip", "web-editor.zip.sha256", "riki-core/riki-core.wasm", "words/en.json"]) {
+      await writeFile(path.join(dist, file), "x");
+    }
+    await clearPhoneOutputs(dist);
+    expect(existsSync(path.join(dist, "WebEditor.bundle"))).toBe(false);
+    expect(existsSync(path.join(dist, "web-editor.zip"))).toBe(false);
+    expect(existsSync(path.join(dist, "web-editor.zip.sha256"))).toBe(false);
+    expect(existsSync(path.join(dist, "riki-core/riki-core.wasm"))).toBe(true);
+    expect(existsSync(path.join(dist, "words/en.json"))).toBe(true);
   });
 });
