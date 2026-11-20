@@ -281,3 +281,28 @@ export async function recordCoreCalls(page, names) {
   }, names);
   return () => page.evaluate(() => window.__coreCalls);
 }
+
+/**
+ * Has the page's core answer `call` by running `source`, the text of a function of the request, in the page: for what a
+ * recorded answer cannot do, such as a style that depends on the catalog it was asked with. Install before the page loads.
+ */
+export async function answerCoreWith(page, call, source) {
+  await page.addInitScript(({ name, text }) => {
+    const instantiate = WebAssembly.instantiate.bind(WebAssembly);
+    WebAssembly.instantiate = async (...given) => {
+      const made = await instantiate(...given);
+      const instance = made.instance ?? made;
+      const memory = instance.exports.memory;
+      const answer = (pointer, length) => {
+        const request = JSON.parse(new TextDecoder().decode(new Uint8Array(memory.buffer, pointer, length)));
+        const bytes = new TextEncoder().encode(JSON.stringify(new Function("request", `return (${text})(request)`)(request)));
+        const out = instance.exports.riki_alloc(4 + bytes.length);
+        new DataView(memory.buffer).setUint32(out, bytes.length, true);
+        new Uint8Array(memory.buffer, out + 4, bytes.length).set(bytes);
+        return out;
+      };
+      const exports = { ...instance.exports, [name]: answer };
+      return made.instance ? { ...made, instance: { exports } } : { exports };
+    };
+  }, { name: call, text: source });
+}

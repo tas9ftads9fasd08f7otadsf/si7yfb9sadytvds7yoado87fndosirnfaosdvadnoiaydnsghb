@@ -8,6 +8,8 @@ import { CoreMissing, type AddAsk, type AddressRead, type Applied, type Core, ty
 import { createBackend } from "./backend";
 import type { Reach } from "./reach";
 import type { Keeping } from "./zones";
+import { fakeOpfs } from "./regions/fake-opfs";
+import { opfsStore, type PackageStore } from "./regions/store";
 
 // 76 WebBackend reads against recorded CloudKit answers and a fake core
 const assets = account.assets as Record<string, string>;
@@ -17,6 +19,9 @@ interface Options {
   core?: () => Promise<Core>;
   apply?: (ask: Parameters<Core["apply"]>[0]) => Applied;
   changes?: () => HistoryEntry[];
+  /** 112 The region catalog the site's config names, and where packages are kept. */
+  catalog?: string;
+  regions?: PackageStore;
   /** 108 What the core reads of a share. */
   people?: () => PeopleRead | { refused: string; status?: number };
   /** 85 Which hosts answer a browser; every one does by default. */
@@ -101,7 +106,7 @@ function stack(options: Options = {}) {
       fetchAllRecordZones: async () => ({ zones: account.zones.shared.map((each) => ({ zoneID: each.zoneID })) }) }
   } as unknown as CKContainer;
   const cloudkit: CloudKitJS = { configure: () => {}, getDefaultContainer: () => container };
-  const config = { container: "iCloud.x", apiToken: "T", environment: "development" as const, tilesBase: "https://tiles.example" };
+  const config = { container: "iCloud.x", apiToken: "T", environment: "development" as const, tilesBase: "https://tiles.example", regionsCatalog: options.catalog ?? "" };
   const cloud = new Cloud(async () => cloudkit, async () => config);
   const seen: unknown[][] = [];
   const core: Core = {
@@ -127,7 +132,8 @@ function stack(options: Options = {}) {
     return new Response("", { status: 404 });
   });
   const backend = createBackend({ cloud, config: async () => config, core: options.core ?? (async () => core), keeping, reach: options.reach ?? { answers: async () => true },
-    author: { read: () => options.typed ?? "", keep: () => {} }, fetcher: fetcher as typeof fetch, base: "/editor", languages: () => options.languages ?? ["sk"] });
+    author: { read: () => options.typed ?? "", keep: () => {} }, fetcher: fetcher as typeof fetch, base: "/editor", languages: () => options.languages ?? ["sk"],
+    ...(options.regions ? { regions: options.regions } : {}) });
   /** Another device wrote this record: a new tag and the fields it set. */
   const elsewhere = (recordName: string, fields: Record<string, { value: unknown; type: string }>) => {
     const each = all().find((found) => found.recordName === recordName)!;
@@ -210,7 +216,7 @@ describe("WebBackend's reads", () => {
     expect((await backend.map("6F1E2A10-0000-4000-8000-000000000001")).name).toBe("High Tatras");
     const style = await backend.style({ mapID: "M", styleID: "B1", hidden: ["L2"], theme: "dark", tiles: "3x2" });
     expect(style).toEqual({ ok: true, value: account.core.riki_style });
-    expect(seen.at(-1)).toEqual(["M", "B1", { tilesBase: "https://tiles.example", theme: "dark", hidden: ["L2"], tiles: "3x2" }]);
+    expect(seen.at(-1)).toEqual(["M", "B1", { tilesBase: "https://tiles.example", stored: [], theme: "dark", hidden: ["L2"], tiles: "3x2" }]);
     expect(changes.mock.calls.length).toBe(reads);
   });
 
@@ -444,6 +450,51 @@ describe("WebBackend's notice of a change elsewhere", () => {
     await made.backend.change(TATRAS_ID, null, { kind: "layerName", layer: "L1", name: "Ridges" });
     made.notify();
     await vi.waitFor(() => expect(listener).toHaveBeenCalledWith([]));
+  });
+});
+
+describe("WebBackend's region packages", () => {
+  const held = async () => {
+    const { root } = fakeOpfs();
+    const store = opfsStore(async () => root);
+    const writer = await store.begin("tatry", "base", 4);
+    for (const [name, text] of [["contents.json", "{\"package\":\"base\"}"], ["base.pmtiles", "P"]] as const) {
+      const sink = await writer.open(name);
+      await sink.write(new TextEncoder().encode(text));
+      await sink.close();
+    }
+    await writer.commit();
+    return store;
+  };
+
+  // 112 region packages are offered once the server says it fetches them, and not before
+  it("offers region packages only where the config names a catalog", async () => {
+    const off = stack();
+    await off.backend.session();
+    expect(off.backend.offers("regionPackages")).toBe(false);
+    const on = stack({ catalog: "https://raw.example/maps.json" });
+    expect(on.backend.offers("regionPackages")).toBe(false);
+    await on.backend.session();
+    expect(on.backend.offers("regionPackages")).toBe(true);
+    expect(on.backend.regionPackages).toBeDefined();
+  });
+
+  it("tells the core what is held, with each package's manifest text, when it builds a style", async () => {
+    const { backend, seen } = stack({ regions: await held() });
+    await backend.maps();
+    await backend.style({ mapID: "M", styleID: "B1", hidden: [], theme: "light", tiles: "1x1" });
+    const catalog = (seen.at(-1) as unknown[])[2] as { stored: unknown[] };
+    expect(catalog.stored).toEqual([{ region: "tatry", piece: "base", version: 4, files: ["base.pmtiles", "contents.json"],
+      contents: "{\"package\":\"base\"}" }]);
+  });
+
+  it("reads a held archive for the map by the key its style names it with, and a sprite sheet", async () => {
+    const { backend } = stack({ regions: await held() });
+    const added: string[] = [];
+    await backend.stored!.prepare({ sources: { base: { url: "pmtiles://riki-store/tatry/base/base.pmtiles" } } },
+      { tiles: new Map(), add: (p: { source: { getKey(): string } }) => added.push(p.source.getKey()) } as never);
+    expect(added).toEqual(["riki-store/tatry/base/base.pmtiles"]);
+    await expect(backend.stored!.load({ url: "riki-store://tatry/base/contents.json", type: "json" })).resolves.toEqual({ data: { package: "base" } });
   });
 });
 

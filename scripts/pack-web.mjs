@@ -11,7 +11,7 @@ import { dumps } from "./build-words.mjs";
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /** The server's files at the zip's root; config.php is written by the deploy, never shipped. */
-export const SERVER_FILES = ["index.php", "Site.php", "config.example.php", ".htaccess"];
+export const SERVER_FILES = ["index.php", "Site.php", "Regions.php", "config.example.php", ".htaccess"];
 
 /** What of the phone's page would ship on the site: its API, its bundle or its asset prefix. */
 export function siteLeaks(files) {

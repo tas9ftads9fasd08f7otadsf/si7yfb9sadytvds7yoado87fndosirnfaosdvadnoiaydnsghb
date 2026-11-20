@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
-/** What the site sends back: a status, its headers and the body. */
+/** What the site sends back: a status, its headers and the body, or a stream to send and close instead of one. */
 final class Answer
 {
+    /** @var resource|null */
+    public mixed $stream = null;
+
     /** @param array<string, string> $headers */
     public function __construct(public int $status, public array $headers = [], public string $body = '')
     {
@@ -13,7 +16,7 @@ final class Answer
 
 /**
  * The site's files, its page at every screen's address and its config, and nothing else:
- * no maps, no accounts, no request made on anyone's behalf.
+ * no maps, no accounts, and no request made on anyone's behalf but the region packages' (`RegionHost`).
  */
 final class Site
 {
@@ -32,7 +35,8 @@ final class Site
      * @param list<string> $pageSegments
      * @param array<string, mixed>|null $config
      */
-    public function __construct(private string $root, private array $pageSegments, private ?array $config)
+    public function __construct(private string $root, private array $pageSegments, private ?array $config,
+        private ?RegionHost $regions = null)
     {
     }
 
@@ -41,8 +45,12 @@ final class Site
     {
         $site = json_decode((string) @file_get_contents($folder . '/site.json'), true);
         $config = is_file($folder . '/config.php') ? require $folder . '/config.php' : null;
-        return new self($folder . '/out', is_array($site) ? ($site['pageSegments'] ?? []) : [],
-            is_array($config) ? $config : null);
+        $config = is_array($config) ? $config : null;
+        $catalog = (string) ($config['regionsCatalog'] ?? '');
+        // `regionsFiles` is for a test address's stand-in host; a deploy never writes it.
+        $regions = $catalog === '' ? null : new RegionHost($catalog, $folder . '/cache', null,
+            (string) ($config['regionsFiles'] ?? RegionHost::DRIVE));
+        return new self($folder . '/out', is_array($site) ? ($site['pageSegments'] ?? []) : [], $config, $regions);
     }
 
     /**
@@ -72,7 +80,7 @@ final class Site
         return $folder === '.' ? '' : $folder;
     }
 
-    public function answer(string $method, string $uri, string $scriptName, string $ifNoneMatch = ''): Answer
+    public function answer(string $method, string $uri, string $scriptName, string $ifNoneMatch = '', string $range = ''): Answer
     {
         if ($method !== 'GET' && $method !== 'HEAD') {
             return new Answer(405, ['Allow' => 'GET, HEAD']);
@@ -96,10 +104,33 @@ final class Site
                 : $this->sent(json_encode($this->config, JSON_UNESCAPED_SLASHES), 'json', 'no-store', $ifNoneMatch);
         }
         $segments = explode('/', ltrim($path, '/'));
+        if ($segments[0] === 'regions') {
+            return $this->regionPackages($segments, $method, $ifNoneMatch, $range);
+        }
         if (in_array($segments[0], $this->pageSegments, true)) {
             return $this->page($base, $ifNoneMatch);
         }
         return $this->file($segments, $base, $ifNoneMatch);
+    }
+
+    /**
+     * `regions/catalog.json` and `regions/file/<id>`: the one thing the site fetches for the browser.
+     *
+     * @param list<string> $segments
+     */
+    private function regionPackages(array $segments, string $method, string $ifNoneMatch, string $range): Answer
+    {
+        if ($this->regions === null) {
+            return new Answer(404, ['Content-Type' => 'text/plain; charset=utf-8'],
+                'Region downloads are not set up on this site (regionsCatalog in config.php).');
+        }
+        if (count($segments) === 2 && $segments[1] === 'catalog.json') {
+            return $this->regions->catalog($ifNoneMatch);
+        }
+        if (count($segments) === 3 && $segments[1] === 'file') {
+            return $this->regions->file($segments[2], $method, $range);
+        }
+        return new Answer(404);
     }
 
     private function page(string $base, string $ifNoneMatch): Answer

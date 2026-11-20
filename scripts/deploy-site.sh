@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # A release's web-site.zip onto the PHP server over FTPS, with the config.php this run writes.
 # Reads FTPS_HOST, FTPS_USER, FTPS_PASSWORD, FTPS_DIR, FTPS_PORT, FTPS_CA_FILE, ICLOUD_API_TOKEN,
-# ICLOUD_CONTAINER and TILES_BASE (README). Needs lftp, unzip, node and php on the PATH.
+# ICLOUD_CONTAINER, TILES_BASE and REGIONS_CATALOG (README). Needs lftp, unzip, node and php on the PATH.
 set -euo pipefail
 
 zip="${1:?usage: deploy-site.sh web-site.zip}"
@@ -33,11 +33,19 @@ $tiles = rtrim(trim((string) getenv('TILES_BASE')), '/');
 if ($tiles !== '' && !preg_match('~^https://[^/?#\s]+(/[^?#\s]*)?\z~', $tiles)) {
     $fail('TILES_BASE must be an https:// URL without query or fragment, such as https://tiles.example.com');
 }
+// 112 Region packages come through the site's server from the catalog this names; left out, the site offers none.
+$regions = trim((string) getenv('REGIONS_CATALOG'));
+if ($regions !== '' && !preg_match('~^https://[^/?#\s]+(/[^?#\s]*)?\z~', $regions)) {
+    $fail('REGIONS_CATALOG must be an https:// URL without query or fragment, such as https://example.com/maps.json');
+}
 $config = ['container' => $container, 'apiToken' => $token, 'environment' => 'production', 'tilesBase' => $tiles];
+if ($regions !== '') {
+    $config['regionsCatalog'] = $regions;
+}
 file_put_contents((string) getenv('RIKI_CONFIG_OUT'), "<?php\n\nreturn " . var_export($config, true) . ";\n");
 PHP
 unzip -q "$zip" -d "$work/site"
-for each in index.php Site.php .htaccess site.json out/index.html; do
+for each in index.php Site.php Regions.php .htaccess site.json out/index.html; do
   [ -f "$work/site/$each" ] || { echo "web-site.zip has no $each" >&2; exit 1; }
 done
 if [ -e "$work/site/config.php" ]; then
@@ -67,6 +75,7 @@ LFTP_PASSWORD="$FTPS_PASSWORD" lftp -c "
   lcd \"$work/site\";
   mirror --reverse --transfer-all --no-perms --parallel=4 out out;
   put Site.php;
+  put Regions.php;
   put config.example.php;
   put .htaccess;
   put \"$work/config.php\" -o config.php.new;

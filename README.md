@@ -45,7 +45,7 @@ against a real phone.
 ## The site
 
 `npm run build:web && npm run pack:web` writes `dist/web-site.zip`: the site's build under `out/`,
-`index.php` and `Site.php`, `.htaccess`, `config.example.php` and `site.json`. Unpack it anywhere a web
+`index.php`, `Site.php` and `Regions.php`, `.htaccess`, `config.example.php` and `site.json`. Unpack it anywhere a web
 server runs PHP 8.1 or later, at a domain's root or under a path, and send every request to `index.php`. Apache does
 so by the zip's `.htaccess` (`mod_rewrite`, and `AllowOverride All` for the folder; no `RewriteBase`, so it works at a
 root and under a path). nginx has no `.htaccess` and needs `try_files $uri /index.php;`; `php -S host:port index.php`
@@ -95,6 +95,34 @@ The API token (CloudKit Console, the container's API Access) needs two settings:
 `postMessage`, and the site's origin (scheme, host and port) in its allowed origins, once per address. CloudKit JS keeps the sign-in in a cookie scoped to the page's path, so a site under `/editor/` and
 its nested routes are worth checking in a real browser once, signing in on a nested screen and reloading it.
 
+### Region packages (item 112)
+
+A map whose style draws from Riki region data the browser does not hold says so over the map and in Edit map ("Download
+Vysoké Tatry (263 MB) to see it on this map"); one tap fetches it. The browser never asks the packages' host itself: the
+site's server is the one thing that fetches for it (the plan's "no relay", excepted for region packages only).
+
+- **The server** (`server/Regions.php`, set up by `REGIONS_CATALOG`, an https address of maptiles' `maps.json`; unset, the routes
+  answer 404 and the site offers no downloads). `GET <base>/regions/catalog.json` is the catalog, fetched by the server and
+  kept in `cache/` beside the site for 15 minutes (asked again by its ETag, served stale when the host fails).
+  `GET <base>/regions/file/<id>` streams that Drive file only if the id is a download id in the cached catalog, from
+  `drive.usercontent.google.com/download?id=<id>&export=download&confirm=t`; GET and HEAD only, a `Range` header of the
+  form `bytes=N-M` passed on and nothing else of the browser's, a web page from the host (Drive's quota or confirmation page)
+  or a size other than the catalog's refused as a 502 whose JSON says why. It needs PHP's `allow_url_fopen`. Google Drive may
+  throttle or refuse heavy downloads ("quota exceeded"); the page then says the host did not give the package, and the
+  person can try again.
+- **The browser** takes each piece's zip (the app reads `.aar`, which a browser cannot), unpacks it as it arrives with
+  fflate and keeps its files in the origin's private file system (`navigator.storage.getDirectory()`, IndexedDB where
+  there is none), asking the browser once to keep them. A package counts once its mark is written; a newer catalog build
+  (`updated_ts`) is offered as an update and replaces the older only when whole; Remove frees it. No download ends before
+  its byte count is the catalog's, which is how a page of the host's is told from a package.
+- **The core** says what a style needs. `riki_style`'s catalog gains `stored: [{region, piece, version, files, contents}]`
+  (`contents` is the package's `contents.json` text), and the style it answers names the region data it would draw from
+  and the browser lacks in `metadata["riki:needs"]: [{region, piece}]`, `region` being the catalog's key (the app's
+  `regionId`) and `piece` the key under its `maps`. For a stored package the style's sources are
+  `pmtiles://riki-store/<region>/<piece>/<path in the zip>` and its sprite sheets
+  `riki-store://<region>/<piece>/<path without extension>` (paths unencoded), which the page reads from where it keeps them.
+  The pinned module does not do this yet; until it does a style carries no needs and the site shows no offer.
+
 ### Deploying it
 
 Every merge to `master` runs CI, publishes a release and then deploys that release's
@@ -106,7 +134,7 @@ workflow installs `php-cli`) and refuses to deploy when `ICLOUD_API_TOKEN` is em
 environment is always `production`; there is no setting for it. `TILES_BASE`, when set, must be an `https://`
 URL (a trailing slash is dropped); the zip must not carry a `config.php` of its own.
 
-Upload order: new assets and the page's `out/` first, then `Site.php`, `config.example.php` and `.htaccess`, then
+Upload order: new assets and the page's `out/` first, then `Site.php`, `Regions.php`, `config.example.php` and `.htaccess`, then
 `config.php` (sent as `config.php.new` and renamed, so no request reads half of it), then `index.php` and
 `site.json`, then the assets no page names any more. A request reaches the new entry point last, so it never meets
 new code without its config, and a failed config upload stops the deploy with the old `index.php` still serving.
@@ -124,6 +152,7 @@ Set it up once in Settings › Environments › `site`:
 | `ICLOUD_API_TOKEN` | variable (a secret works too) | the container's CloudKit JS API token; every browser sends it, so it is no secret; required |
 | `ICLOUD_CONTAINER` | variable | `iCloud.com.rikimaps.rikimaps.maps` when unset |
 | `TILES_BASE` | variable | the maptiles host, `https://…`; optional, and without it Riki's own region maps do not draw |
+| `REGIONS_CATALOG` | variable | the region catalog (maptiles' `maps.json`), `https://…`; optional, and without it the site offers no region downloads |
 | `RIKIMAPS_READ_TOKEN` | repository secret | reads the private rikimaps repository for the core and the words; the release build, not the deploy |
 
 Until the three FTPS secrets are set, the deploy job says so and skips. The server's certificate must
@@ -143,7 +172,7 @@ Production, since the site always uses it.
 - `src/targets/phone`: today's calls to the phone. `src/targets/web`: the site's: `config.ts`, `cloud.ts` (CloudKit JS, sign-in), `zones.ts` and
   `records.ts` (the zones' rows, kept in IndexedDB), `writes.ts` (a change saved with its change tags), `core.ts`
   (`riki-core.wasm`) and `backend.ts`. It reads and edits a map; the other writes wait for later steps.
-- `server`: the site's `index.php`, `Site.php` and their PHPUnit tests.
+- `server`: the site's `index.php`, `Site.php`, `Regions.php` and their PHPUnit tests.
 - `src/map`: MapLibre, loaded on the client after the phone's words.
 - `src/lib`: logic with no framework in it.
 - `e2e`: browser specs and the stand-in phone, which must answer as the app's `PeerRouter` does.

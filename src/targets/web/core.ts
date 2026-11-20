@@ -5,9 +5,20 @@ import type { AddressReading, Device, Portable, ShareRole } from "@/lib/types";
 import { BASE } from "./base";
 import type { CoreRow, CoreWrite } from "./records";
 
+/** 112 A region package the browser holds, as the core is told of it: its files and its `contents.json` text. */
+export interface StoredPackage {
+  region: string;
+  piece: string;
+  version: number;
+  files: string[];
+  contents: string | null;
+}
+
 /** What the style is built for: the theme, the layers hidden and where the pipeline's files are. */
 export interface StyleCatalog {
   tilesBase: string;
+  /** 112 The region packages held in this browser; the core draws from them and names the ones it lacks in `riki:needs`. */
+  stored: StoredPackage[];
   theme: "light" | "dark";
   hidden: string[];
   tiles: string;

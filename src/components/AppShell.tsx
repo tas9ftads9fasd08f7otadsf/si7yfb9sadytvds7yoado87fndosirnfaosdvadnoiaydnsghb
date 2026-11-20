@@ -13,6 +13,7 @@ import { NewMapModal } from "./NewMapModal";
 import { PlacePanel } from "./PlacePanel";
 import { SettingsPage } from "./SettingsPage";
 import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar, UndrawnNote } from "./Overlays";
+import { RegionNeedsNote } from "./RegionPackages";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
 import { Boot, LoadingBar } from "./Overlays";
@@ -100,6 +101,7 @@ export function AppShell() {
       <LoadingBar />
       <RegionOffer />
       <UndrawnNote />
+      <RegionNeedsNote />
       <StatusBar />
       <Notice />
       <Offline />

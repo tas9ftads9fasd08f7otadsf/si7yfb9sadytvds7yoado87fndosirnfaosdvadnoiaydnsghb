@@ -37,8 +37,10 @@ describe("the core's wrapper", () => {
     const exports = echo();
     const core = coreOf(exports);
     expect(core.map([], "M")).toEqual({ rows: [], id: "M" });
-    expect(core.style([], "M", "S", { tilesBase: "t", theme: "dark", hidden: ["h"], tiles: "2x2" }))
-      .toEqual({ rows: [], mapID: "M", styleID: "S", catalog: { tilesBase: "t", theme: "dark", hidden: ["h"], tiles: "2x2" } });
+    // 112 the region packages the browser holds go with the catalog, for the core to draw from
+    const stored = [{ region: "tatry", piece: "base", version: 7, files: ["contents.json", "base.pmtiles"], contents: "{}" }];
+    const catalog = { tilesBase: "t", stored, theme: "dark" as const, hidden: ["h"], tiles: "2x2" };
+    expect(core.style([], "M", "S", catalog)).toEqual({ rows: [], mapID: "M", styleID: "S", catalog });
   });
 
   // 78 the edit is asked with the rows and who writes it; the core's answer is read back whole

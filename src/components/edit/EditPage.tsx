@@ -16,6 +16,7 @@ import { MinimumVersion } from "./MinimumVersion";
 import { Offline } from "./Offline";
 import { OpensAt } from "./OpensAt";
 import { People } from "./People";
+import { RegionPackagesCard } from "../RegionPackages";
 import { Styles } from "./Styles";
 import { Styling } from "./Styling";
 
@@ -67,6 +68,7 @@ function EditFields() {
         <>
           <Layers portable={portable} />
           <EsriServices />
+          <RegionPackagesCard />
           {portable.styles?.length ? <div className="foot-note">{words.layerCap}</div> : null}
         </>
       );

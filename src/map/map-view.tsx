@@ -1,13 +1,14 @@
 import maplibregl, { type MapGeoJSONFeature, type PointLike, type StyleSpecification } from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import { leftOpening, OPENING } from "@/lib/camera";
-import { drawable, undrawnOf } from "@/lib/drawable";
+import { drawable, needsOf, undrawnOf } from "@/lib/drawable";
 import { watchTraffic, workerCounter } from "@/lib/traffic";
 import { backend } from "@backend";
 import { LIVE_EVERY, PHONE_EVERY, REGIONS_EVERY } from "@/lib/page";
 import { regionOffer } from "@/lib/region";
 import type { Box, DetailsSheet, IdentifyListing, RegionList } from "@/lib/types";
 import { type Named, pointOn } from "@/lib/search";
+import { setNeeds } from "@/store/regions";
 import { type ShownFeature, drawStyle, failed, isDark, notice, showPlace, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl } from "./control";
 import { heightModel, threeDView } from "./three-d";
@@ -21,6 +22,8 @@ export function createMapView(container: HTMLElement): MapControl {
   const { words } = get();
   const protocol = new Protocol();
   maplibregl.addProtocol("pmtiles", protocol.tilev4);
+  // 112 A sprite sheet of a region package the browser holds is read from where it keeps it.
+  maplibregl.addProtocol("riki-store", (params) => backend.stored?.load(params) ?? Promise.reject(new Error("no stored packages")));
   // 46: vector tiles are fetched in MapLibre's workers, so they are counted there.
   void maplibregl.importScriptInWorkers(workerCounter()).catch(() => {});
   const stopTraffic = watchTraffic((traffic) => useViewer.setState({ traffic }));
@@ -276,7 +279,11 @@ export function createMapView(container: HTMLElement): MapControl {
         return;
       }
       style = answer.value as StyleSpecification;
-      if (asked === lastAsked) useViewer.setState({ undrawn: new Set(undrawnOf(style)) });
+      if (asked === lastAsked) {
+        useViewer.setState({ undrawn: new Set(undrawnOf(style)) });
+        setNeeds(needsOf(style));
+      }
+      await backend.stored?.prepare(style, protocol);
     } catch (error) {
       if (asked === lastAsked) failed(error);
       return;
@@ -434,6 +441,7 @@ export function createMapView(container: HTMLElement): MapControl {
       clearTimeout(moved);
       stopTraffic();
       maplibregl.removeProtocol("pmtiles");
+      maplibregl.removeProtocol("riki-store");
       map.remove();
     }
   };

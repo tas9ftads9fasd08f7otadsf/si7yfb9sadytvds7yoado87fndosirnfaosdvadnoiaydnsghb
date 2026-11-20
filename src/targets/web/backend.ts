@@ -1,4 +1,7 @@
 import { NotOnSite, type Answer, type Backend, type ChangedElsewhere, type Feature } from "@/backend/types";
+import { createRegionPackages } from "./regions/packages";
+import { loadStored, registerArchives } from "./regions/source";
+import { browserStore, type PackageStore } from "./regions/store";
 import type { Edit } from "@/lib/edit";
 import type { Portable, SessionAnswer } from "@/lib/types";
 import { ENGLISH, type Words } from "@/lib/words";
@@ -62,6 +65,8 @@ export interface Parts {
   base: string;
   /** The browser's languages, most wanted first. */
   languages: () => readonly string[];
+  /** 112 Where region packages are kept; the browser's own file system, or IndexedDB without one. */
+  regions?: PackageStore;
 }
 
 const ownerOf = (row: CoreRow) => (row.entity === "SharedMap" ? row.id : String(row.fields.map ?? ""));
@@ -75,6 +80,10 @@ const refused = (said: string, status = 400): Answer<never> => ({ ok: false, sta
 
 /** iCloud through CloudKit JS and the core: it reads and edits; other writes wait. */
 export function createBackend(parts: Parts): Backend {
+  const kept = parts.regions ?? browserStore();
+  const regions = createRegionPackages({ store: kept, fetcher: parts.fetcher, base: parts.base });
+  /** 112 Whether the server was set up to fetch region packages; known once the session has read the config. */
+  let regionsOn = false;
   const zones = new Zones(async () => (await parts.cloud.databases()).container, parts.keeping, parts.fetcher);
   const listeners = new Set<(changed?: ChangedElsewhere[]) => void>();
   let reading: Promise<CoreRow[]> | null = null;
@@ -272,12 +281,18 @@ export function createBackend(parts: Parts): Backend {
   const session = async (): Promise<Answer<SessionAnswer>> => {
     const person = await parts.cloud.start();
     if (!person) return { ok: true, value: { standing: "signedOut" } };
+    regionsOn = Boolean((await parts.config().catch(() => null))?.regionsCatalog);
     return { ok: true, value: { standing: "admitted", edits: true, token: SITE_TOKEN, device: person.name, viewers: null } };
   };
 
   return {
     target: "web",
-    offers: (feature) => OFFERED.has(feature),
+    offers: (feature) => OFFERED.has(feature) || (feature === "regionPackages" && regionsOn),
+    regionPackages: regions.packages,
+    stored: {
+      prepare: (style, protocol) => registerArchives(style, kept, protocol),
+      load: (params) => loadStored(kept, params)
+    },
 
     async words() {
       let codes = ["en"];
@@ -317,7 +332,7 @@ export function createBackend(parts: Parts): Backend {
     async style(ask) {
       const [core, read, config] = await Promise.all([parts.core(), rows(), parts.config()]);
       const style = core.style(read, ask.mapID, ask.styleID,
-        { tilesBase: config.tilesBase, theme: ask.theme, hidden: ask.hidden, tiles: ask.tiles });
+        { tilesBase: config.tilesBase, stored: await regions.stored(), theme: ask.theme, hidden: ask.hidden, tiles: ask.tiles });
       const own = [hostOf(config.tilesBase), location.origin].filter((each) => each !== null);
       return { ok: true, value: await drawnHere(style, parts.reach, own) };
     },
