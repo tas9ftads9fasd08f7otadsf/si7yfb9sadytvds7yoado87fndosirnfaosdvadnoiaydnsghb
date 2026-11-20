@@ -1,6 +1,6 @@
 name: Core
 
-# riki-core.wasm, and the site's words, made from the rikimaps commit package.json pins (rikiCore.ref):
+# riki-core.wasm, the site's words, glyphs and sprite, made from the rikimaps commit package.json pins (rikiCore.ref):
 # scripts/build-core.mjs and scripts/build-words.mjs. Release calls
 # this before it packs the site; a pull request runs it when the pin or the build changes.
 on:
@@ -9,6 +9,7 @@ on:
     paths:
       - package.json
       - scripts/build-core.mjs
+      - scripts/build-assets.mjs
       - .github/workflows/core.yml
   workflow_call:
     secrets:
@@ -89,6 +90,19 @@ jobs:
         env:
           RIKIMAPS_DIR: ${{ github.workspace }}/rikimaps
         run: npm run build:words
+
+      # The glyphs and the base sprite, from the same checkout: the app's Glyphs folder and temaki-sprite files.
+      - name: Make the site's glyphs and sprite
+        if: steps.pin.outputs.ref != ''
+        env:
+          RIKIMAPS_DIR: ${{ github.workspace }}/rikimaps
+        run: npm run build:assets
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: riki-assets
+          path: dist/assets
+          if-no-files-found: ignore
 
       # The generator the port replaced, at the commit its output is checked against (rikimaps' contract, §2).
       - name: Check out rikimaps where tools/site-words.py last made the words

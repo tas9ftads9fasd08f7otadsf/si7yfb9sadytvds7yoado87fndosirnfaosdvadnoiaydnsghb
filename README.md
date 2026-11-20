@@ -79,6 +79,14 @@ Without Swift, run `.github/workflows/core-on-demand.yml` by hand (`gh workflow 
 `dist/riki-core/` for 90 days as the artifact `riki-core-<commit>`. `npm run fetch:core` (or
 `RIKI_CORE_REF=<40-character sha> npm run fetch:core`) downloads it with `gh` into `dist/riki-core/` and checks it as
 a build is. It is not a release, since rikimaps takes the newest release as the editor's bundle.
+The site's glyphs and base sprite (item 110) come from the same pin: `npm run build:assets` (same `RIKIMAPS_DIR`) copies the
+checkout's `Resources/Glyphs` and `temaki-sprite{,@2x}.{json,png}` into `dist/assets/glyphs/<font stack>/<range>.pbf` (the
+stack's folder named with spaces, as the app's `GlyphStore` places it) and `dist/assets/sprites/`, and `pack:web` puts them
+under `out/`, where `index.php` serves them (`application/x-protobuf` for glyphs). `riki_style`'s catalog is
+`{tilesBase, glyphsBase, spriteBase, theme, hidden, tiles}`: the core makes the style's `glyphs`
+`<glyphsBase>/{fontstack}/{range}.pbf` and its `sprite` `<spriteBase>`, both absolute addresses of those files. A pinned
+pack without them fails, as for the core, unless `RIKI_PACK_WITHOUT_CORE=1` (the specs put stand-ins in place), and the
+deploy refuses such a zip like one without the core.
 
 The API token (CloudKit Console, the container's API Access) needs two settings: **Sign-In Callback** set to
 `postMessage`, and the site's origin (scheme, host and port) in its allowed origins, once per address. CloudKit JS keeps the sign-in in a cookie scoped to the page's path, so a site under `/editor/` and

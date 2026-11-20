@@ -23,6 +23,7 @@
     "build:core": "node scripts/build-core.mjs",
     "fetch:core": "node scripts/fetch-core.mjs",
     "build:words": "node scripts/build-words.mjs",
+    "build:assets": "node scripts/build-assets.mjs",
     "pack:web": "node scripts/pack-web.mjs",
     "test:php": "cd server && vendor/bin/phpunit",
     "test:e2e:web": "RIKI_TARGET=web playwright test",

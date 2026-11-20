@@ -25,6 +25,7 @@ final class Site
         'css' => 'text/css; charset=utf-8', 'json' => 'application/json; charset=utf-8',
         'txt' => 'text/plain; charset=utf-8', 'svg' => 'image/svg+xml', 'wasm' => 'application/wasm',
         'png' => 'image/png', 'jpg' => 'image/jpeg', 'ico' => 'image/x-icon', 'woff2' => 'font/woff2',
+        'pbf' => 'application/x-protobuf',
     ];
     private const FILLED = ['html', 'js', 'css', 'json', 'txt', 'svg'];
 
@@ -129,7 +130,8 @@ final class Site
         }
         // A build's own names change with it; everything else is asked again each time.
         $caching = $segments[0] === '_next' && ($segments[1] ?? '') === 'static'
-            ? 'public, max-age=31536000, immutable' : 'no-cache';
+            ? 'public, max-age=31536000, immutable'
+            : (in_array($segments[0], ['glyphs', 'sprites'], true) ? 'public, max-age=86400' : 'no-cache');
         return $this->sent($body, $kind, $caching, $ifNoneMatch);
     }
 
