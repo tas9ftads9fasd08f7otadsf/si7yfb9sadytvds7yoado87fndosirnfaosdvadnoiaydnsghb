@@ -9,6 +9,8 @@ test("signed out, the site asks for an Apple Account and shows the maps after si
   await page.goto("./");
   await expect(page.locator("#gate")).toBeVisible();
   await expect(page.locator("#gateTitle")).toHaveText("Sign in to iCloud");
+  // 134 signed out, the editor is not seen behind the gate
+  await expect(page.locator("#gate")).toHaveClass(/closed/);
   await page.locator("#signIn button").click();
   await expect(page.locator("#gate")).toBeHidden();
   await expect(page.locator("#device")).toContainText("Riki Tester");
@@ -68,4 +70,18 @@ test("nothing of the site's reading asks the page's own origin for the phone's A
   expect(asked.filter((path) => path.includes("/riki/v1") || path.includes("/web/session"))).toEqual([]);
   expect(asked).toContain(`${base(baseURL)}/riki-core.wasm`);
   expect(asked).toContain(`${base(baseURL)}/config.json`);
+});
+
+// 137 bug: the loading screen said only that it loads, so a long first read looked stuck
+test("while the first read lasts, the loading screen says what it has read so far", async ({ page }) => {
+  await mockCloud(page, { signedIn: true });
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  await page.route(/\/changes\/zone/, async (route) => { await held; await route.fallback(); });
+  await page.goto("./");
+  await expect(page.locator("#bootSteps li.done")).toContainText("Map engine");
+  await expect(page.locator("#bootSteps")).toContainText(/iCloud zones: 0 of \d/);
+  release();
+  await expect(page.locator("#boot")).toBeHidden();
+  await page.locator("#current .hero").waitFor();
 });

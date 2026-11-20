@@ -35,7 +35,7 @@ export async function loadAccount() {
  * Installs the mock on a page. `signedIn` starts the person signed in; the returned control changes what
  * the account holds and has the page told, as Apple's push would.
  */
-export async function mockCloud(page, { signedIn = false, answers } = {}) {
+export async function mockCloud(page, { signedIn = false, answers, refusesToken = false } = {}) {
   const account = await loadAccount();
   const asked = [];
   const wasm = fakeCoreWasm(answers ?? account.core);
@@ -112,6 +112,9 @@ export async function mockCloud(page, { signedIn = false, answers } = {}) {
     const endpoint = rest.join("/");
     const body = request.postData() ? JSON.parse(request.postData()) : {};
     asked.push({ database, endpoint, body, token: url.searchParams.get("ckAPIToken") });
+    if (refusesToken) {
+      return reply(route, 401, { serverErrorCode: "AUTHENTICATION_FAILED", reason: "check the API Token" });
+    }
     if (request.headers()["x-mock-signed-in"] !== "1") {
       return reply(route, 421, { serverErrorCode: "AUTHENTICATION_REQUIRED", reason: "Sign in" });
     }

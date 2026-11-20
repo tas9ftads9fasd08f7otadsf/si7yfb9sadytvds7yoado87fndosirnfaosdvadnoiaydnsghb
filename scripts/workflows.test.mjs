@@ -132,9 +132,14 @@ describe("CI's caches", () => {
     expect(ci).toContain("path: .next/cache");
   });
 
-  it("ask apt for its lists once, before the FTPS tools", () => {
-    expect(ci.match(/apt-get update/g)).toBeNull();
-    expect(ci.indexOf("playwright install-deps")).toBeLessThan(ci.indexOf("apt-get install -y -q lftp"));
+  // 139 the browser's libraries moved to the browser jobs, so the check job asks apt for its own lists
+  it("ask apt for its lists once in each job", () => {
+    const check = ci.slice(ci.indexOf("\n  check:"), ci.indexOf("\n  browser:"));
+    const browser = ci.slice(ci.indexOf("\n  browser:"));
+    expect(check.match(/apt-get update/g)).toHaveLength(1);
+    expect(check).toContain("apt-get update -q && sudo apt-get install -y -q lftp");
+    expect(browser).not.toContain("apt-get update");
+    expect(browser).toContain("playwright install-deps chromium");
   });
 });
 
@@ -171,6 +176,42 @@ describe("CI's check job", () => {
 
   it("starts the check only for code, so a docs-only merge cancels no tests", () => {
     expect(check).toContain("if: needs.changes.outputs.code == 'true'");
+  });
+});
+
+// 139 the browser specs took 16 of a run's 18 minutes on one runner, one after the other
+describe("CI's browser tests", () => {
+  const ci = read("ci.yml");
+  const check = ci.slice(ci.indexOf("\n  check:"), ci.indexOf("\n  browser:"));
+  const browser = ci.slice(ci.indexOf("\n  browser:"));
+
+  it("run in shares on parallel runners beside the check, not after it", () => {
+    expect(browser).toContain("needs: changes");
+    expect(browser).not.toMatch(/needs:.*check/);
+    expect(browser).toContain("if: needs.changes.outputs.code == 'true'");
+    expect(browser).toContain("run: npx playwright test --shard=${{ matrix.shard }}");
+    expect(browser).toContain("fail-fast: false");
+  });
+
+  it("cover every share of both targets", () => {
+    const shards = [...browser.matchAll(/\{ target: (\w+), shard: (\d+)\/(\d+) \}/g)];
+    for (const target of ["phone", "web"]) {
+      const own = shards.filter((each) => each[1] === target);
+      expect(own.length).toBeGreaterThan(1);
+      expect(own.map((each) => Number(each[2]))).toEqual(own.map((_, index) => index + 1));
+      expect(own.every((each) => Number(each[3]) === own.length)).toBe(true);
+    }
+  });
+
+  it("each replace only their own share's older run", () => {
+    expect(browser).toMatch(/concurrency:\s*\n\s*group: browser-\$\{\{ github\.head_ref \|\| github\.ref \}\}-\$\{\{ matrix\.target \}\}-\$\{\{ matrix\.shard \}\}\s*\n\s*cancel-in-progress: true/);
+  });
+
+  it("leave the check job its lint, unit tests and packages, and no browser tests", () => {
+    for (const step of ["npm run lint", "npm run typecheck", "npm test", "npm run test:php", "npm run pack",
+      "npm run pack:web"]) expect(check).toContain(`run: ${step}`);
+    expect(check).not.toContain("test:e2e");
+    expect(check).not.toContain("playwright");
   });
 });
 

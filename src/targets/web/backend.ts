@@ -1,4 +1,5 @@
 import { NotOnSite, type Answer, type Backend, type ChangedElsewhere, type Feature } from "@/backend/types";
+import { siteSymbolURL } from "./symbols";
 import { createRegionPackages } from "./regions/packages";
 import { loadStored, registerArchives } from "./regions/source";
 import { browserStore, type PackageStore } from "./regions/store";
@@ -7,13 +8,14 @@ import type { Portable, SessionAnswer } from "@/lib/types";
 import { ENGLISH, type Words } from "@/lib/words";
 import { storedAuthor, type Author } from "./author";
 import { BASE } from "./base";
-import { Cloud } from "./cloud";
+import { Cloud, refusesToken } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
 import { loadCore, type AddressRead, type Adding, type Applied, type Core, type Reply } from "./core";
 import { peopleOf, type Say } from "./people";
 import { createReach, hostOf, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
+import { Progress } from "./progress";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
 import type { CoreRow, CoreWrite } from "./records";
 import { changedFields, Conflict, stamped, write, type Plan } from "./writes";
@@ -67,6 +69,8 @@ export interface Parts {
   languages: () => readonly string[];
   /** 112 Where region packages are kept; the browser's own file system, or IndexedDB without one. */
   regions?: PackageStore;
+  /** 137 What the first read has done, for the loading screen. */
+  progress?: Progress;
 }
 
 const ownerOf = (row: CoreRow) => (row.entity === "SharedMap" ? row.id : String(row.fields.map ?? ""));
@@ -84,7 +88,8 @@ export function createBackend(parts: Parts): Backend {
   const regions = createRegionPackages({ store: kept, fetcher: parts.fetcher, base: parts.base });
   /** 112 Whether the server was set up to fetch region packages; known once the session has read the config. */
   let regionsOn = false;
-  const zones = new Zones(async () => (await parts.cloud.databases()).container, parts.keeping, parts.fetcher);
+  const zones = new Zones(async () => (await parts.cloud.databases()).container, parts.keeping, parts.fetcher,
+    parts.progress);
   const listeners = new Set<(changed?: ChangedElsewhere[]) => void>();
   let reading: Promise<CoreRow[]> | null = null;
   let known: Known | null = null;
@@ -279,7 +284,11 @@ export function createBackend(parts: Parts): Backend {
   };
 
   const session = async (): Promise<Answer<SessionAnswer>> => {
-    const person = await parts.cloud.start();
+    const person = await parts.cloud.start().catch((error: unknown) => {
+      if (refusesToken(error)) return "refused" as const;
+      throw error;
+    });
+    if (person === "refused") return { ok: true, value: { standing: "refused" } };
     if (!person) return { ok: true, value: { standing: "signedOut" } };
     regionsOn = Boolean((await parts.config().catch(() => null))?.regionsCatalog);
     return { ok: true, value: { standing: "admitted", edits: true, token: SITE_TOKEN, device: person.name, viewers: null } };
@@ -318,6 +327,7 @@ export function createBackend(parts: Parts): Backend {
       return () => listeners.delete(listener);
     },
     mountAccount: (button, into) => parts.cloud.mount(button, into),
+    loading: (listener) => parts.progress?.listen(listener) ?? (() => undefined),
     author: parts.author,
 
     async maps() {
@@ -357,6 +367,7 @@ export function createBackend(parts: Parts): Backend {
     newMap: editing, importMap: editing, exportMap: editing, duplicateMap: editing,
     deleteMap: editing, shelve: editing, switches: editing, askPeople: editing, setPicture: editing,
     layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
+    otherLayers: adding, addCopies: adding,
     readAddress,
     addTiles: (mapID, template) => addLayer(mapID, template, (replies) => ({ kind: "tiles", address: template, replies })),
     addServiceLayers: (mapID, address, picks) =>
@@ -366,18 +377,20 @@ export function createBackend(parts: Parts): Backend {
     changeEsriService: adding, coverage: adding, coveragePlaces: adding,
     startPlaces: adding, downloadRegion: adding, offlinePlan: adding, offlineDownload: adding, discardStored: adding,
     live: adding, identify: adding, details: adding, phoneLocation: adding,
+    search: async () => null,
     iconURL: () => "",
     regions: async () => ({}),
     icon: async () => null,
-    symbolURL: () => "none"
+    symbolURL: siteSymbolURL
   };
 }
 
 const languages = () => (navigator.languages?.length ? navigator.languages : [navigator.language]);
 
 const keeping = indexedKeeping();
+const progress = new Progress();
 
 export const backend: Backend = createBackend({
-  cloud: new Cloud(), config: readConfig, core: () => loadCore(), keeping, reach: createReach(keeping), author: storedAuthor(),
-  fetcher: (...asked) => fetch(...asked), base: BASE, languages
+  cloud: new Cloud(), config: readConfig, core: () => loadCore(fetch, BASE, (done, total) => progress.engine(done, total)), keeping, reach: createReach(keeping), author: storedAuthor(),
+  fetcher: (...asked) => fetch(...asked), base: BASE, languages, progress
 });

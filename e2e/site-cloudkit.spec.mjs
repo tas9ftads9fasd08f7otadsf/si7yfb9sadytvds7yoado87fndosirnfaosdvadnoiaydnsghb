@@ -67,6 +67,21 @@ test("a sign-in window that failed leaves the sign-in button working", async ({ 
   await expect(page.locator("#device")).toContainText("Riki Tester");
 });
 
+// 134 bug: a refused token left the editor up with a reconnect banner and no way to sign in
+test("a token Apple refuses shows why in place of the editor, and is not asked again", async ({ page }) => {
+  const cloud = await mockCloud(page, { refusesToken: true });
+  await page.goto("./");
+  await expect(page.locator("#gateTitle")).toHaveText("iCloud refused this site");
+  await expect(page.locator("#gate")).toHaveClass(/closed/);
+  await expect(page.locator("#gate")).toHaveCSS("background-color", await page.evaluate(() =>
+    getComputedStyle(document.body).backgroundColor));
+  await expect(page.locator("#offline")).toBeHidden();
+  const callers = () => cloud.asked.filter((each) => each.endpoint === "users/caller").length;
+  const asked = callers();
+  await page.waitForTimeout(6000);
+  expect(callers()).toBe(asked);
+});
+
 test("rows to save and rows to remove go in one atomic batch, a delete with its change tag", async ({ page }) => {
   const { core } = await loadAccount();
   const cloud = await mockCloud(page, { signedIn: true, answers: { ...core,

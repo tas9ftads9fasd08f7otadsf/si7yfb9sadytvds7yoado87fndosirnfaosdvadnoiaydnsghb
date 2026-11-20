@@ -12,6 +12,7 @@ const SOURCE_LOOK: Record<AddSource, { symbol: string; title: string; note: stri
   file: { symbol: "doc", title: "files", note: "fileNote" },
   api: { symbol: "antenna.radiowaves.left.and.right", title: "apiLayers", note: "apiNote" },
   server: { symbol: "server.rack", title: "servers", note: "serverNote" },
+  copy: { symbol: "square.and.arrow.down", title: "anotherMap", note: "anotherMapNote" },
 };
 
 /** 97 The design's W11: every source on the left, the picked one's part beside it. */

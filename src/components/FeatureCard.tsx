@@ -8,6 +8,8 @@ interface Props {
   details?: DetailsSheet | null;
   /** 130 When the phone answered `details`, from which a LIVE pill counts the age on. */
   asked?: number;
+  /** 129 What a search listed it as, for a feature whose tags hold no name. */
+  title?: string;
 }
 
 function Rows({ rows }: { rows: [string, string][] }) {
@@ -58,8 +60,8 @@ function Block({ block, tags, answeredAt }: { block: DetailsBlock; tags: [string
 }
 
 /** Values are a server's words: they go in as text, never as markup. 21: a layout's sections first. */
-export function FeatureCard({ properties, layer, details, asked }: Props) {
-  const title = details?.title || featureTitle(properties);
+export function FeatureCard({ properties, layer, details, asked, title: listed }: Props) {
+  const title = details?.title || listed || featureTitle(properties);
   if (!details) {
     return (
       <div className="feature">

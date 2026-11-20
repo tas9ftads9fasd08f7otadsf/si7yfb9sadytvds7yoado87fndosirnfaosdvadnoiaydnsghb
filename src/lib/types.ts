@@ -1,5 +1,5 @@
 /** `signedOut` is the site's: no Apple Account is signed in yet. */
-export type Standing = "admitted" | "waiting" | "removed" | "signedOut";
+export type Standing = "admitted" | "waiting" | "removed" | "signedOut" | "refused";
 export type Box = [number, number, number, number];
 
 export interface MinimumVersion {
@@ -37,7 +37,22 @@ export interface SharedMap {
   /** 56 The folder's mark and ground as the phone's Maps sheet draws them. */
   stackSymbol?: string | null;
   stackIconTintHex?: string | null;
+  /** 128 The style names and, in the same order, their ids; older phones send no ids. */
+  styles?: string[];
+  styleIDs?: string[];
+  /** 128 The note cut to a card's line, whose it is, and how many others it is shared with. */
+  note?: string | null;
+  role?: MapRole;
+  people?: number;
+  isLocked?: boolean;
+  offline?: MapOffline;
+  /** What the map holds on the phone, and when the phone last wrote it, in Unix seconds. */
+  bytes?: number;
+  changedAt?: number;
 }
+
+export type MapRole = "own" | "edit" | "view";
+export type MapOffline = "ready" | "partly" | "online" | "update";
 
 export interface Device {
   name: string;
@@ -158,6 +173,23 @@ export interface FoundPlace {
   start: Start;
   title: string;
   detail?: string | null;
+  /** 129 Set for a place of the phone's search, which opens in the place panel with these tags. */
+  kind?: string | null;
+  properties?: Record<string, string>;
+}
+
+/** 129 One answer of `GET …/search` (`PeerWebSearch.Place`): the map's own feature, with a `layer`, or an indexed place. */
+export interface PhonePlace {
+  title: string;
+  detail?: string | null;
+  kind?: string | null;
+  layer?: string | null;
+  layerID?: string | null;
+  lat: number;
+  lon: number;
+  /** West, south, east, north. */
+  box?: number[] | null;
+  properties: Record<string, string>;
 }
 
 export interface OptionChoice {
@@ -432,6 +464,27 @@ export interface Packages {
   ticked: string[];
 }
 
+/** 119 One layer of another map; `blocked` says why it cannot be ticked. */
+export interface OtherLayer {
+  layer: string;
+  title: string;
+  subtitle: string;
+  symbol: string;
+  blocked?: string | null;
+}
+
+export interface OtherMap {
+  map: string;
+  name: string;
+  symbol: string;
+  iconTintHex?: string | null;
+  rows: OtherLayer[];
+}
+
+export interface OtherLayers {
+  groups: OtherMap[];
+}
+
 export interface ServerPick {
   layer: string;
   [key: string]: unknown;
@@ -478,6 +531,14 @@ export interface ServiceRead {
   address: string;
   reading: AddressReading;
   ticks: Set<string>;
+}
+
+/** 137 How far the site's first read has come: the engine's bytes, the zones, and what they held. */
+export interface Loading {
+  engine?: { done: number; total: number | null };
+  zones?: { done: number; total: number };
+  records: number;
+  files: number;
 }
 
 export interface SessionAnswer {

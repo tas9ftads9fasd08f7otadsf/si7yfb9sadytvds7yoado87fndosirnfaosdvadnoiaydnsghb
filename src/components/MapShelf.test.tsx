@@ -119,4 +119,12 @@ describe("MapShelf", () => {
     fireEvent.click(screen.getByLabelText("#B5D8F2"));
     expect(url()).toBe("/riki/v1/shelf?stack=F&iconTint=#B5D8F2");
   });
+
+  // 128 a row carries the offline state and size of a map that sent them, and none else
+  it("draws the offline state and size on the rows of maps that sent them", () => {
+    render(<MapShelf maps={[{ ...maps[0]!, offline: "update", bytes: 182_000_000 }, maps[3]!]} />);
+    const rows = screen.getAllByRole("button");
+    expect(rows[0]!.textContent).toBe("Alps0Update182 MB");
+    expect(rows[1]!.querySelector(".pill-tag")).toBeNull();
+  });
 });
