@@ -21,17 +21,21 @@ function Choice({ label, value, options, onPick }:
   );
 }
 
-/** Moves at the click and settles on what the phone then says, as `Switch` does. */
+/** Moves at the click and settles on what the phone then says, as `Switch` does; 111 a row with W16's switch. */
 function Check({ label, isOn, onChange }: { label: string; isOn: boolean; onChange: (on: boolean) => void }) {
   const box = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (box.current) box.current.checked = isOn;
   }, [isOn]);
   return (
-    <label className="check">
-      <input ref={box} type="checkbox" defaultChecked={isOn} onChange={(event) => onChange(event.target.checked)} />
-      {label}
-    </label>
+    <div className="check switch-row">
+      <span className="words">{label}</span>
+      <span className="switch">
+        <input ref={box} type="checkbox" role="switch" aria-label={label} defaultChecked={isOn}
+          onChange={(event) => onChange(event.target.checked)} />
+        <span />
+      </span>
+    </div>
   );
 }
 
@@ -39,8 +43,17 @@ function Check({ label, isOn, onChange }: { label: string; isOn: boolean; onChan
 function SymbolChoice({ label, value, layout, none, onPick }:
   { label: string; value?: string | null; layout: DetailsLayout; none: string; onPick: (symbol: string) => void }) {
   const symbols = [...new Set([...(value ? [value] : []), ...(layout.symbols ?? [])])];
-  return <Choice label={label} value={value ?? ""} onPick={onPick}
-    options={[{ id: "", title: none }, ...symbols.map((symbol) => ({ id: symbol, title: symbol }))]} />;
+  // 111 W16: the marks as a row of tiles, the app's own first
+  return (
+    <div className="symbol-tiles" role="group" aria-label={label}>
+      <button type="button" aria-pressed={!value} aria-label={none} title={none} data-symbol=""
+        onClick={() => value && onPick("")}><Sym name={layout.header?.layerSymbol ?? "app"} /></button>
+      {symbols.map((symbol) => (
+        <button type="button" key={symbol} aria-pressed={symbol === value} aria-label={symbol} title={symbol}
+          data-symbol={symbol} onClick={() => symbol !== value && onPick(symbol)}><Sym name={symbol} /></button>
+      ))}
+    </div>
+  );
 }
 
 /** 80: a row's mark among the phone's groups, the one worn first when no group lists it. */
