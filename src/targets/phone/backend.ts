@@ -226,6 +226,9 @@ export const backend: Backend = {
     return editing(`${ROOT}/start-places?${asked.toString()}`, "GET");
   },
 
+  saved: () => editing(`${ROOT}/saved`, "GET"),
+  savedFeature: (id) => editing(`${ROOT}/saved/${encodeURIComponent(id)}`, "GET"),
+
   regions: (mapID) => readJSON(`${ROOT}/maps/${mapID}/regions`),
   downloadRegion: (mapID, regionID) =>
     editing(`${ROOT}/maps/${mapID}/download?region=${encodeURIComponent(regionID)}`, "POST", undefined, async () => null),
