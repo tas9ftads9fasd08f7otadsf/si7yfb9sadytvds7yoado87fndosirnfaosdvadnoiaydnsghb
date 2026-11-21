@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import { fakeCoreWasm } from "../../../e2e/fake-core.mjs";
 import { CoreNotReady } from "@/backend/types";
-import { CORE_ARGS, CoreMissing, callJSON, coreOf, forgetCore, loadCore, type CoreExports } from "./core";
+import { CORE_ARGS, CoreMissing, NoSuchMap, callJSON, coreOf, forgetCore, loadCore, type CoreExports } from "./core";
 
 const shimArgs = vi.hoisted(() => [] as string[][]);
 vi.mock("@bjorn3/browser_wasi_shim", async (original) => {
@@ -112,6 +112,15 @@ describe("the core's wrapper", () => {
       add: { kind: "tiles", address: "https://cors.example/{z}/{x}/{y}.png", replies: [] } }))
       .toMatchObject({ write: [{ id: "own-tatras-layer-2" }], history: { id: "change-web-2" } });
     expect(await loadCore(fetcher as typeof fetch, "/editor")).toBe(core);
+  });
+
+  // 157 rikimaps 3557's riki_map refuses a map the rows lack, which reached the page as a map
+  it("throws NoSuchMap where the core refuses the map, as the phone's 404 throws", async () => {
+    const bytes = fakeCoreWasm({ ...account.core, riki_map: { refused: "noSuchMap", call: "riki_map", status: 404 } });
+    const fetcher = async () => new Response(bytes.slice().buffer as ArrayBuffer, { status: 200 });
+    const core = await loadCore(fetcher as typeof fetch, "/editor");
+    expect(() => core.map([], "nothing")).toThrow(NoSuchMap);
+    expect(() => core.map([], "nothing")).toThrow("The rows hold no map nothing");
   });
 
   // 155 the module trapped in Foundation's UserDefaults when its shim gave it no argv[0]
