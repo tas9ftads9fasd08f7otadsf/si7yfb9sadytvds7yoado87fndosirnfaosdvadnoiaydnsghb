@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { heldSize } from "@/lib/size";
 import type { OfflinePlan, OfflineRow, Region } from "@/lib/types";
 import { chooseOfflineArea, discardStored, downloadRegion, loadOffline, loadRegionList, offlineDownload, openOffline, setOfflineZoom, stopOffline,
   tickOfflineLayer, useViewer } from "@/store/viewer";
@@ -55,6 +56,9 @@ function MapRegions() {
         {rows.map(({ region, state }) => (
           <div className="row region-row" role="row" key={region.id} data-region={region.id}>
             <span className="words" role="cell">{region.name}</span>
+            {rows.some((one) => one.region.bytes) ? (
+              <span role="cell" className="region-size">{heldSize(region.bytes) ?? ""}</span>
+            ) : null}
             <span role="cell">
               {state === "downloadable" ? (
                 <button type="button" className="pill" onClick={() => void downloadRegion(region)}>{words.download}</button>

@@ -3,6 +3,7 @@
 import { type DragEvent, Fragment } from "react";
 import { groundID } from "@/lib/ground";
 import { movedPast, originGroups, type OriginGroup } from "@/lib/origins";
+import { heldSize } from "@/lib/size";
 import type { Portable, SharedLayer, StackLayer } from "@/lib/types";
 import { filledIn } from "@/lib/words";
 import { change, groupByOrigin, offers, removeLayer, shownMapOf, toggleAddingPackages, toggleOptions, toggleOrigin,
@@ -12,6 +13,9 @@ import { MarkTile } from "../ui/MarkTile";
 import { Switch } from "../ui/Switch";
 import { Sym } from "../ui/Sym";
 import { OptionsPanel } from "./OptionsPanel";
+
+/** 141 The kind, and beside it what the phone holds of the layer where it sent a size. */
+const kindLine = (listed: SharedLayer) => [listed.kind, heldSize(listed.bytes)].filter(Boolean).join(" \u00B7 ");
 
 interface RowProps {
   layer: StackLayer;
@@ -62,7 +66,7 @@ function LayerRow({ layer, listed, isBase, movable, peers }: RowProps) {
         <div className="words">
           <CommitField type="text" value={layer.name} aria-label={words.rename}
             onCommit={(name) => change({ kind: "layerName", layer: layer.id, name })} />
-          <small>{listed.kind}</small>
+          <small>{kindLine(listed)}</small>
           {isUndrawn ? <small className="undrawn">{words.layerUndrawn}</small> : null}
         </div>
         <Switch isOn={!isHidden} label={layer.name} onChange={(isOn) => change({ kind: "layerShown", layer: layer.id, shown: isOn })} />
@@ -132,7 +136,7 @@ export function Layers({ portable }: { portable: Portable }) {
       return (
         <div className="row" key={listed.id}>
           <MarkTile symbol={listed.symbol} small />
-          <div className="words">{listed.name}<small>{listed.kind}</small></div>
+          <div className="words">{listed.name}<small>{kindLine(listed)}</small></div>
         </div>
       );
     }
