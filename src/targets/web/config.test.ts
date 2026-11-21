@@ -9,12 +9,13 @@ describe("the site's config", () => {
 
   // 76 read under the site's own path, once
   it("reads config.json under the base and asks only once", async () => {
+    // 147 an older config.php may still carry a tilesBase, which the page no longer reads
     const fetcher = answering({ container: "iCloud.x", apiToken: "T", environment: "production", tilesBase: "https://t.example/" });
     const first = await readConfig(fetcher, "/editor");
     await readConfig(fetcher, "/editor");
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(fetcher.mock.calls[0]?.[0]).toBe("/editor/config.json");
-    expect(first).toEqual({ container: "iCloud.x", apiToken: "T", environment: "production", tilesBase: "https://t.example", regionsCatalog: "" });
+    expect(first).toEqual({ container: "iCloud.x", apiToken: "T", environment: "production", regionsCatalog: "" });
   });
 
   // 112 the catalog the server fetches region packages from is in the config when the deploy set it
@@ -25,9 +26,9 @@ describe("the site's config", () => {
     expect((await readConfig(answering({ container: "iCloud.x" }), "")).regionsCatalog).toBe("");
   });
 
-  it("defaults to the development environment and no tiles host", async () => {
+  it("defaults to the development environment, no token and no region catalog", async () => {
     const config = await readConfig(answering({ container: "iCloud.x" }), "");
-    expect(config).toMatchObject({ environment: "development", tilesBase: "", apiToken: "" });
+    expect(config).toEqual({ container: "iCloud.x", environment: "development", apiToken: "", regionsCatalog: "" });
   });
 
   it("refuses a site with no config, and asks again next time", async () => {

@@ -16,7 +16,6 @@ export interface StoredPackage {
 
 /** What the style is built for: the theme, the layers hidden and where the pipeline's and the site's files are. */
 export interface StyleCatalog {
-  tilesBase: string;
   /** 110 The site's glyphs, to which the core adds `/{fontstack}/{range}.pbf`; absolute. */
   glyphsBase: string;
   /** 110 The site's base sprite without its extension, as a style's `sprite` names it; absolute. */

@@ -99,7 +99,7 @@ The site's glyphs and base sprite (item 110) come from the same pin: `npm run bu
 checkout's `Resources/Glyphs` and `temaki-sprite{,@2x}.{json,png}` into `dist/assets/glyphs/<font stack>/<range>.pbf` (the
 stack's folder named with spaces, as the app's `GlyphStore` places it) and `dist/assets/sprites/`, and `pack:web` puts them
 under `out/`, where `index.php` serves them (`application/x-protobuf` for glyphs). `riki_style`'s catalog is
-`{tilesBase, glyphsBase, spriteBase, theme, hidden, tiles}`: the core makes the style's `glyphs`
+`{glyphsBase, spriteBase, stored, theme, hidden, tiles}`: the core makes the style's `glyphs`
 `<glyphsBase>/{fontstack}/{range}.pbf` and its `sprite` `<spriteBase>`, both absolute addresses of those files. A pinned
 pack without them fails, as for the core, unless `RIKI_PACK_WITHOUT_CORE=1` (the specs put stand-ins in place), and the
 deploy refuses such a zip like one without the core.
@@ -144,8 +144,9 @@ Every merge to `master` runs CI, publishes a release and then deploys that relea
 No step is left to do on the server: every deploy writes `config.php` itself, from the settings below, and
 replaces the one there. The deploy generates it with `php` (`var_export`, so no setting can end up as code; the
 workflow installs `php-cli`) and refuses to deploy when `ICLOUD_API_TOKEN` is empty, naming it. The CloudKit
-environment is always `production`; there is no setting for it. `TILES_BASE`, when set, must be an `https://`
-URL (a trailing slash is dropped); the zip must not carry a `config.php` of its own.
+environment is always `production`; there is no setting for it. There is no tiles host: Riki's region data comes
+only from the packages `REGIONS_CATALOG` lists, and a `TILES_BASE` left on the environment is not read. The zip must
+not carry a `config.php` of its own.
 
 Upload order: new assets and the page's `out/` first, then `Site.php`, `Regions.php`, `config.example.php` and `.htaccess`, then
 `config.php` (sent as `config.php.new` and renamed, so no request reads half of it), then `index.php` and
@@ -165,9 +166,8 @@ Set it up once in Settings › Environments › `site`:
 | `FTPS_CERT_NAME` | variable | a name the server's certificate holds, accepted in place of `FTPS_HOST`; `*.r5.websupport.sk` when unset |
 | `ICLOUD_API_TOKEN` | variable (a secret works too) | the container's CloudKit JS API token; every browser sends it, so it is no secret; required |
 | `ICLOUD_CONTAINER` | variable | `iCloud.com.rikimaps.rikimaps.maps` when unset |
-| `TILES_BASE` | variable | the maptiles host, `https://…`; optional, and without it Riki's own region maps do not draw |
 | `SITE_URL` | variable | the site's address, whose `site.json` the server check reads; optional |
-| `REGIONS_CATALOG` | variable | the region catalog (maptiles' `maps.json`), `https://…`; optional, and without it the site offers no region downloads |
+| `REGIONS_CATALOG` | variable | the region catalog (maptiles' `maps.json`), `https://…`, whose packages are Riki's region data; optional, and without it the site offers no region downloads and draws none |
 | `RIKIMAPS_READ_TOKEN` | repository secret | reads the private rikimaps repository for the core and the words; the release build, not the deploy |
 
 Until the three FTPS secrets are set, the deploy job says so and skips. The server's certificate must

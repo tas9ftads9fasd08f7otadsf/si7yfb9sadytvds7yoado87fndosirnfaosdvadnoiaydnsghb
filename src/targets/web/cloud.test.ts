@@ -3,7 +3,7 @@ import { Cloud, POLL_EVERY, refusesToken, SIGN_IN_ID, SIGN_OUT_ID, type CKContai
 import type { SiteConfig } from "./config";
 
 // 76 CloudKit JS configured once; sign-in, sign-out and notifications turn into onChanged
-const config: SiteConfig = { container: "iCloud.x", apiToken: "T", environment: "development", tilesBase: "", regionsCatalog: "" };
+const config: SiteConfig = { container: "iCloud.x", apiToken: "T", environment: "development", regionsCatalog: "" };
 
 // 87 the stand-in kit answers as cloudkit.js 2.6.4 does: the caller is a record name, a name is discovered
 const people: Record<string, CKIdentity> = {

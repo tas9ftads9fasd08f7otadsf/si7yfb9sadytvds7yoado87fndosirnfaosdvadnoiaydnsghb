@@ -1,12 +1,10 @@
 import { BASE } from "./base";
 
-/** What `config.json` carries: the CloudKit container and the maptiles host, from the server's config.php. */
+/** What `config.json` carries: the CloudKit container and the region catalog, from the server's config.php. */
 export interface SiteConfig {
   container: string;
   apiToken: string;
   environment: "development" | "production";
-  /** Where archives, glyphs and sprites are fetched from; empty until the deploy sets it. */
-  tilesBase: string;
   /** 112 The region catalog the site's server fetches; empty turns region downloads off. */
   regionsCatalog: string;
 }
@@ -24,7 +22,6 @@ export function readConfig(fetcher: typeof fetch = fetch, base = BASE): Promise<
       container: read.container,
       apiToken: read.apiToken ?? "",
       environment: read.environment === "production" ? "production" : "development",
-      tilesBase: (read.tilesBase ?? "").replace(/\/+$/, ""),
       regionsCatalog: read.regionsCatalog ?? ""
     };
   })();
