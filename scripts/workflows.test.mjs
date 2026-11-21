@@ -17,6 +17,41 @@ function asked(text) {
   return found;
 }
 
+/** Keys a mapping in the text holds twice, which GitHub refuses as an invalid workflow. */
+function repeatedKeys(text) {
+  const repeated = [];
+  let open = [];
+  let block = null;
+  for (const line of text.split("\n")) {
+    if (!line.trim() || line.trim().startsWith("#")) continue;
+    const indent = line.length - line.trimStart().length;
+    if (block != null && indent > block) continue;
+    block = null;
+    const entry = /^(\s*)(- +)?([\w.-]+):(\s*[|>][-+]?)?/.exec(line);
+    if (!entry) continue;
+    const depth = entry[1].length + (entry[2]?.length ?? 0);
+    open = open.filter((mapping) => mapping.depth < depth || (mapping.depth === depth && !entry[2]));
+    let mapping = open.at(-1);
+    if (mapping?.depth !== depth) open.push(mapping = { depth, keys: new Set() });
+    if (mapping.keys.has(entry[3])) repeated.push(`${entry[3]} at ${line.trim()}`);
+    mapping.keys.add(entry[3]);
+    if (entry[4]) block = indent;
+  }
+  return repeated;
+}
+
+// 143 bug: check-server.yml set SITE_URL twice, so every push failed it and no daily check ran
+describe("every workflow", () => {
+  it("holds each key once in a mapping", () => {
+    for (const file of readdirSync(path.join(process.cwd(), ".github/workflows"))) expect(repeatedKeys(read(file)), file).toEqual([]);
+  });
+
+  it("is caught holding a key twice", () => {
+    expect(repeatedKeys("jobs:\n  a:\n    env:\n      X: 1\n      X: 2\n  b:\n    env:\n      X: 1\n")).toHaveLength(1);
+    expect(repeatedKeys("steps:\n  - run: |\n      a: 1\n      a: 1\n  - run: b\n")).toEqual([]);
+  });
+});
+
 // 102 bug: actions/checkout fetched the abbreviated `ref: 5a7200c4fb` as a branch or tag and failed the core job
 describe("the commits the workflows check out", () => {
   it("are named by their full sha, which actions/checkout alone resolves", () => {
@@ -227,14 +262,19 @@ describe("the app's update", () => {
     expect(release).toMatch(/release:[\s\S]*needs: \[check, core\]/);
   });
 
-  it("runs Riki Maps' own web-editor workflow on its master", () => {
-    expect(update).toContain("gh workflow run web-editor.yml --repo skifahrer/rikimaps --ref master");
+  // 145 bug: `gh workflow run` needs actions: write, which the read token lacks, and failed with 403
+  it("sends Riki Maps the repository dispatch its web-editor workflow listens for", () => {
+    expect(update).toContain("gh api repos/skifahrer/rikimaps/dispatches -f event_type=web-editor-release");
+    expect(update).not.toContain("gh workflow run");
   });
 
-  it("reaches Riki Maps with a secret token, handed on by the release", () => {
-    expect(update).toContain("GH_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN }}");
-    // 140 bug: no RIKIMAPS_ACTIONS_TOKEN was set, so no release ever asked; the read token stands in
-    expect(job).toContain("RIKIMAPS_ACTIONS_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN || secrets.RIKIMAPS_READ_TOKEN }}");
+  // 145 a release with no token used to warn and pass, so nobody saw the app was never asked
+  it("reaches Riki Maps with the read token, handed on by the release, and fails without it", () => {
+    expect(update).toContain("GH_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
+    expect(update).toMatch(/RIKIMAPS_READ_TOKEN:\s*\n\s*required: true/);
+    expect(update).toMatch(/RIKIMAPS_READ_TOKEN is not set[^\n]*"\s*\n\s*exit 1/);
+    expect(job).toContain("RIKIMAPS_READ_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
+    expect(update + job).not.toContain("RIKIMAPS_ACTIONS_TOKEN");
   });
 
   it("gives the called update what it asks for", () => {
@@ -254,6 +294,15 @@ describe("the core's pipeline", () => {
     expect(core).toContain("token: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
     expect(core).toContain("rikiCore.ref");
     expect(core).not.toMatch(/token:\s*["']?[^$\s"']/);
+  });
+
+  // 146 a core cut is built and tested on Linux by hand, on its branch, before it is pinned
+  it("may be run by hand on another rikimaps branch or commit, built as that commit", () => {
+    expect(core).toMatch(/workflow_dispatch:\s*\n(\s*#.*\n)*\s*inputs:\s*\n\s*ref:/);
+    expect(core).toContain("ASKED: ${{ inputs.ref }}");
+    expect(core).toContain('echo "ref=${ASKED:-$(node -p');
+    expect(core).toContain('echo "RIKI_CORE_REF=$(git -C rikimaps rev-parse HEAD)" >> "$GITHUB_ENV"');
+    expect(core.indexOf("RIKI_CORE_REF=")).toBeLessThan(core.indexOf("npm run build:core"));
   });
 
   it("caches the toolchain and the SDK, and builds with the script", () => {

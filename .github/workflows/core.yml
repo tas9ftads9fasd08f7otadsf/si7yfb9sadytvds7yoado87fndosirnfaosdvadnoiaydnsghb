@@ -16,7 +16,13 @@ on:
       RIKIMAPS_READ_TOKEN:
         description: A token that reads skifahrer/rikimaps, which is private
         required: false
+  # 146 A run by hand may name a rikimaps branch or commit, to test a core cut on Linux before it merges.
   workflow_dispatch:
+    inputs:
+      ref:
+        description: A rikimaps branch or commit; the pinned one when empty
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -41,7 +47,9 @@ jobs:
 
       - id: pin
         name: Read the pinned commit
-        run: echo "ref=$(node -p "require('./package.json').rikiCore.ref || ''")" >> "$GITHUB_OUTPUT"
+        env:
+          ASKED: ${{ inputs.ref }}
+        run: echo "ref=${ASKED:-$(node -p "require('./package.json').rikiCore.ref || ''")}" >> "$GITHUB_OUTPUT"
 
       # Private: the token is the repository secret RIKIMAPS_READ_TOKEN, which skifahrer creates.
       - name: Check out rikimaps at the pinned commit
@@ -64,6 +72,11 @@ jobs:
         with:
           path: ~/.swiftpm/swift-sdks
           key: riki-swift-wasm-sdk-6.2-RELEASE-fe4e8648
+
+      # A named branch is built as its commit, which has no sum to be held to.
+      - name: Name the commit asked for
+        if: inputs.ref != ''
+        run: echo "RIKI_CORE_REF=$(git -C rikimaps rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Build, optimise and load it
         env:
