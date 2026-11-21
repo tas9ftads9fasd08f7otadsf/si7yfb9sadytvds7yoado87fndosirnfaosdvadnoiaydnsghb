@@ -54,3 +54,22 @@ test("A browser that may not edit is offered neither", async ({ page }) => {
   await showAllMaps(page);
   await expect(page.locator("#newMap")).toHaveCount(0);
 });
+
+// 152 bug: the window was a div, so Tab walked out of it into the page behind
+test("Tab stays inside New map's window, and closing it gives focus back to its button", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await page.locator("#topNewMap").focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "New map" });
+  await expect(dialog).toBeVisible();
+  await expect(page.locator("#newMapName")).toBeFocused();
+  for (let step = 0; step < 30; step += 1) {
+    await page.keyboard.press("Tab");
+    // past its last control focus leaves the page for the browser, never the page behind the window
+    expect(await dialog.evaluate((box) => box.contains(document.activeElement) || document.activeElement === document.body))
+      .toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator("#topNewMap")).toBeFocused();
+});

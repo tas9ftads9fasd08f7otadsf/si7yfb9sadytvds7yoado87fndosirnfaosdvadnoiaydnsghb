@@ -4,6 +4,7 @@ import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "r
 import { filledIn, listed } from "@/lib/words";
 import { change, closeModal, duplicateMap, importMap, makeMap, offers, shownMapOf, showEdit, useViewer } from "@/store/viewer";
 import { MarkTile } from "./ui/MarkTile";
+import { Modal } from "./ui/Modal";
 import { Sym } from "./ui/Sym";
 import { ground } from "./ui/ground";
 
@@ -51,9 +52,8 @@ export function NewMapModal() {
     if (chosen && await importMap(chosen)) showEdit(true);
   };
   return (
-    <div className="scrim" onPointerDown={(event) => { if (event.target === event.currentTarget) close(); }}>
-      <form role="dialog" aria-modal="true" aria-labelledby="newMapTitle" id="newMapDialog" className="modal"
-        onSubmit={create} onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
+    <Modal labelledBy="newMapTitle" onClose={close}>
+      <form id="newMapDialog" className="modal" onSubmit={create}>
         <div className="modal-head">
           <h1 id="newMapTitle">{words.newMap}</h1>
           <button type="button" className="tool round" aria-label={words.close} onClick={close}><Sym name="xmark" /></button>
@@ -89,6 +89,6 @@ export function NewMapModal() {
         </div>
         <input ref={file} type="file" accept=".mapson,application/json" hidden onChange={picked} />
       </form>
-    </div>
+    </Modal>
   );
 }
