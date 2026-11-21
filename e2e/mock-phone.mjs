@@ -33,7 +33,7 @@ function freshMaps() {
     { id: "6F1E2A10-0000-4000-8000-000000000001", name: "High Tatras", symbol: "mountain.2", iconTintHex: "#3a7d44",
       revision: 1, note: "Summer trails", sendsNewFields: true, offlineState: "ready", bytes: 1_200_000_000,
       changedAt: 1_700_000_000, minimumVersion: { app: "0.18.0", browser: "0.30.0" }, drawsRelief: true,
-      layers: [layer("6F1E2A10-0000-4000-8000-0000000000A1", "Trails", "Vector tiles", "figure.hiking"),
+      layers: [{ ...layer("6F1E2A10-0000-4000-8000-0000000000A1", "Trails", "Vector tiles", "figure.hiking"), bytes: 263_000_000 },
         layer("6F1E2A10-0000-4000-8000-0000000000A2", "Huts", "Points", "house")],
       styles: [{ id: "6F1E2A10-0000-4000-8000-0000000000B1", name: "Summer", arrangement: { hidden: [] } },
         { id: "6F1E2A10-0000-4000-8000-0000000000B2", name: "Winter",
@@ -167,7 +167,7 @@ function askFolderPeople(id, query) {
 
 // 2802: the High Tatras on the phone, Prešov's region not yet.
 function freshRegions() {
-  return { drawn: [{ id: "vysoke_tatry", name: "Vysoké Tatry", box: [19.9, 49.09, 20.32, 49.32] }],
+  return { drawn: [{ id: "vysoke_tatry", name: "Vysoké Tatry", box: [19.9, 49.09, 20.32, 49.32], bytes: 412_000_000 }],
     downloadable: [{ id: "presovsky", name: "Prešovský kraj", box: [20.4, 48.6, 22.6, 49.6] }], downloading: [] };
 }
 
@@ -324,7 +324,9 @@ function catalog() {
       stackID: each.stackID, stackName: each.stackName,
       stackSymbol: each.stackID ? each.stackSymbol ?? "square.stack" : undefined,
       stackIconTintHex: each.stackID ? each.stackIconTintHex : undefined,
-      layers: each.layers.map(({ id, name, kind, symbol, isLive }) => ({ id, name, kind, symbol, isLive,
+      layers: each.layers.map(({ id, name, kind, symbol, isLive, bytes }) => ({ id, name, kind, symbol, isLive,
+        // 141: as `PeerWebSizes` counts what the phone holds since 3491; an older phone sends none.
+        bytes: phone.noSizes ? undefined : bytes,
         // 58: as `MapDefinition.origin(of:)` falls back to a layer's kind.
         origin: { key: `kind:${kind}`, title: kind, symbol } })),
       ...newFields(each) })) };
@@ -1613,7 +1615,11 @@ async function answer(request, response) {
     phone.regions.downloading.push(asked);
     return send(response, 202, "");
   }
-  if (parts[4] === "regions" && parts.length === 5) return json(response, phone.regions);
+  if (parts[4] === "regions" && parts.length === 5) {
+    // 141: a drawn region carries what the map's packages hold of it here; one still to download carries none.
+    const sized = (list) => list.map(({ bytes, ...region }) => (phone.noSizes || bytes == null ? region : { ...region, bytes }));
+    return json(response, { ...phone.regions, drawn: sized(phone.regions.drawn ?? []) });
+  }
   if (parts[4] === "mapson" && parts.length === 5) {
     // 2961: as `PeerWebExport` answers: the file, named for any language, no keys.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
@@ -2095,6 +2101,8 @@ function testControl(route, query, response) {
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-00000000009E", name: "Bedrock", kind: "Esri",
       symbol: "map", isEnabled: true, esri: true });
     break;
+  // 141: the phone answers as an older one does, with no sizes.
+  case "/__test/sizes": phone.noSizes = query.get("off") === "1"; break;
   case "/__test/legend-everywhere": phone.legendEverywhere = query.get("on") === "1"; break;
   case "/__test/reader": phone.ownsSettings = false; break;
   case "/__test/share-role": phone.shares[query.get("map")].role = query.get("role"); break;
