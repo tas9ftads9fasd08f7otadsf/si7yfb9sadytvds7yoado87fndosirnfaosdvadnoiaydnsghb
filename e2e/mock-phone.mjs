@@ -416,8 +416,38 @@ function newFields(each) {
   const share = phone.shares[each.id];
   const others = (share?.people ?? []).filter((person) => person.role !== "owner").length;
   return { styles: each.styles.map((style) => style.name), styleIDs: each.styles.map((style) => style.id),
-    note: each.note || undefined, role: share?.role === "reader" ? "view" : share?.role === "editor" ? "edit" : "own",
-    people: others, isLocked: false, offline: each.offlineState, bytes: each.bytes, changedAt: each.changedAt };
+    note: each.note || undefined,
+    role: each.role ?? (share?.role === "reader" ? "view" : share?.role === "editor" ? "edit" : "own"),
+    people: each.people ?? others, isLocked: each.isLocked ?? false, offline: each.offlineState, bytes: each.bytes,
+    changedAt: each.changedAt };
+}
+
+// 148: W17's sample maps (web-redesign.md §1.2), each pill kind once: the sharing, offline, size and version lines.
+function sampleMaps() {
+  const at = (daysAgo, month, day) => {
+    const when = new Date();
+    if (daysAgo != null) when.setDate(when.getDate() - daysAgo);
+    else when.setMonth(month, day);
+    when.setHours(12, 0, 0, 0);
+    return Math.floor(when.getTime() / 1000);
+  };
+  const made = (number, name, layers, styles, more) => ({ id: `6F1E2A10-0000-4000-8000-00000000F0${number}`, name,
+    symbol: "map", iconTintHex: null, revision: 1, note: "", sendsNewFields: true,
+    layers: Array.from({ length: layers }, (_, place) => ({ id: `6F1E2A10-0000-4000-8000-00000000F${number}${place.toString(16).padStart(2, "0")}`,
+      name: `${name} ${place + 1}`, kind: "Vector tiles", symbol: "map", isEnabled: true })),
+    styles: Array.from({ length: styles }, (_, place) => ({ id: `6F1E2A10-0000-4000-8000-00000000E${number}${place.toString(16).padStart(2, "0")}`,
+      name: ["Day", "Night", "Print", "Relief"][place], arrangement: { hidden: [] } })), ...more });
+  return [
+    made(1, "Doprava", 7, 3, { symbol: "tram", iconTintHex: "#3a7d44", note: "Trains, trams and buses", role: "own", people: 3,
+      offlineState: "ready", bytes: 1_200_000_000, changedAt: at(0), category: "Transit" }),
+    made(2, "Riki Maps", 12, 4, { symbol: "map.fill", role: "own", people: 0, offlineState: "ready", bytes: 854_000_000,
+      changedAt: at(1), category: "Reference" }),
+    made(3, "Historická 2", 5, 2, { symbol: "clock", note: "Old maps of the region", role: "view", people: 0,
+      offlineState: "online", changedAt: at(null, 9, 3), minimumVersion: { app: "0.18.0" } }),
+    made(4, "Trains in Slovakia", 3, 1, { symbol: "tram.fill", role: "own", people: 0, offlineState: "partly",
+      bytes: 96_000_000, changedAt: at(null, 8, 28) }),
+    made(5, "Fitness", 8, 1, { symbol: "figure.run", role: "edit", people: 2, offlineState: "update", bytes: 182_000_000,
+      changedAt: at(null, 8, 12) })];
 }
 
 // 2957: as `PeerWebCoverage` answers: the places to pick, and a map's choices said in a line.
@@ -2245,6 +2275,8 @@ function testControl(route, query, response) {
     Object.assign(savedState(), { empty: query.get("empty") === "1", gone: query.get("gone") === "1",
       total: query.get("total") ? Number(query.get("total")) : null });
     break;
+  // 148: W17's six sample maps, beside High Tatras and Bratislava, each pill kind once.
+  case "/__test/sample-maps": phone.maps.push(...sampleMaps()); break;
   case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
   case "/__test/shares": return json(response, phone.shares);
   case "/__test/copies": return json(response, phone.copies ?? []);
