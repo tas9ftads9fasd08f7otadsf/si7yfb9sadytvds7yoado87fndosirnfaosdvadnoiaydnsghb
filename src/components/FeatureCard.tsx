@@ -13,6 +13,8 @@ interface Props {
 }
 
 function Rows({ rows }: { rows: [string, string][] }) {
+  // 151 A feature with no tags drew an empty grey block in the place panel.
+  if (!rows.length) return null;
   return (
     <dl>
       {rows.flatMap(([key, value], index) => [<dt key={`${index}-k`}>{key}</dt>, <dd key={index}>{value}</dd>])}

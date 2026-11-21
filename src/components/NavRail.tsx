@@ -16,12 +16,13 @@ export function railItemOf(route: Route): Item | null {
       return "search";
     case "home":
     case "map":
-    case "edit":
-    case "details":
       return "map";
     case "saved":
       return "saved";
+    // 151 §1.2: the Maps item stays lit for Edit map and Details, as the boards W5 to W9 and W16 draw it.
     case "maps":
+    case "edit":
+    case "details":
       return "maps";
     case "data":
       return "data";

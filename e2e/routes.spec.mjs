@@ -71,7 +71,8 @@ test("back and forward walk the screens", async ({ page }) => {
   await expect.poll(() => path(page)).toBe(`/maps/${TATRAS}`);
   await page.goBack();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
-  await expect(page.locator("#railMap")).toHaveAttribute("aria-current", "page");
+  // 151 Edit map lights the rail's Maps item (§1.2)
+  await expect(page.locator("#railMaps")).toHaveAttribute("aria-current", "page");
   await page.goForward();
   await expect(page.locator("#editPage")).toHaveClass(/ahead/);
   await page.goForward();

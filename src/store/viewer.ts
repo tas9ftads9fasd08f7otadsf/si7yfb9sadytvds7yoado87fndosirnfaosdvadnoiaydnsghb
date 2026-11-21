@@ -383,7 +383,8 @@ export function readAddress() {
 }
 
 function followRoute(route: Route) {
-  set({ route, editing: route.screen === "edit",
+  // 151 The layer switcher is open exactly where the address says so, /maps/<map>/layers.
+  set({ route, editing: route.screen === "edit", switcherOpen: route.screen === "map" && route.panel === "layers",
     serverID: route.screen === "servers" ? route.server ?? null : null,
     serverPart: route.screen === "servers" ? route.part ?? "layers" : "layers" });
   followSaved(route);
@@ -742,7 +743,17 @@ export function showEditTab(tab: EditTab) {
   if (mapID) go({ screen: "edit", map: mapID, tab });
 }
 
-export const showSwitcher = (switcherOpen: boolean) => set({ switcherOpen });
+export function showSwitcher(isOpen: boolean) {
+  const { route } = get();
+  if (route.screen !== "map") {
+    set({ switcherOpen: isOpen });
+    return;
+  }
+  const next = { ...route };
+  if (isOpen) next.panel = "layers";
+  else delete next.panel;
+  go(next, { replace: true });
+}
 export const toggleMapCard = () => set({ mapCardOpen: !get().mapCardOpen });
 export const showSideStyles = (sideStyles: boolean) => set({ sideStyles });
 /** 97 New map's window, over the screen it was opened from; its address is /new. */

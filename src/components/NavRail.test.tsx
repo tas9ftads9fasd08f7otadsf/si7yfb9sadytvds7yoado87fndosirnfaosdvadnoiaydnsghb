@@ -15,10 +15,13 @@ describe("NavRail", () => {
   it("marks the screen shown as current", () => {
     useViewer.setState({ mapID: "M1", route: { screen: "edit", map: "M1", tab: "general" }, editToken: "t" });
     render(<NavRail />);
-    expect(link("Map").getAttribute("aria-current")).toBe("page");
-    expect(link("Maps").getAttribute("aria-current")).toBeNull();
+    // 151 §1.2 and the boards W5 to W9: Edit map lights the rail's Maps item, not Map
+    expect(link("Maps").getAttribute("aria-current")).toBe("page");
+    expect(link("Map").getAttribute("aria-current")).toBeNull();
     expect(link("Servers").getAttribute("aria-current")).toBeNull();
     expect(link("Map").getAttribute("href")).toBe("/maps/M1");
+    expect(railItemOf({ screen: "details", map: "M1", layer: "L1" })).toBe("maps");
+    expect(railItemOf({ screen: "map", map: "M1" })).toBe("map");
     expect(railItemOf({ screen: "maps" })).toBe("maps");
     expect(railItemOf({ screen: "servers", server: "S1" })).toBe("servers");
     // 107 the rail's Search is lit for a search and a place
