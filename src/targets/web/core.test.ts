@@ -1,8 +1,20 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
 import { fakeCoreWasm } from "../../../e2e/fake-core.mjs";
 import { CoreNotReady } from "@/backend/types";
-import { CoreMissing, callJSON, coreOf, forgetCore, loadCore, type CoreExports } from "./core";
+import { CORE_ARGS, CoreMissing, callJSON, coreOf, forgetCore, loadCore, type CoreExports } from "./core";
+
+const shimArgs = vi.hoisted(() => [] as string[][]);
+vi.mock("@bjorn3/browser_wasi_shim", async (original) => {
+  const real = await original<typeof import("@bjorn3/browser_wasi_shim")>();
+  class Recorded extends real.WASI {
+    constructor(...made: ConstructorParameters<typeof real.WASI>) {
+      shimArgs.push(made[0]);
+      super(...made);
+    }
+  }
+  return { ...real, WASI: Recorded };
+});
 
 // 76 the typed wrapper around the core's exports, and its loading
 describe("the core's wrapper", () => {
@@ -100,6 +112,14 @@ describe("the core's wrapper", () => {
       add: { kind: "tiles", address: "https://cors.example/{z}/{x}/{y}.png", replies: [] } }))
       .toMatchObject({ write: [{ id: "own-tatras-layer-2" }], history: { id: "change-web-2" } });
     expect(await loadCore(fetcher as typeof fetch, "/editor")).toBe(core);
+  });
+
+  // 155 the module trapped in Foundation's UserDefaults when its shim gave it no argv[0]
+  it("gives the module its name as its one argument", async () => {
+    const fetcher = async () => new Response(fakeCoreWasm(account.core).slice().buffer as ArrayBuffer, { status: 200 });
+    await loadCore(fetcher as typeof fetch, "/editor");
+    expect(CORE_ARGS).toEqual(["riki-core"]);
+    expect(shimArgs.at(-1)).toEqual(["riki-core"]);
   });
 
   // 137 the loading screen counts the engine's megabytes as they arrive
