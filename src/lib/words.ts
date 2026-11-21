@@ -10,7 +10,7 @@ export const ENGLISH = {
   iconAndColour: "Icon and colour", works: "Works", previewZoom: "Preview · zoom {zoom}",
   dragToOrder: "drag to change the order", search: "Search", stylesCount: "{count} styles", allStyles: "All styles", editStyles: "Edit styles",
   hideSide: "Hide the side bar", showSideBar: "Show the side bar", data: "Data", dataNote: "Everything the shared maps use, as the phone keeps it.",
-  regions: "Regions", usedIn: "Used in", onThisPhone: "On the phone", size: "Size",
+  regions: "Regions", usedIn: "Used in", onThisPhone: "On the phone", size: "Size", noneCategory: "None",
   sharedWith: "Shared with {count}", offlineReady: "Ready offline", offlinePartly: "Partly offline",
   offlineOnline: "Online only", offlineUpdate: "Update",
   downloading: "Downloading", about: "About", sharedBy: "Shared by {name}", appVersion: "Riki Maps {version}",
