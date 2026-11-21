@@ -262,14 +262,19 @@ describe("the app's update", () => {
     expect(release).toMatch(/release:[\s\S]*needs: \[check, core\]/);
   });
 
-  it("runs Riki Maps' own web-editor workflow on its master", () => {
-    expect(update).toContain("gh workflow run web-editor.yml --repo skifahrer/rikimaps --ref master");
+  // 145 bug: `gh workflow run` needs actions: write, which the read token lacks, and failed with 403
+  it("sends Riki Maps the repository dispatch its web-editor workflow listens for", () => {
+    expect(update).toContain("gh api repos/skifahrer/rikimaps/dispatches -f event_type=web-editor-release");
+    expect(update).not.toContain("gh workflow run");
   });
 
-  it("reaches Riki Maps with a secret token, handed on by the release", () => {
-    expect(update).toContain("GH_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN }}");
-    // 140 bug: no RIKIMAPS_ACTIONS_TOKEN was set, so no release ever asked; the read token stands in
-    expect(job).toContain("RIKIMAPS_ACTIONS_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN || secrets.RIKIMAPS_READ_TOKEN }}");
+  // 145 a release with no token used to warn and pass, so nobody saw the app was never asked
+  it("reaches Riki Maps with the read token, handed on by the release, and fails without it", () => {
+    expect(update).toContain("GH_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
+    expect(update).toMatch(/RIKIMAPS_READ_TOKEN:\s*\n\s*required: true/);
+    expect(update).toMatch(/RIKIMAPS_READ_TOKEN is not set[^\n]*"\s*\n\s*exit 1/);
+    expect(job).toContain("RIKIMAPS_READ_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
+    expect(update + job).not.toContain("RIKIMAPS_ACTIONS_TOKEN");
   });
 
   it("gives the called update what it asks for", () => {

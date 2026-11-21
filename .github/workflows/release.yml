@@ -77,9 +77,8 @@ jobs:
     name: Update the app
     needs: release
     uses: ./.github/workflows/update-app.yml
-    # 140 The repository's rikimaps token also runs its workflows; a token of its own goes first.
     secrets:
-      RIKIMAPS_ACTIONS_TOKEN: ${{ secrets.RIKIMAPS_ACTIONS_TOKEN || secrets.RIKIMAPS_READ_TOKEN }}
+      RIKIMAPS_READ_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}
     permissions:
       contents: read
 
