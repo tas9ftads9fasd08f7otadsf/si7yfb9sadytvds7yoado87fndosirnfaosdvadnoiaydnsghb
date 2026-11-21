@@ -22,7 +22,12 @@ export function Category({ portable }: { portable: Portable }) {
       setSaid(null);
       return;
     }
-    if (await change({ kind: "category", category }, setSaid)) setSaid(null);
+    if (await change({ kind: "category", category }, setSaid)) {
+      setSaid(null);
+      // The field is still focused after Enter, so the page shows the text as the phone keeps it.
+      const shown = document.getElementById("category") as HTMLInputElement | null;
+      if (shown) shown.value = category;
+    }
   };
   return (
     <>

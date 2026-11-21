@@ -31,7 +31,7 @@ function freshMaps() {
   const layer = (id, name, kind, symbol) => ({ id, name, kind, symbol, isEnabled: true });
   return [
     { id: "6F1E2A10-0000-4000-8000-000000000001", name: "High Tatras", symbol: "mountain.2", iconTintHex: "#3a7d44",
-      revision: 1, note: "Summer trails", sendsNewFields: true, offlineState: "ready", bytes: 1_200_000_000,
+      revision: 1, note: "Summer trails", category: "Hiking", sendsNewFields: true, offlineState: "ready", bytes: 1_200_000_000,
       changedAt: 1_700_000_000, minimumVersion: { app: "0.18.0", browser: "0.30.0" }, drawsRelief: true,
       layers: [{ ...layer("6F1E2A10-0000-4000-8000-0000000000A1", "Trails", "Vector tiles", "figure.hiking"), bytes: 263_000_000 },
         layer("6F1E2A10-0000-4000-8000-0000000000A2", "Huts", "Points", "house")],
@@ -397,7 +397,7 @@ function shelve(asked) {
 function catalog() {
   return { deviceID: "mock", name: phone.name, model: "iPad", version: 1, appVersion: "0.20.0",
     sharesLocation: phone.location ? true : undefined,
-    maps: phone.maps.map((each) => ({ id: each.id, name: each.name, symbol: each.symbol,
+    maps: phone.maps.map((each) => ({ id: each.id, name: each.name, symbol: each.symbol, category: each.category,
       iconTintHex: each.iconTintHex, revision: each.revision, minimumVersion: each.minimumVersion,
       stackID: each.stackID, stackName: each.stackName,
       stackSymbol: each.stackID ? each.stackSymbol ?? "square.stack" : undefined,
@@ -1086,7 +1086,7 @@ const SERVER_KIND_LINES = { arcgis: "Esri / ArcGIS · 1 service", tilejson: "Til
   tiles: "Tile server · 1 layer", wmts: "WMTS · 1 layer", wms: "WMS · 1 layer", mapproxy: "MapProxy · 1 layer" };
 
 function portable(each) {
-  return { id: each.id, name: each.name, note: each.note, nameTranslations: each.nameTranslations,
+  return { id: each.id, name: each.name, note: each.note, category: each.category, nameTranslations: each.nameTranslations,
     noteTranslations: each.noteTranslations, symbol: each.symbol, iconTintHex: each.iconTintHex,
     selectedStyleID: each.styles[0].id, styles: each.styles, start: each.start, coverage: each.coverage,
     appearance: each.appearance, iconPicture: each.iconPicture, previewPicture: each.previewPicture,
@@ -1446,6 +1446,12 @@ function edit(each, query, response) {
   } else if (query.has("name") && !query.has("layer") && !query.has("style")) {
     if (!query.get("name").trim()) return send(response, 400, "A name cannot be blank");
     each.name = query.get("name");
+  } else if (query.has("category")) {
+    // 142: as `PeerWebEdit.category` takes it: the owner's word only, cleaned as `MapCategoryName` does, blank clears.
+    if (!phone.ownsSettings) return send(response, 403, "This map is shared with this phone to look at, not to change");
+    const category = query.get("category").replace(/\s+/g, " ").trim();
+    if (category.length > 40) return send(response, 409, "A category is at most 40 characters");
+    each.category = category || undefined;
   } else if (query.has("note")) {
     each.note = query.get("note");
   } else if (query.has("addStyle")) {
