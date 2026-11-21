@@ -17,6 +17,41 @@ function asked(text) {
   return found;
 }
 
+/** Keys a mapping in the text holds twice, which GitHub refuses as an invalid workflow. */
+function repeatedKeys(text) {
+  const repeated = [];
+  let open = [];
+  let block = null;
+  for (const line of text.split("\n")) {
+    if (!line.trim() || line.trim().startsWith("#")) continue;
+    const indent = line.length - line.trimStart().length;
+    if (block != null && indent > block) continue;
+    block = null;
+    const entry = /^(\s*)(- +)?([\w.-]+):(\s*[|>][-+]?)?/.exec(line);
+    if (!entry) continue;
+    const depth = entry[1].length + (entry[2]?.length ?? 0);
+    open = open.filter((mapping) => mapping.depth < depth || (mapping.depth === depth && !entry[2]));
+    let mapping = open.at(-1);
+    if (mapping?.depth !== depth) open.push(mapping = { depth, keys: new Set() });
+    if (mapping.keys.has(entry[3])) repeated.push(`${entry[3]} at ${line.trim()}`);
+    mapping.keys.add(entry[3]);
+    if (entry[4]) block = indent;
+  }
+  return repeated;
+}
+
+// 143 bug: check-server.yml set SITE_URL twice, so every push failed it and no daily check ran
+describe("every workflow", () => {
+  it("holds each key once in a mapping", () => {
+    for (const file of readdirSync(path.join(process.cwd(), ".github/workflows"))) expect(repeatedKeys(read(file)), file).toEqual([]);
+  });
+
+  it("is caught holding a key twice", () => {
+    expect(repeatedKeys("jobs:\n  a:\n    env:\n      X: 1\n      X: 2\n  b:\n    env:\n      X: 1\n")).toHaveLength(1);
+    expect(repeatedKeys("steps:\n  - run: |\n      a: 1\n      a: 1\n  - run: b\n")).toEqual([]);
+  });
+});
+
 // 102 bug: actions/checkout fetched the abbreviated `ref: 5a7200c4fb` as a branch or tag and failed the core job
 describe("the commits the workflows check out", () => {
   it("are named by their full sha, which actions/checkout alone resolves", () => {
