@@ -10,7 +10,6 @@ import { checkKey, importMap, offers, openNewMap, shownMapOf, showEdit, showSide
 import { DeleteMap } from "./edit/DeleteMap";
 import { MapMark, MapShelf, useLayerCount, useStyleCount } from "./MapShelf";
 import { LayerToggles, StyleCards, StylePicker, useLayersOn, useStyleName } from "./MapLayers";
-import { railItemOf } from "./NavRail";
 import { SavedPage } from "./SavedPage";
 import { SearchResults } from "./Search";
 import { ServerCards } from "./Servers";
@@ -79,8 +78,8 @@ function CurrentMap({ shared }: { shared: SharedMap }) {
         <div className="words"><b>{shared.name}</b><span className="muted">{counts}</span>
           {sharing ? <span className="sharing" id="mapSharing">{sharing}</span> : null}</div>
         {canEdit ? (
-          <button type="button" className="pill" id="editButton" onClick={() => showEdit(true)}>
-            <Sym name="pencil" />{words.edit}
+          <button type="button" className="pill" id="editButton" aria-label={words.edit} onClick={() => showEdit(true)}>
+            <Sym name="pencil" />{words.editShort}
           </button>
         ) : null}
         <button type="button" className="fold" id="mapCardFold" aria-expanded={isOpen}
@@ -153,7 +152,7 @@ export function MapsPage() {
   const words = useViewer((state) => state.words);
   const device = useViewer((state) => state.device);
   const shown = useViewer(shownMapOf);
-  const onMap = useViewer((state) => railItemOf(state.route) === "map");
+  const onMap = useViewer((state) => ["home", "map", "edit", "details"].includes(state.route.screen));
   const searching = useViewer((state) => state.route.screen === "search");
   const showsSaved = useViewer((state) => state.route.screen === "saved");
   // 148 The Maps screen carries the list itself.

@@ -15,6 +15,13 @@ const sheet: DetailsSheet = {
 };
 
 describe("FeatureCard", () => {
+  // 151 a feature with no tags drew an empty grey block in the place panel
+  it("draws no list for a feature that has no tags", () => {
+    const { container } = render(<FeatureCard properties={{}} layer="Coordinates" />);
+    expect(container.querySelector("dl")).toBeNull();
+    expect(screen.getByText("Coordinates")).toBeTruthy();
+  });
+
   // 21
   it("lists every value when the layer laid nothing out", () => {
     render(<FeatureCard properties={{ name: "Hut", ele: "1840" }} layer="Huts" />);

@@ -29,7 +29,7 @@ describe("MapsPage", () => {
     show({ device: device(null) });
     render(<MapsPage />);
     expect(screen.queryByRole("switch")).toBeNull();
-    expect(screen.queryByText("Edit map")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit map" })).toBeNull();
   });
 
   it("asks for the password where the phone allows editing", () => {
@@ -42,14 +42,21 @@ describe("MapsPage", () => {
     show({ device: device(null), editToken: "t" });
     render(<MapsPage />);
     expect(screen.getByRole("switch", { name: "Trails" })).toBeTruthy();
-    expect(screen.getByText("Edit map")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit map" })).toBeTruthy();
+  });
+
+  // 151 the board's pill says Edit; its accessible name stays Edit map
+  it("labels the Edit pill Edit and names it Edit map", () => {
+    show({ device: device(null), editToken: "t" });
+    render(<MapsPage />);
+    expect(screen.getByRole("button", { name: "Edit map" }).textContent).toBe("Edit");
   });
 
   // 41 an open map's side bar is the map alone
   it("leaves All maps out under an open map", () => {
     show({ device: device(null), editToken: "t", route: { screen: "map", map: "a" } });
     render(<MapsPage />);
-    expect(screen.getByText("Edit map")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit map" })).toBeTruthy();
     expect(screen.queryByText("All maps")).toBeNull();
     expect(screen.queryByText("New map")).toBeNull();
   });
