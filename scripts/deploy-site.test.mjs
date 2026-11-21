@@ -38,7 +38,7 @@ function release(name, version, commit, assets, extra = {}, { core = true, glyph
 function deploy(zip, env = {}) {
   return spawnSync("bash", [SCRIPT, zip], { encoding: "utf8", env: { ...process.env, FTPS_HOST: "127.0.0.1",
     FTPS_PORT: String(PORT), FTPS_USER: "deploy", FTPS_PASSWORD: "s3cret", FTPS_DIR: "/editor", FTPS_CA_FILE: ca, FTPS_CERT_NAME: "",
-    ICLOUD_API_TOKEN: "tok-123", ICLOUD_CONTAINER: "", TILES_BASE: "", REGIONS_CATALOG: "", ...env } });
+    ICLOUD_API_TOKEN: "tok-123", ICLOUD_CONTAINER: "", REGIONS_CATALOG: "", ...env } });
 }
 
 const onServer = (file) => readFileSync(path.join(root, "editor", file), "utf8");
@@ -165,11 +165,12 @@ describe("the config.php the deploy writes", () => {
     expect(existsSync(path.join(root, "editor", "config.php.new"))).toBe(false);
   };
 
-  it("carries the token, the default container, production and the tiles base", () => {
+  // 147 a TILES_BASE left on the environment is not read: packages come from the catalog's addresses
+  it("carries the token, the default container and production, and no tiles host", () => {
     const run = deploy(release("c1", "0.2.1", "c11111", ["k.js"]), { TILES_BASE: "https://tiles.example.com" });
     expect(run.stderr).toBe("");
     expect(configOnServer()).toEqual({ container: "iCloud.com.rikimaps.rikimaps.maps", apiToken: "tok-123",
-      environment: "production", tilesBase: "https://tiles.example.com" });
+      environment: "production" });
     expect(run.stdout + run.stderr).not.toContain("tok-123");
     settingsTree();
   }, 60000);
@@ -177,7 +178,7 @@ describe("the config.php the deploy writes", () => {
   it("replaces the one the server held, on every deploy", () => {
     const run = deploy(release("c2", "0.2.2", "c22222", ["k.js"]), { ICLOUD_API_TOKEN: "other-token", ICLOUD_CONTAINER: "iCloud.com.test.maps" });
     expect(run.status).toBe(0);
-    expect(configOnServer()).toMatchObject({ apiToken: "other-token", container: "iCloud.com.test.maps", tilesBase: "" });
+    expect(configOnServer()).toMatchObject({ apiToken: "other-token", container: "iCloud.com.test.maps" });
   }, 60000);
 
   // 112 the region catalog's address is written into config.php when set, and only as an https address
@@ -199,18 +200,13 @@ describe("the config.php the deploy writes", () => {
     expect(existsSync(path.join(root, "editor", "out", "_next", "static", "never.js"))).toBe(false);
   }, 120000);
 
-  it("takes a trailing slash off the tiles base", () => {
-    expect(deploy(release("c3", "0.2.3", "c33333", ["k.js"]), { TILES_BASE: "https://tiles.example.com/maps/" }).status).toBe(0);
-    expect(configOnServer().tilesBase).toBe("https://tiles.example.com/maps");
-  }, 60000);
-
   it("keeps a token with quotes, dollars, backslashes and a newline a plain string", () => {
     const token = "a'b\"c$d${e}\\f\\'g?>\n<?php die(); //";
     expect(deploy(release("c4", "0.2.4", "c44444", ["k.js"]), { ICLOUD_API_TOKEN: `  ${token}  ` }).status).toBe(0);
     const file = path.join(root, "editor", "config.php");
     expect(execFileSync("php", ["-l", file], { encoding: "utf8" })).toContain("No syntax errors");
     expect(configOnServer().apiToken).toBe(token);
-    expect(execFileSync("php", ["-r", "var_dump(require $argv[1]);", file], { encoding: "utf8" })).toContain("array(4)");
+    expect(execFileSync("php", ["-r", "var_dump(require $argv[1]);", file], { encoding: "utf8" })).toContain("array(3)");
     const served = execFileSync("php", ["-r", `require $argv[1]; echo Site::inFolder($argv[2])->answer("GET", "/config.json", "/index.php")->body;`,
       path.join(process.cwd(), "server", "Site.php"), path.join(root, "editor")], { encoding: "utf8" });
     expect(JSON.parse(served)).toMatchObject({ apiToken: token, environment: "production" });
@@ -226,12 +222,7 @@ describe("the config.php the deploy writes", () => {
     expect(configOnServer().apiToken).not.toBe("");
   }, 60000);
 
-  it("refuses a tiles base that is not an https address, and a container that is not one", () => {
-    for (const TILES_BASE of ["http://tiles.example.com", "tiles.example.com", "https://", "https://t.example.com/?a=1", "https://a b.example"]) {
-      const run = deploy(release("c6", "0.2.6", "c66666", ["never.js"]), { TILES_BASE });
-      expect(run.status, TILES_BASE).not.toBe(0);
-      expect(run.stderr).toContain("TILES_BASE");
-    }
+  it("refuses a container that is not one", () => {
     const run = deploy(release("c7", "0.2.7", "c77777", ["never.js"]), { ICLOUD_CONTAINER: "x'];//" });
     expect(run.status).not.toBe(0);
     expect(run.stderr).toContain("ICLOUD_CONTAINER");

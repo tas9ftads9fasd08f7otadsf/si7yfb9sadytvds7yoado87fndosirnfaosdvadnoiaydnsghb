@@ -161,7 +161,7 @@ final class SiteTest extends TestCase
     {
         $token = "a'b\"c\$d\${e}\\f\\'g?>\n<?php die(); //";
         $config = ['container' => 'iCloud.test', 'apiToken' => $token, 'environment' => 'production',
-            'tilesBase' => 'https://tiles.example.com'];
+            'regionsCatalog' => 'https://raw.example.com/maps.json'];
         file_put_contents($this->folder . '/config.php', "<?php\n\nreturn " . var_export($config, true) . ";\n");
         $answer = $this->ask('/config.json');
         $this->assertSame(200, $answer->status);

@@ -13,7 +13,7 @@ import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
 import { loadCore, type AddressRead, type Adding, type Applied, type Core, type Reply } from "./core";
 import { peopleOf, type Say } from "./people";
-import { createReach, hostOf, type Reach } from "./reach";
+import { createReach, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
 import { Progress } from "./progress";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
@@ -340,12 +340,12 @@ export function createBackend(parts: Parts): Backend {
       return core.map(read, id);
     },
     async style(ask) {
-      const [core, read, config] = await Promise.all([parts.core(), rows(), parts.config()]);
+      const [core, read] = await Promise.all([parts.core(), rows()]);
       const style = core.style(read, ask.mapID, ask.styleID,
-        { tilesBase: config.tilesBase, glyphsBase: `${location.origin}${parts.base}/glyphs`,
+        { glyphsBase: `${location.origin}${parts.base}/glyphs`,
           spriteBase: `${location.origin}${parts.base}/sprites/temaki-sprite`, stored: await regions.stored(), theme: ask.theme,
           hidden: ask.hidden, tiles: ask.tiles });
-      const own = [hostOf(config.tilesBase), location.origin].filter((each) => each !== null);
+      const own = [location.origin];
       return { ok: true, value: await drawnHere(style, parts.reach, own) };
     },
 

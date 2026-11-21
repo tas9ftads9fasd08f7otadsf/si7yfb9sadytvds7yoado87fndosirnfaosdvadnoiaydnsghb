@@ -132,7 +132,8 @@ describe("the site's deploy", () => {
   it("reads the config's settings from the site environment, production never being one", () => {
     expect(deploy).toContain("ICLOUD_API_TOKEN: ${{ vars.ICLOUD_API_TOKEN || secrets.ICLOUD_API_TOKEN }}");
     expect(deploy).toContain("ICLOUD_CONTAINER: ${{ vars.ICLOUD_CONTAINER || 'iCloud.com.rikimaps.rikimaps.maps' }}");
-    expect(deploy).toContain("TILES_BASE: ${{ vars.TILES_BASE }}");
+    // 147 region packages come from the catalog's addresses alone, so no tiles host is read
+    expect(deploy).not.toContain("TILES_BASE");
     expect(deploy).toContain("REGIONS_CATALOG: ${{ vars.REGIONS_CATALOG }}");
     expect(deploy).not.toMatch(/ICLOUD_ENVIRONMENT|ICLOUD_API_TOKEN:\s*["']?[^$\s]/);
     expect(deploy).toMatch(/apt-get install -y -q lftp php-cli/);
