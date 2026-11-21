@@ -78,6 +78,7 @@ describe("the parts a target does not answer", () => {
 
   it("offers them all where the target answers them", () => {
     fake.offered = new Set(["newMap", "shelf", "servers", "addLayer", "pictures"]);
+    useViewer.setState({ route: { screen: "servers" } });
     render(<><MapsPage /><NavRail /><Layers portable={{ id: "a", name: "Alps", stack: [] }} />
       <Styling portable={{ id: "a", name: "Alps" }} /></>);
     expect(screen.getByRole("button", { name: /New map/ })).toBeTruthy();
