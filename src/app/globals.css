@@ -984,3 +984,8 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #savedPage .field { padding: 0; }
 #savedPage .field input, #savedPage .field select { width: 100%; height: 36px; border-radius: 12px; border: 0; background: var(--inset);
   padding: 0 10px; }
+
+/* 141 The Size column, only where the phone sent sizes; W9's regions carry theirs beside the name. */
+#data .data-table.sized .data-row { grid-template-columns: 2.2fr 1fr 1fr 90px 180px; }
+#data .data-row > .size-cell { color: var(--sub); text-align: right; }
+#mapRegions .region-row .region-size { margin-left: auto; padding-right: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }

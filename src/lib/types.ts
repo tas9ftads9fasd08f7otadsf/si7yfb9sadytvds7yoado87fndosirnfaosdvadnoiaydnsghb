@@ -15,6 +15,8 @@ export interface SharedLayer {
   isLive?: boolean;
   /** 58 The source Edit map folds it under; older phones leave it out. */
   origin?: LayerOrigin;
+  /** 141 What the phone holds of it, in bytes; older phones leave it out. */
+  bytes?: number;
 }
 
 export interface LayerOrigin {
@@ -123,6 +125,8 @@ export interface Region {
   id: string;
   name: string;
   box: Box;
+  /** 141 What the map's packages hold of it on the phone; a region still to download has none. */
+  bytes?: number;
 }
 
 export interface RegionList {

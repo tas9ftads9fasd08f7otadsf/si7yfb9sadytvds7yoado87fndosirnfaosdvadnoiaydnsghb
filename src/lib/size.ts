@@ -1,3 +1,8 @@
+/** 141 The size a phone sent for a layer or a region, or null where it sent none or holds nothing yet. */
+export function heldSize(bytes: number | undefined): string | null {
+  return bytes != null && bytes > 0 ? sizeText(bytes) : null;
+}
+
 /** A byte count as a person reads it: 263 MB, 5.3 MB, 1.5 GB. */
 export function sizeText(bytes: number): string {
   const units = ["B", "KB", "MB", "GB", "TB"];
