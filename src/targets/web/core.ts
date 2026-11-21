@@ -175,6 +175,9 @@ export function coreOf(exports: CoreExports): Core {
   };
 }
 
+/** 155 Foundation's `UserDefaults` traps in the module when it is given no `argv[0]`. */
+export const CORE_ARGS = ["riki-core"];
+
 let loaded: Promise<Core> | null = null;
 
 /** 137 The answer's bytes, told piece by piece as they arrive; a server may not say the size. */
@@ -207,7 +210,7 @@ export function loadCore(fetcher: typeof fetch = fetch, base = BASE,
     const address = `${base}/riki-core.wasm`;
     const answer = await fetcher(address);
     if (!answer.ok) throw new CoreMissing(address);
-    const wasi = new WASI([], [], []);
+    const wasi = new WASI(CORE_ARGS, [], []);
     const { instance } = await WebAssembly.instantiate(await bytesOf(answer, onBytes),
       { wasi_snapshot_preview1: wasi.wasiImport as unknown as WebAssembly.ModuleImports });
     const exports = instance.exports as unknown as CoreExports & { _initialize?: () => void };

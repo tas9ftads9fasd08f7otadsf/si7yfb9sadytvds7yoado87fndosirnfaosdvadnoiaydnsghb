@@ -93,9 +93,11 @@ export function verifyPinned(got, pinned) {
 /**
  * Loads the module as the site's core.ts does and calls it. Throws what is wrong; answers what `riki_version` says.
  * A call whose rules are not in yet must answer coreNotReady, not nothing.
+ * A ready `riki_maps` must answer a maps list.
  */
 export async function smoke(bytes) {
-  const wasi = new WASI([], [], []);
+  // 155 its name as argv[0], as core.ts gives it
+  const wasi = new WASI(["riki-core"], [], []);
   const { instance } = await WebAssembly.instantiate(bytes, { wasi_snapshot_preview1: wasi.wasiImport });
   const e = instance.exports;
   if (e._initialize) wasi.initialize(instance);
@@ -120,6 +122,10 @@ export async function smoke(bytes) {
   const version = read(e.riki_version());
   if (!SEMVER.test(String(version.version))) throw new Error(`riki_version says ${JSON.stringify(version)}`);
   if (JSON.stringify(version.calls) !== JSON.stringify(CONTRACT.calls)) throw new Error(`it lists the calls ${version.calls}`);
+  // 155 a call said to be ready answers for real
+  if ((version.ready ?? []).includes("riki_maps") && !Array.isArray(call("riki_maps", { rows: [] }).maps)) {
+    throw new Error("riki_maps is listed as ready but lists no maps");
+  }
   for (const name of CONTRACT.calls) {
     if ((version.ready ?? []).includes(name)) continue;
     const answer = call(name, { rows: [], id: "m" });

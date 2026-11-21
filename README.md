@@ -62,7 +62,8 @@ core only once `rikiCore.ref` in `package.json` pins a rikimaps commit: `npm run
 it (`RIKIMAPS_DIR` is a checkout of rikimaps at that commit, read only; the build writes `dist/riki-core/` here:
 the module, its `.sha256` and its size). It runs rikimaps' documented swift build
 (`tools/linux-core/wasm/README.md`, Swift 6.2 and its WebAssembly SDK, both checked against their pinned sums),
-`wasm-opt -Oz` from the `binaryen` package, and loads the module as the site does, calling `riki_version`. The order is
+`wasm-opt -Oz` from the `binaryen` package, and loads the module as the site does, its name as the shim's one argument
+(Foundation traps without an `argv[0]`), calling `riki_version` and, once it is ready, `riki_maps`. The order is
 `npm run build:core`, `npm run build:web`, `npm run pack:web`; until a commit is pinned `pack:web` says so and packs
 without a core, and the deploy refuses such a zip unless it is run by hand for a test address (`without_core`). To
 take a newer core, set `rikiCore.ref` to the rikimaps commit and `rikiCore.sha256` to the module's (the build prints
@@ -78,7 +79,8 @@ CI builds them in `.github/workflows/core.yml`, which `release.yml` calls before
 repository secret `RIKIMAPS_READ_TOKEN` (a token that reads it) has to exist. With a commit pinned, `pack:web` fails
 where the module was not built; `RIKI_PACK_WITHOUT_CORE=1` packs without it for the browser specs, which stand in for the
 core (CI does, and `npm run check`).
-`riki_people` (item 108) is the call that reads who holds a map, and the module pinned today lacks it, so the People
+The pinned module answers `riki_maps` (rikimaps 3549): the iCloud maps the rows hold, as a phone's `/device` lists
+them. `riki_people` (item 108) is the call that reads who holds a map, and the module pinned today lacks it, so the People
 card answers "The site's map rules are not ready yet." until the pin moves to a commit that has it (then
 `CONTRACT.calls` in `scripts/build-core.mjs` and `riki_version` list it). It takes `{rows, id}`, the rows being
 those every call gets plus a shared map's `Share` row (a `cloudkit.share` record: its `cloudkit.title` and other text fields,

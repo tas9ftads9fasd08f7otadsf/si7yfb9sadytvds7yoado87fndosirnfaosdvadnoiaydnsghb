@@ -1,10 +1,22 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import account from "../e2e/fixtures/cloud-account.json";
 import { fakeCoreWasm } from "../e2e/fake-core.mjs";
 import { CONTRACT, SCRATCH, checkoutProblem, pinFor, readPin, sha256Of, sizes, smoke, swiftBuildArgs, verifyPinned, verifySum } from "./build-core.mjs";
+
+const shimArgs = vi.hoisted(() => []);
+vi.mock("@bjorn3/browser_wasi_shim", async (original) => {
+  const real = await original();
+  class Recorded extends real.WASI {
+    constructor(...made) {
+      shimArgs.push(made[0]);
+      super(...made);
+    }
+  }
+  return { ...real, WASI: Recorded };
+});
 
 // 88 the pieces of the core's build that need no Swift
 describe("the pin", () => {
@@ -109,6 +121,16 @@ describe("the module loaded as the site loads it", () => {
   it("is refused where a call that is not ready answers something else", async () => {
     const bytes = fakeCoreWasm({ riki_version: { ...account.core.riki_version, ready: [] } });
     await expect(smoke(bytes)).rejects.toThrow(/riki_maps answered .* where its rules are not in yet/);
+  });
+
+  // 155 riki_maps answers for real once listed as ready, loaded with argv[0] as the site loads it
+  it("is refused where riki_maps is listed as ready but refuses, and given its name as argv[0]", async () => {
+    const version = { ...account.core.riki_version, ready: ["riki_maps"] };
+    const refusing = fakeCoreWasm({ ...notReady, riki_version: version });
+    await expect(smoke(refusing)).rejects.toThrow("riki_maps is listed as ready but lists no maps");
+    const listing = fakeCoreWasm({ ...notReady, riki_maps: account.core.riki_maps, riki_version: version });
+    expect((await smoke(listing)).ready).toEqual(["riki_maps"]);
+    expect(shimArgs.at(-1)).toEqual(["riki-core"]);
   });
 
   it("is refused when it lists other calls than the site asks, or says no version", async () => {
