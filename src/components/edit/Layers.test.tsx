@@ -39,6 +39,17 @@ describe("Layers", () => {
     expect(screen.getByRole("button", { name: "All on" })).toBeTruthy();
   });
 
+  // 141 W5 words a layer's size beside its kind where the phone sent one, and the kind alone where it did not
+  it("shows the size the phone holds beside a layer's kind", () => {
+    useViewer.setState({ mapID: "a", portable, editToken: "t", hidden: new Set<string>(), device: { name: "iPad", maps: [
+      { id: "a", name: "Tatras", layers: [{ id: "B", name: "Base", kind: "Tiles" },
+        { id: "T", name: "Trails", kind: "Vector", bytes: 263_000_000 }, { id: "H", name: "Huts", kind: "Vector" }] }] } });
+    render(<Layers portable={portable} />);
+    const row = (name: string) => screen.getByLabelText("Rename", { selector: `[value="${name}"]` }).closest(".words") as HTMLElement;
+    expect(row("Trails").querySelector("small")?.textContent).toBe("Vector \u00B7 263 MB");
+    expect(row("Huts").querySelector("small")?.textContent).toBe("Vector");
+  });
+
   // 115 W5's heading in place of the style's name, counting the layers the list switches
   it("heads the list with how it is ordered and how many layers it holds", () => {
     show([]);
