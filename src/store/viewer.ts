@@ -854,11 +854,16 @@ async function refreshDevice() {
 }
 
 /** Sends one change; the phone answers with the map as it now stands. */
-export async function change(edit: Edit): Promise<boolean> {
+export async function change(edit: Edit, refused?: (said: string) => void): Promise<boolean> {
   const { editToken, styleID, mapID } = get();
   if (!editToken || !mapID) return false;
   const answer = await editing(() => backend.change(mapID, styleID, edit));
   if (!answer) return false;
+  if (!answer.ok && refused) {
+    // 142 A field that shows the phone's words itself keeps what is typed.
+    refused(answer.said);
+    return false;
+  }
   if (!answer.ok) {
     notice(answer.status === 409 && /layers/i.test(answer.said) ? get().words.layerCap
       : answer.status === 412 ? get().words.changeRefused : answer.said);
