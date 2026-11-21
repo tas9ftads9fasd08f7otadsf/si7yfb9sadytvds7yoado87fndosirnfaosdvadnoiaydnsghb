@@ -7,6 +7,7 @@ import { change, duplicateMap, exportMap, loadCoverage, loadLayerOptions, loadSw
 import { CommitField } from "../ui/CommitField";
 import { Sym } from "../ui/Sym";
 import { Availability } from "./Availability";
+import { Category } from "./Category";
 import { CoverageCard } from "./CoverageCard";
 import { DeleteMap } from "./DeleteMap";
 import { EsriServices } from "./EsriServices";
@@ -106,6 +107,7 @@ function EditFields() {
                 onCommit={(note) => change({ kind: "note", note })} /></div>
             <Languages portable={portable} />
           </div>
+          <Category portable={portable} />
           <div className="list map-actions">
             {offers("duplicateMap") ? (
               <button type="button" className="row add" id="duplicateMap" onClick={() => void duplicateMap()}>

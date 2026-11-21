@@ -87,6 +87,7 @@ export function queryOf(edit: Edit): Record<string, string> {
     case "arrange": return { arrange: edit.action };
     case "groupByOrigin": return { groupByOrigin: edit.groups ? "1" : "0" };
     case "availability": return { [edit.switch]: edit.shown ? "1" : "0" };
+    case "category": return { category: edit.category };
     case "lock": return { lock: edit.locked ? "1" : "0" };
     case "layerOptions":
     case "layerDetails": return edit.fields;

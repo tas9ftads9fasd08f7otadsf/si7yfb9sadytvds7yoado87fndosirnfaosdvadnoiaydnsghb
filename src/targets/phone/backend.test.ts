@@ -56,6 +56,9 @@ const EDITS: [Edit, Record<string, string>][] = [
     symbol: "bus.fill" }],
   [{ kind: "layerDetails", fields: { layer: "L", details: "addRow", was: "r1", title: "Line", value: "{line}" } },
   { layer: "L", details: "addRow", was: "r1", title: "Line", value: "{line}" }],
+  // 142 the map's own label, blank to take it away
+  [{ kind: "category", category: "Hiking" }, { category: "Hiking" }],
+  [{ kind: "category", category: "" }, { category: "" }],
   // 53
   [{ kind: "resetStyle", style: "S" }, { resetStyle: "S" }]
 ];

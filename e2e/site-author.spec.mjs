@@ -59,6 +59,16 @@ test("the rail has no Saved item on the site", async ({ page }) => {
   await expect(page.locator("#railSaved")).toHaveCount(0);
 });
 
+// 142 the owner's category is a phone setting the site does not carry, so General has no field for it
+test("General has no Category field on the site", async ({ page }) => {
+  await mockCloud(page, { signedIn: true });
+  await openEdit(page);
+  await page.locator("#editTabs").getByRole("tab", { name: "General", exact: true }).click();
+  await expect(page.locator("#editTabs [aria-selected=true]")).toHaveText("General");
+  await expect(page.locator("#editBody h2", { hasText: "Note" })).toBeVisible();
+  await expect(page.locator("#category")).toHaveCount(0);
+});
+
 test("a change is made under the typed name, else under the Apple Account's", async ({ page }) => {
   const asks = await recordCoreAsks(page);
   await mockCloud(page, { signedIn: true });

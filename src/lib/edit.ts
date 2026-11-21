@@ -35,6 +35,8 @@ export type Edit =
   | { kind: "arrange"; action: ArrangeAction }
   | { kind: "groupByOrigin"; groups: boolean }
   | { kind: "availability"; switch: AvailabilitySwitch; shown: boolean }
+  // 142: the map's own label; blank takes it away.
+  | { kind: "category"; category: string }
   // 118: the phone asks its person for Face ID before it locks or unlocks.
   | { kind: "lock"; locked: boolean }
   // The Options panel's and the Details layout's rows are described by the phone, keys and all.

@@ -51,6 +51,8 @@ export interface SharedMap {
   /** What the map holds on the phone, and when the phone last wrote it, in Unix seconds. */
   bytes?: number;
   changedAt?: number;
+  /** 142 The owner's own one-line label for the map; absent is none, and older phones send none. */
+  category?: string;
 }
 
 export type MapRole = "own" | "edit" | "view";
@@ -99,6 +101,8 @@ export interface Portable {
   id: string;
   name: string;
   note?: string;
+  /** 142 The owner's own label, as the phone cleaned it. */
+  category?: string;
   symbol?: string;
   iconTintHex?: string | null;
   iconPicture?: string | null;
