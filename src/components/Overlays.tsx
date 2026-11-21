@@ -6,7 +6,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { backend } from "@backend";
 import { downloadRegion, askToJoin, shownMapOf, useViewer } from "@/store/viewer";
-import { filledIn } from "@/lib/words";
+import { filledIn, type Words } from "@/lib/words";
+import type { Loading } from "@/lib/types";
 import { Sym } from "./ui/Sym";
 
 /** 105 Where the pointer is; the zoom is the badge's, and `[` is told by the side bar's button. */
@@ -15,9 +16,32 @@ export function StatusBar() {
   return <footer id="status"><span id="pointer">{pointer}</span></footer>;
 }
 
+const megabytes = (bytes: number) => (bytes / 1_000_000).toFixed(1);
+
+/** 137 Each part of the first read with how much of it is done; a finished part is marked so. */
+function bootSteps(words: Words, loading: Loading | null): { id: string; text: string; done: boolean }[] {
+  if (!loading) return [];
+  const steps: { id: string; text: string; done: boolean }[] = [];
+  const { engine, zones } = loading;
+  if (engine) {
+    const said = engine.total == null ? words.loadingEngineSoFar
+      : filledIn(words.loadingEngine, "total", megabytes(engine.total));
+    steps.push({ id: "engine", text: filledIn(said, "done", megabytes(engine.done)), done: engine.done === engine.total });
+  }
+  if (zones && zones.total > 0) {
+    steps.push({ id: "zones", text: filledIn(filledIn(words.loadingZones, "done", String(zones.done)), "total", String(zones.total)),
+      done: zones.done === zones.total });
+  }
+  if (loading.records > 0) steps.push({ id: "records", text: filledIn(words.loadingRecords, "count", String(loading.records)), done: false });
+  if (loading.files > 0) steps.push({ id: "files", text: filledIn(words.loadingFiles, "count", String(loading.files)), done: false });
+  return steps;
+}
+
 /** Over everything until the phone's maps are read, so the page is not seen filling up piece by piece. */
 export function Boot() {
   const words = useViewer((state) => state.words);
+  const loading = useViewer((state) => state.loading);
+  const stopped = useViewer((state) => state.loadFailed);
   const settled = useViewer((state) => state.device != null || state.connected === false
     || (state.standing != null && state.standing !== "admitted"));
   if (settled) return null;
@@ -26,6 +50,12 @@ export function Boot() {
       <AppIcon size={56} />
       <div className="spinner" />
       <p>{filledIn(words.loadingApp, "app", words.app)}</p>
+      <ul id="bootSteps">
+        {bootSteps(words, loading).map((step) => (
+          <li key={step.id} className={step.done ? "done" : undefined}>{step.text}</li>
+        ))}
+      </ul>
+      {stopped ? <p id="bootStopped" role="alert">{filledIn(words.loadingStopped, "reason", stopped)}</p> : null}
     </div>
   );
 }

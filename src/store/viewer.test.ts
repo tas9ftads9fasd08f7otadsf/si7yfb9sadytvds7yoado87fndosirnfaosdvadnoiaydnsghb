@@ -17,7 +17,7 @@ function answering(route: (url: string, init?: RequestInit) => Response) {
 
 // 57 the map control also says what it shows, for Download tiles' area
 const control = () => ({ draw: vi.fn(), stopLive: vi.fn(), resize: vi.fn(), watchPhone: vi.fn(), showPhone: vi.fn(),
-  readRegions: vi.fn(), camera: vi.fn(), box: vi.fn(), snapshot: vi.fn(), remove: vi.fn(), namedFeatures: vi.fn(() => []), flyTo: vi.fn() }) satisfies MapControl;
+  readRegions: vi.fn(), camera: vi.fn(), box: vi.fn(), snapshot: vi.fn(), remove: vi.fn(), namedFeatures: vi.fn(() => []), flyTo: vi.fn(), showSaved: vi.fn() }) satisfies MapControl;
 
 beforeEach(() => {
   resetViewer();

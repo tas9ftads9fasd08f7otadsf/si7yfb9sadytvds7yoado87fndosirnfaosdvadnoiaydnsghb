@@ -50,6 +50,15 @@ test("the Sharing tab has no Gallery card on the site", async ({ page }) => {
   await expect(page.locator("#publish")).toHaveCount(0);
 });
 
+// 135 the phone's saved places are the phone's own, so the site's rail has no Saved item
+test("the rail has no Saved item on the site", async ({ page }) => {
+  await mockCloud(page, { signedIn: true });
+  await page.goto("./");
+  await page.locator("#current .hero").waitFor();
+  await expect(page.locator("#railMaps")).toBeVisible();
+  await expect(page.locator("#railSaved")).toHaveCount(0);
+});
+
 test("a change is made under the typed name, else under the Apple Account's", async ({ page }) => {
   const asks = await recordCoreAsks(page);
   await mockCloud(page, { signedIn: true });

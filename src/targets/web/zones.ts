@@ -1,4 +1,5 @@
 import type { CKContainer, CKError, CKReading, CKRecord, ZoneID } from "./cloud";
+import type { Progress } from "./progress";
 import { READ_TYPES, SHARE_TYPE, rowOf, shareRowOf, type CoreRow } from "./records";
 
 /** The mirror's zone in the person's private database. */
@@ -62,8 +63,28 @@ const zoneKey = (database: string, zone: ZoneID) => `${database}/${zone.ownerRec
 
 /** Reads the person's zones by change token and keeps them, so a map seen once opens offline. */
 export class Zones {
+  private zonesDone = 0;
+  private zonesTotal = 0;
+
   constructor(private readonly container: () => Promise<CKContainer>, private readonly keeping: Keeping,
-    private readonly fetcher: typeof fetch = fetch) {}
+    private readonly fetcher: typeof fetch = fetch, private readonly progress?: Progress) {}
+
+  /** 137 A file is counted once it has arrived. */
+  private readonly fetchFile: typeof fetch = async (...asked) => {
+    const answer = await this.fetcher(...asked);
+    this.progress?.file();
+    return answer;
+  };
+
+  private zonesToRead(more: number) {
+    this.zonesTotal += more;
+    this.progress?.zones(this.zonesDone, this.zonesTotal);
+  }
+
+  private zoneRead() {
+    this.zonesDone += 1;
+    this.progress?.zones(this.zonesDone, this.zonesTotal);
+  }
 
   /** Every row the site reads, brought up to date; the kept ones when CloudKit cannot be reached. */
   async rows(): Promise<CoreRow[]> {
@@ -71,9 +92,12 @@ export class Zones {
     try {
       const { privateCloudDatabase, sharedCloudDatabase } = await this.container();
       const own = await this.ownShareZones(privateCloudDatabase);
+      [this.zonesDone, this.zonesTotal] = [0, 0];
+      this.zonesToRead(1 + own.length);
       rows.push(...await this.sync("private", privateCloudDatabase, [{ zoneName: MIRROR_ZONE }, ...own]));
       const shared = (await sharedCloudDatabase.fetchAllRecordZones()).zones ?? [];
       await this.keeping.save("shared/zones", shared.map((each) => each.zoneID));
+      this.zonesToRead(shared.length);
       rows.push(...await this.sync("shared", sharedCloudDatabase, shared.map((each) => each.zoneID)));
     } catch (error) {
       const offline = await this.kept();
@@ -136,17 +160,19 @@ export class Zones {
         await this.keeping.save(key, kept);
       }
       out.push(...Object.values(kept.rows));
+      this.zoneRead();
     }
     return out;
   }
 
   private async take(kept: Kept, record: CKRecord, where: Pick<CoreRow, "database" | "zone" | "owner">) {
+    this.progress?.record();
     if (record.deleted) {
       delete kept.rows[record.recordName];
     } else if (record.recordType === SHARE_TYPE) {
       kept.rows[record.recordName] = shareRowOf(record, where);
     } else if (READ_TYPES.includes(record.recordType ?? "")) {
-      kept.rows[record.recordName] = await rowOf(record, where, this.fetcher);
+      kept.rows[record.recordName] = await rowOf(record, where, this.fetchFile);
     }
   }
 }

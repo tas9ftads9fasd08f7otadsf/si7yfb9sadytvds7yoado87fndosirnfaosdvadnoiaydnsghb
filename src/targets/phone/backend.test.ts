@@ -130,6 +130,21 @@ describe("the phone backend", () => {
     expect(await backend.publishOffer("M")).toEqual({ ok: false, status: 401, said: "" });
   });
 
+  // 135 the saved places are read with the token, the list and one feature by its id
+  it("reads the saved places and one saved feature with the token", async () => {
+    const fetcher = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    backend.useToken(() => "t");
+    await backend.saved();
+    await backend.savedFeature("A/B");
+    const [list, one] = fetcher.mock.calls as unknown as [[string, RequestInit], [string, RequestInit]];
+    expect(list[0]).toBe("/riki/v1/saved");
+    expect(one[0]).toBe("/riki/v1/saved/A%2FB");
+    expect((one[1].headers as Record<string, string>).Authorization).toBe("Bearer t");
+    backend.useToken(() => null);
+    expect(await backend.saved()).toEqual({ ok: false, status: 401, said: "" });
+  });
+
   // 36 the token is read when each call is made, and a refusal keeps the phone's words
   it("sends an edit with the style and the current token, and keeps a refusal's words", async () => {
     const fetcher = vi.fn(async () => new Response("A name cannot be blank", { status: 400 }));
@@ -268,5 +283,35 @@ describe("esriQueryOf", () => {
     expect(esriQueryOf("G", { kind: "remove", layer: 0 })).toEqual({ service: "G", remove: "0" });
     expect(esriQueryOf("G", { kind: "read" })).toEqual({ service: "G", read: "1" });
     expect(esriQueryOf("G", { kind: "forget" })).toEqual({ service: "G", forget: "1" });
+  });
+});
+
+// 129 the places search is a plain read with the words and the centre of the map; an older phone's 404 is null
+describe("search", () => {
+  it("asks the phone without a token, with the centre, and reads the places", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ places: [{ title: "Poprad", lat: 49.06, lon: 20.3, properties: {} }] })));
+    vi.stubGlobal("fetch", fetcher);
+    const places = await backend.search("M", "Pop rad", { lat: 49.123456789, lng: 20.1 });
+    const [path, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit | undefined];
+    const address = new URL(path, "http://phone");
+    expect(address.pathname).toBe("/riki/v1/maps/M/search");
+    expect(Object.fromEntries(address.searchParams)).toEqual({ q: "Pop rad", lat: "49.12346", lon: "20.10000" });
+    expect(init?.headers).toBeUndefined();
+    expect(places?.map((place) => place.title)).toEqual(["Poprad"]);
+  });
+
+  it("leaves the centre out when the map has none, and reads an answer with no places as none", async () => {
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await backend.search("M", "pop", null)).toEqual([]);
+    const [path] = fetcher.mock.calls[0] as unknown as [string];
+    expect([...new URL(path, "http://phone").searchParams.keys()]).toEqual(["q"]);
+  });
+
+  it("answers null from a phone that has no such answer, and rejects any other refusal", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
+    expect(await backend.search("M", "pop", null)).toBeNull();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("Busy", { status: 503 })));
+    await expect(backend.search("M", "pop", null)).rejects.toThrow("Busy");
   });
 });

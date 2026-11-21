@@ -3,7 +3,7 @@
 import { isAnySize } from "@/lib/any-size";
 import { useEffect, useRef } from "react";
 import { type MapControl, setMapControl } from "@/map/control";
-import { drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
+import { drawSaved, drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
   from "@/store/viewer";
 import { AddLayerModal } from "./edit/AddLayerModal";
 import { DataPage } from "./DataPage";
@@ -49,6 +49,7 @@ export function AppShell() {
       if (isGone || !mapBox.current) return;
       made = createMapView(mapBox.current);
       setMapControl(made);
+      drawSaved();
       startSession(small.matches && !isAnySize());
     })();
     return () => {

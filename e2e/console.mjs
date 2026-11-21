@@ -32,5 +32,5 @@ export function watchConsole(page) {
 export const screensOf = (map, layer) => ["/", "/maps", `/maps/${map}`, `/maps/${map}/layers`,
   `/maps/${map}/edit/layers`, `/maps/${map}/edit/general`, `/maps/${map}/edit/styling`, `/maps/${map}/edit/sharing`,
   `/maps/${map}/edit/offline`, `/maps/${map}/layers/${layer}/details`, `/maps/${map}/layers/new/tile`,
-  `/maps/${map}/layers/new/server`, `/maps/${map}/search/Chata`, "/new", "/data/layers", "/data/servers",
+  `/maps/${map}/layers/new/server`, `/maps/${map}/search/Chata`, "/saved", "/new", "/data/layers", "/data/servers",
   "/data/regions", "/settings"];

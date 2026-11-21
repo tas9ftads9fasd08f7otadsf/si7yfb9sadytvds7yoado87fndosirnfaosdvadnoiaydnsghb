@@ -178,14 +178,38 @@ export function coreOf(exports: CoreExports): Core {
 
 let loaded: Promise<Core> | null = null;
 
+/** 137 The answer's bytes, told piece by piece as they arrive; a server may not say the size. */
+async function bytesOf(answer: Response, onBytes?: (done: number, total: number | null) => void): Promise<ArrayBuffer> {
+  const reader = onBytes ? answer.body?.getReader() : undefined;
+  if (!reader) return answer.arrayBuffer();
+  const total = Number(answer.headers.get("content-length")) || null;
+  const pieces: Uint8Array[] = [];
+  let done = 0;
+  onBytes?.(0, total);
+  for (let read = await reader.read(); !read.done; read = await reader.read()) {
+    pieces.push(read.value);
+    done += read.value.byteLength;
+    onBytes?.(done, total);
+  }
+  onBytes?.(done, done);
+  const whole = new Uint8Array(done);
+  let at = 0;
+  for (const piece of pieces) {
+    whole.set(piece, at);
+    at += piece.byteLength;
+  }
+  return whole.buffer;
+}
+
 /** Instantiates `riki-core.wasm` once, with the WASI shim the Swift runtime asks for. */
-export function loadCore(fetcher: typeof fetch = fetch, base = BASE): Promise<Core> {
+export function loadCore(fetcher: typeof fetch = fetch, base = BASE,
+  onBytes?: (done: number, total: number | null) => void): Promise<Core> {
   loaded ??= (async () => {
     const address = `${base}/riki-core.wasm`;
     const answer = await fetcher(address);
     if (!answer.ok) throw new CoreMissing(address);
     const wasi = new WASI([], [], []);
-    const { instance } = await WebAssembly.instantiate(await answer.arrayBuffer(),
+    const { instance } = await WebAssembly.instantiate(await bytesOf(answer, onBytes),
       { wasi_snapshot_preview1: wasi.wasiImport as unknown as WebAssembly.ModuleImports });
     const exports = instance.exports as unknown as CoreExports & { _initialize?: () => void };
     if (exports._initialize) wasi.initialize(instance as unknown as Parameters<WASI["initialize"]>[0]);
