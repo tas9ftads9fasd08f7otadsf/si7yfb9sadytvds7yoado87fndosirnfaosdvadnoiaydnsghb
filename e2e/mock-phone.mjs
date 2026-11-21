@@ -2276,6 +2276,10 @@ function testControl(route, query, response) {
       total: query.get("total") ? Number(query.get("total")) : null });
     break;
   // 148: W17's six sample maps, beside High Tatras and Bratislava, each pill kind once.
+  // 149: every map answers as an older phone's: none of 3490's new fields.
+  case "/__test/old-maps":
+    for (const each of phone.maps) { each.sendsNewFields = false; each.category = undefined; }
+    break;
   case "/__test/sample-maps": phone.maps.push(...sampleMaps()); break;
   case "/__test/locked": phone.maps.find((each) => each.id === query.get("map")).locked = true; break;
   case "/__test/shares": return json(response, phone.shares);

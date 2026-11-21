@@ -1067,3 +1067,4 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #maps .maps-table .name-cell .words small { color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #maps .maps-table .tile-name { font-size: 15px; font-weight: 600; }
 #maps .maps-table .data-row > span:not(:first-child) { color: var(--sub); }
+#maps > * { flex-shrink: 0; }
