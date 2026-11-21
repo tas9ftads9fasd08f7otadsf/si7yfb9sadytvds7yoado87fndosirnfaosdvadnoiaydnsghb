@@ -229,6 +229,12 @@ export const backend: Backend = {
     return editing(`${ROOT}/start-places?${asked.toString()}`, "GET");
   },
 
+  publishOffer: (mapID) => editing(`${ROOT}/maps/${mapID}/publish`, "GET"),
+  publishSend: (mapID, request) => editing(`${ROOT}/maps/${mapID}/publish`, "POST", JSON.stringify(request), undefined,
+    { "Content-Type": "application/json" }),
+  publishAnswer: (mapID, ask) => editing(`${ROOT}/maps/${mapID}/publish?ask=${encodeURIComponent(ask)}`, "GET"),
+  publishCancel: (mapID, ask) =>
+    editing(`${ROOT}/maps/${mapID}/publish?cancel=${encodeURIComponent(ask)}`, "POST", undefined, async () => null),
   saved: () => editing(`${ROOT}/saved`, "GET"),
   savedFeature: (id) => editing(`${ROOT}/saved/${encodeURIComponent(id)}`, "GET"),
 

@@ -233,6 +233,84 @@ const typed = (key) => (key || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
 const opensEditing = (request) => typed(request.headers["x-riki-edit"]) === EDIT_KEY;
 const bearsToken = (request) => phone.tokens.has((request.headers.authorization || "").replace(/^Bearer /, ""));
 
+// 136: Publish to the gallery as `PeerWebPublishRoute` answers: the offer, a request weighed in the sheet's order,
+// one ask at a time waiting on the phone's person, and the answer it gives after a few polls.
+const PUBLISH_CATEGORIES = [{ id: "hiking", name: "Hiking", symbol: "figure.hiking" },
+  { id: "city", name: "City", symbol: "building.2" }, { id: "nature", name: "Nature", symbol: "leaf" }];
+const PUBLISH_MESSAGES = {
+  noSuchMap: "No such map", notYours: "This map is shared with this phone to look at, not to change",
+  locked: "This map is locked on the phone", builtIn: "A map the app ships is not published",
+  off: "Publishing is switched off in this app",
+  unsigned: "It came from a file the app did not sign, so it can't go to the gallery",
+  notSignedIn: "Not signed in to iCloud. Sign in in the Settings app.", name: "Add a name", category: "Choose a category",
+  summary: "Say what it shows", coverage: "Choose where it covers", changes: "Say what changed",
+  keysNote: "Say how to get the keys", manual: "Fix the web address",
+  replaces: "Agree that the gallery's map takes this one's place", language: "The app has no such language",
+  publicName: "Give the name shown beside what you publish", notConfirmed: "The phone's person did not publish it",
+  busy: "Too many publications wait on the phone", expired: "The phone was not answered in time; ask again"
+};
+const PUBLISH_STATUS = { noSuchMap: 404, notYours: 403, locked: 403, notConfirmed: 403, busy: 429 };
+const publishState = () => (phone.publishing ??= { leftOut: false, signedIn: true, update: false, needsName: false,
+  noCoverage: false, answer: "sent", polls: 2, asks: new Map(), requests: [], sent: [] });
+
+const publishRefused = (response, refusal) =>
+  send(response, PUBLISH_STATUS[refusal] ?? 409, JSON.stringify({ refusal, message: PUBLISH_MESSAGES[refusal] }),
+    "application/json");
+
+// What stops the map going out whatever the page wrote, as `PeerWebPublish.refusal(of: standing)` weighs it.
+function publishStops(each) {
+  const state = publishState();
+  if (each.locked) return "locked";
+  if (!phone.ownsSettings) return "notYours";
+  if (each.builtIn) return "builtIn";
+  return state.signedIn ? null : "notSignedIn";
+}
+
+function publishOffer(each) {
+  const state = publishState();
+  const texts = { en: { title: each.name, body: each.note ?? "" } };
+  for (const [code, title] of Object.entries(each.nameTranslations ?? {})) texts[code] = { title, body: "" };
+  return { refusal: publishStops(each), language: "en", isUpdate: state.update, texts, categories: PUBLISH_CATEGORIES,
+    coverage: state.noCoverage ? null : { countries: ["SK", "PL"] },
+    coverageLine: state.noCoverage ? "The whole world, countries or regions where its tiles and features are."
+      : "Slovakia, Poland", places: state.noCoverage ? [] : ["Slovakia", "Poland"],
+    leftOut: state.leftOut ? ["Mapy.cz key"] : [], keysNote: "", manualURL: "", hasPreview: Boolean(each.previewPicture),
+    publicName: state.needsName ? "" : "Riki", needsPublicName: state.needsName };
+}
+
+// The first thing the sheet's Send says is missing, then the agreement and the public name, as the phone orders them.
+function publishMissing(each, body) {
+  const state = publishState();
+  const main = body.texts?.en;
+  if (!Object.keys(body.texts ?? {}).every((code) => code === "en" || ["sk", "de", "cs", "pl"].includes(code))) return "language";
+  if (!main?.title?.trim()) return "name";
+  if (!PUBLISH_CATEGORIES.some((one) => one.id === body.category)) return "category";
+  if (!main.body?.trim()) return "summary";
+  if (!body.coverage || !(body.coverage.countries?.length || body.coverage.world)) return "coverage";
+  if (state.update && !body.changes?.trim()) return "changes";
+  if (state.leftOut && !body.keysNote?.trim()) return "keysNote";
+  const manual = (body.manualURL ?? "").trim();
+  if (manual && !/^https?:\/\/[^ ]+$/.test(manual)) return "manual";
+  if (!state.update && body.replaces !== true) return "replaces";
+  if (state.needsName && !(body.publicName ?? "").trim()) return "publicName";
+  return null;
+}
+
+// How the phone's person has answered after `polls` polls: yes, no, an error, or never.
+function publishPolled(ask) {
+  const state = publishState();
+  if (ask.answer.state === "waiting") {
+    ask.polled += 1;
+    if (state.answer !== "wait" && ask.polled > state.polls) {
+      ask.answer = state.answer === "refused"
+        ? { state: "refused", refusal: "notConfirmed", message: PUBLISH_MESSAGES.notConfirmed }
+        : state.answer === "failed" ? { state: "failed", message: "iCloud could not be reached" }
+          : { state: "sent", submission: `Submission-${state.sent.length + 1}` };
+      if (ask.answer.state === "sent") state.sent.push(ask.request);
+    }
+  }
+  return ask.answer;
+}
 // 135: the phone's saved places as `PeerWebSaved` lists them, newest first; Spring has no mark of its own.
 const SAVED_FOLDERS = [
   { id: "5A1E0000-0000-4000-8000-000000000001", name: "Tatras", symbol: "mountain.2", colour: "#336699", isShared: false, isSharedWithMe: false },
@@ -1687,6 +1765,37 @@ async function answer(request, response) {
     }
     return json(response, roster(each.id));
   }
+  if (parts[4] === "publish" && parts.length === 5 && (method === "GET" || method === "POST")) {
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const state = publishState();
+    const ask = url.searchParams.get("ask");
+    const cancel = url.searchParams.get("cancel");
+    if (method === "GET" && ask) {
+      const held = state.asks.get(ask);
+      if (!held || held.mapID !== each.id) return send(response, 410, "The phone no longer holds this ask; ask again");
+      return json(response, publishPolled(held));
+    }
+    if (method === "GET") return json(response, publishOffer(each));
+    if (cancel) {
+      const held = state.asks.get(cancel);
+      if (!held || held.mapID !== each.id || held.answer.state !== "waiting") return send(response, 410, "Nothing waits on that ask");
+      state.asks.delete(cancel);
+      return send(response, 204, "");
+    }
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    let body;
+    try { body = JSON.parse(Buffer.concat(chunks).toString()); } catch { return send(response, 400, "Send the publication as JSON"); }
+    const stopped = publishStops(each) ?? publishMissing(each, body);
+    if (stopped) return publishRefused(response, stopped);
+    if ([...state.asks.values()].some((held) => held.answer.state === "waiting")) return publishRefused(response, "busy");
+    const id = randomBytes(16).toString("hex");
+    state.asks.set(id, { mapID: each.id, request: body, polled: 0, answer: { state: "waiting" } });
+    state.requests.push({ map: each.id, body });
+    return send(response, 202, JSON.stringify({ ask: id, code: id.slice(0, 4).toUpperCase(), expiresIn: 300 }),
+      "application/json");
+  }
   if (parts[4] === "other-layers" && parts.length === 5) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
@@ -2104,6 +2213,19 @@ function testControl(route, query, response) {
       hasPasscode: query.get("passcode") !== "0" });
     break;
   case "/__test/face-asks": return json(response, { asks: face().asks });
+  // 136: how the phone answers the Gallery: signed out, keys left out, an update, no public name yet, no coverage found,
+  // and what its person does (sent, refused, failed or never answers) after `polls` asks; `expire` forgets every ask.
+  case "/__test/publish": {
+    const state = publishState();
+    for (const key of ["leftOut", "update", "needsName", "noCoverage"]) if (query.has(key)) state[key] = query.get(key) === "1";
+    if (query.has("signedIn")) state.signedIn = query.get("signedIn") === "1";
+    if (query.has("answer")) state.answer = query.get("answer");
+    if (query.has("polls")) state.polls = Number(query.get("polls"));
+    if (query.get("expire") === "1") state.asks.clear();
+    break;
+  }
+  case "/__test/publish-requests": return json(response, publishState().requests);
+  case "/__test/publish-waiting": return json(response, [...publishState().asks.values()].filter((held) => held.answer.state === "waiting").length);
   // 135: what the phone's Saved answers: nothing saved, a longer library than it sends, or an older app's 404.
   case "/__test/saved":
     Object.assign(savedState(), { empty: query.get("empty") === "1", gone: query.get("gone") === "1",

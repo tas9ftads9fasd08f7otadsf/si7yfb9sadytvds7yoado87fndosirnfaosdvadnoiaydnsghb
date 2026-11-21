@@ -1,7 +1,7 @@
 import type { Protocol } from "pmtiles";
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk, Sharer } from "@/lib/people";
-import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing, SavedListing, SavedShape,
+import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing, PublishAnswer, PublishOffer, PublishRequest, PublishStarted, SavedListing, SavedShape,
   LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
   SharePeople, RegionNeed, RegionRow } from "@/lib/types";
 
@@ -24,8 +24,8 @@ export class CoreNotReady extends NotOnSite {}
 /** 82 The parts of the page a target may not answer yet; a screen offers only what it does. 86 `addLayer` is the panel
  * with a tile address and a service's layers; its packages, files, API layers and servers are offered apart.
  * 108 `people` reads who shares a map. 119 `fromMaps` copies the other maps' layers. 135 `saved` reads the phone's
- * saved places. */
-export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "fromMaps" | "coverage" | "pairing" | "people" | "regionPackages" | "saved";
+ * saved places. 136 `publish` goes to the Gallery. */
+export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "fromMaps" | "coverage" | "pairing" | "people" | "regionPackages" | "saved" | "publish";
 
 /** 112 Why a region package did not come: no room, the host said no, the connection, a wrong size or an unreadable zip. */
 export class RegionFailed extends Error {
@@ -182,6 +182,12 @@ export interface Backend {
   coverage(mapID: string): Promise<Answer<CoverageSummary>>;
   coveragePlaces(): Promise<Answer<CoveragePlaces>>;
   startPlaces(kind: string, query: string): Promise<Answer<FoundPlace[]>>;
+  /** 136 The Gallery sheet as the phone would open it, and the publication it asks its person about. */
+  publishOffer(mapID: string): Promise<Answer<PublishOffer>>;
+  publishSend(mapID: string, request: PublishRequest): Promise<Answer<PublishStarted>>;
+  /** How the phone's person has answered, polled; 410 once the phone forgot the ask. */
+  publishAnswer(mapID: string, ask: string): Promise<Answer<PublishAnswer>>;
+  publishCancel(mapID: string, ask: string): Promise<Answer<null>>;
   /** 135 What the phone saved, read only; a shape comes apart, by the row's id. */
   saved(): Promise<Answer<SavedListing>>;
   savedFeature(id: string): Promise<Answer<SavedShape>>;
