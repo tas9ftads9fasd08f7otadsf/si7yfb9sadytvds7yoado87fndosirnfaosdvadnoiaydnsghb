@@ -49,6 +49,17 @@ export function swiftBuildArgs(dir, scratch = SCRATCH) {
 
 export const sha256Of = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
+/** 156 Brotli bytes the module may weigh: 3.5 MB without ICU's data, 12.2 MB with it. */
+export const SIZE_BUDGET = 5_000_000;
+
+/** 156 Fails a module heavier than the budget, as one that links ICU's language data again is. */
+export function verifySize(size, budget = SIZE_BUDGET) {
+  if (size.brotli > budget) {
+    throw new Error(`riki-core.wasm is ${size.brotli} bytes brotli, over the budget of ${budget}: `
+      + "rikimaps' tools/linux-core/wasm/README.md says what the module may not carry, ICU's data first");
+  }
+}
+
 /** Raw and brotli sizes, the second as a server sends the module. */
 export function sizes(bytes) {
   const brotli = brotliCompressSync(bytes, { params: { [constants.BROTLI_PARAM_QUALITY]: 11 } }).length;
@@ -197,6 +208,7 @@ export async function build({ dir, pin, out, env = process.env }) {
   const sum = sha256Of(bytes);
   verifyPinned(sum, pin.sha256);
   const size = { ...sizes(bytes), unoptimised: (await readFile(built)).length };
+  verifySize(size);
   await writeFile(`${wasm}.sha256`, `${sum}  riki-core.wasm\n`);
   await writeFile(path.join(out, "riki-core.size.json"), `${JSON.stringify({ version: version.version, ready: version.ready ?? [], ...size }, null, 2)}\n`);
   await rm(scratch, { recursive: true, force: true });

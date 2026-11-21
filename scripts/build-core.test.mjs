@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import account from "../e2e/fixtures/cloud-account.json";
 import { fakeCoreWasm } from "../e2e/fake-core.mjs";
-import { CONTRACT, SCRATCH, checkoutProblem, pinFor, readPin, sha256Of, sizes, smoke, swiftBuildArgs, verifyPinned, verifySum } from "./build-core.mjs";
+import { CONTRACT, SCRATCH, SIZE_BUDGET, checkoutProblem, pinFor, readPin, sha256Of, sizes, smoke, swiftBuildArgs, verifyPinned, verifySize, verifySum } from "./build-core.mjs";
 
 const shimArgs = vi.hoisted(() => []);
 vi.mock("@bjorn3/browser_wasi_shim", async (original) => {
@@ -72,6 +72,14 @@ describe("checksums", () => {
     expect(() => verifyPinned("a".repeat(64), null)).not.toThrow();
     expect(() => verifyPinned("a".repeat(64), "a".repeat(64))).not.toThrow();
     expect(() => verifyPinned("a".repeat(64), "b".repeat(64))).toThrow("rikiCore.sha256");
+  });
+
+  // 156 the module weighed 12.2 MB brotli while it carried ICU's language data
+  it("holds the module to its budget, which a module with ICU's data is over", () => {
+    expect(() => verifySize({ raw: 13_127_197, brotli: 3_508_066 })).not.toThrow();
+    expect(() => verifySize({ raw: 44_707_889, brotli: 12_150_233 })).toThrow(/over the budget of 5000000.*ICU/);
+    expect(SIZE_BUDGET).toBe(5_000_000);
+    expect(() => verifySize({ raw: 10, brotli: 11 }, 10)).toThrow("11 bytes brotli");
   });
 
   it("counts a module's bytes raw and brotli", () => {

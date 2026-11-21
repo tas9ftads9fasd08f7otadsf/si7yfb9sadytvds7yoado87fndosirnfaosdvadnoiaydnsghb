@@ -62,7 +62,7 @@ core only once `rikiCore.ref` in `package.json` pins a rikimaps commit: `npm run
 it (`RIKIMAPS_DIR` is a checkout of rikimaps at that commit, read only; the build writes `dist/riki-core/` here:
 the module, its `.sha256` and its size). It runs rikimaps' documented swift build
 (`tools/linux-core/wasm/README.md`, Swift 6.2 and its WebAssembly SDK, both checked against their pinned sums),
-`wasm-opt -Oz` from the `binaryen` package, and loads the module as the site does, its name as the shim's one argument
+`wasm-opt -Oz` from the `binaryen` package, holds it to 5 MB brotli (`SIZE_BUDGET`; it is 3.5 MB without ICU's data, rikimaps 3551), and loads the module as the site does, its name as the shim's one argument
 (Foundation traps without an `argv[0]`), calling `riki_version` and, once it is ready, `riki_maps`. The order is
 `npm run build:core`, `npm run build:web`, `npm run pack:web`; until a commit is pinned `pack:web` says so and packs
 without a core, and the deploy refuses such a zip unless it is run by hand for a test address (`without_core`). To
