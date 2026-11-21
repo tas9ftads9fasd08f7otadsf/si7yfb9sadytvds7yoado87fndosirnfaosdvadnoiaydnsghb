@@ -6,7 +6,9 @@ import { type ReactNode, useEffect, useRef } from "react";
 export function Modal({ labelledBy, onClose, children }: { labelledBy: string; onClose: () => void; children: ReactNode }) {
   const frame = useRef<HTMLDialogElement>(null);
   const closing = useRef(onClose);
-  closing.current = onClose;
+  useEffect(() => {
+    closing.current = onClose;
+  });
   useEffect(() => {
     const dialog = frame.current;
     if (!dialog) return;
