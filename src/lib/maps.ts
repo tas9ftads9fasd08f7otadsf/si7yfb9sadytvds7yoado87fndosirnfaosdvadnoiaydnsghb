@@ -100,3 +100,29 @@ export function changedWord(changedAt: number | undefined, now = new Date(), loc
   return then.toLocaleDateString(locale, { day: "numeric", month: "short",
     ...(then.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }) });
 }
+
+export type MapsView = "cards" | "list";
+
+/** 149 Where the browser keeps whether the Maps screen draws cards or a list. */
+export const MAPS_VIEW_KEY = "riki-maps-view";
+
+export function readMapsView(): MapsView {
+  try {
+    return localStorage.getItem(MAPS_VIEW_KEY) === "list" ? "list" : "cards";
+  } catch {
+    return "cards";
+  }
+}
+
+export function keepMapsView(view: MapsView) {
+  try {
+    localStorage.setItem(MAPS_VIEW_KEY, view);
+  } catch { /* the choice lasts until the page is closed */ }
+}
+
+/** 149 The list's columns after the map's own: each is there only if some map has the field that feeds it. */
+export function listColumns(maps: SharedMap[]) {
+  return { styles: maps.some((map) => map.styles != null), shared: maps.some((map) => map.role != null || map.people != null),
+    offline: maps.some((map) => map.offline != null), size: maps.some((map) => heldWord(map) != null),
+    changed: maps.some((map) => map.changedAt != null) };
+}

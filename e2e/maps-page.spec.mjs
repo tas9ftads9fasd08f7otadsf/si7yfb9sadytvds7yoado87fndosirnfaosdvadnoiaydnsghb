@@ -126,6 +126,74 @@ test("Edit opens Edit map and More duplicates the map", async ({ page }) => {
   await expect(page.locator("#mapName")).not.toHaveText("Bratislava");
 });
 
+const row = (page, name) => page.locator("#mapsList [role=row]").filter({ has: page.locator(".tile-name", { hasText: name }) });
+
+// 149: List shows W4's table, a row for each map with a column for each field the phone sent; the choice is kept.
+test("List shows a row for each map, with the fields the phone sent, and the choice is kept", async ({ page, request }) => {
+  await phone(request, "sample-maps");
+  await openMaps(page);
+  await expect(page.locator("#mapsViewCards")).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#mapsViewList").click();
+  await expect(page.locator("#mapsCards")).toHaveCount(0);
+  await expect(page.getByRole("table", { name: "Maps" }).getByRole("columnheader")).toHaveText(
+    ["Map", "Styles", "Layers", "Shared", "On the phone", "Size", "Changed"]);
+  await expect(page.locator("#mapsList [role=row]")).toHaveCount(8);
+  const doprava = row(page, "Doprava");
+  await expect(doprava).toContainText("Shared with 3 · Owner");
+  await expect(doprava).toContainText("Ready offline");
+  await expect(doprava).toContainText("1.2 GB");
+  await expect(doprava).toContainText("Today");
+  await expect(row(page, "Riki Maps")).toContainText("Yesterday");
+  await expect(row(page, "Historická 2")).toContainText("View only");
+  await expect(row(page, "Historická 2").locator("[data-column=size]")).toHaveText("");
+  expect(await page.evaluate(() => localStorage.getItem("riki-maps-view"))).toBe("list");
+  await page.reload();
+  await page.locator("#mapsList").waitFor();
+  await expect(page.locator("#mapsViewList")).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#mapsViewCards").click();
+  await expect(page.locator("#mapsCards .map-tile")).toHaveCount(7);
+});
+
+// 149: a row opens its map; the name is a link, so a Ctrl-click opens a tab.
+test("a row opens the map, and a modified click on its name opens a tab", async ({ page, context, request }) => {
+  await phone(request, "sample-maps");
+  await openMaps(page);
+  await page.locator("#mapsViewList").click();
+  const opened = context.waitForEvent("page");
+  await row(page, "Fitness").locator(".tile-name").click({ modifiers: ["Control"] });
+  const other = await opened;
+  expect(new URL(other.url()).pathname).toBe("/maps/6F1E2A10-0000-4000-8000-00000000F05");
+  await other.close();
+  await expect(page).toHaveURL(/\/maps#/);
+  await row(page, "Fitness").locator("[data-column=changed]").click();
+  await expect(page).toHaveURL(/\/maps\/6F1E2A10-0000-4000-8000-00000000F05/);
+  await expect(page.locator("#mapName")).toHaveText("Fitness");
+});
+
+// 149: the field, the filters and the empty state work on the list as on the cards.
+test("the list narrows with the field and the filters, and says No map named for an empty filter", async ({ page, request }) => {
+  await phone(request, "sample-maps");
+  await openMaps(page);
+  await page.locator("#mapsViewList").click();
+  await page.locator("#mapsFilter-shared").click();
+  await expect(page.locator("#mapsList [role=row] .tile-name")).toHaveText(["Fitness", "Historická 2"]);
+  await page.locator("#mapsFilter-all").click();
+  await page.locator("#mapsFind").fill("volcano");
+  await expect(page.locator("#mapsNone")).toContainText("No map named “volcano”");
+  await expect(page.locator("#mapsList")).toHaveCount(0);
+  await page.locator("#mapsClear").click();
+  await expect(page.locator("#mapsList [role=row]")).toHaveCount(8);
+});
+
+// 149: a phone that sent no new fields has a list of the map and its layers alone.
+test("an older phone's list has only the Map and Layers columns", async ({ page, request }) => {
+  await phone(request, "old-maps");
+  await openMaps(page);
+  await page.locator("#mapsViewList").click();
+  await expect(page.getByRole("table", { name: "Maps" }).getByRole("columnheader")).toHaveText(["Map", "Layers"]);
+  await expect(page.locator("#mapsFilter-all")).toHaveCount(0);
+});
+
 // 148: a browser that only looks sees the cards, and no Edit, Export or More.
 test("a looking browser sees the cards and no Edit, Export, More or New map", async ({ page }) => {
   await openViewer(page, "/");

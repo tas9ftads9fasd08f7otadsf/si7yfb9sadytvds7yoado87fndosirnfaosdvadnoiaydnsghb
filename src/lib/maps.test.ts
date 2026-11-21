@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { NO_ASK, changedWord, filterCounts, heldWord, offlineWord, sharingLine, shownMaps, styleLinks } from "./maps";
+import { describe, expect, it, vi } from "vitest";
+import { NO_ASK, changedWord, filterCounts, heldWord, keepMapsView, listColumns, offlineWord, readMapsView, sharingLine,
+  shownMaps, styleLinks } from "./maps";
 import type { SharedMap } from "./types";
 import { ENGLISH } from "./words";
 
@@ -101,6 +102,35 @@ describe("filterCounts", () => {
   it("counts each filter and knows whether the phone sent roles", () => {
     expect(filterCounts(shelf)).toEqual({ all: 5, mine: 3, shared: 2, knowsRoles: true });
     expect(filterCounts([map()]).knowsRoles).toBe(false);
+  });
+});
+
+describe("the List view", () => {
+  // 149 Cards until the browser chose the list; a browser that keeps nothing still draws cards
+  it("keeps the choice of Cards or List in the browser", () => {
+    localStorage.clear();
+    expect(readMapsView()).toBe("cards");
+    keepMapsView("list");
+    expect(localStorage.getItem("riki-maps-view")).toBe("list");
+    expect(readMapsView()).toBe("list");
+    keepMapsView("cards");
+    expect(readMapsView()).toBe("cards");
+    localStorage.setItem("riki-maps-view", "grid");
+    expect(readMapsView()).toBe("cards");
+  });
+
+  it("draws cards where the browser's storage cannot be read", () => {
+    const blocked = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+    expect(readMapsView()).toBe("cards");
+    blocked.mockRestore();
+  });
+
+  // 149 a column is there only where some map has the field that feeds it
+  it("lists a column only where some map has its field", () => {
+    expect(listColumns(shelf)).toEqual({ styles: false, shared: true, offline: false, size: true, changed: true });
+    expect(listColumns([map({ offline: "ready", styles: [] })])).toEqual({ styles: true, shared: false, offline: true,
+      size: false, changed: false });
+    expect(listColumns([map()])).toEqual({ styles: false, shared: false, offline: false, size: false, changed: false });
   });
 });
 
