@@ -17,6 +17,8 @@ test("the unlock address leaves no key behind", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/maps/${TATRAS}#`));
   expect(await page.evaluate(() => history.length)).toBeLessThanOrEqual(2);
   await page.goBack();
+  // 154 bug: going back reopens the link, which checks the key again; closing mid-check hung teardown
+  await page.waitForLoadState("networkidle");
   expect(page.url()).not.toContain("7Q4K29");
 });
 
@@ -71,7 +73,8 @@ test("back and forward walk the screens", async ({ page }) => {
   await expect.poll(() => path(page)).toBe(`/maps/${TATRAS}`);
   await page.goBack();
   await expect(page.locator("#editTitle")).toHaveText("Edit map");
-  await expect(page.locator("#railMap")).toHaveAttribute("aria-current", "page");
+  // 151 Edit map lights the rail's Maps item (§1.2)
+  await expect(page.locator("#railMaps")).toHaveAttribute("aria-current", "page");
   await page.goForward();
   await expect(page.locator("#editPage")).toHaveClass(/ahead/);
   await page.goForward();

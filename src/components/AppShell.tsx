@@ -89,6 +89,13 @@ export function AppShell() {
     document.body.classList.toggle("editing", editing);
   }, [editing]);
 
+  // 151 The place panel covers the map's right edge, so its controls move left of it, as W2 and W13 draw.
+  const hasPanel = useViewer((state) => state.place != null && !state.editing
+    && !["details", "data", "settings", "maps"].includes(state.route.screen));
+  useEffect(() => {
+    document.body.classList.toggle("place-open", hasPanel);
+  }, [hasPanel]);
+
   return (
     <>
       <TopBar />

@@ -293,3 +293,16 @@ test("Add layer's window takes focus and keeps Tab inside it", async ({ page }) 
       .toBe(true);
   }
 });
+
+// 150 bug: a reload opened the side bar again, though the viewer had closed it
+test("the side bar stays as the viewer left it across a reload", async ({ page }) => {
+  await openViewer(page);
+  await page.getByRole("button", { name: "Hide the side bar" }).click();
+  await expect(page.locator("#side")).toBeHidden();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Show the side bar" })).toBeVisible();
+  await expect(page.locator("#side")).toBeHidden();
+  await page.getByRole("button", { name: "Show the side bar" }).click();
+  await page.reload();
+  await expect(page.locator("#side")).toBeVisible();
+});

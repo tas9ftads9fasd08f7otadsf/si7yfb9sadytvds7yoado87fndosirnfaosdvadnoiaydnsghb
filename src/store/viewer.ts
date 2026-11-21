@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { Speeds } from "@/lib/traffic";
 import { edited } from "@/lib/coverage";
 import { backend } from "@backend";
-import { DIRECT_KEY } from "@/lib/page";
+import { DIRECT_KEY, SIDE_KEY } from "@/lib/page";
 import { CoreNotReady, NotOnSite, type Answer, type ChangedElsewhere, type Feature, type Saved } from "@/backend/types";
 import type { Edit, Shelving } from "@/lib/edit";
 import { HEARTBEAT_EVERY, PLACE_LIVE_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
@@ -244,6 +244,9 @@ export function restoreKept() {
   try {
     set({ tilesDirect: localStorage.getItem(DIRECT_KEY) === "1" });
   } catch { /* no storage: through the phone */ }
+  try {
+    if (localStorage.getItem(SIDE_KEY) === "0") set({ sideShown: false });
+  } catch { /* no storage: the side bar opens */ }
   applyTheme();
 }
 
@@ -380,7 +383,8 @@ export function readAddress() {
 }
 
 function followRoute(route: Route) {
-  set({ route, editing: route.screen === "edit",
+  // 151 The layer switcher is open exactly where the address says so, /maps/<map>/layers.
+  set({ route, editing: route.screen === "edit", switcherOpen: route.screen === "map" && route.panel === "layers",
     serverID: route.screen === "servers" ? route.server ?? null : null,
     serverPart: route.screen === "servers" ? route.part ?? "layers" : "layers" });
   followSaved(route);
@@ -519,6 +523,9 @@ export function setLayerShown(id: string, isShown: boolean) {
 
 export function showSide(sideShown: boolean) {
   set({ sideShown });
+  try {
+    localStorage.setItem(SIDE_KEY, sideShown ? "1" : "0");
+  } catch { /* kept for this visit only */ }
   setTimeout(() => mapControl()?.resize(), 220);
 }
 
@@ -736,7 +743,17 @@ export function showEditTab(tab: EditTab) {
   if (mapID) go({ screen: "edit", map: mapID, tab });
 }
 
-export const showSwitcher = (switcherOpen: boolean) => set({ switcherOpen });
+export function showSwitcher(isOpen: boolean) {
+  const { route } = get();
+  if (route.screen !== "map") {
+    set({ switcherOpen: isOpen });
+    return;
+  }
+  const next = { ...route };
+  if (isOpen) next.panel = "layers";
+  else delete next.panel;
+  go(next, { replace: true });
+}
 export const toggleMapCard = () => set({ mapCardOpen: !get().mapCardOpen });
 export const showSideStyles = (sideStyles: boolean) => set({ sideStyles });
 /** 97 New map's window, over the screen it was opened from; its address is /new. */
