@@ -17,6 +17,8 @@ test("the unlock address leaves no key behind", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/maps/${TATRAS}#`));
   expect(await page.evaluate(() => history.length)).toBeLessThanOrEqual(2);
   await page.goBack();
+  // 154 bug: going back reopens the link, which checks the key again; closing mid-check hung teardown
+  await page.waitForLoadState("networkidle");
   expect(page.url()).not.toContain("7Q4K29");
 });
 
