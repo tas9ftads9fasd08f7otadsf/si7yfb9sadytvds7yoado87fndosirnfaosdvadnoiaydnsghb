@@ -278,3 +278,16 @@ test("the side bar lists the styles as cards and the rail's Search finds the fie
   await expect(page.locator("#data")).toHaveCount(0);
   await expect(page.locator("#search")).toBeFocused();
 });
+
+// 152 Add layer keeps focus inside its window too, starting on its sources
+test("Add layer's window takes focus and keeps Tab inside it", async ({ page }) => {
+  await openViewer(page, "/e/7q4-k29");
+  await page.locator("#current .add-layer").click();
+  const dialog = page.getByRole("dialog", { name: "Add layer" });
+  await expect(dialog).toBeVisible();
+  expect(await dialog.evaluate((box) => box.contains(document.activeElement))).toBe(true);
+  for (let step = 0; step < 30; step += 1) {
+    await page.keyboard.press("Tab");
+    expect(await dialog.evaluate((box) => box.contains(document.activeElement))).toBe(true);
+  }
+});
