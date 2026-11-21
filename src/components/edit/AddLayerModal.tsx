@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toggleAddingPackages, useViewer } from "@/store/viewer";
 import { MarkTile } from "../ui/MarkTile";
+import { Modal } from "../ui/Modal";
 import { Sym } from "../ui/Sym";
 import { type AddSource, AddLayer, addSources } from "./AddLayer";
 
@@ -26,11 +27,8 @@ export function AddLayerModal() {
   if (!isOpen) return null;
   const shown = sources.includes(source) ? source : sources[0] ?? "tile";
   return (
-    <div className="scrim" onPointerDown={(event) => {
-      if (event.target === event.currentTarget) toggleAddingPackages();
-    }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="addLayerTitle" id="addLayerDialog" className="modal wide"
-        onKeyDown={(event) => { if (event.key === "Escape") toggleAddingPackages(); }}>
+    <Modal labelledBy="addLayerTitle" onClose={toggleAddingPackages}>
+      <div id="addLayerDialog" className="modal wide">
         <nav className="sources" aria-labelledby="addLayerTitle">
           <h1 id="addLayerTitle">{words.addLayer}</h1>
           {sources.map((each) => {
@@ -54,6 +52,6 @@ export function AddLayerModal() {
           <div className="source-part" id="addLayerPart"><AddLayer source={shown} /></div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
