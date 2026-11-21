@@ -291,6 +291,15 @@ describe("the core's pipeline", () => {
     expect(core).not.toMatch(/token:\s*["']?[^$\s"']/);
   });
 
+  // 146 a core cut is built and tested on Linux by hand, on its branch, before it is pinned
+  it("may be run by hand on another rikimaps branch or commit, built as that commit", () => {
+    expect(core).toMatch(/workflow_dispatch:\s*\n(\s*#.*\n)*\s*inputs:\s*\n\s*ref:/);
+    expect(core).toContain("ASKED: ${{ inputs.ref }}");
+    expect(core).toContain('echo "ref=${ASKED:-$(node -p');
+    expect(core).toContain('echo "RIKI_CORE_REF=$(git -C rikimaps rev-parse HEAD)" >> "$GITHUB_ENV"');
+    expect(core.indexOf("RIKI_CORE_REF=")).toBeLessThan(core.indexOf("npm run build:core"));
+  });
+
   it("caches the toolchain and the SDK, and builds with the script", () => {
     expect(core).toContain("~/.cache/riki-swift");
     expect(core).toContain("~/.swiftpm/swift-sdks");
