@@ -82,7 +82,10 @@ test("the search finds a name on the map and opens it in the place panel", async
   await expect(page).toHaveURL(/\/search\/chata#/);
   const results = page.locator("#searchResults");
   await expect(results).toContainText("Results for “chata”");
-  await results.getByRole("button", { name: /Chata pod Rysmi/ }).click();
+  // 144 bug: the stand-in phone's hut of the same name came in at times before the click, and two matched
+  const huts = results.getByRole("button", { name: /Chata pod Rysmi/ });
+  await expect(huts).toHaveCount(2);
+  await huts.first().click();
   await expect(page.locator("#placePanel h2")).toHaveText("Chata pod Rysmi");
   await expect(page.locator("#placePanel .place-foot")).toContainText("Huts");
   await page.locator("#search").press("Escape");
