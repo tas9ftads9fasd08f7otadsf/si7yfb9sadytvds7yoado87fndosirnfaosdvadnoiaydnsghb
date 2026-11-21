@@ -111,7 +111,7 @@ function stack(options: Options = {}) {
       fetchAllRecordZones: async () => ({ zones: account.zones.shared.map((each) => ({ zoneID: each.zoneID })) }) }
   } as unknown as CKContainer;
   const cloudkit: CloudKitJS = { configure: () => {}, getDefaultContainer: () => container };
-  const config = { container: "iCloud.x", apiToken: "T", environment: "development" as const, tilesBase: "https://tiles.example", regionsCatalog: options.catalog ?? "" };
+  const config = { container: "iCloud.x", apiToken: "T", environment: "development" as const, regionsCatalog: options.catalog ?? "" };
   const cloud = new Cloud(async () => cloudkit, async () => config);
   const seen: unknown[][] = [];
   const core: Core = {
@@ -228,8 +228,8 @@ describe("WebBackend's reads", () => {
     expect((await backend.map("6F1E2A10-0000-4000-8000-000000000001")).name).toBe("High Tatras");
     const style = await backend.style({ mapID: "M", styleID: "B1", hidden: ["L2"], theme: "dark", tiles: "3x2" });
     expect(style).toEqual({ ok: true, value: account.core.riki_style });
-    // 110 the glyphs and the sprite are the site's own, under its path; 112 nothing is held
-    expect(seen.at(-1)).toEqual(["M", "B1", { tilesBase: "https://tiles.example", glyphsBase: `${location.origin}/editor/glyphs`,
+    // 110 the glyphs and the sprite are the site's own, under its path; 112 nothing is held; 147 no tiles host
+    expect(seen.at(-1)).toEqual(["M", "B1", { glyphsBase: `${location.origin}/editor/glyphs`,
       spriteBase: `${location.origin}/editor/sprites/temaki-sprite`, stored: [], theme: "dark", hidden: ["L2"], tiles: "3x2" }]);
     expect(changes.mock.calls.length).toBe(reads);
   });
@@ -237,14 +237,16 @@ describe("WebBackend's reads", () => {
   // 85 a layer on a host that refuses browsers is not drawn on the site, and its layer is named
   it("leaves a layer on a host that refuses browsers out of its style and names it", async () => {
     const built = { version: 8, sources: { "riki-custom-l1": { type: "raster", tiles: ["https://closed.example/{z}/{x}/{y}.png"] },
-      "riki-base": { type: "vector", url: "pmtiles://https://tiles.example/a.pmtiles" } },
+      // 147 Riki's data is a stored region package, never a tiles host, and is never asked
+      "riki-base": { type: "vector", url: "pmtiles://riki-store/tatry/base/a.pmtiles" } },
       layers: [{ id: "l1", type: "raster", source: "riki-custom-l1" }] };
     const asked = vi.fn(async (address: string) => !address.startsWith("https://closed.example"));
     const { backend } = stack({ built, reach: { answers: asked } });
     const style = await backend.style({ mapID: "M", styleID: null, hidden: [], theme: "light", tiles: "1" });
     expect(style).toMatchObject({ ok: true, value: { sources: { "riki-base": {} }, layers: [],
       metadata: { "riki:undrawn": ["l1"] } } });
-    expect(asked).not.toHaveBeenCalledWith("pmtiles://https://tiles.example/a.pmtiles");
+    expect(asked).toHaveBeenCalledTimes(1);
+    expect(asked).toHaveBeenCalledWith("https://closed.example/{z}/{x}/{y}.png");
   });
 
   it("reads again after CloudKit says a map changed, and tells the page", async () => {

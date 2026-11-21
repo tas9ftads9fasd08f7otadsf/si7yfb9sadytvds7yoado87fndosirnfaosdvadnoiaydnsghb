@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # A release's web-site.zip onto the PHP server over FTPS, with the config.php this run writes.
 # Reads FTPS_HOST, FTPS_USER, FTPS_PASSWORD, FTPS_DIR, FTPS_PORT, FTPS_CA_FILE, FTPS_CERT_NAME,
-# ICLOUD_API_TOKEN, ICLOUD_CONTAINER, TILES_BASE and REGIONS_CATALOG (README).
+# ICLOUD_API_TOKEN, ICLOUD_CONTAINER and REGIONS_CATALOG (README).
 # Needs lftp, openssl, unzip, node and php on the PATH.
 set -euo pipefail
 
@@ -30,16 +30,12 @@ $container = trim((string) getenv('ICLOUD_CONTAINER')) ?: 'iCloud.com.rikimaps.r
 if (!preg_match('/^iCloud\.[A-Za-z0-9._-]+\z/', $container)) {
     $fail('ICLOUD_CONTAINER is not a CloudKit container identifier (iCloud.com.example.app)');
 }
-$tiles = rtrim(trim((string) getenv('TILES_BASE')), '/');
-if ($tiles !== '' && !preg_match('~^https://[^/?#\s]+(/[^?#\s]*)?\z~', $tiles)) {
-    $fail('TILES_BASE must be an https:// URL without query or fragment, such as https://tiles.example.com');
-}
 // 112 Region packages come through the site's server from the catalog this names; left out, the site offers none.
 $regions = trim((string) getenv('REGIONS_CATALOG'));
 if ($regions !== '' && !preg_match('~^https://[^/?#\s]+(/[^?#\s]*)?\z~', $regions)) {
     $fail('REGIONS_CATALOG must be an https:// URL without query or fragment, such as https://example.com/maps.json');
 }
-$config = ['container' => $container, 'apiToken' => $token, 'environment' => 'production', 'tilesBase' => $tiles];
+$config = ['container' => $container, 'apiToken' => $token, 'environment' => 'production'];
 if ($regions !== '') {
     $config['regionsCatalog'] = $regions;
 }

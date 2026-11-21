@@ -27,7 +27,7 @@ if (!existsSync(path.join(folder, "out", "glyphs"))) {
 const hostPort = Number(port) + 10;
 startRegionHost(hostPort);
 const config = { container: "iCloud.com.rikimaps.rikimaps.maps", apiToken: "test-token", environment: "development",
-  tilesBase: "https://tiles.example", regionsCatalog: `http://127.0.0.1:${hostPort}/maps.json`,
+  regionsCatalog: `http://127.0.0.1:${hostPort}/maps.json`,
   regionsFiles: `http://127.0.0.1:${hostPort}/download?id={id}` };
 writeFileSync(path.join(folder, "config.php"), `<?php return json_decode('${JSON.stringify(config)}', true);\n`);
 const php = spawn("php", ["-S", `127.0.0.1:${port}`, "-t", served, path.join(folder, "index.php")], { stdio: "inherit" });
