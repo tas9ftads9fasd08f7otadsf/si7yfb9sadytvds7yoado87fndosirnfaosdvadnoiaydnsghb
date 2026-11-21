@@ -32,7 +32,7 @@ function ShownMap() {
 function SideToggle() {
   const words = useViewer((state) => state.words);
   const shown = useViewer((state) => state.sideShown);
-  const beside = useViewer((state) => !state.editing && !["data", "settings", "details"].includes(state.route.screen));
+  const beside = useViewer((state) => !state.editing && !["maps", "data", "settings", "details"].includes(state.route.screen));
   if (!beside) return null;
   const label = `${shown ? words.hideSide : words.showSideBar} ( [ )`;
   return (

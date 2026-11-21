@@ -135,6 +135,20 @@ function NewMap() {
   );
 }
 
+/** All maps in their folders and order, New map and Import, and the servers: the side bar's, and 148 W17's foot. */
+export function Others() {
+  const words = useViewer((state) => state.words);
+  const maps = useViewer((state) => state.device?.maps) ?? [];
+  return (
+    <div id="others">
+      {maps.length ? <h2 className="title">{words.allMaps}</h2> : null}
+      {maps.length ? <MapShelf maps={maps} /> : null}
+      <NewMap />
+      <ServerCards />
+    </div>
+  );
+}
+
 export function MapsPage() {
   const words = useViewer((state) => state.words);
   const device = useViewer((state) => state.device);
@@ -142,6 +156,8 @@ export function MapsPage() {
   const onMap = useViewer((state) => railItemOf(state.route) === "map");
   const searching = useViewer((state) => state.route.screen === "search");
   const showsSaved = useViewer((state) => state.route.screen === "saved");
+  // 148 The Maps screen carries the list itself.
+  const onMaps = useViewer((state) => state.route.screen === "maps");
   const maps = device?.maps ?? [];
   if (searching) return <div id="current"><SearchResults /></div>;
   if (showsSaved) return <div id="current"><SavedPage /></div>;
@@ -151,14 +167,7 @@ export function MapsPage() {
         {device && maps.length === 0 ? <div className="empty">{words.nothing}</div> : null}
         {shown ? <CurrentMap shared={shown} /> : null}
       </div>
-      {shown && onMap ? null : (
-        <div id="others">
-          {maps.length ? <h2 className="title">{words.allMaps}</h2> : null}
-          {maps.length ? <MapShelf maps={maps} /> : null}
-          <NewMap />
-          <ServerCards />
-        </div>
-      )}
+      {(shown && onMap) || onMaps ? null : <Others />}
     </>
   );
 }

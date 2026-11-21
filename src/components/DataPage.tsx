@@ -5,9 +5,7 @@ import { DATA_TABS, type DataTab } from "@/lib/route";
 import { heldSize } from "@/lib/size";
 import type { Region, SharedLayer } from "@/lib/types";
 import { filledIn } from "@/lib/words";
-import { downloadRegion, go, loadRegionList, loadServers, offers, openMap, openServer, useViewer } from "@/store/viewer";
-import { MapMark, useLayerCount } from "./MapShelf";
-import { HeldPill, OfflinePill, StyleChips } from "./MapPills";
+import { downloadRegion, go, loadRegionList, loadServers, offers, openServer, useViewer } from "@/store/viewer";
 import { MarkTile } from "./ui/MarkTile";
 
 interface Row {
@@ -55,7 +53,6 @@ export function DataPage() {
   const canEdit = useViewer((state) => state.editToken != null);
   const servers = useViewer((state) => state.servers?.servers);
   const regionList = useViewer((state) => state.regionList);
-  const layerCount = useLayerCount();
   const isOpen = route.screen === "data";
   const showsServers = canEdit && offers("servers");
   useEffect(() => {
@@ -70,16 +67,11 @@ export function DataPage() {
     ...(regionList?.downloading ?? []).map((region) => ({ region, state: "downloading" as const })),
     ...(regionList?.downloadable ?? []).map((region) => ({ region, state: "downloadable" as const }))];
   const tabs = DATA_TABS.filter((tab) => tab !== "servers" || showsServers);
-  const tab: DataTab = tabs.includes(route.tab) ? route.tab : "maps";
-  const counts: Record<DataTab, number | null> = { maps: maps.length, layers: layers.length,
+  const tab: DataTab = tabs.includes(route.tab) ? route.tab : "layers";
+  const counts: Record<DataTab, number | null> = { layers: layers.length,
     servers: servers?.length ?? null, regions: regionList ? regions.length : null };
 
-  const rows: Row[] = tab === "maps" ? maps.map((map) => ({
-    key: map.id, mark: <MapMark shared={map} />, name: map.name, sub: map.stackName,
-    cells: [layerCount(map.layers.length), map.stackName ?? ""],
-    pill: map.id === mapID ? { text: words.onMapNow, tone: "on" as const } : undefined, open: () => openMap(map.id),
-    chips: <StyleChips shared={map} />, tags: <><OfflinePill shared={map} /><HeldPill shared={map} /></> }))
-    : tab === "layers" ? layers.map(({ layer, maps: holding, held }) => ({
+  const rows: Row[] = tab === "layers" ? layers.map(({ layer, maps: holding, held }) => ({
       key: `${layer.name}/${layer.kind}`, mark: <MarkTile symbol={layer.symbol} small />, name: layer.name,
       sub: layer.kind, cells: [layer.kind, String(holding.length)], size: heldSize(heldBytes(held)),
       pill: { text: holding.slice(0, 2).join(", ") + (holding.length > 2 ? "…" : ""), tone: "plain" as const } }))
@@ -94,7 +86,7 @@ export function DataPage() {
             : state === "downloading" ? { text: words.downloading, tone: "busy" as const } : undefined,
           act: state === "downloadable" && canEdit ? { text: words.download, run: () => void downloadRegion(region) }
             : undefined }));
-  const heads: Record<DataTab, string[]> = { maps: [words.maps, words.layers, words.folder, ""],
+  const heads: Record<DataTab, string[]> = {
     layers: [words.layers, words.kind, words.usedIn, ""], servers: [words.servers, words.kind, "", ""],
     regions: [filledIn(words.regionsOf, "map", shownName), words.maps, "", ""] };
   // 141 A Size column only where some row has a size: an older phone sends none, and the column is left out.

@@ -8,6 +8,7 @@ import { drawSaved, drawStyle, loadWords, readAddress, restoreKept, showEdit, st
 import { AddLayerModal } from "./edit/AddLayerModal";
 import { DataPage } from "./DataPage";
 import { DetailsScreen } from "./edit/DetailsScreen";
+import { MapsScreen } from "./list/MapsPage";
 import { LayerSwitcher, LivePreview } from "./MapLayers";
 import { NavRail } from "./NavRail";
 import { NewMapModal } from "./NewMapModal";
@@ -99,6 +100,7 @@ export function AppShell() {
       <PlacePanel />
       <DetailsScreen />
       <DataPage />
+      <MapsScreen />
       <SettingsPage />
       <NewMapModal />
       <AddLayerModal />

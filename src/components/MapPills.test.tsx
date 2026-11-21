@@ -25,7 +25,7 @@ describe("MapPills", () => {
 
   // 128 a style's chip is a link to its own address, a plain click moves without asking for a page
   it("links each style chip to its address when the ids came", () => {
-    useViewer.setState({ route: { screen: "data", tab: "maps" } });
+    useViewer.setState({ route: { screen: "data", tab: "layers" } });
     render(<StyleChips shared={map({ styles: ["Summer", "Winter"], styleIDs: ["s1", "s2"] })} />);
     const winter = screen.getByRole("link", { name: "Winter" });
     expect(winter.getAttribute("href")).toBe("/maps/a/style/s2");

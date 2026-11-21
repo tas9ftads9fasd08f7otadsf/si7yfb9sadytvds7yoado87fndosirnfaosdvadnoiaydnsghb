@@ -2,12 +2,12 @@ import { BASE } from "@base";
 
 /** Every screen's address, made of path segments; the camera stays in the fragment. */
 export type EditTab = "layers" | "general" | "styling" | "sharing" | "offline";
-export type DataTab = "maps" | "layers" | "servers" | "regions";
+export type DataTab = "layers" | "servers" | "regions";
 export type ServerPart = "layers" | "general" | "sharing";
 export type AddSource = "tile" | "server" | "builtin" | "file" | "copy";
 
 export const EDIT_TABS: EditTab[] = ["layers", "general", "styling", "sharing", "offline"];
-export const DATA_TABS: DataTab[] = ["maps", "layers", "servers", "regions"];
+export const DATA_TABS: DataTab[] = ["layers", "servers", "regions"];
 export const SERVER_PARTS: ServerPart[] = ["layers", "general", "sharing"];
 export const ADD_SOURCES: AddSource[] = ["tile", "server", "builtin", "file", "copy"];
 
@@ -77,7 +77,7 @@ function readSegments(segments: string[]): Route {
     case "maps":
       return second ? readMap(second, segments.slice(2)) : { screen: "maps" };
     case "data":
-      return { screen: "data", tab: isOneOf(DATA_TABS, second) ? second : "maps" };
+      return { screen: "data", tab: isOneOf(DATA_TABS, second) ? second : "layers" };
     case "servers":
       if (!second) return { screen: "servers" };
       return { screen: "servers", server: second, part: isOneOf(SERVER_PARTS, third) ? third : "layers" };

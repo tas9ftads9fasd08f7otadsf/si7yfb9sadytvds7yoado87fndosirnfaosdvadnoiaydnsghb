@@ -89,7 +89,7 @@ describe("NavRail", () => {
 
   // 107 the rail's Search puts the cursor in the top bar's field, back on the map from a page
   it("takes Search to the top bar's field", () => {
-    useViewer.setState({ mapID: "M1", route: { screen: "data", tab: "maps" } });
+    useViewer.setState({ mapID: "M1", route: { screen: "data", tab: "layers" } });
     const field = document.createElement("input");
     field.id = "search";
     document.body.append(field);

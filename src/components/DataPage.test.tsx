@@ -12,21 +12,20 @@ describe("Data", () => {
   beforeEach(() => {
     resetViewer();
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
-    history.replaceState(null, "", "/data/maps");
-    useViewer.setState({ device, mapID: "a", route: { screen: "data", tab: "maps" },
+    history.replaceState(null, "", "/data/layers");
+    useViewer.setState({ device, mapID: "a", route: { screen: "data", tab: "layers" },
       regionList: { drawn: [{ id: "r1", name: "Bratislavský kraj", box: [0, 0, 1, 1] }],
         downloadable: [{ id: "r2", name: "Trnavský kraj", box: [0, 0, 1, 1] }] } });
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  // 101 W4: the maps listed, the one on screen marked, the counts in the tabs and cards
-  it("lists the maps and counts each tab", () => {
+  // 101 W4: the counts in the tabs and cards; 148 the maps are the Maps screen's, so the tabs are Layers, Regions
+  it("counts each tab, and has no Maps tab", () => {
     render(<DataPage />);
     expect(screen.getByRole("heading", { name: "Data" })).toBeTruthy();
-    const table = screen.getByRole("table", { name: "Maps" });
-    expect(within(table).getAllByRole("row")).toHaveLength(3);
-    expect(within(table).getByText("On map now").closest("[role=row]")?.textContent).toContain("Tatras");
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Maps2", "Layers2", "Regions2"]);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Layers2", "Regions2"]);
+    expect(screen.queryByRole("tab", { name: /Maps/ })).toBeNull();
+    expect(screen.getByRole("table", { name: "Layers" })).toBeTruthy();
   });
 
   // 101 one layer however many maps hold it; the tab is an address
@@ -47,28 +46,6 @@ describe("Data", () => {
     expect(screen.getByText("Bratislavský kraj").closest("[role=row]")?.textContent).toContain("On the phone");
     const trnava = screen.getByText("Trnavský kraj").closest("[role=row]") as HTMLElement;
     expect(within(trnava).getByRole("button", { name: "Download" })).toBeTruthy();
-  });
-
-  // 101 a map's name opens it on the map
-  it("opens a map from its row", () => {
-    render(<DataPage />);
-    act(() => fireEvent.click(screen.getByRole("button", { name: "Fatra" })));
-    expect(useViewer.getState().route).toEqual({ screen: "map", map: "b" });
-  });
-
-  // 128 the Maps tab draws a map's offline state, size and style chips where the phone sent them
-  it("draws the pills and style chips beside a map that sent them", () => {
-    useViewer.setState({ device: { name: "iPad", maps: [
-      { id: "a", name: "Tatras", layers: [], offline: "ready", bytes: 1_200_000_000, styles: ["Summer"], styleIDs: ["s1"] },
-      { id: "b", name: "Fatra", layers: [] }] } });
-    render(<DataPage />);
-    const tatras = screen.getByText("Tatras").closest("[role=row]") as HTMLElement;
-    expect(within(tatras).getByText("Ready offline")).toBeTruthy();
-    expect(within(tatras).getByText("1.2 GB")).toBeTruthy();
-    expect(within(tatras).getByRole("link", { name: "Summer" }).getAttribute("href")).toBe("/maps/a/style/s1");
-    const fatra = screen.getByText("Fatra").closest("[role=row]") as HTMLElement;
-    expect(within(fatra).queryByRole("link")).toBeNull();
-    expect(fatra.querySelector(".pill-tag")).toBeNull();
   });
 
   // 141 W4's Layers table has a Size column when some layer carries bytes: a layer held by two maps shows the largest

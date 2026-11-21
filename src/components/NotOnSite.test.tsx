@@ -31,6 +31,7 @@ describe("the parts a target does not answer", () => {
 
   // 82 each of these called a write the site refuses, so the page said "Not connected"
   it("leaves out New map and Import", () => {
+    useViewer.setState({ route: { screen: "servers" } });
     render(<MapsPage />);
     expect(screen.queryByRole("button", { name: /New map/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Import/ })).toBeNull();
