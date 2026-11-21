@@ -14,6 +14,7 @@ export const ENGLISH = {
   mapsCount: "{count} maps shared by this phone", findMap: "Find a map", mapsMine: "Mine",
   mapsSharedWithMe: "Shared with me", lastChanged: "Last changed", noMapNamed: "No map named \u201C{text}\u201D",
   open: "Open", more: "More", clear: "Clear",
+  viewCards: "Cards", viewList: "List", shared: "Shared", changed: "Changed",
   sharedWith: "Shared with {count}", offlineReady: "Ready offline", offlinePartly: "Partly offline",
   offlineOnline: "Online only", offlineUpdate: "Update",
   downloading: "Downloading", about: "About", sharedBy: "Shared by {name}", appVersion: "Riki Maps {version}",

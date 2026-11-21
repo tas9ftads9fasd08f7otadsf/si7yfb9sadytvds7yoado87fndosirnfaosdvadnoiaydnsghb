@@ -2,12 +2,14 @@
 
 import { type ChangeEvent, useRef, useState } from "react";
 import { categoriesOf } from "@/lib/category";
-import { type MapsAsk, type MapsFilter, type MapsSort, NO_ASK, filterCounts, shownMaps } from "@/lib/maps";
+import { type MapsAsk, type MapsFilter, type MapsSort, type MapsView, NO_ASK, filterCounts, keepMapsView, readMapsView, shownMaps }
+  from "@/lib/maps";
 import { filledIn } from "@/lib/words";
 import { importMap, offers, openNewMap, useViewer } from "@/store/viewer";
 import { Others } from "../MapsPage";
 import { Sym } from "../ui/Sym";
 import { MapTile } from "./MapTile";
+import { MapsTable } from "./MapsTable";
 
 const SORTS: MapsSort[] = ["name", "changed", "size"];
 
@@ -64,7 +66,12 @@ export function MapsScreen() {
   const maps = useViewer((state) => state.device?.maps);
   const isOpen = useViewer((state) => state.route.screen === "maps");
   const [ask, setAsk] = useState<MapsAsk>(NO_ASK);
+  const [view, setView] = useState<MapsView>(readMapsView);
   if (!isOpen) return null;
+  const pickView = (made: MapsView) => {
+    setView(made);
+    keepMapsView(made);
+  };
   const all = maps ?? [];
   const counts = filterCounts(all);
   const categories = categoriesOf(all);
@@ -102,9 +109,19 @@ export function MapsScreen() {
               {categories.map((each) => <option key={each} value={each}>{each}</option>)}
             </select>
           ) : null}
+          <div className="view-switch" role="group" aria-label={`${words.viewCards} / ${words.viewList}`}>
+            {(["cards", "list"] as const).map((made) => (
+              <button type="button" key={made} id={made === "cards" ? "mapsViewCards" : "mapsViewList"}
+                className="tool round" aria-pressed={view === made}
+                aria-label={made === "cards" ? words.viewCards : words.viewList}
+                title={made === "cards" ? words.viewCards : words.viewList} onClick={() => pickView(made)}>
+                <Sym name={made === "cards" ? "square.grid.2x2" : "line.3.horizontal"} />
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
-      {shown.length ? (
+      {shown.length && view === "list" ? <MapsTable maps={shown} /> : shown.length ? (
         <div className="maps-grid" id="mapsCards">{shown.map((each) => <MapTile key={each.id} shared={each} />)}</div>
       ) : all.length ? (
         <div className="maps-empty" id="mapsNone" role="status">
