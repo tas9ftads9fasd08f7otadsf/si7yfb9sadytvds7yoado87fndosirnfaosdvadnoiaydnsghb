@@ -27,19 +27,19 @@ test("the side bar's maps carry their offline state and size only when the phone
   await expect(bratislava.locator(".pill-tag")).toHaveCount(0);
 });
 
-// 128 W4's Maps tab: pills beside the map, a chip opens the style by its id
-test("W4's Maps tab draws the pills, and a style chip opens that style's address", async ({ page }) => {
+// 128 the Maps tab's pills and style chips, 148 on the Maps screen's cards: a chip opens the style by its id
+test("the Maps screen's card draws the pills, and a style chip opens that style's address", async ({ page }) => {
   await openViewer(page, "/e/7q4-k29");
-  await page.locator("#railData").click();
-  const tatras = page.locator("#data [data-row]", { hasText: "High Tatras" });
+  await page.locator("#railMaps").click();
+  const tatras = page.locator("#mapsCards .map-tile", { hasText: "High Tatras" });
   await expect(tatras.locator("[data-offline=ready]")).toHaveText("Ready offline");
   await expect(tatras.locator("[data-held]")).toHaveText("1.2 GB");
   await expect(tatras.locator(".style-chip")).toHaveText(["Summer", "Winter"]);
   await expect(tatras.getByRole("link", { name: "Winter" })).toHaveAttribute("href", `/maps/${TATRAS}/style/${WINTER}`);
-  const bratislava = page.locator("#data [data-row]", { hasText: "Bratislava" });
+  const bratislava = page.locator("#mapsCards .map-tile", { hasText: "Bratislava" });
   await expect(bratislava.locator(".pill-tag, .style-chip")).toHaveCount(0);
 
   await tatras.getByRole("link", { name: "Winter" }).click();
   await expect(page).toHaveURL(new RegExp(`/maps/${TATRAS}/style/${WINTER}`));
-  await expect(page.locator("#data")).toHaveCount(0);
+  await expect(page.locator("#maps")).toHaveCount(0);
 });

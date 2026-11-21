@@ -22,7 +22,6 @@ const TABLE: [string, Route][] = [
   ["/maps/M1/layers/new/server", { screen: "map", map: "M1", modal: { kind: "add", source: "server" } }],
   ["/maps/M1/layers/new/builtin", { screen: "map", map: "M1", modal: { kind: "add", source: "builtin" } }],
   ["/maps/M1/layers/new/file", { screen: "map", map: "M1", modal: { kind: "add", source: "file" } }],
-  ["/data/maps", { screen: "data", tab: "maps" }],
   ["/data/layers", { screen: "data", tab: "layers" }],
   ["/data/servers", { screen: "data", tab: "servers" }],
   ["/data/regions", { screen: "data", tab: "regions" }],
@@ -50,9 +49,11 @@ describe("readRoute and pathOf", () => {
   });
 
   it("fills in what a partial path leaves out", () => {
-    // 101 the Data page opens on its maps, as the design's W4 does
-    expect(readRoute("/data")).toEqual({ screen: "data", tab: "maps" });
-    expect(readRoute("/data/nothing")).toEqual({ screen: "data", tab: "maps" });
+    // 101 the Data page opens on its layers, as the design's W4 does (148: it had opened on its maps)
+    expect(readRoute("/data")).toEqual({ screen: "data", tab: "layers" });
+    // 148 W4 lost its Maps tab, so the old address opens on Layers
+    expect(readRoute("/data/maps")).toEqual({ screen: "data", tab: "layers" });
+    expect(readRoute("/data/nothing")).toEqual({ screen: "data", tab: "layers" });
     expect(readRoute("/maps/M1/edit")).toEqual({ screen: "edit", map: "M1", tab: "layers" });
     expect(readRoute("/maps/M1/edit/colours")).toEqual({ screen: "edit", map: "M1", tab: "layers" });
     expect(readRoute("/maps/M1/style")).toEqual({ screen: "map", map: "M1" });

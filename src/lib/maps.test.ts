@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heldWord, offlineWord, sharingLine, styleLinks } from "./maps";
+import { NO_ASK, changedWord, filterCounts, heldWord, offlineWord, sharingLine, shownMaps, styleLinks } from "./maps";
 import type { SharedMap } from "./types";
 import { ENGLISH } from "./words";
 
@@ -49,5 +49,70 @@ describe("styleLinks", () => {
     expect(styleLinks(map({ styles: ["Summer", "Winter"], styleIDs: ["s"] })).map((link) => link.id))
       .toEqual([undefined, undefined]);
     expect(styleLinks(map())).toEqual([]);
+  });
+});
+
+const shelf: SharedMap[] = [
+  map({ id: "1", name: "Doprava", role: "own", changedAt: 1_700_300_000, bytes: 1_200_000_000, category: "Transit" }),
+  map({ id: "2", name: "Riki Maps", role: "own", changedAt: 1_700_200_000, bytes: 854_000_000, category: "transit" }),
+  map({ id: "3", name: "Historická 2", role: "view", changedAt: 1_700_100_000, category: "Old maps" }),
+  map({ id: "4", name: "Fitness", role: "edit", bytes: 182_000_000 }),
+  map({ id: "5", name: "Bratislava", role: "own" })];
+const ids = (list: SharedMap[]) => list.map((each) => each.id);
+
+describe("shownMaps", () => {
+  // 148 the field narrows by a map's name or its category, in any case
+  it("narrows by name or category", () => {
+    expect(ids(shownMaps(shelf, { ...NO_ASK, text: "RIKI" }))).toEqual(["2"]);
+    expect(ids(shownMaps(shelf, { ...NO_ASK, text: "transit" }))).toEqual(["1", "2"]);
+    expect(ids(shownMaps(shelf, { ...NO_ASK, text: "  volcano " }))).toEqual([]);
+  });
+
+  // 148 Mine are the owner's, Shared with me the others'; a map with no role is in neither
+  it("filters Mine and Shared with me by the role the phone sent", () => {
+    expect(ids(shownMaps(shelf, { ...NO_ASK, filter: "mine" }))).toEqual(["5", "1", "2"]);
+    expect(ids(shownMaps(shelf, { ...NO_ASK, filter: "shared" }))).toEqual(["4", "3"]);
+    expect(ids(shownMaps([map({ id: "9", name: "Old phone's" })], { ...NO_ASK, filter: "mine" }))).toEqual([]);
+    expect(ids(shownMaps([map({ id: "9", name: "Old phone's" })], NO_ASK))).toEqual(["9"]);
+  });
+
+  // 148 a category is picked whatever its case
+  it("keeps one category, whatever its case", () => {
+    expect(ids(shownMaps(shelf, { ...NO_ASK, category: "TRANSIT" }))).toEqual(["1", "2"]);
+    expect(ids(shownMaps(shelf, { ...NO_ASK, category: "Old maps", filter: "mine" }))).toEqual([]);
+  });
+
+  // 148 by name, last changed (newest first) or size (largest first); a missing field sorts last
+  it("sorts by name, last changed or size, a missing field last", () => {
+    expect(ids(shownMaps(shelf, NO_ASK))).toEqual(["5", "1", "4", "3", "2"]);
+    expect(ids(shownMaps(shelf, { ...NO_ASK, sort: "changed" }))).toEqual(["1", "2", "3", "5", "4"]);
+    expect(ids(shownMaps(shelf, { ...NO_ASK, sort: "size" }))).toEqual(["1", "2", "4", "5", "3"]);
+  });
+
+  it("leaves the maps it was given as they were", () => {
+    const before = ids(shelf);
+    shownMaps(shelf, { ...NO_ASK, sort: "size" });
+    expect(ids(shelf)).toEqual(before);
+  });
+});
+
+describe("filterCounts", () => {
+  // 148 the tabs' counts; an older phone sends no roles, and the tabs are left out
+  it("counts each filter and knows whether the phone sent roles", () => {
+    expect(filterCounts(shelf)).toEqual({ all: 5, mine: 3, shared: 2, knowsRoles: true });
+    expect(filterCounts([map()]).knowsRoles).toBe(false);
+  });
+});
+
+describe("changedWord", () => {
+  const now = new Date(2026, 10, 20, 15, 0);
+  const at = (year: number, month: number, day: number) => new Date(year, month, day, 9, 0).getTime() / 1000;
+  // 148 Today, Yesterday, then the day; the year only when it is not this one; none where the phone sent none
+  it("says Today, Yesterday, the day, and the year of an older one", () => {
+    expect(changedWord(at(2026, 10, 20), now, "en")).toBe("Today");
+    expect(changedWord(at(2026, 10, 19), now, "en")).toBe("Yesterday");
+    expect(changedWord(at(2026, 9, 3), now, "en")).toBe("Oct 3");
+    expect(changedWord(at(2025, 11, 31), now, "en")).toBe("Dec 31, 2025");
+    expect(changedWord(undefined, now, "en")).toBeNull();
   });
 });

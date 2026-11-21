@@ -63,12 +63,20 @@ describe("MapsPage", () => {
 
   // 41 the Maps and Servers screens list them, with New map for an editing browser
   // 52 the row is the map's, not its move buttons named after it
-  it.each([{ screen: "maps" }, { screen: "servers" }])("lists All maps on $screen", (route) => {
-    show({ device: device(null), editToken: "t", route });
+  it("lists All maps on Servers", () => {
+    show({ device: device(null), editToken: "t", route: { screen: "servers" } });
     render(<MapsPage />);
     expect(screen.getByText("All maps")).toBeTruthy();
     expect(screen.getByRole("button", { name: /^Tatras/ }).getAttribute("aria-current")).toBe("true");
     expect(screen.getByText("New map")).toBeTruthy();
+  });
+
+  // 148 the Maps screen carries the list itself, so the side bar leaves it to the screen
+  it("leaves the list of All maps to the Maps screen", () => {
+    show({ device: device(null), editToken: "t", route: { screen: "maps" } });
+    render(<MapsPage />);
+    expect(screen.queryByText("All maps")).toBeNull();
+    expect(screen.queryByText("New map")).toBeNull();
   });
 
   // 41 with no map on screen there is nothing to hide the list behind

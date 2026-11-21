@@ -115,7 +115,7 @@ function EditFields() {
               </button>
             ) : null}
             {offers("exportMap") ? (
-              <button type="button" className="row add" id="exportMap" onClick={exportMap}>
+              <button type="button" className="row add" id="exportMap" onClick={() => void exportMap()}>
                 <span className="tile"><Sym name="square.and.arrow.up" /></span>{words.export}
               </button>
             ) : null}

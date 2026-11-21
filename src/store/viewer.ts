@@ -933,26 +933,29 @@ export async function shelve(shelving: Shelving): Promise<boolean> {
 
 export const importMap = (file: File) => madeBy(() => backend.importMap(file));
 
-/** 50 Edit map's Duplicate: the copy opens, as a new map does. */
-export const duplicateMap = () => madeBy(() => backend.duplicateMap(get().mapID ?? ""));
+/** 50 Edit map's Duplicate: the copy opens, as a new map does. 148 A card's More names the map it copies. */
+export const duplicateMap = (id?: string) => madeBy(() => backend.duplicateMap(id ?? get().mapID ?? ""));
 
 /** 62 The Maps sheet's Delete, the name typed; the page goes back to the Maps list. */
-export async function deleteMap(name: string): Promise<boolean> {
+export async function deleteMap(name: string, id?: string): Promise<boolean> {
   const { editToken, mapID } = get();
-  if (!editToken || !mapID) return false;
-  const answer = await editing(() => backend.deleteMap(mapID, name));
+  const target = id ?? mapID;
+  if (!editToken || !target) return false;
+  const answer = await editing(() => backend.deleteMap(target, name));
   if (!answer) return false;
   if (!answer.ok) {
     notice(answer.said);
     return false;
   }
-  set({ mapID: null, styleID: null, portable: null, switches: null, layerOptions: null, coverage: null });
+  if (target === mapID) {
+    set({ mapID: null, styleID: null, portable: null, switches: null, layerOptions: null, coverage: null });
+  }
   await refreshDevice();
   go({ screen: "maps" });
   return true;
 }
 
-export const exportMap = () => saveFrom(() => backend.exportMap(get().mapID ?? ""));
+export const exportMap = (id?: string) => saveFrom(() => backend.exportMap(id ?? get().mapID ?? ""));
 
 /** 2997 The phone's servers as Share servers writes them, keys left on the phone. */
 export const exportServers = () => saveFrom(() => backend.exportServers());

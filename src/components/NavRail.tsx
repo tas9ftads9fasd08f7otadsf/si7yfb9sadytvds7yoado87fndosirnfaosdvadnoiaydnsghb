@@ -86,7 +86,7 @@ export function NavRail() {
       <Link to={{ screen: "maps" }} id="railMaps" current={lit === "maps"} onFollow={followSide({ screen: "maps" })}>
         <Sym name="square.grid.2x2" /><span>{words.maps}</span>
       </Link>
-      <Link to={{ screen: "data", tab: "maps" }} id="railData" current={lit === "data"} onFollow={() => go({ screen: "data", tab: "maps" })}>
+      <Link to={{ screen: "data", tab: "layers" }} id="railData" current={lit === "data"} onFollow={() => go({ screen: "data", tab: "layers" })}>
         <Sym name="cylinder.split.1x2" /><span>{words.data}</span>
       </Link>
       {canEdit && offers("servers") ? (
