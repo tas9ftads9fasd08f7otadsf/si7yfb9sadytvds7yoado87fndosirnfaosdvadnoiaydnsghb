@@ -10,12 +10,21 @@ const [tatras, layer, secrets, history] = account.zones.private[0]!.records as u
 
 describe("a record as the core's row", () => {
   // 76 CD_ prefixes come off, the type becomes the entity and the tag stays for writes
-  // 78 a reference is listed, so a write sends it back as one
+  // 163 a row's map is its record name in a STRING, as CloudKit holds it: nothing to list as a reference
   it("takes the CD_ prefixes off and keeps the change tag", async () => {
     const row = await rowOf(layer!, where, fetcher);
-    expect(row).toMatchObject({ entity: "SharedMapLayer", id: "own-tatras-layer", tag: "a2", database: "private", zone: "z",
-      refs: ["map"] });
+    expect(row).toMatchObject({ entity: "SharedMapLayer", id: "own-tatras-layer", tag: "a2", database: "private", zone: "z" });
+    expect(row.refs).toBeUndefined();
     expect(row.fields).toMatchObject({ layerJSON: "{\"id\":\"L1\",\"name\":\"Trails\"}", map: "own-tatras" });
+  });
+
+  // 78 a reference is listed, so a write sends it back as one
+  it("lists a field CloudKit holds as a reference", async () => {
+    const record = { recordName: "r", recordType: "CD_SharedMapLayer", recordChangeTag: "t",
+      fields: { CD_map: { value: { recordName: "own-tatras" }, type: "REFERENCE" } } } as unknown as CKRecord;
+    const row = await rowOf(record, where, fetcher);
+    expect(row.refs).toEqual(["map"]);
+    expect(row.fields.map).toBe("own-tatras");
   });
 
   it("fetches a field moved to _ckAsset by its download URL and files it under its own name", async () => {
@@ -67,7 +76,7 @@ describe("a record as the core's row", () => {
   it("reads a member row's role and the map it belongs to", async () => {
     const member = account.zones.shared[0]!.records.find((each) => each.recordName === "member-me") as unknown as CKRecord;
     const row = await rowOf(member, { database: "shared", zone: "share-doprava", owner: "_friki" }, fetcher);
-    expect(row).toMatchObject({ entity: "SharedMapMember", id: "member-me", refs: ["map"] });
+    expect(row).toMatchObject({ entity: "SharedMapMember", id: "member-me" });
     expect(row.fields).toMatchObject({ participantID: "_me", roleRaw: "editor", displayName: "Riki Tester", map: "shared-doprava" });
   });
 });
