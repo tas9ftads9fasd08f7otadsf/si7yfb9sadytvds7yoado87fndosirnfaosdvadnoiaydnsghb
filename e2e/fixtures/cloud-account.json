@@ -191,8 +191,8 @@
     },
     "riki_version": {
       "version": "0.1.0",
-      "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer"],
-      "ready": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer"]
+      "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people"],
+      "ready": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people"]
     },
     "riki_read_address": {
       "read": { "kind": "tiles", "probe": "https://cors.example/0/0/0.png" }
