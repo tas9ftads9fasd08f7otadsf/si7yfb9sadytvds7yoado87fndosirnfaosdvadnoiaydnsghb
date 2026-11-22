@@ -62,9 +62,22 @@ test("a sign-in window that failed leaves the sign-in button working", async ({ 
   await page.goto("./");
   await expect(page.locator("#gate")).toBeVisible();
   await page.evaluate(() => window.__mockCloudFailSignIn());
-  await page.locator("#signIn button").click();
+  await page.locator("#signIn .apple-auth-button").click();
   await expect(page.locator("#gate")).toBeHidden();
   await expect(page.locator("#device")).toContainText("Riki Tester");
+});
+
+// 161 TestFlight AF8P bug: on a phone the button sat at the card's left, its words past its right edge
+test("the Sign in with Apple ID button sits centred in its card, its words in its middle", async ({ page }) => {
+  await page.setViewportSize({ width: 428, height: 926 });
+  await mockCloud(page);
+  await page.goto("./?debug=1");
+  const button = page.locator("#signIn .apple-auth-button");
+  await expect(button).toBeVisible();
+  const [card, box, label] = await Promise.all(["#gate .sheet", "#signIn .apple-auth-button",
+    "#signIn .apple-auth-button-text"].map((each) => page.locator(each).boundingBox()));
+  expect(Math.abs(box.x + box.width / 2 - (card.x + card.width / 2))).toBeLessThan(1);
+  expect(Math.abs(label.x - (box.x + box.width / 2))).toBeLessThan(2);
 });
 
 // 134 bug: a refused token left the editor up with a reconnect banner and no way to sign in
