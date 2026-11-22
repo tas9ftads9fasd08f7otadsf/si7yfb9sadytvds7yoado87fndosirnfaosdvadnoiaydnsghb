@@ -97,6 +97,8 @@ export function createBackend(parts: Parts): Backend {
   let telling: Promise<void> = Promise.resolve();
   /** The words the page was last given, for what the site itself refuses with. */
   let spoken: Partial<Words> = {};
+  /** 160 The language the words are in, which names are sorted by. */
+  let speaking = "en";
   const say = (key: "changeRefused" | "noSuchMap" | "nothingToUndo" | "signsInApple") => spoken[key] ?? ENGLISH[key];
 
   /** The rows as last read; a change elsewhere, or `fresh`, reads them again. */
@@ -316,7 +318,8 @@ export function createBackend(parts: Parts): Backend {
       const said = { ...ENGLISH, ...read.words } as Words;
       const made = computedWords(language, codes, said);
       spoken = { ...said, ...made };
-      return { language: read.language ?? language, words: { ...read.words, ...made } };
+      speaking = read.language ?? language;
+      return { language: speaking, words: { ...read.words, ...made } };
     },
     session,
     askToJoin: session,
@@ -361,7 +364,7 @@ export function createBackend(parts: Parts): Backend {
       const said = core.people(read, of.id);
       if ("refused" in said) return refused(said.refused, said.status ?? 400);
       const word: Say = (key) => spoken[key] ?? ENGLISH[key];
-      return { ok: true, value: peopleOf(said, word) };
+      return { ok: true, value: peopleOf(said, word, speaking) };
     },
 
     newMap: editing, importMap: editing, exportMap: editing, duplicateMap: editing,
