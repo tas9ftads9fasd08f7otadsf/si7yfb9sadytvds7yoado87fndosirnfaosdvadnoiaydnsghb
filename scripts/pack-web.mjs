@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PAGE_SEGMENTS } from "../src/lib/segments.ts";
 import { ENGLISH } from "../src/lib/words.ts";
+import { pinFor } from "./build-core.mjs";
 import { dumps } from "./build-words.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -18,6 +19,9 @@ export function siteLeaks(files) {
   return files.filter(({ name, text }) => /Info\.plist$|WebEditor\.bundle/.test(name)
     || /\/riki\/v1|\/web\/app\//.test(text ?? "")).map(({ name }) => name);
 }
+
+/** 164 The pin, or the commit RIKI_CORE_REF names, whose core, words and glyphs have no sum to be held to. */
+export const packPin = (pinned, env = process.env) => pinFor(pinned, env.RIKI_CORE_REF);
 
 /**
  * The riki-core.wasm `npm run build:core` made, checked against its .sha256 and the pin's; null with a message while
@@ -104,22 +108,23 @@ async function main() {
   for (const file of SERVER_FILES) await cp(path.join(ROOT, "server", file), path.join(work, file));
 
   const own = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8"));
-  const core = await pinnedCore(own.rikiCore, process.env.RIKI_CORE_DIR || path.join(ROOT, "dist", "riki-core"),
+  const pin = packPin(own.rikiCore);
+  const core = await pinnedCore(pin, process.env.RIKI_CORE_DIR || path.join(ROOT, "dist", "riki-core"),
     { optional: process.env.RIKI_PACK_WITHOUT_CORE === "1" });
   if (core.wasm) await cp(core.wasm, path.join(work, "out", "riki-core.wasm"));
   else console.warn(`warning: ${core.said}`);
   const optional = process.env.RIKI_PACK_WITHOUT_CORE === "1";
-  const words = await pinnedWords(own.rikiCore, process.env.RIKI_WORDS_DIR || path.join(ROOT, "dist", "words"), { optional });
+  const words = await pinnedWords(pin, process.env.RIKI_WORDS_DIR || path.join(ROOT, "dist", "words"), { optional });
   if (words.englishOnly) console.warn(`warning: ${words.said}`);
   for (const [file, text] of Object.entries(words.files)) {
     await mkdir(path.dirname(path.join(work, "out", file)), { recursive: true });
     await writeFile(path.join(work, "out", file), text);
   }
-  const assets = await pinnedAssets(own.rikiCore, process.env.RIKI_ASSETS_DIR || path.join(ROOT, "dist", "assets"), { optional });
+  const assets = await pinnedAssets(pin, process.env.RIKI_ASSETS_DIR || path.join(ROOT, "dist", "assets"), { optional });
   if (!Object.keys(assets.files).length) console.warn(`warning: ${assets.said}`);
   for (const [file, source] of Object.entries(assets.files)) await cp(source, path.join(work, "out", file));
   const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
-  const site = { version: process.env.WEB_EDITOR_VERSION || own.version, commit, pageSegments: PAGE_SEGMENTS };
+  const site = { version: process.env.WEB_EDITOR_VERSION || own.version, commit, core: pin.ref, pageSegments: PAGE_SEGMENTS };
   await writeFile(path.join(work, "site.json"), `${JSON.stringify(site, null, 2)}\n`);
 
   const zip = path.join(ROOT, "dist", "web-site.zip");

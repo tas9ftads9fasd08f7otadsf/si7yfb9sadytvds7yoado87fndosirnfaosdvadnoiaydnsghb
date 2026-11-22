@@ -1,0 +1,112 @@
+name: Deploy latest
+
+# 164 The site from master and riki-core.wasm, words and glyphs from rikimaps' newest commit, deployed by hand.
+# No release is cut, so the app keeps its bundle, and the next merge's release deploys the pin again.
+on:
+  workflow_dispatch:
+    inputs:
+      rikimaps_branch:
+        description: rikimaps branch whose newest commit is built; its default branch when empty
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-latest
+  cancel-in-progress: false
+
+jobs:
+  latest:
+    name: Find rikimaps' newest commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.newest.outputs.sha }}
+    steps:
+      - id: newest
+        env:
+          GH_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}
+          BRANCH: ${{ inputs.rikimaps_branch }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::RIKIMAPS_READ_TOKEN is not set, so rikimaps cannot be read"
+            exit 1
+          fi
+          sha="$(gh api "repos/skifahrer/rikimaps/commits/${BRANCH:-HEAD}" --jq .sha)"
+          if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::rikimaps answered no commit for ${BRANCH:-its default branch}"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          printf '### rikimaps %s\n' "$sha" >> "$GITHUB_STEP_SUMMARY"
+
+  core:
+    name: Build the core
+    needs: latest
+    uses: ./.github/workflows/core.yml
+    with:
+      ref: ${{ needs.latest.outputs.sha }}
+    secrets:
+      RIKIMAPS_READ_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}
+    permissions:
+      contents: read
+
+  pack:
+    name: Test and pack the site
+    needs: [latest, core]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: composer install --working-dir=server --no-interaction --no-progress
+      # The deploy script's test runs it on a stand-in FTPS server.
+      - run: sudo apt-get update -q && sudo apt-get install -y -q lftp && pip install pyftpdlib pyopenssl
+      # Unlike the release, none may be missing: the site would go out without the newest core.
+      - uses: actions/download-artifact@v7
+        with:
+          name: riki-core
+          path: dist/riki-core
+      - uses: actions/download-artifact@v7
+        with:
+          name: riki-words
+          path: dist/words
+      - uses: actions/download-artifact@v7
+        with:
+          name: riki-assets
+          path: dist/assets
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+        env:
+          RIKI_CORE_WASM: dist/riki-core/riki-core.wasm
+      - run: npm run test:php
+      - name: Pack the site with the newest core
+        env:
+          RIKI_CORE_REF: ${{ needs.latest.outputs.sha }}
+        run: |
+          WEB_EDITOR_VERSION="$(node -p "require('./package.json').version")+rikimaps.${RIKI_CORE_REF:0:10}"
+          npm run build:web
+          WEB_EDITOR_VERSION="$WEB_EDITOR_VERSION" npm run pack:web
+      - uses: actions/upload-artifact@v6
+        with:
+          name: web-site-latest
+          path: dist/web-site.zip*
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy the site
+    needs: pack
+    uses: ./.github/workflows/deploy-site.yml
+    with:
+      artifact: web-site-latest
+    secrets: inherit
+    permissions:
+      contents: read

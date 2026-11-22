@@ -120,6 +120,19 @@ describe("the site's core", async () => {
     await expect(pinnedCore({ ref: "0123456789abcdef" }, await folder())).rejects.toThrow("npm run build:core");
     await expect(pinnedCore({ ref: "0123456789abcdef" }, await folder(Buffer.from("x"), "0".repeat(64)))).rejects.toThrow("its .sha256 says");
   });
+
+  // 164 the newest rikimaps commit's core is packed, held to its own .sha256 and not to the pin's
+  it("is taken from the commit RIKI_CORE_REF names, without the pin's sum", async () => {
+    const { packPin } = await import("./pack-web.mjs");
+    const pinned = { ref: "0123456789abcdef", sha256: "0".repeat(64) };
+    const bytes = Buffer.from("\0asm");
+    const dir = await folder(bytes, createHash("sha256").update(bytes).digest("hex"));
+    const pin = packPin(pinned, { RIKI_CORE_REF: "fedcba9876543210" });
+    expect(pin).toEqual({ ref: "fedcba9876543210", sha256: null });
+    expect((await pinnedCore(pin, dir)).said).toBe("riki-core.wasm from rikimaps fedcba9876");
+    expect(packPin(pinned, {})).toEqual(pinned);
+    await expect(pinnedCore(packPin(pinned, {}), dir)).rejects.toThrow("rikiCore.sha256");
+  });
 });
 
 // 110 the site's glyphs and sprite are the made files, or none while no commit is pinned

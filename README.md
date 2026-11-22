@@ -149,6 +149,10 @@ site's server is the one thing that fetches for it (the plan's "no relay", excep
 Every merge to `master` runs CI, publishes a release and then deploys that release's
 `web-site.zip` to the PHP server over FTPS (`.github/workflows/deploy-site.yml`,
 `scripts/deploy-site.sh`). Actions › Deploy site › Run workflow deploys any release again by tag.
+Actions › Deploy latest › Run workflow (`.github/workflows/deploy-latest.yml`) skips the pin: it builds the core,
+words and glyphs from rikimaps' newest commit (or the newest on the branch it is given), runs the unit tests with that
+core, packs `master` with it (`RIKI_CORE_REF`, and `site.json` names the commit as `core`) and deploys the zip. It cuts
+no release, so the app keeps its bundle, and the next merge's release deploys the pinned core again.
 No step is left to do on the server: every deploy writes `config.php` itself, from the settings below, and
 replaces the one there. The deploy generates it with `php` (`var_export`, so no setting can end up as code; the
 workflow installs `php-cli`) and refuses to deploy when `ICLOUD_API_TOKEN` is empty, naming it. The CloudKit
