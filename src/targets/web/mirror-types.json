@@ -4,21 +4,21 @@
     "iconPicture": "BYTES", "drawsRegions": "INT64", "isOnlineOnly": "INT64", "requiresUnlock": "INT64",
     "selectedStyleID": "STRING", "defaultStyleID": "STRING", "schemaVersion": "INT64",
     "updatedAt": "TIMESTAMP", "rank": "STRING", "payload": "BYTES", "settings": "BYTES",
-    "stack": "REFERENCE", "moveReceipt": "BYTES"
+    "stack": "STRING", "moveReceipt": "BYTES"
   },
   "SharedMapLayer": {
     "entityName": "STRING", "id": "STRING", "order": "INT64", "layerJSON": "STRING",
-    "updatedAt": "TIMESTAMP", "schemaVersion": "INT64", "payload": "BYTES", "map": "REFERENCE",
-    "secrets": "REFERENCE", "moveReceipt": "BYTES"
+    "updatedAt": "TIMESTAMP", "schemaVersion": "INT64", "payload": "BYTES", "map": "STRING",
+    "secrets": "STRING", "moveReceipt": "BYTES"
   },
   "SharedMapStyle": {
     "entityName": "STRING", "id": "STRING", "order": "INT64", "styleJSON": "STRING",
-    "updatedAt": "TIMESTAMP", "schemaVersion": "INT64", "payload": "BYTES", "map": "REFERENCE",
+    "updatedAt": "TIMESTAMP", "schemaVersion": "INT64", "payload": "BYTES", "map": "STRING",
     "moveReceipt": "BYTES"
   },
   "SharedMapChange": {
     "entityName": "STRING", "id": "STRING", "updatedAt": "TIMESTAMP", "schemaVersion": "INT64",
-    "payload": "BYTES", "map": "REFERENCE", "moveReceipt": "BYTES"
+    "payload": "BYTES", "map": "STRING", "moveReceipt": "BYTES"
   },
   "ServerRecord": {
     "entityName": "STRING", "id": "STRING", "updatedAt": "TIMESTAMP", "schemaVersion": "INT64",

@@ -29,7 +29,7 @@
             "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
             "CD_schemaVersion": { "value": 1, "type": "INT64" },
             "CD_payload": { "value": "e30=", "type": "BYTES" },
-            "CD_map": { "value": { "recordName": "own-tatras" }, "type": "REFERENCE" }
+            "CD_map": { "value": "own-tatras", "type": "STRING" }
           } },
         { "recordName": "own-secrets", "recordType": "CD_LayerSecrets", "recordChangeTag": "a3",
           "fields": { "CD_headers": { "value": "ciphertext", "type": "ENCRYPTED_BYTES" } } },
@@ -40,7 +40,7 @@
             "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
             "CD_schemaVersion": { "value": 1, "type": "INT64" },
             "CD_payload": { "value": "eyJhdXRob3IiOiJSaWtpIFRlc3RlciIsImxpbmVzIjpbIlRyYWlscyBhZGRlZCJdfQ==", "type": "BYTES" },
-            "CD_map": { "value": { "recordName": "own-tatras" }, "type": "REFERENCE" }
+            "CD_map": { "value": "own-tatras", "type": "STRING" }
           } }
       ]
     }, {
@@ -65,7 +65,7 @@
             "CD_updatedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
             "CD_schemaVersion": { "value": 1, "type": "INT64" },
             "CD_payload": { "value": "e30=", "type": "BYTES" },
-            "CD_map": { "value": { "recordName": "own-beskydy" }, "type": "REFERENCE" }
+            "CD_map": { "value": "own-beskydy", "type": "STRING" }
           } },
         { "recordName": "Share-beskydy", "recordType": "cloudkit.share", "recordChangeTag": "o3",
           "fields": { "cloudkit.title": { "value": "Beskydy", "type": "STRING" } },
@@ -90,7 +90,7 @@
             "CD_roleRaw": { "value": "editor", "type": "STRING" },
             "CD_displayName": { "value": "Jana", "type": "STRING" },
             "CD_addedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
-            "CD_map": { "value": { "recordName": "own-beskydy" }, "type": "REFERENCE" }
+            "CD_map": { "value": "own-beskydy", "type": "STRING" }
           } },
         { "recordName": "member-petr", "recordType": "CD_SharedMapMember", "recordChangeTag": "o5",
           "fields": {
@@ -99,7 +99,7 @@
             "CD_roleRaw": { "value": "reader", "type": "STRING" },
             "CD_displayName": { "value": "petr@example.com", "type": "STRING" },
             "CD_addedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
-            "CD_map": { "value": { "recordName": "own-beskydy" }, "type": "REFERENCE" }
+            "CD_map": { "value": "own-beskydy", "type": "STRING" }
           } }
       ]
     }],
@@ -140,7 +140,7 @@
             "CD_roleRaw": { "value": "editor", "type": "STRING" },
             "CD_displayName": { "value": "Riki Tester", "type": "STRING" },
             "CD_addedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
-            "CD_map": { "value": { "recordName": "shared-doprava" }, "type": "REFERENCE" }
+            "CD_map": { "value": "shared-doprava", "type": "STRING" }
           } },
         { "recordName": "member-marek", "recordType": "CD_SharedMapMember", "recordChangeTag": "s4",
           "fields": {
@@ -149,7 +149,7 @@
             "CD_roleRaw": { "value": "reader", "type": "STRING" },
             "CD_displayName": { "value": "marek@example.com", "type": "STRING" },
             "CD_addedAt": { "value": 1789000000000, "type": "TIMESTAMP" },
-            "CD_map": { "value": { "recordName": "shared-doprava" }, "type": "REFERENCE" }
+            "CD_map": { "value": "shared-doprava", "type": "STRING" }
           } }
       ]
     }]

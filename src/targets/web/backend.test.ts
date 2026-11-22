@@ -304,7 +304,7 @@ describe("WebBackend's edits", () => {
       { recordName: "own-tatras-layer", recordType: "CD_SharedMapLayer", recordChangeTag: "a2",
         fields: { CD_layerJSON: { value: "{\"id\":\"L1\",\"name\":\"Ridges\"}", type: "STRING" } } },
       { recordName: "change-web-1", recordType: "CD_SharedMapChange",
-        fields: { CD_map: { value: { recordName: "own-tatras", action: "DELETE_SELF" }, type: "REFERENCE" },
+        fields: { CD_map: { value: "own-tatras", type: "STRING" },
           CD_payload: { value: expect.any(String), type: "BYTES" }, CD_id: { value: expect.any(String), type: "STRING" },
           CD_updatedAt: { value: expect.any(Number), type: "TIMESTAMP" }, CD_schemaVersion: { value: 1, type: "INT64" },
           CD_entityName: { value: "SharedMapChange", type: "STRING" } } }

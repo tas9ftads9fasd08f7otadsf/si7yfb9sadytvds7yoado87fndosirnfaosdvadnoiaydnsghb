@@ -51,10 +51,8 @@
        "value": "{\"id\":\"0A000000-0000-4000-8000-000000000002\",\"isEnabled\":true,\"name\":\"Roads\",\"opacity\":1,\"role\":\"overlay\",\"source\":{\"region\":{\"overlay\":\"roads\"}},\"symbol\":\"road.lanes\"}"
       },
       "CD_map": {
-       "type": "REFERENCE",
-       "value": {
-        "recordName": "own-tatras"
-       }
+       "type": "STRING",
+       "value": "own-tatras"
       },
       "CD_order": {
        "type": "INT64",
@@ -80,10 +78,8 @@
        "value": "{\"id\":\"0A000000-0000-4000-8000-000000000001\",\"isEnabled\":true,\"name\":\"Trails\",\"opacity\":1,\"role\":\"overlay\",\"source\":{\"url\":{\"attribution\":\"\",\"format\":\"vector\",\"maxZoom\":14,\"template\":\"https:\\/\\/trails.example.org\\/{z}\\/{x}\\/{y}.pbf\"}},\"symbol\":\"figure.hiking\"}"
       },
       "CD_map": {
-       "type": "REFERENCE",
-       "value": {
-        "recordName": "own-tatras"
-       }
+       "type": "STRING",
+       "value": "own-tatras"
       },
       "CD_order": {
        "type": "INT64",
@@ -105,10 +101,8 @@
        "value": "0B000000-0000-4000-8000-000000000001"
       },
       "CD_map": {
-       "type": "REFERENCE",
-       "value": {
-        "recordName": "own-tatras"
-       }
+       "type": "STRING",
+       "value": "own-tatras"
       },
       "CD_order": {
        "type": "INT64",
@@ -134,10 +128,8 @@
        "value": "0C000000-0000-4000-8000-000000000001"
       },
       "CD_map": {
-       "type": "REFERENCE",
-       "value": {
-        "recordName": "own-tatras"
-       }
+       "type": "STRING",
+       "value": "own-tatras"
       },
       "CD_payload": {
        "type": "BYTES",
@@ -204,10 +196,8 @@
        "value": "{\"id\":\"0A000000-0000-4000-8000-000000000003\",\"isEnabled\":true,\"name\":\"Trams\",\"opacity\":1,\"role\":\"overlay\",\"source\":{\"url\":{\"attribution\":\"\",\"format\":\"raster\",\"maxZoom\":18,\"template\":\"https:\\/\\/tiles.example.org\\/{z}\\/{x}\\/{y}.png\"}},\"symbol\":\"tram\"}"
       },
       "CD_map": {
-       "type": "REFERENCE",
-       "value": {
-        "recordName": "own-beskydy"
-       }
+       "type": "STRING",
+       "value": "own-beskydy"
       },
       "CD_order": {
        "type": "INT64",
@@ -308,10 +298,8 @@
        "type": "STRING"
       },
       "CD_map": {
-       "value": {
-        "recordName": "own-beskydy"
-       },
-       "type": "REFERENCE"
+       "value": "own-beskydy",
+       "type": "STRING"
       }
      }
     },
@@ -333,10 +321,8 @@
        "type": "STRING"
       },
       "CD_map": {
-       "value": {
-        "recordName": "own-beskydy"
-       },
-       "type": "REFERENCE"
+       "value": "own-beskydy",
+       "type": "STRING"
       }
      }
     }
@@ -393,10 +379,8 @@
        "value": "{\"id\":\"0A000000-0000-4000-8000-000000000003\",\"isEnabled\":true,\"name\":\"Trams\",\"opacity\":1,\"role\":\"overlay\",\"source\":{\"url\":{\"attribution\":\"\",\"format\":\"raster\",\"maxZoom\":18,\"template\":\"https:\\/\\/tiles.example.org\\/{z}\\/{x}\\/{y}.png\"}},\"symbol\":\"tram\"}"
       },
       "CD_map": {
-       "type": "REFERENCE",
-       "value": {
-        "recordName": "shared-doprava"
-       }
+       "type": "STRING",
+       "value": "shared-doprava"
       },
       "CD_order": {
        "type": "INT64",

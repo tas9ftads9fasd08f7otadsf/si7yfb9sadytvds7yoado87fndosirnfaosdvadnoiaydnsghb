@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { schemaRefusal } from "../../../e2e/deployed-schema.mjs";
+import { DEPLOYED, schemaRefusal } from "../../../e2e/deployed-schema.mjs";
 import { MIRROR, textOfBytes } from "./mirror";
 import type { CoreRow, CoreWrite } from "./records";
 import type { CKBatch, CKBatchResult, CKDatabase, CKSave } from "./cloud";
@@ -27,9 +27,10 @@ describe("a write as the app's mirror holds it", () => {
     expect(field.value).not.toBe(json);
   });
 
-  it("sends a reference as one, and a cleared field as no value", () => {
+  // 163 bug: the link to a row's map went as a REFERENCE, where CloudKit holds the map's record name as a STRING
+  it("sends a row's link to its map as the string CloudKit holds, and a cleared field as no value", () => {
     const saved = everything({ entity: "SharedMapChange", id: "c", fields: { map: "own-tatras", payload: null } });
-    expect(saved.fields.CD_map).toEqual({ value: { recordName: "own-tatras", action: "DELETE_SELF" }, type: "REFERENCE" });
+    expect(saved.fields.CD_map).toEqual({ value: "own-tatras", type: "STRING" });
     expect(saved.fields.CD_payload).toEqual({ value: null });
   });
 
@@ -44,6 +45,18 @@ describe("a write as the app's mirror holds it", () => {
     expect(() => everything({ entity: "SharedMapLayer", id: "l", fields: { name: "Trails" } }))
       .toThrow("The mirror has no field name on SharedMapLayer");
     expect(() => everything({ entity: "Nope", id: "x", fields: { name: "x" } })).toThrow("no field name on Nope");
+  });
+
+  // 163 the field types are the container's own, so a write the mock takes CloudKit takes too
+  it("types every field as the deployed schema does", () => {
+    for (const [entity, fields] of Object.entries(MIRROR)) {
+      const deployed = DEPLOYED[entity.startsWith("MapData") ? entity : `CD_${entity}`];
+      expect(deployed, entity).toBeDefined();
+      for (const [name, type] of Object.entries(fields)) {
+        expect(`${entity}.${name} ${deployed?.[entity.startsWith("MapData") ? name : `CD_${name}`]}`)
+          .toBe(`${entity}.${name} ${type}`);
+      }
+    }
   });
 
   it("is accepted, for every field of every entity, by the schema the mock checks", () => {

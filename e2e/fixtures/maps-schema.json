@@ -1,0 +1,111 @@
+{
+ "about": "The record types the site reads and writes, as iCloud.com.rikimaps.rikimaps.maps deploys them: `xcrun cktool export-schema`, production, 2026-11-22 (Development is the same for these). System fields left out.",
+ "types": {
+  "CD_ServerRecord": {
+   "CD_entityName": "STRING",
+   "CD_id": "STRING",
+   "CD_moveReceipt": "BYTES",
+   "CD_moveReceipt_ckAsset": "ASSET",
+   "CD_payload": "BYTES",
+   "CD_payload_ckAsset": "ASSET",
+   "CD_rank": "STRING",
+   "CD_rank_ckAsset": "ASSET",
+   "CD_schemaVersion": "INT64",
+   "CD_updatedAt": "TIMESTAMP"
+  },
+  "CD_SharedMap": {
+   "CD_defaultStyleID": "STRING",
+   "CD_drawsRegions": "INT64",
+   "CD_entityName": "STRING",
+   "CD_iconPicture": "BYTES",
+   "CD_iconPicture_ckAsset": "ASSET",
+   "CD_iconTintHex": "STRING",
+   "CD_iconTintHex_ckAsset": "ASSET",
+   "CD_id": "STRING",
+   "CD_isOnlineOnly": "INT64",
+   "CD_moveReceipt": "BYTES",
+   "CD_moveReceipt_ckAsset": "ASSET",
+   "CD_name": "STRING",
+   "CD_name_ckAsset": "ASSET",
+   "CD_payload": "BYTES",
+   "CD_payload_ckAsset": "ASSET",
+   "CD_rank": "STRING",
+   "CD_rank_ckAsset": "ASSET",
+   "CD_requiresUnlock": "INT64",
+   "CD_schemaVersion": "INT64",
+   "CD_selectedStyleID": "STRING",
+   "CD_settings": "BYTES",
+   "CD_settings_ckAsset": "ASSET",
+   "CD_stack": "STRING",
+   "CD_symbol": "STRING",
+   "CD_symbol_ckAsset": "ASSET",
+   "CD_updatedAt": "TIMESTAMP"
+  },
+  "CD_SharedMapChange": {
+   "CD_entityName": "STRING",
+   "CD_id": "STRING",
+   "CD_map": "STRING",
+   "CD_moveReceipt": "BYTES",
+   "CD_moveReceipt_ckAsset": "ASSET",
+   "CD_payload": "BYTES",
+   "CD_payload_ckAsset": "ASSET",
+   "CD_schemaVersion": "INT64",
+   "CD_updatedAt": "TIMESTAMP"
+  },
+  "CD_SharedMapLayer": {
+   "CD_entityName": "STRING",
+   "CD_id": "STRING",
+   "CD_layerJSON": "STRING",
+   "CD_layerJSON_ckAsset": "ASSET",
+   "CD_map": "STRING",
+   "CD_moveReceipt": "BYTES",
+   "CD_moveReceipt_ckAsset": "ASSET",
+   "CD_order": "INT64",
+   "CD_payload": "BYTES",
+   "CD_payload_ckAsset": "ASSET",
+   "CD_schemaVersion": "INT64",
+   "CD_secrets": "STRING",
+   "CD_updatedAt": "TIMESTAMP"
+  },
+  "CD_SharedMapMember": {
+   "CD_addedAt": "TIMESTAMP",
+   "CD_displayName": "STRING",
+   "CD_displayName_ckAsset": "ASSET",
+   "CD_entityName": "STRING",
+   "CD_map": "STRING",
+   "CD_moveReceipt": "BYTES",
+   "CD_moveReceipt_ckAsset": "ASSET",
+   "CD_participantID": "STRING",
+   "CD_participantID_ckAsset": "ASSET",
+   "CD_roleRaw": "STRING",
+   "CD_roleRaw_ckAsset": "ASSET",
+   "CD_stack": "STRING"
+  },
+  "CD_SharedMapStyle": {
+   "CD_entityName": "STRING",
+   "CD_id": "STRING",
+   "CD_map": "STRING",
+   "CD_moveReceipt": "BYTES",
+   "CD_moveReceipt_ckAsset": "ASSET",
+   "CD_order": "INT64",
+   "CD_payload": "BYTES",
+   "CD_payload_ckAsset": "ASSET",
+   "CD_schemaVersion": "INT64",
+   "CD_styleJSON": "STRING",
+   "CD_styleJSON_ckAsset": "ASSET",
+   "CD_updatedAt": "TIMESTAMP"
+  },
+  "MapDataChunk": {
+   "asset": "ASSET",
+   "count": "INT64",
+   "index": "INT64",
+   "sha": "STRING",
+   "storageKey": "STRING"
+  },
+  "MapDataIndex": {
+   "bytes": "INT64",
+   "manifest": "BYTES",
+   "storageKey": "STRING"
+  }
+ }
+}

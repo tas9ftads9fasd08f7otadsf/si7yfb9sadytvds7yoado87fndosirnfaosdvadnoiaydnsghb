@@ -92,7 +92,7 @@ test("a pushed change with a history row names its author", async ({ page }) => 
   await page.goto("./");
   await page.locator("#current .hero").waitFor();
   cloud.add("private", "com.apple.coredata.cloudkit.zone", { recordName: "change-friki", recordType: "CD_SharedMapChange",
-    fields: { CD_map: { value: { recordName: "own-tatras" }, type: "REFERENCE" } } });
+    fields: { CD_map: { value: "own-tatras", type: "STRING" } } });
   cloud.change("own-tatras", { CD_name: { value: "High Tatras 2", type: "STRING" } });
   await cloud.push();
   await expect(page.locator("#notice")).toHaveText("High Tatras was changed by Friki");
