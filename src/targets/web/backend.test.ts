@@ -547,10 +547,11 @@ describe("WebBackend's people", () => {
     expect(answer).toMatchObject({ ok: true, value: { isShared: true, role: "editor", linkRole: null, readOnly: true,
       mayInvite: false, mayChangeLink: false, link: null } });
     if (!answer.ok) return;
+    // 160 the owner first, then by name in the words' language, as the app orders them
     expect(answer.value.people.map((each) => [each.name, each.line, each.hasAccepted, each.mayChangeRole, each.mayRemove])).toEqual([
       ["Friki", "Owner", true, false, false],
-      ["Riki Tester (you)", "Can edit · Joined", true, false, false],
-      ["marek@example.com", "View only · Invited", false, false, false]]);
+      ["marek@example.com", "View only · Invited", false, false, false],
+      ["Riki Tester (you)", "Can edit · Joined", true, false, false]]);
   });
 
   it("answers a map nobody shares, an unknown map and a folder as it can", async () => {
