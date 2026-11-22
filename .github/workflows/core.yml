@@ -12,6 +12,12 @@ on:
       - scripts/build-assets.mjs
       - .github/workflows/core.yml
   workflow_call:
+    # 164 Deploy latest hands it rikimaps' newest commit; the release names none and builds the pin.
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ""
     secrets:
       RIKIMAPS_READ_TOKEN:
         description: A token that reads skifahrer/rikimaps, which is private
@@ -27,8 +33,9 @@ on:
 permissions:
   contents: read
 
+# 164 The ref keeps a build of another rikimaps commit out of the release's group at the same sha.
 concurrency:
-  group: core-${{ github.head_ref || github.sha }}
+  group: core-${{ github.head_ref || github.sha }}-${{ inputs.ref }}
   cancel-in-progress: true
 
 jobs:

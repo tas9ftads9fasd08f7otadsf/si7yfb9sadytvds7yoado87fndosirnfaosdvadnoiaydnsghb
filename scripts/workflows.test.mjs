@@ -420,3 +420,65 @@ describe("the server check", () => {
     expect(checked).toBeLessThan(deploy.indexOf("run: bash scripts/deploy-site.sh"));
   });
 });
+
+// 164 the site is deployed by hand with the core, words and glyphs of rikimaps' newest commit
+describe("the deploy of the latest", () => {
+  const latest = read("deploy-latest.yml");
+  const core = read("core.yml");
+  const deploy = read("deploy-site.yml");
+  const job = (name) => {
+    const rest = latest.slice(latest.indexOf(`\n  ${name}:\n`) + 1);
+    const next = rest.slice(1).search(/\n  [\w-]+:\n/);
+    return next < 0 ? rest : rest.slice(0, next + 1);
+  };
+
+  it("runs only by hand and cuts no release, which the app would take", () => {
+    expect(latest).toMatch(/^on:\n  workflow_dispatch:\n/m);
+    expect(latest).not.toMatch(/pull_request:|push:|schedule:|workflow_call:/);
+    expect(latest).not.toContain("gh release");
+    expect(latest).not.toContain("update-app.yml");
+  });
+
+  it("names rikimaps' newest commit by its full sha and builds the core there", () => {
+    expect(latest).toContain('gh api "repos/skifahrer/rikimaps/commits/${BRANCH:-HEAD}" --jq .sha');
+    expect(latest).toContain("BRANCH: ${{ inputs.rikimaps_branch }}");
+    expect(latest).not.toMatch(/run:[^\n]*\$\{\{ inputs\./);
+    expect(latest).toMatch(/\^\[0-9a-f\]\{40\}\$/);
+    expect(latest).toContain("uses: ./.github/workflows/core.yml");
+    expect(latest).toContain("ref: ${{ needs.latest.outputs.sha }}");
+    expect(latest).toContain("RIKIMAPS_READ_TOKEN: ${{ secrets.RIKIMAPS_READ_TOKEN }}");
+  });
+
+  it("gives the core's call a ref, and a group of its own beside the release's at the same commit", () => {
+    expect(core).toMatch(/workflow_call:\s*\n(\s*#.*\n)*\s*inputs:\s*\n\s*ref:/);
+    expect(core).toMatch(/concurrency:\s*\n\s*group: core-\$\{\{ github\.head_ref \|\| github\.sha \}\}-\$\{\{ inputs\.ref \}\}/);
+  });
+
+  it("tests and packs with that core, which must be there, held to the commit built", () => {
+    const pack = job("pack");
+    expect(pack).toContain("needs: [latest, core]");
+    for (const name of ["riki-core", "riki-words", "riki-assets"]) expect(pack).toContain(`name: ${name}`);
+    expect(pack).not.toContain("continue-on-error");
+    expect(pack).not.toContain("RIKI_PACK_WITHOUT_CORE");
+    for (const step of ["npm run lint", "npm run typecheck", "npm test", "npm run test:php"]) expect(pack).toContain(`run: ${step}`);
+    expect(pack).toContain("RIKI_CORE_WASM: dist/riki-core/riki-core.wasm");
+    expect(pack).toContain("RIKI_CORE_REF: ${{ needs.latest.outputs.sha }}");
+    expect(pack.indexOf("npm test")).toBeLessThan(pack.indexOf("npm run pack:web"));
+    expect(pack).toContain("name: web-site-latest");
+  });
+
+  it("deploys the packed zip through the site's deploy, which takes it from the run", () => {
+    const step = job("deploy");
+    expect(step).toContain("needs: pack");
+    expect(step).toContain("uses: ./.github/workflows/deploy-site.yml");
+    expect(step).toContain("artifact: web-site-latest");
+    expect(step).toContain("secrets: inherit");
+    for (const permission of asked(deploy)) expect(asked(step)).toContain(permission);
+    expect(deploy).toMatch(/if: steps\.ready\.outputs\.go == 'true' && inputs\.artifact != ''\s*\n\s*uses: actions\/download-artifact@v7\s*\n\s*with:\s*\n\s*name: \$\{\{ inputs\.artifact \}\}/);
+    expect(deploy).toMatch(/if: steps\.ready\.outputs\.go == 'true' && inputs\.artifact == ''\s*\n\s*run: gh release download/);
+  });
+
+  it("fails without the server's settings rather than passing having deployed nothing", () => {
+    expect(deploy).toMatch(/if \[ -n "\$ARTIFACT" \]; then\s*\n\s*echo "::error::FTPS_HOST[^\n]*"\s*\n\s*exit 1/);
+  });
+});
