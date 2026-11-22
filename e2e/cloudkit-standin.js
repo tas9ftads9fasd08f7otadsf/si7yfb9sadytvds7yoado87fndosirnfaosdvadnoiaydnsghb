@@ -65,9 +65,17 @@
     if (!slot) return;
     slot.replaceChildren();
     if (!label) return;
-    const each = document.createElement("button");
-    each.type = "button";
-    each.textContent = label;
+    // 161 the library's own shape: a fixed box whose label is shifted to its middle by left and top
+    const each = document.createElement("div");
+    each.className = "apple-auth-button";
+    each.setAttribute("alt", label);
+    each.setAttribute("role", "button");
+    each.style.cssText = "height: 40px; width: 218px; cursor: pointer; border: 1px solid black; "
+      + "border-radius: 5px; background-color: black; display: block;";
+    each.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="apple-auth-button-text" width="177" '
+      + 'height="21" style="overflow: visible; fill: white; top: 50%; left: 50%; position: relative;">'
+      + '<text x="-70" y="6"></text></svg>';
+    each.querySelector("text").textContent = label;
     each.addEventListener("click", click);
     slot.append(each);
   }

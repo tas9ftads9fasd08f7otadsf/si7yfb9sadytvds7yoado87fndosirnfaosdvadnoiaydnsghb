@@ -33,7 +33,7 @@ test("the account part names the Apple Account for a name not typed, and keeps o
   const name = page.locator("#accountName");
   await expect(name).toHaveAttribute("aria-label", "Your name");
   await expect(name).toHaveAttribute("placeholder", "Riki Tester");
-  await expect(page.locator("#account button")).toHaveText("Sign out");
+  await expect(page.locator("#account .apple-auth-button")).toHaveText("Sign out");
   await name.fill("Friki");
   await name.press("Enter");
   await page.reload();

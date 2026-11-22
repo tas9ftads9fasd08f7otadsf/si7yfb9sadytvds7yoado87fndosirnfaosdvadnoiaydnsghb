@@ -11,10 +11,10 @@ test("signed out, the site asks for an Apple Account and shows the maps after si
   await expect(page.locator("#gateTitle")).toHaveText("Sign in to iCloud");
   // 134 signed out, the editor is not seen behind the gate
   await expect(page.locator("#gate")).toHaveClass(/closed/);
-  await page.locator("#signIn button").click();
+  await page.locator("#signIn .apple-auth-button").click();
   await expect(page.locator("#gate")).toBeHidden();
   await expect(page.locator("#device")).toContainText("Riki Tester");
-  await expect(page.locator("#account button")).toHaveText("Sign out");
+  await expect(page.locator("#account .apple-auth-button")).toHaveText("Sign out");
   await page.locator("#railMaps").click();
   await expect(page.locator("#others")).toContainText("Doprava");
   await expect(page.locator("#current")).toContainText("High Tatras");
@@ -56,9 +56,9 @@ test("signing out brings the sign-in back", async ({ page }) => {
   await mockCloud(page, { signedIn: true });
   await page.goto("./");
   await page.locator("#current .hero").waitFor();
-  await page.locator("#account button").click();
+  await page.locator("#account .apple-auth-button").click();
   await expect(page.locator("#gate")).toBeVisible();
-  await expect(page.locator("#signIn button")).toHaveText("Sign in with Apple");
+  await expect(page.locator("#signIn .apple-auth-button")).toHaveText("Sign in with Apple");
 });
 
 test("nothing of the site's reading asks the page's own origin for the phone's API", async ({ page, baseURL }) => {
