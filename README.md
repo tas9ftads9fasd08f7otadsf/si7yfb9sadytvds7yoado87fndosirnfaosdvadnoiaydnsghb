@@ -36,6 +36,11 @@ PHONE_URL=http://192.168.1.20:8765 npm run dev   # against a real phone
 | `npm run pack` | The bundle and zip in `dist/` |
 | `npm run check` | All of it, as CI runs it |
 
+`src/targets/web/real-core.test.ts` runs the real `riki-core.wasm` (`dist/riki-core/`, or `RIKI_CORE_WASM`, which must
+then exist) on `e2e/fixtures/recorded-records.json`, records rikimaps' own encoders wrote, read through `rowOf` as the site
+reads them; the browser specs stand in for the core, so this is where the contract meets the real module. The Core
+workflow runs it after `npm run build:core`; `npm test` skips it while no module is built.
+
 `e2e/console.spec.mjs` and `e2e/site-console.spec.mjs` open every screen, looking and editing, signed in and
 out, and fail on any console error, thrown error or refused request, so neither a pull request nor a release
 passes CI with one. The one exception is Apple's 421 to a signed-out visitor's sign-in check (`users/caller`).

@@ -1,0 +1,473 @@
+{
+ "about": "Records as CloudKit JS answers them. The SharedMap, layer, style and change records are what rikimaps' own encoders write (RecordPayload, MapLayer, StyleDefinition at rikimaps 3560); the shares follow cloudkit.js v2.6.4.",
+ "zones": [
+  {
+   "database": "private",
+   "zone": "com.apple.coredata.cloudkit.zone",
+   "records": [
+    {
+     "fields": {
+      "CD_entityName": {
+       "type": "STRING",
+       "value": "SharedMap"
+      },
+      "CD_id": {
+       "type": "STRING",
+       "value": "6F1E2A10-0000-4000-8000-000000000001"
+      },
+      "CD_name": {
+       "type": "STRING",
+       "value": "High Tatras"
+      },
+      "CD_payload": {
+       "type": "BYTES",
+       "value": "eyJkcmF3c1JlZ2lvbnMiOmZhbHNlLCJpZCI6IjZGMUUyQTEwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMSIsImlzQnVpbHRJbiI6ZmFsc2UsImlzT25saW5lT25seSI6ZmFsc2UsIm5hbWUiOiJIaWdoIFRhdHJhcyIsInNlbGVjdGVkU3R5bGVJRCI6IjBCMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMSIsInN0YWNrIjpbXSwic3R5bGVzIjpbXSwic3ltYm9sIjoibW91bnRhaW4uMiJ9"
+      },
+      "CD_rank": {
+       "type": "STRING",
+       "value": "m"
+      },
+      "CD_updatedAt": {
+       "type": "TIMESTAMP",
+       "value": 1789000000000
+      }
+     },
+     "recordChangeTag": "t-own-tatras",
+     "recordName": "own-tatras",
+     "recordType": "CD_SharedMap"
+    },
+    {
+     "fields": {
+      "CD_entityName": {
+       "type": "STRING",
+       "value": "SharedMapLayer"
+      },
+      "CD_id": {
+       "type": "STRING",
+       "value": "0A000000-0000-4000-8000-000000000002"
+      },
+      "CD_layerJSON": {
+       "type": "STRING",
+       "value": "{\"id\":\"0A000000-0000-4000-8000-000000000002\",\"isEnabled\":true,\"name\":\"Roads\",\"opacity\":1,\"role\":\"overlay\",\"source\":{\"region\":{\"overlay\":\"roads\"}},\"symbol\":\"road.lanes\"}"
+      },
+      "CD_map": {
+       "type": "REFERENCE",
+       "value": {
+        "recordName": "own-tatras"
+       }
+      },
+      "CD_order": {
+       "type": "INT64",
+       "value": 0
+      }
+     },
+     "recordChangeTag": "t",
+     "recordName": "own-tatras-layer-0",
+     "recordType": "CD_SharedMapLayer"
+    },
+    {
+     "fields": {
+      "CD_entityName": {
+       "type": "STRING",
+       "value": "SharedMapLayer"
+      },
+      "CD_id": {
+       "type": "STRING",
+       "value": "0A000000-0000-4000-8000-000000000001"
+      },
+      "CD_layerJSON": {
+       "type": "STRING",
+       "value": "{\"id\":\"0A000000-0000-4000-8000-000000000001\",\"isEnabled\":true,\"name\":\"Trails\",\"opacity\":1,\"role\":\"overlay\",\"source\":{\"url\":{\"attribution\":\"\",\"format\":\"vector\",\"maxZoom\":14,\"template\":\"https:\\/\\/trails.example.org\\/{z}\\/{x}\\/{y}.pbf\"}},\"symbol\":\"figure.hiking\"}"
+      },
+      "CD_map": {
+       "type": "REFERENCE",
+       "value": {
+        "recordName": "own-tatras"
+       }
+      },
+      "CD_order": {
+       "type": "INT64",
+       "value": 1
+      }
+     },
+     "recordChangeTag": "t",
+     "recordName": "own-tatras-layer-1",
+     "recordType": "CD_SharedMapLayer"
+    },
+    {
+     "fields": {
+      "CD_entityName": {
+       "type": "STRING",
+       "value": "SharedMapStyle"
+      },
+      "CD_id": {
+       "type": "STRING",
+       "value": "0B000000-0000-4000-8000-000000000001"
+      },
+      "CD_map": {
+       "type": "REFERENCE",
+       "value": {
+        "recordName": "own-tatras"
+       }
+      },
+      "CD_order": {
+       "type": "INT64",
+       "value": 0
+      },
+      "CD_styleJSON": {
+       "type": "STRING",
+       "value": "{\"adjustments\":{\"labelSizeScale\":1,\"lineWidthScale\":1},\"id\":\"0B000000-0000-4000-8000-000000000001\",\"name\":\"Summer\",\"notes\":\"\",\"origin\":{\"arrangement\":{}},\"symbol\":\"sun.max\"}"
+      }
+     },
+     "recordChangeTag": "t",
+     "recordName": "own-tatras-style-0",
+     "recordType": "CD_SharedMapStyle"
+    },
+    {
+     "fields": {
+      "CD_entityName": {
+       "type": "STRING",
+       "value": "SharedMapChange"
+      },
+      "CD_id": {
+       "type": "STRING",
+       "value": "0C000000-0000-4000-8000-000000000001"
+      },
+      "CD_map": {
+       "type": "REFERENCE",
+       "value": {
+        "recordName": "own-tatras"
+       }
+      },
+      "CD_payload": {
+       "type": "BYTES",
+       "value": "eyJhdXRob3IiOiJFdmEiLCJsaW5lcyI6WyJUcmFpbHMgYWRkZWQiXSwib3JpZ2luIjoid2ViIn0="
+      },
+      "CD_updatedAt": {
+       "type": "TIMESTAMP",
+       "value": 1789000000000
+      }
+     },
+     "recordChangeTag": "t",
+     "recordName": "change-1",
+     "recordType": "CD_SharedMapChange"
+    }
+   ]
+  },
+  {
+   "database": "private",
+   "zone": "com.apple.coredata.cloudkit.share.6F1E2A10-0000-4000-8000-0000000000B3",
+   "records": [
+    {
+     "fields": {
+      "CD_entityName": {
+       "type": "STRING",
+       "value": "SharedMap"
+      },
+      "CD_id": {
+       "type": "STRING",
+       "value": "6F1E2A10-0000-4000-8000-000000000003"
+      },
+      "CD_name": {
+       "type": "STRING",
+       "value": "Beskydy"
+      },
+      "CD_payload": {
+       "type": "BYTES",
+       "value": "eyJkcmF3c1JlZ2lvbnMiOmZhbHNlLCJpZCI6IjZGMUUyQTEwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsImlzQnVpbHRJbiI6ZmFsc2UsImlzT25saW5lT25seSI6ZmFsc2UsIm5hbWUiOiJCZXNreWR5Iiwic3RhY2siOltdLCJzdHlsZXMiOltdLCJzeW1ib2wiOiJsZWFmIn0="
+      },
+      "CD_rank": {
+       "type": "STRING",
+       "value": "c"
+      },
+      "CD_updatedAt": {
+       "type": "TIMESTAMP",
+       "value": 1789000000000
+      }
+     },
+     "recordChangeTag": "t-own-beskydy",
+     "recordName": "own-beskydy",
+     "recordType": "CD_SharedMap"
+    },
+    {
+     "fields": {
+      "CD_entityName": {
+       "type": "STRING",
+       "value": "SharedMapLayer"
+      },
+      "CD_id": {
+       "type": "STRING",
+       "value": "0A000000-0000-4000-8000-000000000003"
+      },
+      "CD_layerJSON": {
+       "type": "STRING",
+       "value": "{\"id\":\"0A000000-0000-4000-8000-000000000003\",\"isEnabled\":true,\"name\":\"Trams\",\"opacity\":1,\"role\":\"overlay\",\"source\":{\"url\":{\"attribution\":\"\",\"format\":\"raster\",\"maxZoom\":18,\"template\":\"https:\\/\\/tiles.example.org\\/{z}\\/{x}\\/{y}.png\"}},\"symbol\":\"tram\"}"
+      },
+      "CD_map": {
+       "type": "REFERENCE",
+       "value": {
+        "recordName": "own-beskydy"
+       }
+      },
+      "CD_order": {
+       "type": "INT64",
+       "value": 0
+      }
+     },
+     "recordChangeTag": "t",
+     "recordName": "own-beskydy-layer-0",
+     "recordType": "CD_SharedMapLayer"
+    },
+    {
+     "recordName": "Share-beskydy",
+     "recordType": "cloudkit.share",
+     "recordChangeTag": "s1",
+     "fields": {
+      "cloudkit.title": {
+       "value": "Beskydy",
+       "type": "STRING"
+      }
+     },
+     "participants": [
+      {
+       "userIdentity": {
+        "userRecordName": "_me",
+        "nameComponents": {
+         "givenName": "Riki",
+         "familyName": "Tester"
+        }
+       },
+       "permission": "READ_WRITE",
+       "type": "OWNER",
+       "acceptanceStatus": "ACCEPTED"
+      },
+      {
+       "userIdentity": {
+        "userRecordName": "_jana",
+        "nameComponents": {
+         "givenName": "Jana"
+        }
+       },
+       "permission": "READ_WRITE",
+       "type": "USER",
+       "acceptanceStatus": "ACCEPTED"
+      },
+      {
+       "userIdentity": {
+        "userRecordName": "_petr",
+        "lookupInfo": {
+         "emailAddress": "petr@example.com"
+        }
+       },
+       "permission": "READ_ONLY",
+       "type": "USER",
+       "acceptanceStatus": "PENDING"
+      }
+     ],
+     "owner": {
+      "userIdentity": {
+       "userRecordName": "_me",
+       "nameComponents": {
+        "givenName": "Riki",
+        "familyName": "Tester"
+       }
+      },
+      "permission": "READ_WRITE",
+      "type": "OWNER",
+      "acceptanceStatus": "ACCEPTED"
+     },
+     "currentUserParticipant": {
+      "userIdentity": {
+       "userRecordName": "_me",
+       "nameComponents": {
+        "givenName": "Riki",
+        "familyName": "Tester"
+       }
+      },
+      "permission": "READ_WRITE",
+      "type": "OWNER",
+      "acceptanceStatus": "ACCEPTED"
+     },
+     "publicPermission": "READ_ONLY"
+    },
+    {
+     "recordName": "member-jana",
+     "recordType": "CD_SharedMapMember",
+     "recordChangeTag": "t",
+     "fields": {
+      "CD_entityName": {
+       "value": "SharedMapMember",
+       "type": "STRING"
+      },
+      "CD_participantID": {
+       "value": "_jana",
+       "type": "STRING"
+      },
+      "CD_roleRaw": {
+       "value": "admin",
+       "type": "STRING"
+      },
+      "CD_map": {
+       "value": {
+        "recordName": "own-beskydy"
+       },
+       "type": "REFERENCE"
+      }
+     }
+    },
+    {
+     "recordName": "member-ask",
+     "recordType": "CD_SharedMapMember",
+     "recordChangeTag": "t",
+     "fields": {
+      "CD_entityName": {
+       "value": "SharedMapMember",
+       "type": "STRING"
+      },
+      "CD_participantID": {
+       "value": "invite:email:marek@example.com",
+       "type": "STRING"
+      },
+      "CD_roleRaw": {
+       "value": "editor",
+       "type": "STRING"
+      },
+      "CD_map": {
+       "value": {
+        "recordName": "own-beskydy"
+       },
+       "type": "REFERENCE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "database": "shared",
+   "zone": "com.apple.coredata.cloudkit.share.6F1E2A10-0000-4000-8000-0000000000D2",
+   "owner": "_friki",
+   "records": [
+    {
+     "fields": {
+      "CD_entityName": {
+       "type": "STRING",
+       "value": "SharedMap"
+      },
+      "CD_id": {
+       "type": "STRING",
+       "value": "6F1E2A10-0000-4000-8000-000000000002"
+      },
+      "CD_name": {
+       "type": "STRING",
+       "value": "Doprava"
+      },
+      "CD_payload": {
+       "type": "BYTES",
+       "value": "eyJkcmF3c1JlZ2lvbnMiOmZhbHNlLCJpZCI6IjZGMUUyQTEwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMiIsImlzQnVpbHRJbiI6ZmFsc2UsImlzT25saW5lT25seSI6ZmFsc2UsIm5hbWUiOiJEb3ByYXZhIiwic3RhY2siOltdLCJzdHlsZXMiOltdLCJzeW1ib2wiOiJ0cmFtIn0="
+      },
+      "CD_rank": {
+       "type": "STRING",
+       "value": "m"
+      },
+      "CD_updatedAt": {
+       "type": "TIMESTAMP",
+       "value": 1789000000000
+      }
+     },
+     "recordChangeTag": "t-shared-doprava",
+     "recordName": "shared-doprava",
+     "recordType": "CD_SharedMap"
+    },
+    {
+     "fields": {
+      "CD_entityName": {
+       "type": "STRING",
+       "value": "SharedMapLayer"
+      },
+      "CD_id": {
+       "type": "STRING",
+       "value": "0A000000-0000-4000-8000-000000000003"
+      },
+      "CD_layerJSON": {
+       "type": "STRING",
+       "value": "{\"id\":\"0A000000-0000-4000-8000-000000000003\",\"isEnabled\":true,\"name\":\"Trams\",\"opacity\":1,\"role\":\"overlay\",\"source\":{\"url\":{\"attribution\":\"\",\"format\":\"raster\",\"maxZoom\":18,\"template\":\"https:\\/\\/tiles.example.org\\/{z}\\/{x}\\/{y}.png\"}},\"symbol\":\"tram\"}"
+      },
+      "CD_map": {
+       "type": "REFERENCE",
+       "value": {
+        "recordName": "shared-doprava"
+       }
+      },
+      "CD_order": {
+       "type": "INT64",
+       "value": 0
+      }
+     },
+     "recordChangeTag": "t",
+     "recordName": "shared-doprava-layer-0",
+     "recordType": "CD_SharedMapLayer"
+    },
+    {
+     "recordName": "Share-doprava",
+     "recordType": "cloudkit.share",
+     "recordChangeTag": "s2",
+     "fields": {
+      "cloudkit.title": {
+       "value": "Doprava",
+       "type": "STRING"
+      }
+     },
+     "participants": [
+      {
+       "userIdentity": {
+        "userRecordName": "_friki",
+        "nameComponents": {
+         "givenName": "Friki"
+        }
+       },
+       "permission": "READ_WRITE",
+       "type": "OWNER",
+       "acceptanceStatus": "ACCEPTED"
+      },
+      {
+       "userIdentity": {
+        "userRecordName": "_me",
+        "nameComponents": {
+         "givenName": "Riki",
+         "familyName": "Tester"
+        }
+       },
+       "permission": "READ_ONLY",
+       "type": "USER",
+       "acceptanceStatus": "ACCEPTED"
+      }
+     ],
+     "owner": {
+      "userIdentity": {
+       "userRecordName": "_friki",
+       "nameComponents": {
+        "givenName": "Friki"
+       }
+      },
+      "permission": "READ_WRITE",
+      "type": "OWNER",
+      "acceptanceStatus": "ACCEPTED"
+     },
+     "currentUserParticipant": {
+      "userIdentity": {
+       "userRecordName": "_me",
+       "nameComponents": {
+        "givenName": "Riki",
+        "familyName": "Tester"
+       }
+      },
+      "permission": "READ_ONLY",
+      "type": "USER",
+      "acceptanceStatus": "ACCEPTED"
+     },
+     "publicPermission": "NONE"
+    }
+   ]
+  }
+ ]
+}

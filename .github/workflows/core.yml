@@ -83,6 +83,13 @@ jobs:
           RIKIMAPS_DIR: ${{ github.workspace }}/rikimaps
         run: npm run build:core
 
+      # 159 the built module on records rikimaps' encoders wrote, read through rowOf as the site reads them
+      - name: Test the module on recorded records
+        if: steps.pin.outputs.ref != ''
+        env:
+          RIKI_CORE_WASM: dist/riki-core/riki-core.wasm
+        run: npx vitest run src/targets/web/real-core.test.ts
+
       # rikimaps runs none of these in its own CI: the core's Foundation-only files and the module's ABI tests.
       - name: Test the core at the pinned commit
         if: steps.pin.outputs.ref != ''
