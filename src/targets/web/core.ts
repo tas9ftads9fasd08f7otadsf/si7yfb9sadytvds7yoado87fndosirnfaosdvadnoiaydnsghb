@@ -161,11 +161,22 @@ export function callJSON<T>(exports: CoreExports, call: Call, request: unknown):
   return answer;
 }
 
+/** 157 The core holds no such map; thrown, as the phone's 404 is, so the page opens nothing to edit. */
+export class NoSuchMap extends Error {
+  constructor(readonly id: string) {
+    super(`The rows hold no map ${id}`);
+  }
+}
+
 /** The core's functions behind `Core`. */
 export function coreOf(exports: CoreExports): Core {
   return {
     maps: (rows) => callJSON(exports, "riki_maps", { rows }),
-    map: (rows, id) => callJSON(exports, "riki_map", { rows, id }),
+    map: (rows, id) => {
+      const answer = callJSON<Portable | { refused: string }>(exports, "riki_map", { rows, id });
+      if ("refused" in answer) throw new NoSuchMap(id);
+      return answer;
+    },
     style: (rows, mapID, styleID, catalog) => callJSON(exports, "riki_style", { rows, mapID, styleID, catalog }),
     apply: (ask) => callJSON(exports, "riki_apply", ask),
     readAddress: (ask) => callJSON(exports, "riki_read_address", ask),
