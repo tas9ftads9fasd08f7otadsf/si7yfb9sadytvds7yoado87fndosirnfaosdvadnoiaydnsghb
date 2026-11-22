@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ENGLISH } from "@/lib/words";
 import type { PeopleRead } from "./core";
-import { peopleOf } from "./people";
+import { peopleOf, sortedPeople } from "./people";
 
 const say = (key: keyof typeof ENGLISH) => ENGLISH[key];
 
@@ -36,5 +36,18 @@ describe("the card made of what the core read", () => {
   it("answers a map nobody shares with no people", () => {
     expect(peopleOf({ shared: false, role: "owner", people: [], linkRole: null }, say))
       .toMatchObject({ isShared: false, people: [], readOnly: true });
+  });
+
+  // 160 the core orders by code point, where Č comes after Z; Slovak puts it between C and D
+  it("sorts names by the reader's language, the owner first and the nameless by the word for them", () => {
+    const people: PeopleRead["people"] = [
+      { id: "d", name: "Dana", role: "editor", hasAccepted: true, isYou: false },
+      { id: "c2", name: "Čestmír", role: "reader", hasAccepted: true, isYou: false },
+      { id: "z", name: "Zuzana", role: "owner", hasAccepted: true, isYou: false },
+      { id: "c1", name: "cyril", role: "reader", hasAccepted: true, isYou: false },
+      { id: "n", name: null, role: "reader", hasAccepted: false, isYou: false }];
+    expect(sortedPeople(people, "sk", say).map((each) => each.id)).toEqual(["z", "c1", "c2", "d", "n"]);
+    expect(peopleOf({ ...read, people }, say, "sk").people.map((each) => each.id)).toEqual(["z", "c1", "c2", "d", "n"]);
+    expect(sortedPeople(people, "en", say).map((each) => each.id).slice(0, 3)).toEqual(["z", "c2", "c1"]);
   });
 });
