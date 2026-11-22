@@ -133,7 +133,7 @@ export interface CoreExports {
   riki_changes(pointer: number, length: number): number;
   riki_read_address(pointer: number, length: number): number;
   riki_add_layer(pointer: number, length: number): number;
-  /** 108 Not in the pinned module yet. */
+  /** 108 In modules from rikimaps 3560 on; an older one has none and says not ready. */
   riki_people?(pointer: number, length: number): number;
 }
 

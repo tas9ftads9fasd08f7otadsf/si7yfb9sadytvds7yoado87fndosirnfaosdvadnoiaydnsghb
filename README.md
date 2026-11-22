@@ -81,9 +81,9 @@ where the module was not built; `RIKI_PACK_WITHOUT_CORE=1` packs without it for 
 core (CI does, and `npm run check`).
 The pinned module answers `riki_maps` (rikimaps 3549): the iCloud maps the rows hold, as a phone's `/device` lists
 them; `riki_map` (3557), a map as a phone's `GET /maps/<id>` answers it, refusing one the rows lack, which `core.ts`
-throws as `NoSuchMap`, as the phone's 404 is thrown; and `riki_changes` (3557), every map's history lines, newest first. `riki_people` (item 108) is the call that reads who holds a map, and the module pinned today lacks it, so the People
-card answers "The site's map rules are not ready yet." until the pin moves to a commit that has it (then
-`CONTRACT.calls` in `scripts/build-core.mjs` and `riki_version` list it). It takes `{rows, id}`, the rows being
+throws as `NoSuchMap`, as the phone's 404 is thrown; and `riki_changes` (3557), every map's history lines, newest first. `riki_people` (item 108, rikimaps 3560) is the call that reads who holds a map; `CONTRACT.calls` in
+`scripts/build-core.mjs` and `riki_version` list it, and a module from before 3560 makes the People card answer
+"The site's map rules are not ready yet." It takes `{rows, id}`, the rows being
 those every call gets plus a shared map's `Share` row (a `cloudkit.share` record: its `cloudkit.title` and other text fields,
 and `participants`, `owner`, `currentUserParticipant`, `publicPermission` as CloudKit answers them) and its
 `SharedMapMember` rows (`participantID`, `roleRaw`, `displayName`, `addedAt`, `map`), and answers

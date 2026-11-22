@@ -31,7 +31,8 @@ export const CONTRACT = {
     url: "https://download.swift.org/swift-6.2-release/wasm-sdk/swift-6.2-RELEASE/swift-6.2-RELEASE_wasm.artifactbundle.tar.gz",
     sha256: "fe4e8648309fce86ea522e9e0d1dc48e82df6ba6e5743dbf0c53db8429fb5224"
   },
-  calls: ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer"],
+  calls: ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer",
+    "riki_people"],
   exports: ["memory", "riki_alloc", "riki_free", "riki_version"]
 };
 
