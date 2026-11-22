@@ -71,7 +71,7 @@ test("a sign-in window that failed leaves the sign-in button working", async ({ 
 test("the Sign in with Apple ID button sits centred in its card, its words in its middle", async ({ page }) => {
   await page.setViewportSize({ width: 428, height: 926 });
   await mockCloud(page);
-  await page.goto("./");
+  await page.goto("./?debug=1");
   const button = page.locator("#signIn .apple-auth-button");
   await expect(button).toBeVisible();
   const [card, box, label] = await Promise.all(["#gate .sheet", "#signIn .apple-auth-button",
