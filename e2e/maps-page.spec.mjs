@@ -100,11 +100,12 @@ test("a filter with no map says so and Clear brings the maps back", async ({ pag
 });
 
 // 148: a card opens the map with a plain click, and a ⌘/Ctrl-click opens a tab.
+// 162 bug: a Ctrl-click is a right-click on a Mac, so the test failed there; ⌘ there, Ctrl elsewhere
 test("a card opens the map, and a modified click opens a tab", async ({ page, context, request }) => {
   await phone(request, "sample-maps");
   await openMaps(page);
   const opened = context.waitForEvent("page");
-  await tile(page, "Fitness").locator(".tile-name").click({ modifiers: ["Control"] });
+  await tile(page, "Fitness").locator(".tile-name").click({ modifiers: ["ControlOrMeta"] });
   const other = await opened;
   expect(new URL(other.url()).pathname).toMatch(/^\/maps\/6F1E2A10-0000-4000-8000-00000000F05$/);
   await other.close();
@@ -155,12 +156,13 @@ test("List shows a row for each map, with the fields the phone sent, and the cho
 });
 
 // 149: a row opens its map; the name is a link, so a Ctrl-click opens a tab.
+// 162 bug: ⌘ on a Mac, where a Ctrl-click is a right-click
 test("a row opens the map, and a modified click on its name opens a tab", async ({ page, context, request }) => {
   await phone(request, "sample-maps");
   await openMaps(page);
   await page.locator("#mapsViewList").click();
   const opened = context.waitForEvent("page");
-  await row(page, "Fitness").locator(".tile-name").click({ modifiers: ["Control"] });
+  await row(page, "Fitness").locator(".tile-name").click({ modifiers: ["ControlOrMeta"] });
   const other = await opened;
   expect(new URL(other.url()).pathname).toBe("/maps/6F1E2A10-0000-4000-8000-00000000F05");
   await other.close();
