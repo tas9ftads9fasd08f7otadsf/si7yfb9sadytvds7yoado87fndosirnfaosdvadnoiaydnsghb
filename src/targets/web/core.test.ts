@@ -36,7 +36,8 @@ describe("the core's wrapper", () => {
     const alloc = (length: number) => { const at = top; top += length; return at; };
     return { memory, riki_alloc: alloc, riki_free: (p, l) => { freed.push([p, l]); }, freed,
       riki_maps: respond, riki_map: respond, riki_apply: respond, riki_style: respond, riki_changes: respond,
-      riki_read_address: respond, riki_add_layer: respond, riki_people: respond };
+      riki_read_address: respond, riki_add_layer: respond, riki_people: respond,
+      riki_export: respond };
   }
 
   it("writes the request as JSON, reads the answer back and frees both buffers", () => {
@@ -93,6 +94,14 @@ describe("the core's wrapper", () => {
     expect(coreOf(exports).people([], "M")).toEqual({ rows: [], id: "M" });
     const without: CoreExports = { ...exports, riki_people: undefined };
     expect(() => coreOf(without).people([], "M")).toThrow(CoreNotReady);
+  });
+
+  // 176 riki_export takes the rows and the map's id; a module from before rikimaps 3651 is not ready
+  it("asks riki_export with the rows and the map, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).exportMap([], "M")).toEqual({ rows: [], id: "M" });
+    const without: CoreExports = { ...exports, riki_export: undefined };
+    expect(() => coreOf(without).exportMap([], "M")).toThrow(CoreNotReady);
   });
 
   it("loads a module through the WASI shim and answers what it recorded", async () => {

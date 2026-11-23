@@ -13,7 +13,7 @@ const PAGES = 16;
 
 /** The module's bytes: `answers` holds what each export returns; a call with none refuses. */
 export function fakeCoreWasm(answers) {
-  const names = ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_version"];
+  const names = ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_export", "riki_version"];
   const bodies = names.map((name) => {
     const bytes = [...new TextEncoder().encode(JSON.stringify(answers[name] ?? { refused: `${name} has no recorded answer` }))];
     const length = new Uint8Array(4);
