@@ -326,6 +326,8 @@ export interface OptionSection {
   kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values"
     | "details" | "headers" | "probe" | "symbols" | "signKey";
   title?: string;
+  /** 168: the part of a point layer's look it belongs to. */
+  aspect?: "colour" | "mark" | "text" | "stacking" | "linesAndAreas";
   footnote?: string;
   layerScoped?: boolean;
   family?: string;
@@ -489,6 +491,8 @@ export interface APIReading {
   colourKey?: string | null;
   imageKey?: string | null;
   shownKeys?: string[];
+  /** 171 Only the points where every rule holds are drawn. */
+  filter?: APIPointRule[] | null;
   refreshSeconds?: number | null;
   detailRows?: APIDetailRow[] | null;
   cookies?: CookiePreflight | null;
@@ -521,6 +525,13 @@ export interface APIDetailRow {
   isHidden?: boolean | null;
 }
 
+/** 171: one condition of a reading's filter, as `APIPointRule` is written. */
+export interface APIPointRule {
+  key: string;
+  op: "is" | "isNot" | "contains" | "notEmpty";
+  value?: string | null;
+}
+
 export interface APIChoice {
   value: string;
   title: string;
@@ -536,6 +547,8 @@ export interface APIRead {
   name: string;
   said: string;
   samples?: Record<string, string>;
+  /** 171 What the address answered, for the Points page; a phone from before sends none. */
+  answer?: unknown;
   keepsCookie?: boolean;
   choices?: { spellings: APIChoice[]; orders: APIChoice[]; refresh: APIChoice[]; cookieAges: APIChoice[] };
 }
@@ -568,8 +581,25 @@ export interface RoadSignsAsk {
   near?: string;
 }
 
+/** 172: a part of a server layer's look that changed since this layer took it. */
+export interface ServerLookPart {
+  id: string;
+  title: string;
+  /** What changed, in the phone's words. */
+  changed?: string;
+  /** The part was edited here too, so taking the server's loses that edit. */
+  changedHere?: boolean;
+}
+
+/** 172: the phone's say that a layer's server has a look it has not answered; absent when it has. */
+export interface ServerLookAsk {
+  server: string;
+  version: number;
+  parts: ServerLookPart[];
+}
+
 export interface LayerOptions {
-  layers: { id: string; sections: OptionSection[] }[];
+  layers: { id: string; sections: OptionSection[]; serverLook?: ServerLookAsk }[];
 }
 
 export interface PackageRow {

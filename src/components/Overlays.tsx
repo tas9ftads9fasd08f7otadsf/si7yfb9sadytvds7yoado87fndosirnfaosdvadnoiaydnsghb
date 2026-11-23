@@ -162,7 +162,6 @@ export function Gate() {
       <div id="gate" className="closed" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
         <div className="sheet">
           <AppIcon size={48} className="gate-icon" />
-          <div id="gateMark"><Sym name="person.crop.circle" /></div>
           <h1 id="gateTitle">{words.signInTitle}</h1>
           <p id="gateText">{words.signInText}</p>
           <div id="signIn" ref={signIn} />

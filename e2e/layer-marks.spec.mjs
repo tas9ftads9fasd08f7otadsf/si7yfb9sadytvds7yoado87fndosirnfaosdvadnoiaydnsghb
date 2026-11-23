@@ -13,7 +13,9 @@ async function openMarks(page) {
   await page.locator("#editButton").click();
   const row = page.locator(`#editBody [data-layer='${layer}']`);
   await row.getByRole("button", { name: "Options" }).click();
-  return page.locator(`[data-options='${layer}']`);
+  const panel = page.locator(`[data-options='${layer}']`);
+  await panel.getByRole("tab", { name: "Mark" }).click();
+  return panel;
 }
 
 const sent = (page) => page.waitForRequest((request) => request.url().includes("/edit?"))

@@ -242,6 +242,16 @@ button.row:disabled { opacity: 0.6; cursor: default; }
 .row.dimmed { color: var(--secondary); }
 .card.options { margin: 0 8px 8px; }
 .card.options .foot-note { margin: 2px 14px 10px; }
+.server-look-banner { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 8px 12px;
+  border-radius: 10px; background: var(--cs-water); color: var(--c-water); font-size: 13px; }
+.server-look-banner .words { flex: 1; min-width: 0; }
+.server-look-banner .pill.review { height: 28px; padding: 0 12px; background: #F5C542; color: #3A2D00; }
+.server-look-review .row.head { gap: 12px; }
+.server-look-review .field.part { display: flex; flex-direction: column; gap: 4px; }
+.server-look-review .changed, .server-look-review .changed-here { color: var(--secondary); }
+.server-look-review .changed-here { color: #B26A00; }
+.server-look-review .row.actions { justify-content: space-between; margin-top: 8px; }
+.server-look-review .pill.take[disabled] { opacity: .5; }
 .ink { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--light); }
 :root[data-theme=dark] .ink { background: var(--dark); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme=light]) .ink { background: var(--dark); } }
@@ -1089,3 +1099,10 @@ body.place-open .maplibregl-ctrl-bottom-right { right: 396px; }
 #editBody .row.add { min-height: 56px; font-size: 15px; }
 #data .data-head p { margin-top: 6px; }
 #peopleInvite > .action { width: calc(100% - 24px); margin: 4px 12px 0; }
+
+/* 171 the Points page's way down the answer */
+.trail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 0; }
+.trail button { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 3px 11px; }
+.trail button[aria-current="location"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+#apiTree .row > button.words { text-align: left; background: none; border: 0; padding: 0; flex: 1; }
+#apiTree .row > button.words:disabled { opacity: .6; }

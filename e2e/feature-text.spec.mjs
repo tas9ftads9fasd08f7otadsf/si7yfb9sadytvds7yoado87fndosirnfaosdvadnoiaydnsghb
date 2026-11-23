@@ -22,6 +22,7 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
 // 70: the text above and inside each point is a template the phone writes as Edit layer does.
 test("an API layer's point text is set from its Options", async ({ page }) => {
   const panel = await openFeatures(page);
+  await panel.getByRole("tab", { name: "Text" }).click();
   const above = panel.getByRole("combobox", { name: "Text above points" });
   let asked = sent(page);
   await above.fill("{line}");
@@ -41,7 +42,7 @@ test("an API layer's colour is read from a key", async ({ page }) => {
   const panel = await openFeatures(page);
 
   let asked = sent(page);
-  await panel.getByRole("combobox", { name: "Colour", exact: true }).selectOption("fromKey");
+  await panel.getByRole("combobox", { name: "Dot colour", exact: true }).selectOption("fromKey");
   expect(await asked).toMatchObject({ layer, colourMode: "fromKey" });
   const key = panel.getByRole("combobox", { name: "Colour key" });
   await expect(key).toHaveValue("{colour}");
@@ -53,7 +54,7 @@ test("an API layer's colour is read from a key", async ({ page }) => {
   await expect(panel.getByRole("combobox", { name: "Colour key" })).toHaveValue("{status}");
 
   asked = sent(page);
-  await panel.getByRole("combobox", { name: "Colour", exact: true }).selectOption("byValue");
+  await panel.getByRole("combobox", { name: "Dot colour", exact: true }).selectOption("byValue");
   expect(await asked).toMatchObject({ colourMode: "byValue" });
   await expect(panel.getByRole("combobox", { name: "Value key" })).toHaveValue("{status}");
   await expect(panel.getByRole("group", { name: "Otherwise" })).toBeVisible();

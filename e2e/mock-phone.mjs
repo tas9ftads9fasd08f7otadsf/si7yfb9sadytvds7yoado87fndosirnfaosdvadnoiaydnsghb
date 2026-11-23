@@ -51,7 +51,7 @@ function freshMaps() {
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
   tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
-    offlineAsks: [], discarded: [], esriAsks: [],
+    offlineAsks: [], discarded: [], esriAsks: [], serverLookAnswers: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
 // 59: the High Tatras shared with Rita, who joined; Bratislava with nobody yet.
@@ -175,7 +175,7 @@ function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
     tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
-    offlineAsks: [], discarded: [], esriAsks: [],
+    offlineAsks: [], discarded: [], esriAsks: [], serverLookAnswers: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
 
@@ -506,7 +506,7 @@ function lookSections(layer) {
 // 2998: Edit layer's feature styling, as `PeerWebLayerOptions+Features` lists it for a drawn file.
 const FEATURE_SWITCHES = ["distinctColours", "grouping"];
 const FEATURE_KEYS = [...FEATURE_SWITCHES, "lineWidth", "valueShown", "allValuesShown", "valueTint",
-  "pointLabel", "pointInnerText", "colourMode", "colourKey"];
+  "pointLabel", "pointInnerText", "colourMode", "colourKey", "stacking"];
 const API_KEYS = ["line", "status", "colour"];
 
 // 70: an API layer's Colour and Text rows, as `PeerWebLayerOptions+Features` lists them.
@@ -516,15 +516,20 @@ function apiPointSections(layer) {
     layerScoped: true, value: layer.tint || null, automatic: "#0A84FF", palette: ["#E5533D", "#2E9E5B"] };
   const keyed = (title, held) => ({ kind: "text", title, footnote: "", key: "colourKey", layerScoped: true,
     value: `{${held}}`, keys: API_KEYS });
-  return [{ kind: "choice", title: "Colour", footnote: "", key: "colourMode", layerScoped: true, value: mode,
+  const found = [{ kind: "choice", title: "Colour", footnote: "", key: "colourMode", layerScoped: true, value: mode,
     options: [["fixed", "Static"], ["fromKey", "From key"], ["byValue", "By value"]]
       .map(([id, title]) => ({ id, title, detail: "" })) },
   ...(mode === "fixed" ? [colour] : mode === "fromKey" ? [keyed("Colour key", layer.colourKey)]
-    : [keyed("Value key", layer.tintKey), colour]),
-  { kind: "text", title: "Text above points", footnote: "A {key} becomes that feature's value.", key: "pointLabel",
-    layerScoped: true, value: layer.pointLabel || "", keys: API_KEYS },
-  { kind: "text", title: "Text inside points", footnote: "Written in white on the dot.", key: "pointInnerText",
-    layerScoped: true, value: layer.pointInnerText || "", keys: API_KEYS }];
+    : [keyed("Value key", layer.tintKey), colour])]
+    .map((one) => ({ ...one, aspect: "colour" }));
+  return [...found, ...markSections(layer),
+    { kind: "text", title: "Text above points", footnote: "A {key} becomes that feature's value.", key: "pointLabel",
+      aspect: "text", layerScoped: true, value: layer.pointLabel || "", keys: API_KEYS },
+    { kind: "text", title: "Text inside points", footnote: "Written in white on the dot.", key: "pointInnerText",
+      aspect: "text", layerScoped: true, value: layer.pointInnerText || "", keys: API_KEYS },
+    // 168: only an API layer stacks points that fall together.
+    { kind: "switch", title: "", footnote: "Points that fall together become one", key: "stacking", aspect: "stacking",
+      label: "Stack close points", isOn: layer.stacking === true, layerScoped: true }];
 }
 
 const bare = (written) => (written || "").trim().replace(/^\{/, "").replace(/\}$/, "").trim() || undefined;
@@ -533,15 +538,17 @@ const DRAWN_VALUES = ["Hiking", "Skiing"];
 function featureSections(layer) {
   const shown = layer.shownValues || DRAWN_VALUES;
   const every = shown.length === DRAWN_VALUES.length;
-  return [{ kind: "slider", title: "Line width", footnote: "", key: "lineWidth", layerScoped: true,
+  return [{ kind: "slider", title: "Line width", footnote: "", key: "lineWidth", layerScoped: true, aspect: "linesAndAreas",
     value: String(layer.lineWidthScale || 1), range: [0.5, 5, 0.25], ends: ["Hairline", "Bold"] },
-  { kind: "switch", title: "", footnote: "Tell overlapping features apart", key: "distinctColours",
+  { kind: "colour", title: "", footnote: "", key: "tint", layerScoped: true, aspect: "colour",
+    value: layer.tintHex || null, automatic: "#0A84FF", palette: ["#E5533D", "#2E9E5B"] },
+  { kind: "switch", title: "", footnote: "Tell overlapping features apart", key: "distinctColours", aspect: "colour",
     label: "Distinct colours per feature", isOn: layer.distinctColours === true, layerScoped: true },
-  { kind: "values", title: "Colour by Kind", footnote: "", key: "valueShown", layerScoped: true,
+  { kind: "values", title: "Colour by Kind", footnote: "", key: "valueShown", layerScoped: true, aspect: "colour",
     label: every ? "None" : "All", value: every ? "0" : "1", palette: ["#E5533D", "#2E9E5B"],
     items: DRAWN_VALUES.map((value) => ({ id: value, title: value, light: layer.valueTints?.[value] || "",
       dark: layer.valueTints?.[value] || "", isOn: shown.includes(value) })) },
-  { kind: "switch", title: "Grouping", footnote: "A tap gathers every part sharing that name.", key: "grouping",
+  { kind: "switch", title: "Grouping", footnote: "A tap gathers every part sharing that name.", key: "grouping", aspect: "colour",
     label: "Group features by name", isOn: layer.grouping === true, layerScoped: true }];
 }
 
@@ -557,6 +564,7 @@ function editFeatures(layer, query, key) {
     if (layer.tintKey) layer.tintKey = bare(value); else layer.colourKey = bare(value);
   }
   if (FEATURE_SWITCHES.includes(key)) layer[key] = value === "1";
+  if (key === "stacking") layer.stacking = value === "1";
   if (key === "lineWidth") layer.lineWidthScale = Number(value);
   if (key === "valueTint") layer.valueTints = { ...layer.valueTints, [value]: query.get("ink") || undefined };
   const shown = new Set(layer.shownValues || DRAWN_VALUES);
@@ -592,7 +600,7 @@ function markSections(layer) {
     found.push({ kind: "colour", title: "Icon colour", footnote: "", key: "pointIconColour", layerScoped: true,
       value: layer.pointIconColourHex || null, automatic: "#FFFFFF", palette: ["#E5533D", "#2E9E5B"] });
   }
-  return found;
+  return found.map((one) => ({ ...one, aspect: "mark" }));
 }
 
 /** As `PeerWebLayerMarks.Marking.make`: false where the mark has no such row. */
@@ -703,18 +711,85 @@ const API_CHOICES = {
 };
 
 // 3003: an API answering two vehicles, as `PeerWebAPI` reads one; 3397 a cookie is kept, never answered.
+const BUS_ANSWER = { vehicles: [{ lat: 48.15, lon: 17.11, line: "N33" }, { lat: 48.16, lon: 17.12, line: "N34" }], stops: [] };
+
+// 171: a trimmed coffee trip, whose answer nests its lists three ways; the phone sends the answer for the Points page.
+const COFFEE_ANSWER = {
+  cafes: [
+    { id: 1, name: "Espresso Embassy", latLng: "47.49, 19.05", city: { id: 3, name: "Budapest" }, tags: ["roaster", "wifi"], note: "" },
+    { id: 2, name: "Café Nové", latLng: "48.14, 17.10", city: { id: 4, name: "Bratislava" }, tags: ["wifi"], note: "closed on Sundays" },
+    { id: 3, name: "Kávovar", latLng: "48.71, 21.26", city: { id: 5, name: "Košice" }, tags: [] }],
+  cities: [{ id: 3, name: "Budapest", lat: 47.49, lon: 19.04 }, { id: 4, name: "Bratislava", lat: 48.14, lon: 17.1 }],
+  giveaways: []
+};
+
+function dotted(item, key) {
+  let here = item;
+  for (const step of key.split(".").filter(Boolean)) here = here === null || typeof here !== "object" ? undefined : here[step];
+  return here;
+}
+
+function asText(value) {
+  if (Array.isArray(value)) return value.map(asText).join(", ");
+  return value === undefined || value === null || typeof value === "object" ? "" : String(value);
+}
+
+const loosely = (text) => text.trim().normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
+// 171: as `APIPointRule.holds`: every rule must hold, a missing key reads as an empty one.
+function passes(item, rules) {
+  return (rules || []).every((rule) => {
+    if (!rule.key?.trim()) return true;
+    const found = dotted(item, rule.key.trim());
+    if (rule.op === "notEmpty") {
+      return Array.isArray(found) ? found.length > 0 : found !== null && typeof found === "object" ? true : asText(found).trim() !== "";
+    }
+    const have = loosely(asText(found));
+    const wanted = loosely(rule.value || "");
+    if (rule.op === "is") return have === wanted;
+    if (rule.op === "isNot") return have !== wanted;
+    return wanted === "" || have.includes(wanted);
+  });
+}
+
+function scalarKeys(item, depth = 3, prefix = "") {
+  if (depth <= 0 || item === null || typeof item !== "object" || Array.isArray(item)) return [];
+  return Object.keys(item).sort().flatMap((key) => {
+    const part = item[key];
+    const path = prefix ? `${prefix}.${key}` : key;
+    return part === null || typeof part !== "object" ? [path] : scalarKeys(part, depth - 1, path);
+  });
+}
+
+function coffeeRead(query, cookie) {
+  const reading = query.has("reading") ? JSON.parse(query.get("reading"))
+    : { itemsPath: "cities", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "", nameKey: "name", shownKeys: [] };
+  reading.cookies = undefined;
+  const items = COFFEE_ANSWER[reading.itemsPath] || [];
+  const keys = [...new Set(items.flatMap((item) => scalarKeys(item)))].sort();
+  const samples = Object.fromEntries(keys.map((key) => [key, asText(dotted(items.find((item) => asText(dotted(item, key))), key))]));
+  const placed = (item) => reading.spelling === "position"
+    ? /^-?\d+(\.\d+)?, ?-?\d+(\.\d+)?$/.test(asText(dotted(item, reading.positionKey)))
+    : typeof dotted(item, reading.latitudeKey) === "number" && typeof dotted(item, reading.longitudeKey) === "number";
+  const points = items.filter((item) => placed(item) && passes(item, reading.filter)).length;
+  return { reading, paths: ["cafes", "cities"], keys, points, name: "coffee.example", said: `Answered · ${points} points`,
+    samples, answer: COFFEE_ANSWER, keepsCookie: Boolean(cookie || phone.keptCookie), choices: API_CHOICES };
+}
+
 function apiRead(query, cookie) {
   if (!/^https:\/\//.test(query.get("address") || "")) return null;
+  if (new URL(query.get("address")).host === "coffee.example") return coffeeRead(query, cookie);
   const reading = query.has("reading") ? JSON.parse(query.get("reading"))
     : { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "", nameKey: "line",
       shownKeys: [] };
   const cookies = query.has("cookies") ? JSON.parse(query.get("cookies")) : null;
   reading.cookies = cookies?.isOn ? cookies : undefined;
   const keys = reading.itemsPath === "vehicles" ? ["lat", "lon", "line"] : [];
-  const points = keys.includes(reading.latitudeKey) && keys.includes(reading.longitudeKey) ? 2 : 0;
+  const placed = keys.includes(reading.latitudeKey) && keys.includes(reading.longitudeKey);
+  const points = placed ? (BUS_ANSWER.vehicles || []).filter((item) => passes(item, reading.filter)).length : 0;
   const samples = keys.length ? { lat: "48.15", lon: "17.11", line: "N33" } : {};
   return { reading, paths: ["vehicles", "stops"], keys, points, name: "buses.example", said: `Answered · ${points} points`,
-    samples, keepsCookie: Boolean(cookie || phone.keptCookie), choices: API_CHOICES };
+    samples, answer: BUS_ANSWER, keepsCookie: Boolean(cookie || phone.keptCookie), choices: API_CHOICES };
 }
 
 // 29: a layer's Details layout as `PeerWebLayerOptions+Details` lists it, and its edits.
@@ -988,6 +1063,33 @@ function roadSigns(query) {
     signs: signs.map(([id, title]) => ({ id, title })) };
 }
 
+// 172: as `PeerWebLayerOptions` says a server's look is waiting: only above what the layer answered, only the parts behind.
+function serverLookAsk(layer) {
+  const look = layer.serverLook;
+  const behind = (look?.parts || []).filter((part) => part.behind);
+  if (!look || look.version <= look.answered || !behind.length) return undefined;
+  return { server: look.server, version: look.version,
+    parts: behind.map(({ id, title, changed, changedHere }) => ({ id, title, changed, changedHere })) };
+}
+
+// 172: Review's answer: the parts taken are copied, the version is asked about either way.
+function answerServerLook(layer, query) {
+  const look = layer.serverLook;
+  if (!look) return false;
+  const version = Number(query.get("serverVersion") || query.get("serverKeep"));
+  if (query.has("serverTake")) {
+    for (const id of query.get("serverTake").split(",").filter(Boolean)) {
+      const part = look.parts.find((one) => one.id === id);
+      if (!part?.behind) return false;
+      part.behind = false;
+      if (id === "markers") layer.tint = "#2E9E5B";
+    }
+  }
+  look.answered = Math.max(look.answered, version);
+  phone.serverLookAnswers.push(Object.fromEntries(query));
+  return true;
+}
+
 function layerOptions(each) {
   const hidden = (style) => style.adjustments?.hiddenSkiKinds || [];
   const anyDraws = (key) => each.styles.some((style) => style.adjustments?.[key] !== true);
@@ -1018,9 +1120,9 @@ function layerOptions(each) {
     }
     if (layer.layout) return detailsSections(layer);
     if (layer.apiPoints) return apiPointSections(layer);
-    return layer.drawn ? [...featureSections(layer), ...markSections(layer)] : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
+    return layer.drawn ? [...featureSections(layer), ...markSections(layer)] : layer.net ? networkSections(layer) : layer.esri ? [...questionSections(layer), ...markSections(layer), ...featureSections(layer).filter((one) => one.aspect === "linesAndAreas")] : [];
   };
-  return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
+  return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer), serverLook: serverLookAsk(layer) }))
     .filter((layer) => layer.sections.length) };
 }
 
@@ -1301,13 +1403,16 @@ function edit(each, query, response) {
     const made = editLayout(layer, query);
     if (Array.isArray(made)) return send(response, made[0], made[1]);
     if (!made) return send(response, 409, "The layout changed on the phone; it is shown again as it is now");
+  } else if (query.has("layer") && (query.has("serverTake") || query.has("serverKeep"))) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!answerServerLook(layer || {}, query)) return send(response, 409, "This change does not fit the map");
   } else if (marked) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
-    if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
+    if (!layer?.drawn && !layer?.esri) return send(response, 404, "This change does not fit the map");
     if (!editMarks(layer, query, marked)) return send(response, 409, "This change does not fit the map");
   } else if (featured) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
-    if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
+    if (!layer?.drawn && !layer?.esri) return send(response, 404, "This change does not fit the map");
     editFeatures(layer, query, featured);
   } else if (networked) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
@@ -2229,6 +2334,13 @@ function testControl(route, query, response) {
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000B7", name: "Buses", kind: "API",
       symbol: "bus", isEnabled: true, drawn: true, apiPoints: true });
     break;
+  // 172: the Buses layer's server (Coffee) saved version 5 over the 3 it took: Map markers and Details changed.
+  case "/__test/server-look":
+    phone.maps[0].layers.find((one) => one.apiPoints).serverLook = { server: "Coffee", version: 5, answered: 3,
+      parts: [{ id: "markers", title: "Map markers", changed: "Colour", behind: true },
+        { id: "details", title: "Details", changed: "2 rows", behind: true, changedHere: query.get("here") === "details" }] };
+    break;
+  case "/__test/server-look-answers": return json(response, phone.serverLookAnswers);
   case "/__test/drawn-file":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000D1", name: "Trails", kind: "GeoJSON",
       symbol: "figure.walk", isEnabled: true, drawn: true });

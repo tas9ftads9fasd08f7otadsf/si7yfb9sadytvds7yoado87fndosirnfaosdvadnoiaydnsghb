@@ -178,4 +178,34 @@ describe("OptionsPanel's signs key", () => {
     expect(edit).toContain("roadShields=classic");
     expect(edit).not.toContain("layer=");
   });
+
+  // 168: a point layer's panel is Map markers, its colour titled for the mark.
+  it("titles a point layer's panel Map markers and its colour for the mark", () => {
+    const sections: OptionSection[] = [
+      { kind: "choice", title: "Mark", key: "pointMark", aspect: "mark", value: "circled",
+        options: [{ id: "dot", title: "Dot" }, { id: "circled", title: "Icon in circle" }] },
+      { ...mode, aspect: "colour" },
+      // 173: the phone sends a GeoJSON layer's line width on Lines and areas.
+      { kind: "slider", title: "Line width", key: "lineWidth", aspect: "linesAndAreas", value: "1" }];
+    useViewer.setState({ mapID: "a", editToken: "t" });
+    render(<OptionsPanel id="L" kind="GeoJSON" sections={sections} />);
+    expect(screen.getByRole("heading", { name: "Map markers" })).toBeTruthy();
+    expect(screen.getByText("Circle colour")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Lines and areas" })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "Stacking" })).toBeNull();
+  });
+
+  // 168: an API layer offers Stacking; a layer with no marks keeps its panel plain.
+  it("offers Stacking on an API layer and no tabs where no points are drawn", () => {
+    const stacked: OptionSection = { kind: "switch", key: "stacking", aspect: "stacking", label: "Stack" };
+    useViewer.setState({ mapID: "a", editToken: "t" });
+    const { unmount } = render(<OptionsPanel id="L" kind="API" sections={[
+      { kind: "choice", key: "pointMark", aspect: "mark", value: "dot", options: [] }, stacked]} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Stacking" }));
+    expect(screen.getByRole("switch", { name: "Stack" })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "Lines and areas" })).toBeNull();
+    unmount();
+    render(<OptionsPanel id="L" kind="Tiles" sections={[probe]} />);
+    expect(screen.queryByRole("heading", { name: "Map markers" })).toBeNull();
+  });
 });

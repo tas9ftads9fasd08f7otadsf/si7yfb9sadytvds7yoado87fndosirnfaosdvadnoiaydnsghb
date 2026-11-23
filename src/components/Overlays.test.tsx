@@ -72,6 +72,14 @@ describe("Gate", () => {
     expect(screen.getByRole("dialog").className).toBe("closed");
     expect(screen.getByRole("heading").textContent).toBe("Sign in to iCloud");
   });
+
+  // 169 bug #166: the sign-in card showed a person's icon under the app's own
+  it("shows the app's icon on the sign-in card and no person's", () => {
+    act(() => useViewer.setState({ standing: "signedOut" }));
+    render(<Gate />);
+    expect(document.querySelector("#gate .gate-icon")).not.toBeNull();
+    expect(document.querySelector("#gateMark")).toBeNull();
+  });
 });
 
 describe("Boot", () => {
