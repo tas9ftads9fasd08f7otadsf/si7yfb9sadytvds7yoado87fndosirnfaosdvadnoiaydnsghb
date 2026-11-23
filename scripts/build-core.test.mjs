@@ -43,9 +43,9 @@ describe("the pin", () => {
     expect(CONTRACT.sdk.id).toBe("swift-6.2-RELEASE_wasm");
     expect(CONTRACT.sdk.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(CONTRACT.toolchain.sha256).toMatch(/^[0-9a-f]{64}$/);
-    // 158 rikimaps 3560 lists riki_people, and a module listing other calls is refused
-    expect(CONTRACT.calls).toHaveLength(8);
-    expect(CONTRACT.calls.at(-1)).toBe("riki_people");
+    // 158 rikimaps 3560 lists riki_people, 175 3650 riki_switches; a module listing others is refused
+    expect(CONTRACT.calls).toHaveLength(9);
+    expect(CONTRACT.calls.at(-1)).toBe("riki_switches");
   });
 });
 
