@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:ftps": "vitest run --config vitest.ftps.config.ts",
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm run test && npm run test:php && npm run build && npm run test:e2e && npm run pack && npm run build:web && RIKI_PACK_WITHOUT_CORE=1 npm run pack:web && npm run test:e2e:web",
     "build:web": "RIKI_TARGET=web next build",

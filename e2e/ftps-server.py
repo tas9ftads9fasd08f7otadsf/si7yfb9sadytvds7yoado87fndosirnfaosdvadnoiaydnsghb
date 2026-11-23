@@ -1,4 +1,4 @@
-# The stand-in PHP host for scripts/deploy-site.test.mjs: explicit FTPS over a folder, nothing else.
+# The stand-in PHP host for scripts/deploy-site.ftps.test.mjs: explicit FTPS over a folder, nothing else.
 import sys
 
 from pyftpdlib.authorizers import DummyAuthorizer

@@ -31,6 +31,7 @@ PHONE_URL=http://192.168.1.20:8765 npm run dev   # against a real phone
 |---|---|
 | `npm run lint` / `typecheck` | ESLint, TypeScript |
 | `npm test` | Vitest: logic, the store, components |
+| `npm run test:ftps` | The deploy and server checks on stand-in FTPS servers: OpenSSL 1.1.1+ and `pip install pyftpdlib pyopenssl`; CI runs them |
 | `npm run build` | The phone's static export; `npm run build:web` the site's |
 | `npm run test:e2e` | Playwright against the build and `e2e/mock-phone.mjs`; build first |
 | `npm run pack` | The bundle and zip in `dist/` |

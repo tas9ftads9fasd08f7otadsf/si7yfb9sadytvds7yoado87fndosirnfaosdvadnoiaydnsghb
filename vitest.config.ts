@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
@@ -13,6 +13,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
+    // FTPS servers need OpenSSL and pyftpdlib: `npm run test:ftps` runs them
+    exclude: [...configDefaults.exclude, "scripts/**/*.ftps.test.mjs"],
     setupFiles: ["src/test-setup.ts"],
     restoreMocks: true
   }

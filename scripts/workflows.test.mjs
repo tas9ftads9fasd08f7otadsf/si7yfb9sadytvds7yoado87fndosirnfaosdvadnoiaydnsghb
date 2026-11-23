@@ -143,6 +143,15 @@ describe("the site's deploy", () => {
     expect(read("ci.yml")).toContain("apt-get install -y -q lftp");
     expect(read("ci.yml")).toContain("pip install pyftpdlib pyopenssl");
   });
+
+  // 174 npm test needs no SSL: the FTPS suites run as test:ftps, after their tools are installed
+  it("runs the FTPS suites on their own, where their tools are installed", () => {
+    for (const name of ["ci.yml", "deploy-latest.yml"]) {
+      const text = read(name);
+      expect(text.indexOf("pip install pyftpdlib")).toBeLessThan(text.indexOf("run: npm run test:ftps"));
+      expect(text.indexOf("run: npm test")).toBeLessThan(text.indexOf("run: npm run test:ftps"));
+    }
+  });
 });
 
 // 132 runners waited 8 minutes on Playwright's browser; CI keeps it and the rest

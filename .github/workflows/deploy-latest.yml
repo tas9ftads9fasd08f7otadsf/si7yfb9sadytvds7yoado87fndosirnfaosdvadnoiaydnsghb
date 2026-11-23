@@ -87,6 +87,7 @@ jobs:
       - run: npm test
         env:
           RIKI_CORE_WASM: dist/riki-core/riki-core.wasm
+      - run: npm run test:ftps
       - run: npm run test:php
       - name: Pack the site with the newest core
         env:
