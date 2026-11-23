@@ -60,19 +60,20 @@ describe("Cloud", () => {
     expect(document.getElementById(SIGN_IN_ID)).not.toBeNull();
   });
 
-  // 87 bug: the site read nameComponents off users/caller, which answers the record name only
+  // 87 bug: the site read nameComponents off users/caller, which answers the record name only;
+  // 177 the record name stays, for the sealed keys
   it("names the person already signed in by discovering them, as the caller carries no name", async () => {
     const stub = kit({ userRecordName: "_me" });
-    expect(await new Cloud(async () => stub.cloudkit, async () => config).start()).toEqual({ name: "Riki Tester" });
+    expect(await new Cloud(async () => stub.cloudkit, async () => config).start()).toEqual({ name: "Riki Tester", recordName: "_me" });
     expect(stub.container.discoverUserIdentityWithUserRecordName).toHaveBeenCalledWith("_me");
   });
 
   it("has no name for a person who cannot be discovered, so the typed one is used", async () => {
     const stub = kit({ userRecordName: "hidden" });
-    expect(await new Cloud(async () => stub.cloudkit, async () => config).start()).toEqual({ name: "" });
+    expect(await new Cloud(async () => stub.cloudkit, async () => config).start()).toEqual({ name: "", recordName: "hidden" });
     const nameless = kit({ userRecordName: "_me" });
     (nameless.container as { discoverUserIdentityWithUserRecordName?: unknown }).discoverUserIdentityWithUserRecordName = async () => { throw new Error("no"); };
-    expect(await new Cloud(async () => nameless.cloudkit, async () => config).start()).toEqual({ name: "" });
+    expect(await new Cloud(async () => nameless.cloudkit, async () => config).start()).toEqual({ name: "", recordName: "_me" });
   });
 
   // 87 bug: the library's apnsEnvironment defaults to development, whatever the container's environment
@@ -90,7 +91,7 @@ describe("Cloud", () => {
     await cloud.start();
     stub.signIn({ userRecordName: "rita" });
     await flush();
-    expect(await cloud.start()).toEqual({ name: "Rita" });
+    expect(await cloud.start()).toEqual({ name: "Rita", recordName: "rita" });
     expect(told).toHaveBeenCalledTimes(1);
     stub.notify();
     expect(told).toHaveBeenCalledTimes(2);
@@ -141,7 +142,7 @@ describe("Cloud", () => {
     expect(stub.container.whenUserSignsIn).toHaveBeenCalledTimes(2);
     stub.signIn({ userRecordName: "rita" });
     await flush();
-    expect(await cloud.start()).toEqual({ name: "Rita" });
+    expect(await cloud.start()).toEqual({ name: "Rita", recordName: "rita" });
   });
 
   // 87 bug: a set-up that failed was cached for good
@@ -151,7 +152,7 @@ describe("Cloud", () => {
     const cloud = new Cloud(async () => stub.cloudkit, async () => config);
     await expect(cloud.start()).rejects.toThrow("network");
     const slots = document.querySelectorAll(`#${SIGN_IN_ID}`).length;
-    expect(await cloud.start()).toEqual({ name: "Riki Tester" });
+    expect(await cloud.start()).toEqual({ name: "Riki Tester", recordName: "_me" });
     expect(stub.cloudkit.configure).toHaveBeenCalledTimes(1);
     expect(document.querySelectorAll(`#${SIGN_IN_ID}`)).toHaveLength(slots);
   });

@@ -18,6 +18,8 @@ import { drawnHere } from "./undrawn";
 import { Progress } from "./progress";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
 import type { CoreRow, CoreWrite } from "./records";
+import { keysOf } from "./sealed-keys";
+import { setRequestHeaders } from "@/lib/request-headers";
 import { changedFields, Conflict, stamped, write, type Plan } from "./writes";
 
 const notYet = (step: number) => () =>
@@ -101,7 +103,11 @@ export function createBackend(parts: Parts): Backend {
   /** The rows as last read; a change elsewhere, or `fresh`, reads them again. */
   const rows = (fresh = false): Promise<CoreRow[]> => {
     if (fresh) reading = null;
-    reading ??= zones.rows().then((read) => { known ??= knownOf(read); return read; });
+    reading ??= zones.rows().then(async (read) => {
+      known ??= knownOf(read);
+      setRequestHeaders(await keysOf(read, (await parts.cloud.start())?.recordName ?? null));
+      return read;
+    });
     reading.catch(() => { reading = null; });
     return reading;
   };

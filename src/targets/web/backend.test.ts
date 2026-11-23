@@ -7,6 +7,7 @@ import { CoreNotReady, NotOnSite, type Feature } from "@/backend/types";
 import { CoreMissing, type AddAsk, type Added, type AddressRead, type Applied, type Core, type HistoryEntry, type PeopleRead, type ReadAsk } from "./core";
 import { queryOf } from "@/lib/edit";
 import { createBackend } from "./backend";
+import { requestHeaders, setRequestHeaders } from "@/lib/request-headers";
 import type { Reach } from "./reach";
 import type { Keeping } from "./zones";
 import { fakeOpfs } from "./regions/fake-opfs";
@@ -695,5 +696,23 @@ describe("WebBackend's added layers", () => {
     const failing = stack({ reach: hosts(), fetching: () => { throw new TypeError("Failed to fetch"); },
       reads: () => ({ kind: "fetch", url: "https://cors.example/a" }) });
     expect(await failing.backend.readAddress("x")).toMatchObject({ ok: false, said: "The site could not read that address." });
+  });
+});
+
+describe("WebBackend's sealed keys", () => {
+  const PAYLOAD = "https://cvws.icloud-content.com/own-tatras/payload";
+  const SEALED = "1:78kYTTm1l4n3uC2TsvnXvbu90g927SqeD8NcC+ETUfwyqTFF7ms3rX/E3mgOj2dRnML+MHNut62UAZ3af2/P8rAwWk2JHgK1Cv8=";
+
+  // 177 a map of yours carries its header keys sealed with your record name, as rikimaps 3656 writes them
+  it("opens a map's keys with the signed-in record name, and the map's requests carry them", async () => {
+    const before = assets[PAYLOAD]!;
+    assets[PAYLOAD] = JSON.stringify({ symbol: "mountain.2", rikiSealedKeys: SEALED });
+    try {
+      await stack().backend.maps();
+      expect(requestHeaders("https://tiles.example.com/1/2/3.png")).toEqual({ "X-Api-Key": "secret-1" });
+    } finally {
+      assets[PAYLOAD] = before;
+      setRequestHeaders({});
+    }
   });
 });
