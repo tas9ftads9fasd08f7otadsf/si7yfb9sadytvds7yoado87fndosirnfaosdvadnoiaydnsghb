@@ -207,9 +207,9 @@ export async function build({ dir, pin, out, env = process.env }) {
   const wasm = path.join(out, "riki-core.wasm");
   execFileSync(opt, ["-Oz", "--strip-debug", "--strip-producers", "--all-features", built, "-o", wasm], { stdio: "inherit" });
   const bytes = await readFile(wasm);
-  const version = await smoke(bytes);
   const sum = sha256Of(bytes);
   console.log(`${os.cpus().length} cores; before wasm-opt sha256 ${sha256Of(await readFile(built))}, after ${sum}`);
+  const version = await smoke(bytes);
   verifyPinned(sum, pin.sha256);
   const size = { ...sizes(bytes), unoptimised: (await readFile(built)).length };
   verifySize(size);
