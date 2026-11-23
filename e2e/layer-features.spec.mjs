@@ -22,6 +22,7 @@ const sent = (page) => page.waitForRequest((request) => request.url().includes("
 // 2998: the line width is a slider sent once it is let go; switches go with the layer.
 test("a drawn file's line width and switches are set from its Options", async ({ page }) => {
   const panel = await openFeatures(page);
+  await panel.getByRole("tab", { name: "Lines and areas" }).click();
   const width = panel.getByRole("slider", { name: "Line width" });
   await expect(width).toHaveValue("1");
   await expect(panel).toContainText("Hairline");
@@ -32,6 +33,7 @@ test("a drawn file's line width and switches are set from its Options", async ({
   await expect(panel.getByRole("slider", { name: "Line width" })).toHaveValue("2.5");
 
   asked = sent(page);
+  await panel.getByRole("tab", { name: "Colour" }).click();
   await panel.getByRole("switch", { name: "Group features by name" }).click();
   expect(await asked).toMatchObject({ layer, grouping: "1" });
   await expect(panel.getByRole("switch", { name: "Group features by name" })).toBeChecked();
@@ -76,7 +78,7 @@ test("an open Options panel stays in place while the phone's list is read again"
   await asked;
   await expect.poll(() => reads).toBe(1);
   await expect(panel).toBeVisible();
-  await expect(panel.getByRole("slider", { name: "Line width" })).toBeVisible();
+  await expect(panel.getByRole("tab", { name: "Lines and areas" })).toBeVisible();
   const row = page.locator(`#editBody [data-layer='${layer}']`);
   await expect(row.getByRole("button", { name: "Options" })).toBeVisible();
   release();

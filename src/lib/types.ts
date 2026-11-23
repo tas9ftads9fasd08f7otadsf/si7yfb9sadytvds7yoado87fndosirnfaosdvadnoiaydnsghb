@@ -326,6 +326,8 @@ export interface OptionSection {
   kind: "kinds" | "switch" | "choice" | "colour" | "railVariants" | "text" | "connection" | "slider" | "values"
     | "details" | "headers" | "probe" | "symbols" | "signKey";
   title?: string;
+  /** 168: the part of a point layer's look it belongs to. */
+  aspect?: "colour" | "mark" | "text" | "stacking" | "linesAndAreas";
   footnote?: string;
   layerScoped?: boolean;
   family?: string;
