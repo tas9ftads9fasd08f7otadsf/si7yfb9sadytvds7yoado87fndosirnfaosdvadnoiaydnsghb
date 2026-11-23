@@ -31,6 +31,8 @@ function LayerRow({ layer, listed, isBase, movable, peers }: RowProps) {
   const isHidden = useViewer((state) => state.hidden.has(layer.id));
   const sections = useViewer((state) =>
     state.layerOptions?.layers.find((each) => each.id.toUpperCase() === layer.id.toUpperCase())?.sections);
+  const serverLook = useViewer((state) =>
+    state.layerOptions?.layers.find((each) => each.id.toUpperCase() === layer.id.toUpperCase())?.serverLook);
   const isOpen = useViewer((state) => state.optionsOpen.has(layer.id));
   const isUndrawn = useViewer((state) => state.undrawn.has(layer.id.toLowerCase()));
   const place = peers.indexOf(listed.id);
@@ -92,7 +94,7 @@ function LayerRow({ layer, listed, isBase, movable, peers }: RowProps) {
             <button type="button" className="pill danger" aria-label={words.deleteLayer}
               onClick={() => removeLayer(layer)}><Sym name="trash" />{words.deleteLayer}</button>
           </div>
-          {sections ? <OptionsPanel id={layer.id} sections={sections} kind={listed.kind} /> : null}
+          {sections ? <OptionsPanel id={layer.id} sections={sections} kind={listed.kind} serverLook={serverLook} /> : null}
         </div>
       ) : null}
     </div>
