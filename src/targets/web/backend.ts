@@ -3,7 +3,7 @@ import { siteSymbolURL } from "./symbols";
 import { createRegionPackages } from "./regions/packages";
 import { loadStored, registerArchives } from "./regions/source";
 import { browserStore, type PackageStore } from "./regions/store";
-import type { Edit } from "@/lib/edit";
+import { queryOf, type Edit } from "@/lib/edit";
 import type { Portable, SessionAnswer } from "@/lib/types";
 import { ENGLISH, type Words } from "@/lib/words";
 import { storedAuthor, type Author } from "./author";
@@ -11,7 +11,7 @@ import { BASE } from "./base";
 import { Cloud, refusesToken } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
-import { loadCore, type AddressRead, type Adding, type Applied, type Core, type Reply } from "./core";
+import { loadCore, type AddressRead, type Applied, type Core, type Reply } from "./core";
 import { peopleOf, type Say } from "./people";
 import { createReach, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
@@ -27,9 +27,6 @@ const adding = notYet(5);
 
 /** What the site answers so far; the page offers no more. Packages, files, API layers and servers wait. */
 const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people"]);
-
-/** 86 How many rounds of fetching the core may ask of one address. */
-const ROUNDS = 4;
 
 /** How often a change is tried, on freshly read rows after a conflict. */
 const TRIES = 3;
@@ -207,7 +204,7 @@ export function createBackend(parts: Parts): Backend {
   };
 
   const change = (mapID: string, styleID: string | null, edit: Edit) =>
-    through(mapID, styleID, (core, read, author) => core.apply({ rows: read, mapID, styleID, edit, author, origin: "web" }));
+    through(mapID, styleID, (core, read, author) => core.apply({ rows: read, id: mapID, styleID, edit: queryOf(edit), author }));
 
   const reply = async (url: string): Promise<Reply | null> => {
     if ((await parts.reach.answers(url)) === false) return null;
@@ -219,48 +216,59 @@ export function createBackend(parts: Parts): Backend {
     }
   };
 
-  /** What an address is: the core says which addresses it needs, the browser fetches them if their hosts answer it. */
-  const readOf = async (address: string): Promise<Answer<{ read: Extract<AddressRead, { read: unknown }>["read"]; replies: Reply[] }>> => {
+  /** 165 What an address is: the core names the capabilities to fetch, the browser fetches them if their host answers. */
+  const readOf = async (address: string): Promise<Answer<{ read: Exclude<AddressRead, { refused: string } | { kind: "fetch" }>; document: string | null }>> => {
     const core = await parts.core();
-    const replies: Reply[] = [];
-    for (let round = 0; round < ROUNDS; round += 1) {
-      const said = core.readAddress({ address, replies });
-      if ("refused" in said) return refused(said.refused, said.status ?? 400);
-      if ("read" in said) {
-        if (said.read.probe && (await parts.reach.answers(said.read.probe)) === false) return refused(ENGLISH.addRefusesBrowsers);
-        return { ok: true, value: { read: said.read, replies } };
+    const first = core.readAddress({ address });
+    if ("refused" in first) return refused(first.said ?? first.refused, first.status ?? 400);
+    if (first.kind !== "fetch") {
+      if (first.kind === "direct" && first.probe && (await parts.reach.answers(first.probe)) === false) {
+        return refused(ENGLISH.addRefusesBrowsers);
       }
-      for (const url of said.fetch.filter((each) => !replies.some((had) => had.url === each))) {
-        const got = await reply(url);
-        if (!got) return refused(ENGLISH.addRefusesBrowsers);
-        replies.push(got);
-      }
+      return { ok: true, value: { read: first, document: null } };
     }
-    return refused(ENGLISH.addUnreadable);
+    const got = await reply(first.url);
+    if (!got) return refused(ENGLISH.addRefusesBrowsers);
+    if (got.status < 200 || got.status >= 300) return refused(ENGLISH.addUnreadable);
+    const read = core.readAddress({ address, document: got.text });
+    if ("refused" in read) return refused(read.said ?? read.refused, read.status ?? 400);
+    if (read.kind === "fetch") return refused(ENGLISH.addUnreadable);
+    return { ok: true, value: { read, document: got.text } };
   };
 
   /** What the last address read fetched, so adding it asks the host no more than reading did. */
-  let lastRead: { address: string; replies: Reply[] } | null = null;
+  let lastRead: { address: string; document: string | null } | null = null;
 
   const readAddress = async (address: string) => {
     const got = await readOf(address);
     if (!got.ok) return got;
-    lastRead = { address, replies: got.value.replies };
+    lastRead = { address, document: got.value.document };
     return { ok: true as const, value: got.value.read };
   };
 
-  const repliesOf = async (address: string): Promise<Answer<Reply[]>> => {
-    if (lastRead?.address === address) return { ok: true, value: lastRead.replies };
+  const documentOf = async (address: string): Promise<Answer<string>> => {
+    const document = lastRead?.address === address ? lastRead.document : null;
+    if (document !== null) return { ok: true, value: document };
     const got = await readOf(address);
-    return got.ok ? { ok: true, value: got.value.replies } : got;
+    if (!got.ok) return got;
+    return got.value.document === null ? refused(ENGLISH.addUnreadable) : { ok: true, value: got.value.document };
   };
 
-  const addLayer = async (mapID: string, address: string, add: (replies: Reply[]) => Adding): Promise<Answer<Portable>> => {
-    const replies = await repliesOf(address);
-    if (!replies.ok) return replies;
-    return through(mapID, null, (core, read, author) =>
-      core.addLayer({ rows: read, mapID, styleID: null, add: add(replies.value), author, origin: "web" }));
+  /** 165 The core makes the ticked layers, then writes them as an edit writes. */
+  const addServiceLayers = async (mapID: string, address: string, picks: string[]): Promise<Answer<Portable>> => {
+    const document = await documentOf(address);
+    if (!document.ok) return document;
+    return through(mapID, null, (core, read, author) => {
+      const added = core.addLayer({ rows: read, id: mapID, address, picks, document: document.value });
+      if ("refused" in added) return added;
+      return core.apply({ rows: read, id: mapID, styleID: null, layers: added.layers, author });
+    });
   };
+
+  const addTiles = async (mapID: string, template: string): Promise<Answer<Portable>> =>
+    through(mapID, null, (core, read, author) =>
+      core.addTiles({ rows: read, mapID, styleID: null, add: { kind: "tiles", address: template, replies: [] }, author,
+        origin: "web" }));
 
   /** The rows put back as they were, if nothing else has touched them since. */
   const undo = async (mapID: string): Promise<Answer<Portable>> => {
@@ -372,9 +380,8 @@ export function createBackend(parts: Parts): Backend {
     layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
     otherLayers: adding, addCopies: adding,
     readAddress,
-    addTiles: (mapID, template) => addLayer(mapID, template, (replies) => ({ kind: "tiles", address: template, replies })),
-    addServiceLayers: (mapID, address, picks) =>
-      addLayer(mapID, address, (replies) => ({ kind: "service", address, replies, picks })),
+    addTiles,
+    addServiceLayers,
     addServer: adding, importServers: adding, exportServers: adding, addServerLayers: adding, readAPI: adding,
     addAPI: adding, addFile: adding, readDXF: adding, esriServices: adding,
     changeEsriService: adding, coverage: adding, coveragePlaces: adding,

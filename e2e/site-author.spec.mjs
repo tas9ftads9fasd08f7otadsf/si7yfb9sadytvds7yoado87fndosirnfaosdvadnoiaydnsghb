@@ -75,7 +75,8 @@ test("a change is made under the typed name, else under the Apple Account's", as
   await openEdit(page);
   await rename(page, "Trails", "Ridges");
   await expect.poll(async () => (await asks()).length).toBe(1);
-  expect((await asks())[0]).toMatchObject({ author: "Riki Tester", origin: "web" });
+  // 165 the edit reaches the core as the query the phone's /edit reads
+  expect((await asks())[0]).toMatchObject({ author: "Riki Tester", edit: { name: "Ridges" } });
 
   const name = page.locator("#accountName");
   await page.locator("#railSettings").click();
@@ -84,7 +85,7 @@ test("a change is made under the typed name, else under the Apple Account's", as
   await backToEdit(page);
   await rename(page, "Trails", "Ridges 2");
   await expect.poll(async () => (await asks()).length).toBe(2);
-  expect((await asks())[1]).toMatchObject({ author: "Friki", origin: "web" });
+  expect((await asks())[1]).toMatchObject({ author: "Friki" });
 
   await page.locator("#railSettings").click();
   await name.fill("");

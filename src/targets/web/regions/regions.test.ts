@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RegionFailed } from "@/backend/types";
 import { downloadPiece } from "./download";
 import { fakeOpfs } from "./fake-opfs";
-import { createRegionPackages } from "./packages";
+import { createRegionPackages, readAsText } from "./packages";
 import { fetchCatalog, readCatalog, type PackagePiece } from "./catalog";
 import { addressOf, BlobSource, loadStored, registerArchives } from "./source";
 import { idbStore, opfsStore, safePath, StorageFull, type PackageStore } from "./store";
@@ -34,6 +34,9 @@ describe("the catalog", () => {
       pieces: { lines: { fileID: "1xfu1OzAYa6PUtmtvSwH4yjVXZ9x9sIHO", bytes: 263, version: 5 } } });
     expect(Object.keys(regions.get("banskobystricky")!.pieces)).toEqual(["base", "water"]);
     expect(regions.get("belianske_tatry")!.pieces.terrain).toMatchObject({ fileID: "1CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC", version: 4 });
+    // 165 a region knows its country's slug, and a range that it is one
+    expect(regions.get("banskobystricky")).toMatchObject({ country: "slovensko", range: false });
+    expect(regions.get("belianske_tatry")).toMatchObject({ country: null, range: true });
   });
 
   it("is empty for anything that is not a catalog and takes the zip, never the aar the app reads", () => {
@@ -202,9 +205,17 @@ describe("what the regions come to", () => {
     expect(current!.fetch).toEqual([]);
   });
 
-  it("tells the core of what it holds, with each package's manifest text", async () => {
+  // 165 the style builder reads the manifest and the published styles, and the region's country, range and box
+  it("tells the core of what it holds, with its JSON files' text and its region's facts", async () => {
     const { stored } = await stack([{ piece: "base", version: 9 }]);
-    expect(await stored()).toEqual([{ region: "banskobystricky", piece: "base", version: 9, files: ["base.pmtiles", "contents.json"], contents: "{\"package\":\"base\"}" }]);
+    expect(await stored()).toEqual([{ region: "banskobystricky", piece: "base", version: 9, files: ["base.pmtiles", "contents.json"],
+      texts: { "contents.json": "{\"package\":\"base\"}" }, country: "slovensko", range: false, bbox: [18.4, 48, 20.4, 48.9] }]);
+  });
+
+  // 165 only the manifest and the styles the pipeline published go as text, never an archive or a sprite sheet
+  it("reads as text the manifest and the published styles alone", () => {
+    expect(["contents.json", "obsah.json", "styles/liberty.json"].every(readAsText)).toBe(true);
+    expect(["base.pmtiles", "sprites/liberty.json", "styles/a/b.json", "styles/liberty.png"].some(readAsText)).toBe(false);
   });
 
   it("downloads each missing piece through the site and reports the whole count", async () => {

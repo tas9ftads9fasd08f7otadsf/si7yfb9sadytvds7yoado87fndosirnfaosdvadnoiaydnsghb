@@ -1,3 +1,4 @@
+import { startQuery } from "./places";
 import type { Coverage, Start } from "./types";
 
 /** One change to a map, a case per `PeerWebEdit.Change`; each target sends it its own way. */
@@ -60,3 +61,43 @@ export type Shelving =
   | { kind: "folderSymbol"; folder: string; symbol: string }
   /** 56 `#RRGGBB`, or blank for the named map's ground. */
   | { kind: "folderTint"; folder: string; tint: string };
+
+/** An edit as `/edit` reads it, the query `PeerWebEdit(query:)` takes apart. */
+export function queryOf(edit: Edit): Record<string, string> {
+  switch (edit.kind) {
+    case "name": return { name: edit.name };
+    case "note": return { note: edit.note };
+    case "nameIn": return { language: edit.language, name: edit.name };
+    case "noteIn": return { language: edit.language, note: edit.note };
+    case "layerShown": return { layer: edit.layer, shown: edit.shown ? "1" : "0" };
+    case "layersShown": return { shownAll: edit.shown ? "1" : "0" };
+    case "layerName": return { layer: edit.layer, name: edit.name };
+    case "layerOpacity": return { layer: edit.layer, opacity: edit.opacity };
+    case "order": return { order: edit.layers.join(",") };
+    case "styleName": return { style: edit.style, name: edit.name };
+    case "addStyle": return { addStyle: edit.name };
+    case "removeStyle": return { removeStyle: edit.style };
+    case "styleSymbol": return { style: edit.style, symbol: edit.symbol };
+    case "styleTint": return { style: edit.style, iconTint: edit.tint };
+    case "styleNote": return { style: edit.style, note: edit.note };
+    case "styleNameIn": return { style: edit.style, language: edit.language, name: edit.name };
+    case "resetStyle": return { resetStyle: edit.style };
+    case "minimumVersion": return { minimumApp: edit.app, minimumBrowser: edit.browser };
+    case "start": return startQuery(edit.start);
+    case "startAt": return { start: "coordinates", lat: edit.lat, lon: edit.lon, zoom: edit.zoom };
+    case "coverage": return { coverage: JSON.stringify(edit.coverage) };
+    case "appearance": return { appearance: edit.appearance };
+    case "symbol": return { symbol: edit.symbol };
+    case "iconTint": return { iconTint: edit.tint };
+    case "addPackages": return { addPackages: edit.overlays.join(",") };
+    case "removeLayer": return { removeLayer: edit.layer };
+    case "styleOrder": return { styleOrder: edit.styles.join(",") };
+    case "arrange": return { arrange: edit.action };
+    case "groupByOrigin": return { groupByOrigin: edit.groups ? "1" : "0" };
+    case "availability": return { [edit.switch]: edit.shown ? "1" : "0" };
+    case "category": return { category: edit.category };
+    case "lock": return { lock: edit.locked ? "1" : "0" };
+    case "layerOptions":
+    case "layerDetails": return edit.fields;
+  }
+}
