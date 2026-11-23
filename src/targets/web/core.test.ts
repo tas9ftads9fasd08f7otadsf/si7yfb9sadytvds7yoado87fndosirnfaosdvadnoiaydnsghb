@@ -50,18 +50,20 @@ describe("the core's wrapper", () => {
     const core = coreOf(exports);
     expect(core.map([], "M")).toEqual({ rows: [], id: "M" });
     // 110 the site's glyphs and sprite and 112 the region packages held go with the catalog, for the core to put in the style
-    const stored = [{ region: "tatry", piece: "base", version: 7, files: ["contents.json", "base.pmtiles"], contents: "{}" }];
+    // 165 each package carries its JSON files' text and its region's facts, which the style builder reads
+    const stored = [{ region: "tatry", piece: "base", version: 7, files: ["contents.json", "base.pmtiles"],
+      texts: { "contents.json": "{}" }, country: "slovensko", range: false, bbox: [19.6, 49.1, 20.4, 49.3] }];
     const catalog = { glyphsBase: "https://s/glyphs", spriteBase: "https://s/sprites/temaki-sprite", stored,
       theme: "dark" as const, hidden: ["h"], tiles: "2x2" };
-    expect(core.style([], "M", "S", catalog)).toEqual({ rows: [], mapID: "M", styleID: "S", catalog });
+    // 165 riki_style names the map `id`, as every other call does
+    expect(core.style([], "M", "S", catalog)).toEqual({ rows: [], id: "M", styleID: "S", catalog });
   });
 
-  // 78 the edit is asked with the rows and who writes it; the core's answer is read back whole
+  // 165 the edit is asked as the query PeerWebEdit(query:) reads, with the rows and who writes it
   it("asks riki_apply with the edit and the author, and riki_changes with the rows", () => {
     const exports = echo();
     const core = coreOf(exports);
-    const ask: Parameters<typeof core.apply>[0] = { rows: [], mapID: "M", styleID: null,
-      edit: { kind: "name", name: "x" }, author: "Rita", origin: "web" };
+    const ask: Parameters<typeof core.apply>[0] = { rows: [], id: "M", styleID: null, edit: { name: "x" }, author: "Rita" };
     expect(core.apply(ask)).toEqual(ask);
     expect(core.changes([])).toEqual({ rows: [] });
   });
@@ -75,13 +77,13 @@ describe("the core's wrapper", () => {
       .toEqual({ refused: "Only the owner may do this", status: 403 });
   });
 
-  // 86 an address is read in rounds, and a layer is added as an edit is applied
-  it("asks riki_read_address with the address and the replies, and riki_add_layer with what to add", () => {
+  // 165 an address is read with the capabilities' text, and the ticked layers are made from the same text
+  it("asks riki_read_address with the address and the document, and riki_add_layer with the picks", () => {
     const core = coreOf(echo());
-    const replies = [{ url: "https://a.example/x.json", status: 200, contentType: "application/json", text: "{}" }];
-    expect(core.readAddress({ address: "https://a.example/x.json", replies })).toEqual({ address: "https://a.example/x.json", replies });
-    const ask: Parameters<typeof core.addLayer>[0] = { rows: [], mapID: "M", styleID: null,
-      add: { kind: "service", address: "https://a.example/wms", replies, picks: ["roads"] }, author: "Rita", origin: "web" };
+    expect(core.readAddress({ address: "https://a.example/wms", document: "<x/>" }))
+      .toEqual({ address: "https://a.example/wms", document: "<x/>" });
+    const ask: Parameters<typeof core.addLayer>[0] = { rows: [], id: "M", address: "https://a.example/wms",
+      picks: ["roads"], document: "<x/>" };
     expect(core.addLayer(ask)).toEqual(ask);
   });
 
@@ -100,15 +102,15 @@ describe("the core's wrapper", () => {
     expect(core.maps([]).maps.map((each) => each.name)).toEqual(["High Tatras", "Doprava"]);
     expect(core.map([], "x").name).toBe("High Tatras");
     // 78 the stand-in holds the edit's answer and the history's too
-    expect(core.apply({ rows: [], mapID: "x", styleID: null, edit: { kind: "name", name: "n" }, author: null, origin: "web" }))
+    expect(core.apply({ rows: [], id: "x", styleID: null, edit: { name: "n" }, author: null }))
       .toMatchObject({ write: [{ id: "own-tatras-layer" }] });
     expect(core.changes([])).toEqual([]);
     // 108 and who holds a map
     expect(core.people([], "x")).toMatchObject({ shared: true, role: "editor", linkRole: null });
     // 86 the stand-in holds what an address reads as, and the rows an added layer writes
-    expect(core.readAddress({ address: "https://cors.example/{z}/{x}/{y}.png", replies: [] }))
-      .toEqual({ read: { kind: "tiles", probe: "https://cors.example/0/0/0.png" } });
-    expect(core.addLayer({ rows: [], mapID: "x", styleID: null, author: null, origin: "web",
+    expect(core.readAddress({ address: "https://cors.example/{z}/{x}/{y}.png" }))
+      .toEqual({ kind: "direct", probe: "https://cors.example/0/0/0.png" });
+    expect(core.addTiles({ rows: [], mapID: "x", styleID: null, author: null, origin: "web",
       add: { kind: "tiles", address: "https://cors.example/{z}/{x}/{y}.png", replies: [] } }))
       .toMatchObject({ write: [{ id: "own-tatras-layer-2" }], history: { id: "change-web-2" } });
     expect(await loadCore(fetcher as typeof fetch, "/editor")).toBe(core);

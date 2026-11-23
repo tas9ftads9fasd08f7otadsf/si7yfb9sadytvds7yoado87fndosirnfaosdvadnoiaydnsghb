@@ -1,18 +1,12 @@
 import { WASI } from "@bjorn3/browser_wasi_shim";
 import { CoreNotReady } from "@/backend/types";
-import type { Edit } from "@/lib/edit";
 import type { AddressReading, Device, Portable, ShareRole } from "@/lib/types";
 import { BASE } from "./base";
 import type { CoreRow, CoreWrite } from "./records";
+import type { StoredForCore } from "./regions/packages";
 
-/** 112 A region package the browser holds, as the core is told of it: its files and its `contents.json` text. */
-export interface StoredPackage {
-  region: string;
-  piece: string;
-  version: number;
-  files: string[];
-  contents: string | null;
-}
+/** 112 A region package the browser holds, as the core is told of it: its files, JSON texts and region's facts. */
+export type StoredPackage = StoredForCore;
 
 /** What the style is built for: the theme, the layers hidden and where the pipeline's and the site's files are. */
 export interface StyleCatalog {
@@ -27,20 +21,23 @@ export interface StyleCatalog {
   tiles: string;
 }
 
-/** What an edit is asked with: the rows, the edit and who it is written as. */
+/**
+ * 165 What an edit is asked with: the rows, the map, the edit as the query `PeerWebEdit(query:)` reads, or the layers
+ * `riki_add_layer` made, and who it is written as.
+ */
 export interface ApplyAsk {
   rows: CoreRow[];
-  mapID: string;
+  id: string;
   styleID: string | null;
-  edit: Edit;
+  edit?: Record<string, string>;
+  layers?: unknown[];
   author: string | null;
-  origin: "web";
 }
 
 /** The core's answer to an edit: rows to write and the map as it stands, or a refusal. */
 export type Applied =
   | { map: Portable; write: CoreWrite[]; remove?: string[]; history?: CoreWrite | null }
-  | { refused: string; status?: number };
+  | { refused: string; status?: number; said?: string };
 
 /** 86 What the browser got when it asked an address the core named. */
 export interface Reply {
@@ -51,35 +48,41 @@ export interface Reply {
   text: string;
 }
 
-/**
- * `riki_read_address` asks what an address is without any network of its own: the page answers each round's
- * `fetch` list and asks again with every reply so far, until the core says what it read.
- */
+/** 165 `riki_read_address` has no network: it names the capabilities to fetch, and reads their text when asked again. */
 export interface ReadAsk {
   address: string;
-  replies: Reply[];
+  document?: string;
 }
 
-/** What it read: a tile template or TileJSON (`probe` is one tile's address), or a service's layers to pick from. */
+/** 165 What it read: added as it is, a document to fetch first, or a service's layers to pick from. */
 export type AddressRead =
-  | { fetch: string[] }
-  | { read: { kind: string; probe?: string } & Partial<AddressReading> }
-  | { refused: string; status?: number };
+  /** `probe`, one tile's address, is checked against the host before the layer is added. */
+  | { kind: "direct"; probe?: string }
+  | { kind: "fetch"; url: string }
+  | ({ kind: "layers" } & AddressReading)
+  | { refused: string; status?: number; said?: string };
 
-/** What `riki_add_layer` adds: from an address as the replies read it, and for a service the ticked layers. */
-export type Adding =
-  | { kind: "tiles"; address: string; replies: Reply[] }
-  | { kind: "service"; address: string; replies: Reply[]; picks: string[] };
-
-/** `riki_add_layer` is asked as `riki_apply` is, with what to add in place of an edit, and answers as it does. */
-export interface AddAsk {
+/** A tile address, added through the tile path. */
+export interface TilesAsk {
   rows: CoreRow[];
   mapID: string;
   styleID: string | null;
-  add: Adding;
+  add: { kind: "tiles"; address: string; replies: Reply[] };
   author: string | null;
   origin: "web";
 }
+
+/** 165 A service's ticked layers, read from the capabilities' text. */
+export interface AddAsk {
+  rows: CoreRow[];
+  id: string;
+  address: string;
+  picks: string[];
+  document: string;
+}
+
+/** 165 The layers the ticks made that the map took, and the map with them; `riki_apply` writes them. */
+export type Added = { layers: unknown[]; map: Portable } | { refused: string; status?: number; said?: string };
 
 /** One line of a map's history, newest first, as the core decodes its row. */
 export interface HistoryEntry {
@@ -105,10 +108,12 @@ export interface Core {
   map(rows: CoreRow[], id: string): Portable;
   style(rows: CoreRow[], mapID: string, styleID: string | null, catalog: StyleCatalog): unknown;
   apply(ask: ApplyAsk): Applied;
-  /** 86 What an address is, in rounds; see `ReadAsk`. */
+  /** 86 What an address is; see `ReadAsk`. */
   readAddress(ask: ReadAsk): AddressRead;
-  /** 86 The rows that add layers to a map, or a refusal, as `apply` answers. */
-  addLayer(ask: AddAsk): Applied;
+  /** 165 The layers a service's ticks add; `apply` writes them. */
+  addLayer(ask: AddAsk): Added;
+  /** 86 A tile address, as the rows that add it. */
+  addTiles(ask: TilesAsk): Applied;
   changes(rows: CoreRow[]): HistoryEntry[];
   /** 108 Who holds the map; `CoreNotReady` while the module has no `riki_people`. */
   people(rows: CoreRow[], mapID: string): PeopleRead | { refused: string; status?: number };
@@ -177,10 +182,11 @@ export function coreOf(exports: CoreExports): Core {
       if ("refused" in answer) throw new NoSuchMap(id);
       return answer;
     },
-    style: (rows, mapID, styleID, catalog) => callJSON(exports, "riki_style", { rows, mapID, styleID, catalog }),
+    style: (rows, mapID, styleID, catalog) => callJSON(exports, "riki_style", { rows, id: mapID, styleID, catalog }),
     apply: (ask) => callJSON(exports, "riki_apply", ask),
     readAddress: (ask) => callJSON(exports, "riki_read_address", ask),
     addLayer: (ask) => callJSON(exports, "riki_add_layer", ask),
+    addTiles: (ask) => callJSON(exports, "riki_add_layer", ask),
     changes: (rows) => callJSON(exports, "riki_changes", { rows }),
     people: (rows, mapID) => callJSON(exports, "riki_people", { rows, id: mapID })
   };

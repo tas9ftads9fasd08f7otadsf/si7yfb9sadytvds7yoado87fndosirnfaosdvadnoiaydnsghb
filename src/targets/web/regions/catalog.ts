@@ -16,9 +16,15 @@ export interface CatalogRegion {
   name: string;
   box: Box | null;
   pieces: Record<string, PackagePiece>;
+  /** 165 The country's catalog slug, as the app reads its code from; null when the catalog names none. */
+  country: string | null;
+  /** 165 A mountain range, listed under `ranges`. */
+  range: boolean;
 }
 
 const CHILDREN = ["regions", "subregions", "ranges"];
+/** The catalog's ranges sit under this key, not under a country. */
+const MOUNTAINS = "mountains";
 const DRIVE_ID = /[?&]id=([A-Za-z0-9_-]{20,})(?:&|$)/;
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -41,7 +47,7 @@ const boxOf = (value: unknown): Box | null =>
 /** The regions of maptiles' `maps.json`, by the key each is listed under; metadata and nodes with no zip are left out. */
 export function readCatalog(catalog: unknown): Map<string, CatalogRegion> {
   const regions = new Map<string, CatalogRegion>();
-  const walk = (key: string, node: unknown) => {
+  const walk = (key: string, node: unknown, country: string | null, range: boolean) => {
     if (!isObject(node)) return;
     if (isObject(node.maps)) {
       const pieces = Object.fromEntries(Object.entries(node.maps).flatMap(([piece, entry]) => {
@@ -50,14 +56,20 @@ export function readCatalog(catalog: unknown): Map<string, CatalogRegion> {
       }));
       if (Object.keys(pieces).length > 0) {
         regions.set(key, { id: key, name: typeof node.name === "string" && node.name ? node.name : key,
-          box: boxOf(node.bbox), pieces });
+          box: boxOf(node.bbox), pieces, country: typeof node.country === "string" ? node.country : country, range });
       }
     }
     for (const group of CHILDREN) {
-      if (isObject(node[group])) for (const [child, inner] of Object.entries(node[group])) walk(child, inner);
+      if (isObject(node[group])) {
+        for (const [child, inner] of Object.entries(node[group])) walk(child, inner, country, group === "ranges");
+      }
     }
   };
-  if (isObject(catalog)) for (const [key, node] of Object.entries(catalog)) if (!key.startsWith("_")) walk(key, node);
+  if (isObject(catalog)) {
+    for (const [key, node] of Object.entries(catalog)) {
+      if (!key.startsWith("_")) walk(key, node, key === MOUNTAINS ? null : key, false);
+    }
+  }
   return regions;
 }
 

@@ -38,7 +38,8 @@ test("a tile template on a host that answers browsers is read and added by the c
     [["create", "own-tatras-layer-2"], ["create", "change-web-2"]]);
   expect(cloud.record("own-tatras-layer-2").fields.CD_layerJSON.value).toContain("Tiles");
   const [read, add] = await calls();
-  expect(read).toMatchObject({ call: "riki_read_address", request: { address: `${CORS_HOST}/{z}/{x}/{y}.png`, replies: [] } });
+  // 165 the core reads an address with no network; a tile address needs nothing fetched first
+  expect(read).toEqual({ call: "riki_read_address", request: { address: `${CORS_HOST}/{z}/{x}/{y}.png` } });
   expect(add).toMatchObject({ call: "riki_add_layer", request: { mapID: MAP, author: "Riki Tester", origin: "web",
     add: { kind: "tiles", address: `${CORS_HOST}/{z}/{x}/{y}.png` } } });
   expect(add.request.rows.map((row) => row.entity)).toContain("SharedMapLayer");
@@ -49,7 +50,7 @@ test("a tile template on a host that refuses browsers is not added, and the noti
   const { core } = await loadAccount();
   const calls = await recordCoreCalls(page, ["riki_add_layer"]);
   const cloud = await mockCloud(page, { signedIn: true,
-    answers: { ...core, riki_read_address: { read: { kind: "tiles", probe: `${CLOSED_HOST}/0/0/0.png` } } } });
+    answers: { ...core, riki_read_address: { kind: "direct", probe: `${CLOSED_HOST}/0/0/0.png` } } });
   await mockServiceHosts(page);
   await openAdd(page);
   await page.locator("#tileAddress").fill(`${CLOSED_HOST}/{z}/{x}/{y}.png`);

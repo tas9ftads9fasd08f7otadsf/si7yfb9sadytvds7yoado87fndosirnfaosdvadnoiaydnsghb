@@ -4,7 +4,8 @@ import account from "../../../e2e/fixtures/cloud-account.json";
 import type { Device, Portable } from "@/lib/types";
 import { Cloud, type CKBatchResult, type CKContainer, type CKRecord, type CKSave, type CKZoneChanges, type CloudKitJS } from "./cloud";
 import { CoreNotReady, NotOnSite, type Feature } from "@/backend/types";
-import { CoreMissing, type AddAsk, type AddressRead, type Applied, type Core, type HistoryEntry, type PeopleRead, type ReadAsk } from "./core";
+import { CoreMissing, type AddAsk, type Added, type AddressRead, type Applied, type Core, type HistoryEntry, type PeopleRead, type ReadAsk } from "./core";
+import { queryOf } from "@/lib/edit";
 import { createBackend } from "./backend";
 import type { Reach } from "./reach";
 import type { Keeping } from "./zones";
@@ -31,7 +32,7 @@ interface Options {
   reach?: Reach;
   /** 86 What the core reads an address as, by round; the recorded answer by default. */
   reads?: (ask: ReadAsk) => AddressRead;
-  adds?: (ask: AddAsk) => Applied;
+  adds?: (ask: AddAsk) => Added;
   /** 86 What the browser's fetch answers for an address the core asked for. */
   fetching?: (address: string) => Response;
   /** The style the core builds. */
@@ -120,7 +121,8 @@ function stack(options: Options = {}) {
     style: (rows, mapID, styleID, catalog) => { seen.push([mapID, styleID, catalog]); return options.built ?? account.core.riki_style; },
     apply: vi.fn((ask) => options.apply?.(ask) ?? (account.core.riki_apply as unknown as Applied)),
     readAddress: (ask) => options.reads?.(ask) ?? (account.core.riki_read_address as unknown as AddressRead),
-    addLayer: vi.fn((ask) => options.adds?.(ask) ?? (account.core.riki_add_layer as unknown as Applied)),
+    addLayer: vi.fn((ask) => options.adds?.(ask) ?? (account.core.riki_add_layer as unknown as Added)),
+    addTiles: vi.fn(() => account.core.riki_add_layer as unknown as Applied),
     changes: () => options.changes?.() ?? [],
     people: vi.fn(() => options.people?.() ?? (account.core.riki_people as unknown as PeopleRead))
   };
@@ -293,7 +295,8 @@ describe("WebBackend's edits", () => {
     const answer = await backend.change(TATRAS, "B1", rename);
     expect(answer).toEqual({ ok: true, value: account.core.riki_map });
     const ask = vi.mocked(core.apply).mock.calls[0]![0];
-    expect(ask).toMatchObject({ mapID: TATRAS, styleID: "B1", edit: rename, author: "Riki Tester", origin: "web" });
+    // 165 the edit goes to the core as the query the phone's /edit reads
+    expect(ask).toEqual({ rows: expect.any(Array), id: TATRAS, styleID: "B1", edit: queryOf(rename), author: "Riki Tester" });
     expect(ask.rows.map((row) => row.entity).sort()).toEqual(["Share", "Share", "SharedMap", "SharedMap", "SharedMap",
       "SharedMapChange", "SharedMapLayer", "SharedMapLayer", "SharedMapMember", "SharedMapMember", "SharedMapMember",
       "SharedMapMember"]);
@@ -513,13 +516,14 @@ describe("WebBackend's region packages", () => {
     expect(on.backend.regionPackages).toBeDefined();
   });
 
+  // 165 with each JSON file's text and the region's facts, where the catalog lists the region
   it("tells the core what is held, with each package's manifest text, when it builds a style", async () => {
     const { backend, seen } = stack({ regions: await held() });
     await backend.maps();
     await backend.style({ mapID: "M", styleID: "B1", hidden: [], theme: "light", tiles: "1x1" });
     const catalog = (seen.at(-1) as unknown[])[2] as { stored: unknown[] };
     expect(catalog.stored).toEqual([{ region: "tatry", piece: "base", version: 4, files: ["base.pmtiles", "contents.json"],
-      contents: "{\"package\":\"base\"}" }]);
+      texts: { "contents.json": "{\"package\":\"base\"}" }, country: null, range: false, bbox: null }]);
   });
 
   it("reads a held archive for the map by the key its style names it with, and a sprite sheet", async () => {
@@ -602,9 +606,9 @@ describe("WebBackend's added layers", () => {
   // 86 the core reads the address and builds the rows; the site only fetches and writes them
   it("reads a tile template as the core says and writes the rows the core adds, with their history row", async () => {
     const { backend, core, saves } = stack({ reach: hosts() });
-    expect(await backend.readAddress(template)).toEqual({ ok: true, value: { kind: "tiles", probe: "https://cors.example/0/0/0.png" } });
+    expect(await backend.readAddress(template)).toEqual({ ok: true, value: { kind: "direct", probe: "https://cors.example/0/0/0.png" } });
     expect(await backend.addTiles(TATRAS, template)).toEqual({ ok: true, value: account.core.riki_map });
-    const ask = vi.mocked(core.addLayer).mock.calls[0]![0];
+    const ask = vi.mocked(core.addTiles).mock.calls[0]![0];
     expect(ask).toMatchObject({ mapID: TATRAS, add: { kind: "tiles", address: template, replies: [] }, author: "Riki Tester", origin: "web" });
     const [records, where] = saves.mock.calls[0]!;
     expect(where).toEqual({ zoneID: { zoneName: "com.apple.coredata.cloudkit.zone" }, atomic: true });
@@ -613,31 +617,43 @@ describe("WebBackend's added layers", () => {
     expect((records as { recordChangeTag?: string }[])[0]!.recordChangeTag).toBeUndefined();
   });
 
-  it("fetches the addresses the core asks for, in rounds, and gives the core every reply", async () => {
-    const rounds: ReadAsk[] = [];
-    const { backend, core } = stack({ reach: hosts(), fetching: () => new Response("{\"tiles\":[]}", { headers: { "content-type": "application/json" } }),
+  // 165 riki_read_address names the capabilities; the browser fetches them once and hands the core their text
+  it("fetches the capabilities the core names and reads them with the core", async () => {
+    const asked: ReadAsk[] = [];
+    const wms = "https://cors.example/wms?SERVICE=WMS&REQUEST=GetCapabilities";
+    let fetched = 0;
+    const { backend } = stack({ reach: hosts(), fetching: () => { fetched += 1; return new Response("<WMS_Capabilities/>"); },
       reads: (ask) => {
-        rounds.push(structuredClone(ask));
-        return ask.replies.length === 0 ? { fetch: ["https://cors.example/tiles.json"] } : { read: { kind: "tilejson" } };
+        asked.push(structuredClone(ask));
+        return ask.document === undefined ? { kind: "fetch", url: wms } : { kind: "layers", title: "WMS", rows: [] };
       } });
-    expect(await backend.readAddress("https://cors.example/tiles.json")).toEqual({ ok: true, value: { kind: "tilejson" } });
-    expect(rounds[1]!.replies).toEqual([{ url: "https://cors.example/tiles.json", status: 200, contentType: "application/json", text: "{\"tiles\":[]}" }]);
-    await backend.addTiles(TATRAS, "https://cors.example/tiles.json");
-    // adding it asks the host no more than reading did
-    expect(rounds).toHaveLength(2);
-    expect(vi.mocked(core.addLayer).mock.calls[0]![0].add).toMatchObject({ kind: "tiles", replies: [{ url: "https://cors.example/tiles.json" }] });
+    expect(await backend.readAddress("https://cors.example/wms")).toEqual({ ok: true, value: { kind: "layers", title: "WMS", rows: [] } });
+    expect(asked).toEqual([{ address: "https://cors.example/wms" }, { address: "https://cors.example/wms", document: "<WMS_Capabilities/>" }]);
+    expect(fetched).toBe(1);
   });
 
-  it("adds a service's ticked layers from what its capabilities answered", async () => {
-    const { backend, core } = stack({ reach: hosts(), fetching: () => new Response("<WMS_Capabilities/>"),
-      reads: (ask) => ask.replies.length ? { read: { kind: "layers", rows: [] } } : { fetch: ["https://cors.example/wms?REQUEST=GetCapabilities"] } });
+  // 165 riki_add_layer makes the ticked layers from the text read before; riki_apply writes them as rows
+  it("adds a service's ticked layers from the capabilities read, and writes them through riki_apply", async () => {
+    const asked: ReadAsk[] = [];
+    const { backend, core, saves } = stack({ reach: hosts(), fetching: () => new Response("<WMS_Capabilities/>"),
+      reads: (ask) => {
+        asked.push(ask);
+        return ask.document === undefined ? { kind: "fetch", url: "https://cors.example/wms?REQUEST=GetCapabilities" }
+          : { kind: "layers", rows: [] };
+      } });
+    await backend.readAddress("https://cors.example/wms");
     await backend.addServiceLayers(TATRAS, "https://cors.example/wms", ["roads", "rails"]);
-    expect(vi.mocked(core.addLayer).mock.calls[0]![0].add).toMatchObject({ kind: "service", address: "https://cors.example/wms", picks: ["roads", "rails"] });
+    expect(asked).toHaveLength(2);
+    expect(vi.mocked(core.addLayer).mock.calls[0]![0]).toEqual({ rows: expect.any(Array), id: TATRAS,
+      address: "https://cors.example/wms", picks: ["roads", "rails"], document: "<WMS_Capabilities/>" });
+    expect(vi.mocked(core.apply).mock.calls[0]![0]).toEqual({ rows: expect.any(Array), id: TATRAS, styleID: null,
+      layers: [{ id: "L2", name: "Tiles" }], author: "Riki Tester" });
+    expect(saves).toHaveBeenCalled();
   });
 
   it("refuses an address on a host that does not answer browsers, in the words of the notice, and writes nothing", async () => {
     const { backend, core, saves } = stack({ reach: hosts(["https://closed.example"]),
-      reads: (ask) => ask.replies.length ? { read: { kind: "layers" } } : { fetch: ["https://closed.example/wms"] } });
+      reads: (ask) => ask.document === undefined ? { kind: "fetch", url: "https://closed.example/wms" } : { kind: "layers", rows: [] } });
     const answer = { ok: false, status: 400, said: "This service doesn't answer browsers. Add it in the app." };
     expect(await backend.readAddress("https://closed.example/wms")).toEqual(answer);
     expect(await backend.addServiceLayers(TATRAS, "https://closed.example/wms", ["a"])).toEqual(answer);
@@ -650,20 +666,11 @@ describe("WebBackend's added layers", () => {
     expect(await backend.readAddress(template)).toMatchObject({ ok: false, said: expect.stringContaining("doesn't answer browsers") });
   });
 
-  it("says what the core refused, and stops asking after four rounds", async () => {
-    const refusing = stack({ reads: () => ({ refused: "Not a tile address", status: 422 }) });
-    expect(await refusing.backend.readAddress("x")).toEqual({ ok: false, status: 422, said: "Not a tile address" });
-    let asked = 0;
-    const endless = stack({ reach: hosts(), fetching: () => new Response("x"), reads: () => ({ fetch: [`https://cors.example/${asked++}`] }) });
-    expect(await endless.backend.readAddress("x")).toMatchObject({ ok: false, said: "The site could not read that address." });
-    expect(asked).toBe(4);
-  });
-
-  it("passes a failed fetch to the core as status 0", async () => {
-    const seen: ReadAsk[] = [];
-    const { backend } = stack({ reach: hosts(), fetching: () => { throw new TypeError("Failed to fetch"); },
-      reads: (ask) => { seen.push(structuredClone(ask)); return ask.replies.length ? { read: { kind: "tiles" } } : { fetch: ["https://cors.example/a"] }; } });
-    await backend.readAddress("x");
-    expect(seen[1]!.replies).toEqual([{ url: "https://cors.example/a", status: 0, contentType: "", text: "" }]);
+  it("says what the core refused, in its words when it gives them, and what a failed fetch leaves unread", async () => {
+    const refusing = stack({ reads: () => ({ refused: "unanswered", status: 409, said: "The service said nothing readable" }) });
+    expect(await refusing.backend.readAddress("x")).toEqual({ ok: false, status: 409, said: "The service said nothing readable" });
+    const failing = stack({ reach: hosts(), fetching: () => { throw new TypeError("Failed to fetch"); },
+      reads: () => ({ kind: "fetch", url: "https://cors.example/a" }) });
+    expect(await failing.backend.readAddress("x")).toMatchObject({ ok: false, said: "The site could not read that address." });
   });
 });

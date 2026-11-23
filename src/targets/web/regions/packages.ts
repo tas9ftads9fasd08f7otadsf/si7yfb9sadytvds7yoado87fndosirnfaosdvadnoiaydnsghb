@@ -12,16 +12,23 @@ export interface Parts {
   catalog?: () => Promise<Map<string, CatalogRegion>>;
 }
 
-/** What a stored package tells the core: where it is from, its files and its `contents.json` text. */
+/** What a stored package tells the core: where it is from, its files, its JSON files' text and its region's facts. */
 export interface StoredForCore {
   region: string;
   piece: string;
   version: number;
   files: string[];
-  contents: string | null;
+  /** 165 The text of `contents.json` and the published styles, by path, which the core's style builder reads. */
+  texts: Record<string, string>;
+  country: string | null;
+  range: boolean;
+  bbox: number[] | null;
 }
 
 const MANIFESTS = ["contents.json", "obsah.json"];
+
+/** 165 The files the core reads as text: the manifest and the styles the pipeline published. */
+export const readAsText = (path: string) => MANIFESTS.includes(path) || /^styles\/[^/]+\.json$/.test(path);
 
 /** The region packages: the catalog says what exists, the store what is held, and the core what a style needs. */
 export function createRegionPackages(parts: Parts) {
@@ -77,13 +84,19 @@ export function createRegionPackages(parts: Parts) {
     }
   };
 
-  /** Every held package, with the text of its manifest, as the style's catalog hands them to the core. */
+  /** Every held package, with its JSON files' text and its region's facts, as the style's catalog hands them to the core. */
   const stored = async (): Promise<StoredForCore[]> => {
-    const list: StoredPackage[] = await parts.store.list();
+    const [list, known]: [StoredPackage[], Map<string, CatalogRegion>] = await Promise.all([parts.store.list(),
+      catalog().catch(() => new Map<string, CatalogRegion>())]);
     return Promise.all(list.map(async (each) => {
-      const name = MANIFESTS.find((manifest) => each.files.includes(manifest));
-      const blob = name ? await parts.store.blob(each.region, each.piece, name) : null;
-      return { region: each.region, piece: each.piece, version: each.version, files: each.files, contents: blob ? await blob.text() : null };
+      const texts: Record<string, string> = {};
+      for (const path of each.files.filter(readAsText)) {
+        const blob = await parts.store.blob(each.region, each.piece, path);
+        if (blob) texts[path] = await blob.text();
+      }
+      const listed = known.get(each.region);
+      return { region: each.region, piece: each.piece, version: each.version, files: each.files, texts,
+        country: listed?.country ?? null, range: listed?.range ?? false, bbox: listed?.box ? [...listed.box] : null };
     }));
   };
 
