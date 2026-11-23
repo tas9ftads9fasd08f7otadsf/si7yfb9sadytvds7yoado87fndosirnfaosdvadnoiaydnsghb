@@ -183,7 +183,7 @@
     "riki_changes": [],
     "riki_switches": {
       "picker": true, "carPlay": true, "legend": true, "world": true, "legendEverywhere": true, "worldEverywhere": true,
-      "hasNothingToDraw": false, "ownsSettings": false, "groupsByOrigin": false, "groupingOffered": false,
+      "hasNothingToDraw": false, "ownsSettings": true, "groupsByOrigin": false, "groupingOffered": false,
       "groupingReorders": false, "stylesDisagree": false, "differsFromDefault": false, "layersWithoutStyle": 0,
       "removedStyles": 0, "editedStyles": []
     },
