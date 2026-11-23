@@ -46,8 +46,8 @@ export function swiftBuildArgs(dir, scratch = SCRATCH) {
   return ["build", "--swift-sdk", CONTRACT.sdk.id, "-c", "release", "--product", CONTRACT.product,
     "--scratch-path", path.join(scratch, "build"), "-debug-info-format", "none",
     "-Xswiftc", "-file-prefix-map", "-Xswiftc", `${dir}=/rikimaps`,
-    // 178 one thread: whole-module builds split code by the runner's cores, and the bytes with it
-    "-j", "1", "-Xswiftc", "-num-threads", "-Xswiftc", "0"];
+    // 178 one thread: code generated in parallel came out in another order on another runner
+    "-j", "1", "-Xswiftc", "-num-threads", "-Xswiftc", "1"];
 }
 
 export const sha256Of = (bytes) => createHash("sha256").update(bytes).digest("hex");
