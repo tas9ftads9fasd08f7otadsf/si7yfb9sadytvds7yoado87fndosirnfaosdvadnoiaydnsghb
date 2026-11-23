@@ -1,11 +1,12 @@
 "use client";
 
 import { type CSSProperties, createContext, useContext, useEffect, useId, useState } from "react";
-import type { DetailsLayout, LayerTest, OptionSection, RoadSigns } from "@/lib/types";
+import type { DetailsLayout, LayerTest, OptionSection, RoadSigns, ServerLookAsk } from "@/lib/types";
 import { go, iconURL, loadRoadSigns, setDrawn, testLayer, useViewer } from "@/store/viewer";
 import { CommitField } from "../ui/CommitField";
 import { type Aspect, ASPECT_WORDS, aspectsOffered, colourTitleKey, drawsPoints, markOf, offeredSections } from "@/lib/markers";
 import { MarkSymbols } from "./MarkSymbols";
+import { ServerLookBanner, ServerLookReview } from "./ServerLook";
 import { Switch } from "../ui/Switch";
 import { Sym } from "../ui/Sym";
 import { ground } from "../ui/ground";
@@ -294,13 +295,19 @@ function Sections({ id, sections }: { id: string; sections: OptionSection[] }) {
 }
 
 /** Edit layer's road, rail, history, name and ski panels, as the phone lists them. */
-export function OptionsPanel({ id, sections, kind = "" }: { id: string; sections: OptionSection[]; kind?: string }) {
+export function OptionsPanel({ id, sections, kind = "", serverLook }: {
+  id: string; sections: OptionSection[]; kind?: string; serverLook?: ServerLookAsk }) {
+  const [reviewing, setReviewing] = useState(false);
   const marked = drawsPoints(sections);
   const plain = sections.filter((one) => !one.aspect);
+  const review = serverLook && reviewing;
   return (
     <PanelLayer.Provider value={id}><div className="card options" data-options={id}>
-      <Sections id={id} sections={marked ? plain : offeredSections(kind, sections)} />
-      {marked ? <MapMarkers id={id} kind={kind} sections={sections} /> : null}
+      {review ? <ServerLookReview id={id} look={serverLook} close={() => setReviewing(false)} /> : <>
+        {serverLook ? <ServerLookBanner look={serverLook} review={() => setReviewing(true)} /> : null}
+        <Sections id={id} sections={marked ? plain : offeredSections(kind, sections)} />
+        {marked ? <MapMarkers id={id} kind={kind} sections={sections} /> : null}
+      </>}
     </div></PanelLayer.Provider>
   );
 }

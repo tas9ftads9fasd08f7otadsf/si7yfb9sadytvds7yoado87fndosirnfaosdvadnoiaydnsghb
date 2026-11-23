@@ -570,8 +570,25 @@ export interface RoadSignsAsk {
   near?: string;
 }
 
+/** 172: a part of a server layer's look that changed since this layer took it. */
+export interface ServerLookPart {
+  id: string;
+  title: string;
+  /** What changed, in the phone's words. */
+  changed?: string;
+  /** The part was edited here too, so taking the server's loses that edit. */
+  changedHere?: boolean;
+}
+
+/** 172: the phone's say that a layer's server has a look it has not answered; absent when it has. */
+export interface ServerLookAsk {
+  server: string;
+  version: number;
+  parts: ServerLookPart[];
+}
+
 export interface LayerOptions {
-  layers: { id: string; sections: OptionSection[] }[];
+  layers: { id: string; sections: OptionSection[]; serverLook?: ServerLookAsk }[];
 }
 
 export interface PackageRow {

@@ -51,7 +51,7 @@ function freshMaps() {
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
   tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
-    offlineAsks: [], discarded: [], esriAsks: [],
+    offlineAsks: [], discarded: [], esriAsks: [], serverLookAnswers: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
 // 59: the High Tatras shared with Rita, who joined; Bratislava with nobody yet.
@@ -175,7 +175,7 @@ function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
     tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
-    offlineAsks: [], discarded: [], esriAsks: [],
+    offlineAsks: [], discarded: [], esriAsks: [], serverLookAnswers: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
 
@@ -996,6 +996,33 @@ function roadSigns(query) {
     signs: signs.map(([id, title]) => ({ id, title })) };
 }
 
+// 172: as `PeerWebLayerOptions` says a server's look is waiting: only above what the layer answered, only the parts behind.
+function serverLookAsk(layer) {
+  const look = layer.serverLook;
+  const behind = (look?.parts || []).filter((part) => part.behind);
+  if (!look || look.version <= look.answered || !behind.length) return undefined;
+  return { server: look.server, version: look.version,
+    parts: behind.map(({ id, title, changed, changedHere }) => ({ id, title, changed, changedHere })) };
+}
+
+// 172: Review's answer: the parts taken are copied, the version is asked about either way.
+function answerServerLook(layer, query) {
+  const look = layer.serverLook;
+  if (!look) return false;
+  const version = Number(query.get("serverVersion") || query.get("serverKeep"));
+  if (query.has("serverTake")) {
+    for (const id of query.get("serverTake").split(",").filter(Boolean)) {
+      const part = look.parts.find((one) => one.id === id);
+      if (!part?.behind) return false;
+      part.behind = false;
+      if (id === "markers") layer.tint = "#2E9E5B";
+    }
+  }
+  look.answered = Math.max(look.answered, version);
+  phone.serverLookAnswers.push(Object.fromEntries(query));
+  return true;
+}
+
 function layerOptions(each) {
   const hidden = (style) => style.adjustments?.hiddenSkiKinds || [];
   const anyDraws = (key) => each.styles.some((style) => style.adjustments?.[key] !== true);
@@ -1028,7 +1055,7 @@ function layerOptions(each) {
     if (layer.apiPoints) return apiPointSections(layer);
     return layer.drawn ? [...featureSections(layer), ...markSections(layer)] : layer.net ? networkSections(layer) : layer.esri ? [...questionSections(layer), ...markSections(layer), ...featureSections(layer).filter((one) => one.aspect === "linesAndAreas")] : [];
   };
-  return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
+  return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer), serverLook: serverLookAsk(layer) }))
     .filter((layer) => layer.sections.length) };
 }
 
@@ -1309,6 +1336,9 @@ function edit(each, query, response) {
     const made = editLayout(layer, query);
     if (Array.isArray(made)) return send(response, made[0], made[1]);
     if (!made) return send(response, 409, "The layout changed on the phone; it is shown again as it is now");
+  } else if (query.has("layer") && (query.has("serverTake") || query.has("serverKeep"))) {
+    const layer = each.layers.find((one) => one.id === query.get("layer"));
+    if (!answerServerLook(layer || {}, query)) return send(response, 409, "This change does not fit the map");
   } else if (marked) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
     if (!layer?.drawn && !layer?.esri) return send(response, 404, "This change does not fit the map");
@@ -2237,6 +2267,13 @@ function testControl(route, query, response) {
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000B7", name: "Buses", kind: "API",
       symbol: "bus", isEnabled: true, drawn: true, apiPoints: true });
     break;
+  // 172: the Buses layer's server (Coffee) saved version 5 over the 3 it took: Map markers and Details changed.
+  case "/__test/server-look":
+    phone.maps[0].layers.find((one) => one.apiPoints).serverLook = { server: "Coffee", version: 5, answered: 3,
+      parts: [{ id: "markers", title: "Map markers", changed: "Colour", behind: true },
+        { id: "details", title: "Details", changed: "2 rows", behind: true, changedHere: query.get("here") === "details" }] };
+    break;
+  case "/__test/server-look-answers": return json(response, phone.serverLookAnswers);
   case "/__test/drawn-file":
     phone.maps[0].layers.push({ id: "6F1E2A10-0000-4000-8000-0000000000D1", name: "Trails", kind: "GeoJSON",
       symbol: "figure.walk", isEnabled: true, drawn: true });
