@@ -92,7 +92,7 @@ function LayerRow({ layer, listed, isBase, movable, peers }: RowProps) {
             <button type="button" className="pill danger" aria-label={words.deleteLayer}
               onClick={() => removeLayer(layer)}><Sym name="trash" />{words.deleteLayer}</button>
           </div>
-          {sections ? <OptionsPanel id={layer.id} sections={sections} /> : null}
+          {sections ? <OptionsPanel id={layer.id} sections={sections} kind={listed.kind} /> : null}
         </div>
       ) : null}
     </div>

@@ -506,7 +506,7 @@ function lookSections(layer) {
 // 2998: Edit layer's feature styling, as `PeerWebLayerOptions+Features` lists it for a drawn file.
 const FEATURE_SWITCHES = ["distinctColours", "grouping"];
 const FEATURE_KEYS = [...FEATURE_SWITCHES, "lineWidth", "valueShown", "allValuesShown", "valueTint",
-  "pointLabel", "pointInnerText", "colourMode", "colourKey"];
+  "pointLabel", "pointInnerText", "colourMode", "colourKey", "stacking"];
 const API_KEYS = ["line", "status", "colour"];
 
 // 70: an API layer's Colour and Text rows, as `PeerWebLayerOptions+Features` lists them.
@@ -516,15 +516,20 @@ function apiPointSections(layer) {
     layerScoped: true, value: layer.tint || null, automatic: "#0A84FF", palette: ["#E5533D", "#2E9E5B"] };
   const keyed = (title, held) => ({ kind: "text", title, footnote: "", key: "colourKey", layerScoped: true,
     value: `{${held}}`, keys: API_KEYS });
-  return [{ kind: "choice", title: "Colour", footnote: "", key: "colourMode", layerScoped: true, value: mode,
+  const found = [{ kind: "choice", title: "Colour", footnote: "", key: "colourMode", layerScoped: true, value: mode,
     options: [["fixed", "Static"], ["fromKey", "From key"], ["byValue", "By value"]]
       .map(([id, title]) => ({ id, title, detail: "" })) },
   ...(mode === "fixed" ? [colour] : mode === "fromKey" ? [keyed("Colour key", layer.colourKey)]
-    : [keyed("Value key", layer.tintKey), colour]),
-  { kind: "text", title: "Text above points", footnote: "A {key} becomes that feature's value.", key: "pointLabel",
-    layerScoped: true, value: layer.pointLabel || "", keys: API_KEYS },
-  { kind: "text", title: "Text inside points", footnote: "Written in white on the dot.", key: "pointInnerText",
-    layerScoped: true, value: layer.pointInnerText || "", keys: API_KEYS }];
+    : [keyed("Value key", layer.tintKey), colour])]
+    .map((one) => ({ ...one, aspect: "colour" }));
+  return [...found, ...markSections(layer),
+    { kind: "text", title: "Text above points", footnote: "A {key} becomes that feature's value.", key: "pointLabel",
+      aspect: "text", layerScoped: true, value: layer.pointLabel || "", keys: API_KEYS },
+    { kind: "text", title: "Text inside points", footnote: "Written in white on the dot.", key: "pointInnerText",
+      aspect: "text", layerScoped: true, value: layer.pointInnerText || "", keys: API_KEYS },
+    // 168: only an API layer stacks points that fall together.
+    { kind: "switch", title: "", footnote: "Points that fall together become one", key: "stacking", aspect: "stacking",
+      label: "Stack close points", isOn: layer.stacking === true, layerScoped: true }];
 }
 
 const bare = (written) => (written || "").trim().replace(/^\{/, "").replace(/\}$/, "").trim() || undefined;
@@ -533,15 +538,17 @@ const DRAWN_VALUES = ["Hiking", "Skiing"];
 function featureSections(layer) {
   const shown = layer.shownValues || DRAWN_VALUES;
   const every = shown.length === DRAWN_VALUES.length;
-  return [{ kind: "slider", title: "Line width", footnote: "", key: "lineWidth", layerScoped: true,
+  return [{ kind: "slider", title: "Line width", footnote: "", key: "lineWidth", layerScoped: true, aspect: "linesAndAreas",
     value: String(layer.lineWidthScale || 1), range: [0.5, 5, 0.25], ends: ["Hairline", "Bold"] },
-  { kind: "switch", title: "", footnote: "Tell overlapping features apart", key: "distinctColours",
+  { kind: "colour", title: "", footnote: "", key: "tint", layerScoped: true, aspect: "colour",
+    value: layer.tintHex || null, automatic: "#0A84FF", palette: ["#E5533D", "#2E9E5B"] },
+  { kind: "switch", title: "", footnote: "Tell overlapping features apart", key: "distinctColours", aspect: "colour",
     label: "Distinct colours per feature", isOn: layer.distinctColours === true, layerScoped: true },
-  { kind: "values", title: "Colour by Kind", footnote: "", key: "valueShown", layerScoped: true,
+  { kind: "values", title: "Colour by Kind", footnote: "", key: "valueShown", layerScoped: true, aspect: "colour",
     label: every ? "None" : "All", value: every ? "0" : "1", palette: ["#E5533D", "#2E9E5B"],
     items: DRAWN_VALUES.map((value) => ({ id: value, title: value, light: layer.valueTints?.[value] || "",
       dark: layer.valueTints?.[value] || "", isOn: shown.includes(value) })) },
-  { kind: "switch", title: "Grouping", footnote: "A tap gathers every part sharing that name.", key: "grouping",
+  { kind: "switch", title: "Grouping", footnote: "A tap gathers every part sharing that name.", key: "grouping", aspect: "colour",
     label: "Group features by name", isOn: layer.grouping === true, layerScoped: true }];
 }
 
@@ -557,6 +564,7 @@ function editFeatures(layer, query, key) {
     if (layer.tintKey) layer.tintKey = bare(value); else layer.colourKey = bare(value);
   }
   if (FEATURE_SWITCHES.includes(key)) layer[key] = value === "1";
+  if (key === "stacking") layer.stacking = value === "1";
   if (key === "lineWidth") layer.lineWidthScale = Number(value);
   if (key === "valueTint") layer.valueTints = { ...layer.valueTints, [value]: query.get("ink") || undefined };
   const shown = new Set(layer.shownValues || DRAWN_VALUES);
@@ -592,7 +600,7 @@ function markSections(layer) {
     found.push({ kind: "colour", title: "Icon colour", footnote: "", key: "pointIconColour", layerScoped: true,
       value: layer.pointIconColourHex || null, automatic: "#FFFFFF", palette: ["#E5533D", "#2E9E5B"] });
   }
-  return found;
+  return found.map((one) => ({ ...one, aspect: "mark" }));
 }
 
 /** As `PeerWebLayerMarks.Marking.make`: false where the mark has no such row. */
@@ -1018,7 +1026,7 @@ function layerOptions(each) {
     }
     if (layer.layout) return detailsSections(layer);
     if (layer.apiPoints) return apiPointSections(layer);
-    return layer.drawn ? [...featureSections(layer), ...markSections(layer)] : layer.net ? networkSections(layer) : layer.esri ? questionSections(layer) : [];
+    return layer.drawn ? [...featureSections(layer), ...markSections(layer)] : layer.net ? networkSections(layer) : layer.esri ? [...questionSections(layer), ...markSections(layer), ...featureSections(layer).filter((one) => one.aspect === "linesAndAreas")] : [];
   };
   return { layers: each.layers.map((layer) => ({ id: layer.id, sections: sections(layer) }))
     .filter((layer) => layer.sections.length) };
@@ -1303,11 +1311,11 @@ function edit(each, query, response) {
     if (!made) return send(response, 409, "The layout changed on the phone; it is shown again as it is now");
   } else if (marked) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
-    if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
+    if (!layer?.drawn && !layer?.esri) return send(response, 404, "This change does not fit the map");
     if (!editMarks(layer, query, marked)) return send(response, 409, "This change does not fit the map");
   } else if (featured) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
-    if (!layer?.drawn) return send(response, 404, "This change does not fit the map");
+    if (!layer?.drawn && !layer?.esri) return send(response, 404, "This change does not fit the map");
     editFeatures(layer, query, featured);
   } else if (networked) {
     const layer = each.layers.find((one) => one.id === query.get("layer"));
