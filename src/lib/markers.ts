@@ -11,11 +11,13 @@ const isAPI = (kind: string) => kind.trim().toLowerCase() === "api";
 /** A layer draws points where the phone offers a mark for them. */
 export const drawsPoints = (sections: OptionSection[]) => sections.some((one) => one.aspect === "mark");
 
-/** As the app's `FeatureStyleAspect.offered`: only an API stacks; others may hold lines or areas. */
+/** As the app's `FeatureStyleAspect.offered`: only an API stacks; lines and areas where the phone sends them. */
 export function aspectsOffered(kind: string, sections: OptionSection[]): Aspect[] {
   if (!drawsPoints(sections)) return ["colour"];
   if (isAPI(kind)) return ["colour", "mark", "text", "stacking"];
-  return ["colour", "mark", "text", "linesAndAreas"];
+  // 173: a track file's lines are drawn as it says, so the phone sends no width for them.
+  const lines = sections.some((one) => one.aspect === "linesAndAreas");
+  return lines ? ["colour", "mark", "text", "linesAndAreas"] : ["colour", "mark", "text"];
 }
 
 export const markOf = (sections: OptionSection[]): MarkKind => {

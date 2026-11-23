@@ -22,8 +22,13 @@ describe("map markers", () => {
   // 168: Esri and file layers may hold lines or areas, and never stack.
   it("offers Lines and areas on Esri and file layers", () => {
     for (const kind of ["Esri", "GeoJSON"]) {
-      expect(aspectsOffered(kind, [mark])).toEqual(["colour", "mark", "text", "linesAndAreas"]);
+      expect(aspectsOffered(kind, [mark, lines])).toEqual(["colour", "mark", "text", "linesAndAreas"]);
     }
+  });
+
+  // 173: as the app since rikimaps 3631, a file the app does not colour has no Lines and areas tab.
+  it("offers no Lines and areas where the phone sends nothing for it", () => {
+    expect(aspectsOffered("GPX", [mark, colour])).toEqual(["colour", "mark", "text"]);
   });
 
   // 168: a phone that sends too much is held to what the kind is offered.

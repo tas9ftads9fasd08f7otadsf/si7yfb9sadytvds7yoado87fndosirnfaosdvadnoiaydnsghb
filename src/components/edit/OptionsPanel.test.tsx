@@ -184,7 +184,9 @@ describe("OptionsPanel's signs key", () => {
     const sections: OptionSection[] = [
       { kind: "choice", title: "Mark", key: "pointMark", aspect: "mark", value: "circled",
         options: [{ id: "dot", title: "Dot" }, { id: "circled", title: "Icon in circle" }] },
-      { ...mode, aspect: "colour" }];
+      { ...mode, aspect: "colour" },
+      // 173: the phone sends a GeoJSON layer's line width on Lines and areas.
+      { kind: "slider", title: "Line width", key: "lineWidth", aspect: "linesAndAreas", value: "1" }];
     useViewer.setState({ mapID: "a", editToken: "t" });
     render(<OptionsPanel id="L" kind="GeoJSON" sections={sections} />);
     expect(screen.getByRole("heading", { name: "Map markers" })).toBeTruthy();
