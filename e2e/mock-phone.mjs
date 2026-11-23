@@ -711,18 +711,85 @@ const API_CHOICES = {
 };
 
 // 3003: an API answering two vehicles, as `PeerWebAPI` reads one; 3397 a cookie is kept, never answered.
+const BUS_ANSWER = { vehicles: [{ lat: 48.15, lon: 17.11, line: "N33" }, { lat: 48.16, lon: 17.12, line: "N34" }], stops: [] };
+
+// 171: a trimmed coffee trip, whose answer nests its lists three ways; the phone sends the answer for the Points page.
+const COFFEE_ANSWER = {
+  cafes: [
+    { id: 1, name: "Espresso Embassy", latLng: "47.49, 19.05", city: { id: 3, name: "Budapest" }, tags: ["roaster", "wifi"], note: "" },
+    { id: 2, name: "Café Nové", latLng: "48.14, 17.10", city: { id: 4, name: "Bratislava" }, tags: ["wifi"], note: "closed on Sundays" },
+    { id: 3, name: "Kávovar", latLng: "48.71, 21.26", city: { id: 5, name: "Košice" }, tags: [] }],
+  cities: [{ id: 3, name: "Budapest", lat: 47.49, lon: 19.04 }, { id: 4, name: "Bratislava", lat: 48.14, lon: 17.1 }],
+  giveaways: []
+};
+
+function dotted(item, key) {
+  let here = item;
+  for (const step of key.split(".").filter(Boolean)) here = here === null || typeof here !== "object" ? undefined : here[step];
+  return here;
+}
+
+function asText(value) {
+  if (Array.isArray(value)) return value.map(asText).join(", ");
+  return value === undefined || value === null || typeof value === "object" ? "" : String(value);
+}
+
+const loosely = (text) => text.trim().normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
+// 171: as `APIPointRule.holds`: every rule must hold, a missing key reads as an empty one.
+function passes(item, rules) {
+  return (rules || []).every((rule) => {
+    if (!rule.key?.trim()) return true;
+    const found = dotted(item, rule.key.trim());
+    if (rule.op === "notEmpty") {
+      return Array.isArray(found) ? found.length > 0 : found !== null && typeof found === "object" ? true : asText(found).trim() !== "";
+    }
+    const have = loosely(asText(found));
+    const wanted = loosely(rule.value || "");
+    if (rule.op === "is") return have === wanted;
+    if (rule.op === "isNot") return have !== wanted;
+    return wanted === "" || have.includes(wanted);
+  });
+}
+
+function scalarKeys(item, depth = 3, prefix = "") {
+  if (depth <= 0 || item === null || typeof item !== "object" || Array.isArray(item)) return [];
+  return Object.keys(item).sort().flatMap((key) => {
+    const part = item[key];
+    const path = prefix ? `${prefix}.${key}` : key;
+    return part === null || typeof part !== "object" ? [path] : scalarKeys(part, depth - 1, path);
+  });
+}
+
+function coffeeRead(query, cookie) {
+  const reading = query.has("reading") ? JSON.parse(query.get("reading"))
+    : { itemsPath: "cities", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "", nameKey: "name", shownKeys: [] };
+  reading.cookies = undefined;
+  const items = COFFEE_ANSWER[reading.itemsPath] || [];
+  const keys = [...new Set(items.flatMap((item) => scalarKeys(item)))].sort();
+  const samples = Object.fromEntries(keys.map((key) => [key, asText(dotted(items.find((item) => asText(dotted(item, key))), key))]));
+  const placed = (item) => reading.spelling === "position"
+    ? /^-?\d+(\.\d+)?, ?-?\d+(\.\d+)?$/.test(asText(dotted(item, reading.positionKey)))
+    : typeof dotted(item, reading.latitudeKey) === "number" && typeof dotted(item, reading.longitudeKey) === "number";
+  const points = items.filter((item) => placed(item) && passes(item, reading.filter)).length;
+  return { reading, paths: ["cafes", "cities"], keys, points, name: "coffee.example", said: `Answered · ${points} points`,
+    samples, answer: COFFEE_ANSWER, keepsCookie: Boolean(cookie || phone.keptCookie), choices: API_CHOICES };
+}
+
 function apiRead(query, cookie) {
   if (!/^https:\/\//.test(query.get("address") || "")) return null;
+  if (new URL(query.get("address")).host === "coffee.example") return coffeeRead(query, cookie);
   const reading = query.has("reading") ? JSON.parse(query.get("reading"))
     : { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "", nameKey: "line",
       shownKeys: [] };
   const cookies = query.has("cookies") ? JSON.parse(query.get("cookies")) : null;
   reading.cookies = cookies?.isOn ? cookies : undefined;
   const keys = reading.itemsPath === "vehicles" ? ["lat", "lon", "line"] : [];
-  const points = keys.includes(reading.latitudeKey) && keys.includes(reading.longitudeKey) ? 2 : 0;
+  const placed = keys.includes(reading.latitudeKey) && keys.includes(reading.longitudeKey);
+  const points = placed ? (BUS_ANSWER.vehicles || []).filter((item) => passes(item, reading.filter)).length : 0;
   const samples = keys.length ? { lat: "48.15", lon: "17.11", line: "N33" } : {};
   return { reading, paths: ["vehicles", "stops"], keys, points, name: "buses.example", said: `Answered · ${points} points`,
-    samples, keepsCookie: Boolean(cookie || phone.keptCookie), choices: API_CHOICES };
+    samples, answer: BUS_ANSWER, keepsCookie: Boolean(cookie || phone.keptCookie), choices: API_CHOICES };
 }
 
 // 29: a layer's Details layout as `PeerWebLayerOptions+Details` lists it, and its edits.

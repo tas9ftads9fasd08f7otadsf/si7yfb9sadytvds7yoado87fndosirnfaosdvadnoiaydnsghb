@@ -491,6 +491,8 @@ export interface APIReading {
   colourKey?: string | null;
   imageKey?: string | null;
   shownKeys?: string[];
+  /** 171 Only the points where every rule holds are drawn. */
+  filter?: APIPointRule[] | null;
   refreshSeconds?: number | null;
   detailRows?: APIDetailRow[] | null;
   cookies?: CookiePreflight | null;
@@ -523,6 +525,13 @@ export interface APIDetailRow {
   isHidden?: boolean | null;
 }
 
+/** 171: one condition of a reading's filter, as `APIPointRule` is written. */
+export interface APIPointRule {
+  key: string;
+  op: "is" | "isNot" | "contains" | "notEmpty";
+  value?: string | null;
+}
+
 export interface APIChoice {
   value: string;
   title: string;
@@ -538,6 +547,8 @@ export interface APIRead {
   name: string;
   said: string;
   samples?: Record<string, string>;
+  /** 171 What the address answered, for the Points page; a phone from before sends none. */
+  answer?: unknown;
   keepsCookie?: boolean;
   choices?: { spellings: APIChoice[]; orders: APIChoice[]; refresh: APIChoice[]; cookieAges: APIChoice[] };
 }
