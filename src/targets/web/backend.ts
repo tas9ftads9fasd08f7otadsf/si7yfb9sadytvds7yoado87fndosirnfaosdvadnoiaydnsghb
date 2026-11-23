@@ -363,6 +363,14 @@ export function createBackend(parts: Parts): Backend {
     change,
     undo,
 
+    /** 175 What Edit map and Styles switch, as the core reads the map's rows. */
+    async switches(mapID) {
+      const [core, read] = await Promise.all([parts.core(), rows()]);
+      const said = core.switches(read, mapID);
+      if ("refused" in said) return refused(said.refused === "noSuchMap" ? say("noSuchMap") : said.refused, said.status ?? 400);
+      return { ok: true, value: said };
+    },
+
     /** 108 A share's people and link as the core reads them; changes wait for the app. */
     async people(of) {
       if (of.kind !== "map") throw new NotOnSite("A folder's sharing is not read on the site yet");
@@ -384,7 +392,7 @@ export function createBackend(parts: Parts): Backend {
     },
 
     newMap: editing, importMap: editing, duplicateMap: editing,
-    deleteMap: editing, shelve: editing, switches: editing, askPeople: editing, setPicture: editing,
+    deleteMap: editing, shelve: editing, askPeople: editing, setPicture: editing,
     layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
     otherLayers: adding, addCopies: adding,
     readAddress,

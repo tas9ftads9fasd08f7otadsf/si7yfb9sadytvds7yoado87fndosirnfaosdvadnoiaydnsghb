@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
-import type { Device, Portable } from "@/lib/types";
+import type { Device, MapSwitches, Portable } from "@/lib/types";
 import { Cloud, type CKBatchResult, type CKContainer, type CKRecord, type CKSave, type CKZoneChanges, type CloudKitJS } from "./cloud";
 import { CoreNotReady, NotOnSite, type Feature } from "@/backend/types";
 import { CoreMissing, type AddAsk, type Added, type AddressRead, type Applied, type Core, type HistoryEntry, type MapsonFile, type PeopleRead, type ReadAsk } from "./core";
@@ -28,6 +28,7 @@ interface Options {
   regions?: PackageStore;
   /** 108 What the core reads of a share. */
   people?: () => PeopleRead | { refused: string; status?: number };
+  switches?: () => MapSwitches | { refused: string; status?: number };
   /** 176 What the core writes as the map's file. */
   exported?: () => MapsonFile | { refused: string; status?: number };
   /** 85 Which hosts answer a browser; every one does by default. */
@@ -127,6 +128,7 @@ function stack(options: Options = {}) {
     addTiles: vi.fn(() => account.core.riki_add_layer as unknown as Applied),
     changes: () => options.changes?.() ?? [],
     people: vi.fn(() => options.people?.() ?? (account.core.riki_people as unknown as PeopleRead)),
+    switches: vi.fn(() => options.switches?.() ?? (account.core.riki_switches as unknown as MapSwitches)),
     exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile))
   };
   const kept = new Map<string, unknown>();
@@ -536,6 +538,27 @@ describe("WebBackend's region packages", () => {
       { tiles: new Map(), add: (p: { source: { getKey(): string } }) => added.push(p.source.getKey()) } as never);
     expect(added).toEqual(["riki-store/tatry/base/base.pmtiles"]);
     await expect(backend.stored!.load({ url: "riki-store://tatry/base/contents.json", type: "json" })).resolves.toEqual({ data: { package: "base" } });
+  });
+});
+
+describe("WebBackend's switches", () => {
+  const DOPRAVA = "6F1E2A10-0000-4000-8000-000000000002";
+
+  // 175 Edit map and Styles had no switches on the site: the call answered "comes with step 4"
+  it("asks the core for the map's switches with every row and answers them as read", async () => {
+    const { backend, core } = stack();
+    const answer = await backend.switches(DOPRAVA);
+    const [rows, id] = vi.mocked(core.switches).mock.calls[0]!;
+    expect(id).toBe(DOPRAVA);
+    expect(rows.some((row) => row.zone === "share-doprava" && row.entity === "Share")).toBe(true);
+    expect(answer).toEqual({ ok: true, value: account.core.riki_switches });
+  });
+
+  it("answers a map the rows lack as the phone's 404, and says not ready while the module lacks the call", async () => {
+    const none = stack({ switches: () => ({ refused: "noSuchMap", status: 404 }) });
+    expect(await none.backend.switches("nope")).toMatchObject({ ok: false, status: 404 });
+    const lacking = stack({ switches: () => { throw new CoreNotReady("no riki_switches"); } });
+    await expect(lacking.backend.switches(DOPRAVA)).rejects.toBeInstanceOf(CoreNotReady);
   });
 });
 

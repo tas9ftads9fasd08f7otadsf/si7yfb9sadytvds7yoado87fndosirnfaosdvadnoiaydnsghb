@@ -181,6 +181,12 @@
         "fields": { "map": "own-tatras", "payload": "{\"author\":\"Riki Tester\",\"origin\":\"web\",\"lines\":[\"Trails renamed to Ridges\"]}" } }
     },
     "riki_changes": [],
+    "riki_switches": {
+      "picker": true, "carPlay": true, "legend": true, "world": true, "legendEverywhere": true, "worldEverywhere": true,
+      "hasNothingToDraw": false, "ownsSettings": true, "groupsByOrigin": false, "groupingOffered": false,
+      "groupingReorders": false, "stylesDisagree": false, "differsFromDefault": false, "layersWithoutStyle": 0,
+      "removedStyles": 0, "editedStyles": []
+    },
     "riki_people": {
       "shared": true, "role": "editor", "linkRole": null,
       "people": [
@@ -192,8 +198,8 @@
     "riki_export": { "name": "High Tatras.mapson", "text": "{\n  \"$schema\": \"https://raw.githubusercontent.com/skifahrer/schemas/master/schema/v1/mapson.schema.json\",\n  \"_schemaVersion\": 1,\n  \"_signature\": \"c2lnbmVk\",\n  \"id\": \"6F1E2A10-0000-4000-8000-000000000001\",\n  \"name\": \"High Tatras\",\n  \"stack\": [\n    {\n      \"id\": \"L1\",\n      \"name\": \"Trails\"\n    }\n  ],\n  \"styles\": []\n}" },
     "riki_version": {
       "version": "0.1.0",
-      "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people"],
-      "ready": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people"]
+      "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_switches"],
+      "ready": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_switches"]
     },
     "riki_read_address": {
       "kind": "direct", "probe": "https://cors.example/0/0/0.png"

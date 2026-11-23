@@ -1,6 +1,6 @@
 import { WASI } from "@bjorn3/browser_wasi_shim";
 import { CoreNotReady } from "@/backend/types";
-import type { AddressReading, Device, Portable, ShareRole } from "@/lib/types";
+import type { AddressReading, Device, MapSwitches, Portable, ShareRole } from "@/lib/types";
 import { BASE } from "./base";
 import type { CoreRow, CoreWrite } from "./records";
 import type { StoredForCore } from "./regions/packages";
@@ -117,6 +117,8 @@ export interface Core {
   changes(rows: CoreRow[]): HistoryEntry[];
   /** 108 Who holds the map; `CoreNotReady` while the module has no `riki_people`. */
   people(rows: CoreRow[], mapID: string): PeopleRead | { refused: string; status?: number };
+  /** 175 Edit map's and Styles' switches; `CoreNotReady` while the module has no `riki_switches`. */
+  switches(rows: CoreRow[], mapID: string): MapSwitches | { refused: string; status?: number };
   /** 176 The map's .mapson as the phone hands it out; `CoreNotReady` before rikimaps 3651. */
   exportMap(rows: CoreRow[], mapID: string): MapsonFile | { refused: string; status?: number };
 }
@@ -148,12 +150,14 @@ export interface CoreExports {
   riki_add_layer(pointer: number, length: number): number;
   /** 108 In modules from rikimaps 3560 on; an older one has none and says not ready. */
   riki_people?(pointer: number, length: number): number;
-  /** 176 In modules from rikimaps 3651 on. */
+  /** 175 In modules from rikimaps 3650 on (ABI 0.6.0). */
+  riki_switches?(pointer: number, length: number): number;
+  /** 176 In modules from rikimaps 3651 on (ABI 0.7.0). */
   riki_export?(pointer: number, length: number): number;
 }
 
 type Call = "riki_maps" | "riki_map" | "riki_apply" | "riki_style" | "riki_changes" | "riki_read_address" | "riki_add_layer"
-  | "riki_people" | "riki_export";
+  | "riki_people" | "riki_switches" | "riki_export";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -199,6 +203,7 @@ export function coreOf(exports: CoreExports): Core {
     addTiles: (ask) => callJSON(exports, "riki_add_layer", ask),
     changes: (rows) => callJSON(exports, "riki_changes", { rows }),
     people: (rows, mapID) => callJSON(exports, "riki_people", { rows, id: mapID }),
+    switches: (rows, mapID) => callJSON(exports, "riki_switches", { rows, id: mapID }),
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID })
   };
 }
