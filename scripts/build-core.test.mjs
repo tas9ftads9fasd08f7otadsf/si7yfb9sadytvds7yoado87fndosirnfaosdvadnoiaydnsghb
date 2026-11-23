@@ -56,6 +56,8 @@ describe("the build's flags", () => {
     const there = swiftBuildArgs("/Users/someone/rikimaps");
     expect(here).toContain("--swift-sdk");
     expect(here.join(" ")).toContain("-debug-info-format none");
+    // 178 the same commit built to 197261… and 498d19… on two runners
+    expect(here.join(" ")).toContain("-j 1 -Xswiftc -num-threads -Xswiftc 0");
     expect(here.join(" ")).toContain("-file-prefix-map -Xswiftc /home/runner/work/site/rikimaps=/rikimaps");
     expect(here[here.indexOf("--scratch-path") + 1]).toBe(`${SCRATCH}/build`);
     expect(there[there.indexOf("--scratch-path") + 1]).toBe(here[here.indexOf("--scratch-path") + 1]);
