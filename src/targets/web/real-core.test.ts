@@ -22,7 +22,8 @@ async function realCore() {
     { wasi_snapshot_preview1: wasi.wasiImport as unknown as WebAssembly.ModuleImports });
   wasi.initialize(instance as unknown as Parameters<WASI["initialize"]>[0]);
   const exports = instance.exports as unknown as CoreExports;
-  return { core: coreOf(exports), hasPeople: typeof exports.riki_people === "function" };
+  return { core: coreOf(exports), hasPeople: typeof exports.riki_people === "function",
+    hasSwitches: typeof exports.riki_switches === "function" };
 }
 
 /** The rows as the site reads them from CloudKit: `rowOf` for the mirror's records, `shareRowOf` for a share. */
@@ -78,5 +79,19 @@ describe.skipIf(!ASKED && !existsSync(MODULE))("the real riki-core.wasm on recor
         { id: "_petr", name: "petr@example.com", role: "reader", hasAccepted: false, isYou: false }] });
     expect(core.people(read, DOPRAVA)).toMatchObject({ shared: true, role: "reader", linkRole: null,
       people: [{ id: "_friki", role: "owner" }, { id: "_me", role: "reader", isYou: true }] });
+  });
+
+  // 175 riki_switches: an own map's switches are its own; a view role's map's are the owner's
+  it("reads a map's switches by its role, or says not ready in a module from before rikimaps 3650", async () => {
+    const { core, hasSwitches } = await realCore();
+    const read = await rows();
+    if (!hasSwitches) {
+      expect(() => core.switches(read, TATRAS)).toThrow(CoreNotReady);
+      return;
+    }
+    expect(core.switches(read, TATRAS)).toMatchObject({ ownsSettings: true, picker: true, removedStyles: 0,
+      legendEverywhere: true, worldEverywhere: true });
+    expect(core.switches(read, DOPRAVA)).toMatchObject({ ownsSettings: false });
+    expect(core.switches(read, "nothing")).toMatchObject({ refused: "noSuchMap" });
   });
 });

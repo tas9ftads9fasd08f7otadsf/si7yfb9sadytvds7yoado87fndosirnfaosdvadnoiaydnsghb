@@ -181,6 +181,12 @@
         "fields": { "map": "own-tatras", "payload": "{\"author\":\"Riki Tester\",\"origin\":\"web\",\"lines\":[\"Trails renamed to Ridges\"]}" } }
     },
     "riki_changes": [],
+    "riki_switches": {
+      "picker": true, "carPlay": true, "legend": true, "world": true, "legendEverywhere": true, "worldEverywhere": true,
+      "hasNothingToDraw": false, "ownsSettings": false, "groupsByOrigin": false, "groupingOffered": false,
+      "groupingReorders": false, "stylesDisagree": false, "differsFromDefault": false, "layersWithoutStyle": 0,
+      "removedStyles": 0, "editedStyles": []
+    },
     "riki_people": {
       "shared": true, "role": "editor", "linkRole": null,
       "people": [
@@ -191,8 +197,8 @@
     },
     "riki_version": {
       "version": "0.1.0",
-      "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people"],
-      "ready": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people"]
+      "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_switches"],
+      "ready": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_switches"]
     },
     "riki_read_address": {
       "kind": "direct", "probe": "https://cors.example/0/0/0.png"

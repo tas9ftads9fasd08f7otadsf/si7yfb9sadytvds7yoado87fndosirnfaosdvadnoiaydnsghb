@@ -36,7 +36,8 @@ describe("the core's wrapper", () => {
     const alloc = (length: number) => { const at = top; top += length; return at; };
     return { memory, riki_alloc: alloc, riki_free: (p, l) => { freed.push([p, l]); }, freed,
       riki_maps: respond, riki_map: respond, riki_apply: respond, riki_style: respond, riki_changes: respond,
-      riki_read_address: respond, riki_add_layer: respond, riki_people: respond };
+      riki_read_address: respond, riki_add_layer: respond, riki_people: respond,
+      riki_switches: respond };
   }
 
   it("writes the request as JSON, reads the answer back and frees both buffers", () => {
@@ -93,6 +94,14 @@ describe("the core's wrapper", () => {
     expect(coreOf(exports).people([], "M")).toEqual({ rows: [], id: "M" });
     const without: CoreExports = { ...exports, riki_people: undefined };
     expect(() => coreOf(without).people([], "M")).toThrow(CoreNotReady);
+  });
+
+  // 175 riki_switches takes the rows and the map's id, as riki_people does
+  it("asks riki_switches with the rows and the map, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).switches([], "M")).toEqual({ rows: [], id: "M" });
+    const without: CoreExports = { ...exports, riki_switches: undefined };
+    expect(() => coreOf(without).switches([], "M")).toThrow(CoreNotReady);
   });
 
   it("loads a module through the WASI shim and answers what it recorded", async () => {
