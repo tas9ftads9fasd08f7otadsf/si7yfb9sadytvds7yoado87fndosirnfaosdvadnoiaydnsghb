@@ -4,6 +4,8 @@ import { useState } from "react";
 import { NO_COOKIES, newDetailRow, rowChanged, shows, shownSwitched } from "@/lib/api";
 import type { APIChoice, APIDetailRow, APIRead, APIReading, CookiePreflight } from "@/lib/types";
 import { addAPI, readAPI, useViewer } from "@/store/viewer";
+import { APIKeys } from "./APIKeys";
+import { APIPoints } from "./APIPoints";
 import { Sym } from "../ui/Sym";
 import { Switch } from "../ui/Switch";
 
@@ -90,9 +92,31 @@ function DetailRows({ rows, onRows }: { rows: APIDetailRow[]; onRows: (rows: API
   );
 }
 
+/** 171 The two pages of the answer a phone from the Points item sends it for, reached from the form's Details. */
+function Explore({ onOpen }: { onOpen: (page: "points" | "keys") => void }) {
+  const words = useViewer((state) => state.words);
+  return (
+    <div className="card" id="apiExplorer">
+      <button type="button" className="row" id="apiExplore" onClick={() => onOpen("points")}>
+        <span className="words">{words.apiExplore}<small>{words.apiExploreNote}</small></span><Sym name="chevron.right" />
+      </button>
+      <button type="button" className="row" id="apiKeysFilter" onClick={() => onOpen("keys")}>
+        <span className="words">{words.apiKeysFilter}<small>{words.apiKeysFilterNote}</small></span><Sym name="chevron.right" />
+      </button>
+    </div>
+  );
+}
+
 function Details({ read, reading, pick, amend }: { read: APIRead; reading: APIReading;
   pick: (change: Partial<APIReading>) => void; amend: (change: Partial<APIReading>) => void }) {
   const words = useViewer((state) => state.words);
+  const [page, setPage] = useState<"form" | "points" | "keys">("form");
+  if (page === "points" && read.answer !== undefined) {
+    return <APIPoints answer={read.answer} reading={reading} pick={pick} onDone={() => setPage("form")} />;
+  }
+  if (page === "keys" && read.answer !== undefined) {
+    return <APIKeys read={read} reading={reading} pick={pick} onDone={() => setPage("form")} />;
+  }
   const keys = read.keys;
   const choices = read.choices;
   return (
@@ -123,6 +147,7 @@ function Details({ read, reading, pick, amend }: { read: APIRead; reading: APIRe
         <KeyPicker id="apiImageKey" label={words.apiPicture} value={reading.imageKey ?? ""} keys={keys} offersNone
           onPick={(imageKey) => pick({ imageKey: imageKey || null })} />
       </div>
+      {read.answer !== undefined ? <Explore onOpen={setPage} /> : null}
       <h2 className="title">{words.apiTapShows}</h2>
       <div className="card" id="apiShown">
         {keys.map((key) => (
@@ -161,7 +186,9 @@ export function APILayer() {
   const reading = read?.reading;
   const askAgain = async (asked?: APIReading | null) => {
     const answer = await readAPI(address.trim(), asked, ask);
-    setRead(answer);
+    // 171 the answer is sent once; a read that asks again about it does not need it back
+    setRead((held) => answer && answer.answer === undefined && held?.answer !== undefined
+      ? { ...answer, answer: held.answer } : answer);
     return answer;
   };
   const pick = (change: Partial<APIReading>) => {

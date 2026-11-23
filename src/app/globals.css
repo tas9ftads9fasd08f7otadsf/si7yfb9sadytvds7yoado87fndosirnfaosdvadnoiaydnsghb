@@ -1099,3 +1099,10 @@ body.place-open .maplibregl-ctrl-bottom-right { right: 396px; }
 #editBody .row.add { min-height: 56px; font-size: 15px; }
 #data .data-head p { margin-top: 6px; }
 #peopleInvite > .action { width: calc(100% - 24px); margin: 4px 12px 0; }
+
+/* 171 the Points page's way down the answer */
+.trail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 0; }
+.trail button { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 3px 11px; }
+.trail button[aria-current="location"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+#apiTree .row > button.words { text-align: left; background: none; border: 0; padding: 0; flex: 1; }
+#apiTree .row > button.words:disabled { opacity: .6; }
