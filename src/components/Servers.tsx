@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Server, ServerRow } from "@/lib/types";
+import { NO_COOKIES } from "@/lib/api";
+import type { ServerLayerKey } from "@/lib/route";
+import type { CookiePreflight, Server, ServerForm, ServerLayerPage, ServerRow } from "@/lib/types";
 import { listed } from "@/lib/words";
 import {
-  SERVER_PARTS, deleteServer, duplicateServer, editServer, exportServer, loadServers, openServer, showServerPart,
-  useViewer,
+  SERVER_KINDS, SERVER_PARTS, addServerLayer, deleteServer, duplicateServer, editServer, exportServer, loadServerLayer,
+  loadServers, openServer, openServerLayer, removeServerLayer, saveServerForm, showServerPart, useViewer,
 } from "@/store/viewer";
 import { Swatch } from "./edit/Styling";
 import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
+import { Switch } from "./ui/Switch";
 import { Sym } from "./ui/Sym";
 
 /** 27 TestFlight AApG: each saved server a card with a blue View, as a map's card has. */
@@ -43,7 +46,9 @@ export function ServerPage() {
   const words = useViewer((state) => state.words);
   const part = useViewer((state) => state.serverPart);
   const server = useViewer((state) => state.servers?.servers.find((each) => each.id === state.serverID));
+  const layer = useViewer((state) => (state.route.screen === "servers" ? state.route.layer : undefined));
   if (!server) return null;
+  if (layer) return <ServerLayerView key={`${layer.layer}@${layer.service ?? ""}`} server={server} keyed={layer} />;
   return (
     <>
       <div className="chips" role="tablist" aria-label={server.name} id="serverParts">
@@ -59,12 +64,137 @@ export function ServerPage() {
   );
 }
 
-function RowLine({ row }: { row: ServerRow }) {
+function RowLine({ row, server }: { row: ServerRow; server: Server }) {
+  const words = useViewer((state) => state.words);
   const style = { paddingLeft: 14 + row.depth * 14 };
   return (
-    <div className={row.kind === "note" ? "row dimmed" : "row"} style={style} data-row-kind={row.kind}>
-      <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}</span>
+    <div className={row.kind === "note" ? "row dimmed" : "row"} style={style} data-row-kind={row.kind}
+      data-layer={row.pick?.layer}>
+      {row.kind === "layer" && row.pick ? (
+        <button type="button" className="open" aria-label={row.title}
+          onClick={() => openServerLayer(server.id, keyOf(row))}>
+          <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}
+            {row.endpoint ? <small className="endpoint">{row.endpoint}</small> : null}</span>
+          <Sym name="chevron.right" />
+        </button>
+      ) : (
+        <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}</span>
+      )}
+      {row.byHand ? (
+        <button type="button" className="icon-button danger" aria-label={`${words.removeFromServer} ${row.title}`}
+          title={words.keptLayers} onClick={() => void removeServerLayer(server.id, row.pick.layer)}>
+          <Sym name="trash" />
+        </button>
+      ) : null}
     </div>
+  );
+}
+
+const keyOf = (row: ServerRow): ServerLayerKey => (typeof row.pick.service === "string"
+  ? { layer: row.pick.layer, service: row.pick.service } : { layer: row.pick.layer });
+
+/** 186 The pill and banner the app lays over every page under a server's API layer. */
+function ScopeHeader({ scope }: { scope: { pill: string; banner: string } }) {
+  return (
+    <div className="server-scope">
+      <span className="scope-pill" id="serverScopePill"><Sym name="server.rack" />{scope.pill}</span>
+      <div className="scope-banner" id="serverScopeBanner" role="note">
+        <Sym name="info.circle" /><span>{scope.banner}</span>
+      </div>
+    </div>
+  );
+}
+
+/** 186 A server's own layer page, laid out as the app's `ServerLayerScreen`. */
+function ServerLayerView({ server, keyed }: { server: Server; keyed: ServerLayerKey }) {
+  const words = useViewer((state) => state.words);
+  const [page, setPage] = useState<ServerLayerPage | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadServerLayer(server.id, keyed).then((found) => { if (live) setPage(found); });
+    return () => { live = false; };
+  }, [server.id, keyed]);
+  return (
+    <div id="serverLayerPage" className={page?.scope ? "scoped" : undefined}>
+      <button type="button" className="text-button" id="serverLayerBack" onClick={() => openServerLayer(server.id, null)}>
+        <Sym name="chevron.backward" />{words.layers}
+      </button>
+      {!page ? <div className="foot-note">…</div> : (
+        <>
+          <h2 className="page-title" id="serverLayerName">{page.name}</h2>
+          {page.scope ? <ScopeHeader scope={page.scope} /> : null}
+          {page.address ? <>
+            <h2 className="title">{words.address}</h2>
+            <div className="list"><div className="row"><span className="words endpoint" id="serverLayerAddress">{page.address}</span></div></div>
+          </> : null}
+          {page.look.length ? <>
+            <h2 className="title">{words.whatMapsStart}</h2>
+            <div className="list" id="serverLayerLook">
+              {page.look.map((row) => (
+                <div className="row" key={row.part} data-part={row.part}>
+                  <span className="words">{row.title}{row.detail ? <small>{row.detail}</small> : null}</span>
+                </div>
+              ))}
+            </div>
+            {page.versionNote ? <div className="foot-note">{page.versionNote}</div> : null}
+          </> : null}
+          {page.maps.length ? <>
+            <h2 className="title">{words.mapsUsingLayer}</h2>
+            <div className="list" id="serverLayerMaps">
+              {page.maps.map((use) => (
+                <div className="row" key={use.id} data-map={use.id}>
+                  <span className="words">{use.name}<small>{use.line}</small></span>
+                  <span className={`look-chip ${use.state}`}>{use.stateTitle}</span>
+                </div>
+              ))}
+            </div>
+            <div className="foot-note">{words.onlyOwnMaps}</div>
+          </> : null}
+          {page.zooms || page.covers ? <>
+            <h2 className="title">{words.whatPublishes}</h2>
+            <div className="list" id="serverLayerPublished">
+              <Fact name={words.zooms} value={page.zooms ?? undefined} />
+              <Fact name={words.covers} value={page.covers ?? undefined} />
+            </div>
+          </> : null}
+          <div className="foot-note" id="serverLayerFootnote">{page.footnote}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** 188 The phone's New layer: an Esri layer by its number, any other by its address. */
+function NewServerLayer({ server }: { server: Server }) {
+  const words = useViewer((state) => state.words);
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [asking, setAsking] = useState(false);
+  const byNumber = server.kindID === "arcgis";
+  const number = Number.parseInt(address.trim(), 10);
+  const ready = byNumber ? Number.isInteger(number) && number >= 0 : address.trim() !== "";
+  const add = async () => {
+    setAsking(true);
+    const typed = byNumber ? { name: name.trim(), number } : { name: name.trim(), address: address.trim() };
+    if (await addServerLayer(server.id, typed)) {
+      setName("");
+      setAddress("");
+    }
+    setAsking(false);
+  };
+  return (
+    <>
+      <h2 className="title">{words.newLayer}</h2>
+      <div className="card" id="serverNewLayer"><div className="field">
+        <input type="text" id="serverNewLayerName" autoComplete="off" placeholder={words.name} aria-label={words.name}
+          value={name} onChange={(event) => setName(event.target.value)} />
+        <input type={byNumber ? "number" : "url"} id="serverNewLayerAddress" autoComplete="off" spellCheck={false}
+          placeholder={byNumber ? "0" : server.address} aria-label={byNumber ? words.layerNumber : words.address}
+          min={byNumber ? 0 : undefined} value={address} onChange={(event) => setAddress(event.target.value)} />
+      </div></div>
+      <button type="button" className="action" id="serverNewLayerAdd" disabled={!ready || asking}
+        onClick={() => void add()}><Sym name="plus" />{words.add}</button>
+    </>
   );
 }
 
@@ -73,7 +203,8 @@ function LayersPart({ server }: { server: Server }) {
   return (
     <div id="serverLayers">
       <h2 className="title">{words.whatServerHas}</h2>
-      <div className="list">{server.rows.map((row, index) => <RowLine key={index} row={row} />)}</div>
+      <div className="list">{server.rows.map((row, index) => <RowLine key={index} row={row} server={server} />)}</div>
+      {server.takesLayers ? <NewServerLayer server={server} /> : null}
     </div>
   );
 }
@@ -144,16 +275,119 @@ function ServerActions({ server }: { server: Server }) {
   );
 }
 
+type HeaderDraft = { name: string; value: string; isSet: boolean };
+
+function draftOf(server: Server) {
+  return {
+    kind: server.kindID ?? "", address: server.address ?? "", referrer: server.referrer ?? "",
+    headers: (server.headers ?? []).map((header): HeaderDraft => ({ ...header, value: "" })),
+    login: server.login ?? null
+  };
+}
+
+/** 187 What a draft sends: a header left blank keeps the value the phone holds. */
+export function formOf(draft: ReturnType<typeof draftOf>): ServerForm {
+  return { kind: draft.kind, address: draft.address.trim(), referrer: draft.referrer.trim(),
+    headers: draft.headers.filter((header) => header.name.trim()).map(({ name, value }) =>
+      (value ? { name: name.trim(), value } : { name: name.trim() })),
+    login: draft.login?.isOn ? draft.login : null };
+}
+
+/** 187 The server form's address, kind, headers and login; Save waits for the phone to read it. */
+function ServerFormCard({ server }: { server: Server }) {
+  const words = useViewer((state) => state.words);
+  const ages = useViewer((state) => state.servers?.cookieAges ?? []);
+  const [draft, setDraft] = useState(() => draftOf(server));
+  const [header, setHeader] = useState({ name: "", value: "" });
+  const [saving, setSaving] = useState(false);
+  const login: CookiePreflight = draft.login ?? NO_COOKIES;
+  const changed = JSON.stringify(formOf(draft)) !== JSON.stringify(formOf(draftOf(server)));
+  const setLogin = (next: CookiePreflight) => setDraft({ ...draft, login: next });
+  const save = async () => {
+    setSaving(true);
+    await saveServerForm(server.id, formOf(draft));
+    setSaving(false);
+  };
+  return (
+    <>
+      <h2 className="title">{words.serverForm}</h2>
+      <div className="card" id="serverForm">
+        <div className="field"><label htmlFor="serverFormKind">{words.kind}</label>
+          <select id="serverFormKind" value={draft.kind} onChange={(event) => setDraft({ ...draft, kind: event.target.value })}>
+            {SERVER_KINDS.map((each) => <option key={each} value={each}>{words[`serverKind.${each}`]}</option>)}
+          </select></div>
+        <div className="field"><label htmlFor="serverFormAddress">{words.address}</label>
+          <input type="url" id="serverFormAddress" autoComplete="off" spellCheck={false} value={draft.address}
+            onChange={(event) => setDraft({ ...draft, address: event.target.value })} /></div>
+        <div className="field"><label htmlFor="serverFormReferrer">{words.referrer}</label>
+          <input type="url" id="serverFormReferrer" autoComplete="off" spellCheck={false} value={draft.referrer}
+            onChange={(event) => setDraft({ ...draft, referrer: event.target.value })} /></div>
+      </div>
+      <h2 className="title">{words.headers}</h2>
+      <div className="card" id="serverHeaders">
+        {draft.headers.map((each, index) => (
+          <div className="row header" key={each.name} data-header={each.name} data-set={each.isSet ? "" : undefined}>
+            <span className="words">{each.name}<small>{each.isSet ? words.headerSaved : words.headerUnset}</small></span>
+            <input type="password" autoComplete="off" placeholder={words.headerValue} aria-label={`${each.name} ${words.headerValue}`}
+              value={each.value} onChange={(event) => setDraft({ ...draft, headers: draft.headers.map((one, at) =>
+                (at === index ? { ...one, value: event.target.value } : one)) })} />
+            <button type="button" className="link" aria-label={`${words.remove} ${each.name}`}
+              onClick={() => setDraft({ ...draft, headers: draft.headers.filter((_, at) => at !== index) })}>{words.remove}</button>
+          </div>
+        ))}
+        <div className="row header-add">
+          <input id="serverHeaderName" value={header.name} placeholder={words.headerName} aria-label={words.headerName}
+            autoCapitalize="off" spellCheck={false} onChange={(event) => setHeader({ ...header, name: event.target.value })} />
+          <input type="password" id="serverHeaderValue" value={header.value} autoComplete="off" placeholder={words.headerValue}
+            aria-label={words.headerValue} onChange={(event) => setHeader({ ...header, value: event.target.value })} />
+          <button type="button" className="link" id="serverHeaderAdd"
+            disabled={!header.name.trim() || draft.headers.some((one) => one.name.toLowerCase() === header.name.trim().toLowerCase())}
+            onClick={() => {
+              setDraft({ ...draft, headers: [...draft.headers, { name: header.name.trim(), value: header.value, isSet: false }] });
+              setHeader({ name: "", value: "" });
+            }}>{words.addHeader}</button>
+        </div>
+        <div className="foot-note">{words.valuesStayPhone}</div>
+      </div>
+      <div className="card" id="serverLogin">
+        <div className="row"><span className="words">{words.apiCookiesFirst}<small>{words.apiCookiesWhy}</small></span>
+          <Switch isOn={login.isOn} label={words.apiCookiesFirst} onChange={(isOn) => setLogin({ ...login, isOn })} /></div>
+        {login.isOn ? (
+          <>
+            <div className="field"><label htmlFor="serverCookiePage">{words.apiCookiePage}</label>
+              <input type="url" id="serverCookiePage" autoComplete="off" spellCheck={false} placeholder={words.apiSiteItself}
+                value={login.page} onChange={(event) => setLogin({ ...login, page: event.target.value })} /></div>
+            {ages.length ? (
+              <div className="field"><label htmlFor="serverCookieAge">{words.apiCookieAge}</label>
+                <select id="serverCookieAge" value={String(login.seconds)}
+                  onChange={(event) => setLogin({ ...login, seconds: Number(event.target.value) })}>
+                  {ages.map((age) => <option key={age.value} value={age.value}>{age.title}</option>)}
+                </select></div>
+            ) : null}
+            <div className="foot-note">{words.apiCookiesSent}</div>
+          </>
+        ) : null}
+      </div>
+      <button type="button" className="action" id="serverFormSave" disabled={!changed || saving || !draft.address.trim()}
+        onClick={() => void save()}><Sym name="checkmark" />{saving ? words.testing : words.save}</button>
+    </>
+  );
+}
+
 function GeneralPart({ server }: { server: Server }) {
   const words = useViewer((state) => state.words);
   return (
     <div id="serverGeneral">
       <LookCard server={server} />
-      <h2 className="title">{words.address}</h2>
-      <div className="list">
-        <Fact name={words.address} value={server.address} />
-        <Fact name={words.kind} value={server.kind} />
-      </div>
+      {server.kindID ? <ServerFormCard key={JSON.stringify(draftOf(server))} server={server} /> : (
+        <>
+          <h2 className="title">{words.address}</h2>
+          <div className="list">
+            <Fact name={words.address} value={server.address} />
+            <Fact name={words.kind} value={server.kind} />
+          </div>
+        </>
+      )}
       {server.facts?.length ? <>
         <h2 className="title">{words.whatItSupports}</h2>
         <div className="list" id="serverFacts">
