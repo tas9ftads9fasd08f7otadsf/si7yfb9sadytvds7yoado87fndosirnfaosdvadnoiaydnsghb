@@ -330,9 +330,9 @@ export function applySession(answer: SessionAnswer) {
   }
 }
 
-/** A phone's screen is told to use the app; it is never counted as one looking. */
-export function startSession(isSmall: boolean) {
-  if (busy.sessionStarted || isSmall) return;
+/** Counts this browser as one looking and follows what changes elsewhere. */
+export function startSession() {
+  if (busy.sessionStarted) return;
   busy.sessionStarted = true;
   backend.loading?.((loading) => set({ loading }));
   void heartbeat();

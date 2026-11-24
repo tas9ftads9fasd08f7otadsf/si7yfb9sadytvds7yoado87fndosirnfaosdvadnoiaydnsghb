@@ -27,7 +27,7 @@ describe("a map changed elsewhere", () => {
     resetViewer();
     vi.clearAllMocks();
     fake.map.mockResolvedValue({ id: "M", name: "Doprava 2" });
-    startSession(false);
+    startSession();
     useViewer.setState({ standing: "admitted", mapID: "M", portable: { id: "M", name: "Doprava" } });
   });
 

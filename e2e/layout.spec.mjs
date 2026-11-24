@@ -13,7 +13,6 @@ test("a computer's screen gets a header, a side bar, the map and a status line",
   await expect(page.locator("#device")).toHaveText("Riki's iPad");
   await expect(page.locator("#mapName")).toHaveText("High Tatras");
   await expect(page).toHaveTitle("Riki's iPad · Riki Maps");
-  await expect(page.locator("#small")).toBeHidden();
   await expect(page.locator("#gate")).toBeHidden();
 
   const side = await page.locator("#side").boundingBox();

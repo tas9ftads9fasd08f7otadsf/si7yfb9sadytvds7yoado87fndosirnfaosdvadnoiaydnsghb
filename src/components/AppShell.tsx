@@ -1,6 +1,5 @@
 "use client";
 
-import { isAnySize } from "@/lib/any-size";
 import { useEffect, useRef } from "react";
 import { type MapControl, setMapControl } from "@/map/control";
 import { drawSaved, drawStyle, loadWords, readAddress, restoreKept, showEdit, startSession, toggleSide, useViewer }
@@ -14,13 +13,11 @@ import { NavRail } from "./NavRail";
 import { NewMapModal } from "./NewMapModal";
 import { PlacePanel } from "./PlacePanel";
 import { SettingsPage } from "./SettingsPage";
-import { Gate, Notice, Offline, RegionOffer, SmallScreen, StatusBar, UndrawnNote } from "./Overlays";
+import { AppOffer, Gate, Notice, Offline, RegionOffer, StatusBar, UndrawnNote } from "./Overlays";
 import { RegionNeedsNote } from "./RegionPackages";
 import { SideBar } from "./SideBar";
 import { TopBar } from "./TopBar";
 import { Boot, LoadingBar } from "./Overlays";
-
-const SMALL_SCREEN = "(max-width: 899px), (max-height: 499px)";
 
 /** The whole page: the top bar, the rail, the screen the address names; the map is made once. */
 export function AppShell() {
@@ -33,13 +30,10 @@ export function AppShell() {
   useEffect(() => {
     let isGone = false;
     let made: MapControl | null = null;
-    const small = matchMedia(SMALL_SCREEN);
     const dark = matchMedia("(prefers-color-scheme: dark)");
-    const smallChanged = () => startSession(small.matches && !isAnySize());
     const darkChanged = () => {
       if (useViewer.getState().theme === "auto") drawStyle();
     };
-    small.addEventListener("change", smallChanged);
     dark.addEventListener("change", darkChanged);
     window.addEventListener("popstate", readAddress);
     readAddress();
@@ -51,11 +45,10 @@ export function AppShell() {
       made = createMapView(mapBox.current);
       setMapControl(made);
       drawSaved();
-      startSession(small.matches && !isAnySize());
+      startSession();
     })();
     return () => {
       isGone = true;
-      small.removeEventListener("change", smallChanged);
       dark.removeEventListener("change", darkChanged);
       window.removeEventListener("popstate", readAddress);
       setMapControl(null);
@@ -119,7 +112,7 @@ export function AppShell() {
       <Notice />
       <Offline />
       <Gate />
-      <SmallScreen />
+      <AppOffer />
       <Boot />
     </>
   );

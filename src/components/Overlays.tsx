@@ -1,6 +1,6 @@
 "use client";
 
-import { APP_LINK, opensTheApp } from "@/lib/any-size";
+import { APP_LINK, APP_OFFER_CLOSED_KEY, opensTheApp } from "@/lib/opens-the-app";
 import { AppIcon } from "./ui/AppIcon";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -190,17 +190,32 @@ function useOpensTheApp(): boolean {
   return useSyncExternalStore(noChange, () => opensTheApp(navigator.userAgent, navigator.maxTouchPoints), () => false);
 }
 
-export function SmallScreen() {
+function wasClosed(): boolean {
+  try {
+    return sessionStorage.getItem(APP_OFFER_CLOSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** 179 Where the app runs, a phone is offered it above the page it may use as well. */
+export function AppOffer() {
   const words = useViewer((state) => state.words);
   const inApp = useOpensTheApp();
+  const [closed, setClosed] = useState(wasClosed);
+  if (!inApp || closed) return null;
+  const close = () => {
+    setClosed(true);
+    try {
+      sessionStorage.setItem(APP_OFFER_CLOSED_KEY, "1");
+    } catch { /* closed for this page only */ }
+  };
   return (
-    <div id="small" role="dialog" aria-modal="true" aria-labelledby="smallTitle">
-      <div className="sheet">
-        <AppIcon size={64} />
-        <h1 id="smallTitle">{words.smallTitle}</h1>
-        <p id="smallText">{words.smallText}</p>
-        {inApp ? <a id="openInApp" className="button" href={APP_LINK}>{words.openInApp}</a> : null}
-      </div>
+    <div id="appOffer" className="glass">
+      <AppIcon size={28} />
+      <a id="openInApp" href={APP_LINK}>{words.openInApp}</a>
+      <button type="button" className="tool round" id="appOfferClose" aria-label={words.close} title={words.close}
+        onClick={close}><Sym name="xmark" /></button>
     </div>
   );
 }

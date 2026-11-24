@@ -41,20 +41,16 @@ test("the site's icons are drawn, none a plain square", async ({ page }) => {
   for (const mask of masks) expect(mask).toMatch(/^url\("data:image\/svg\+xml/);
 });
 
-// 131 a phone sees the app's icon and its link; debug=1 lets it in for a day
-test("a phone is offered the app, and debug=1 lets it in", async ({ browser, baseURL }) => {
+// 131, 179: a phone is let into the site and offered the app over it
+test("a phone is let in and offered the app", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, hasTouch: true,
     userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" });
   const page = await context.newPage();
   await mockCloud(page, { signedIn: true });
   await page.goto("./");
-  await expect(page.locator("#small [data-app-icon]")).toBeVisible();
+  await expect(page.locator("#appOffer [data-app-icon]")).toBeVisible();
   await expect(page.locator("#openInApp")).toHaveAttribute("href", "rikimaps://open");
-  await page.goto("./?debug=1");
-  await expect(page.locator("#small")).toBeHidden();
-  await expect(page.locator("#appName")).toBeVisible();
-  await page.goto("./");
-  await expect(page.locator("#small")).toBeHidden();
+  await expect(page.locator("#rail")).toBeVisible();
   await context.close();
 });
 

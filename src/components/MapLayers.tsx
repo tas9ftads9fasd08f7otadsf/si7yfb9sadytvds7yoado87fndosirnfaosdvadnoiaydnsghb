@@ -117,7 +117,7 @@ export function LayerSwitcher() {
     document.addEventListener("pointerdown", away);
     return () => document.removeEventListener("pointerdown", away);
   }, [isOpen]);
-  const covered = useViewer((state) => ["details", "data", "settings"].includes(state.route.screen));
+  const covered = useViewer((state) => ["details", "data", "settings", "maps"].includes(state.route.screen));
   if (!shown || editing || covered || (!canEdit && styleCount < 2)) return null;
   return (
     <div id="switcher" ref={box}>

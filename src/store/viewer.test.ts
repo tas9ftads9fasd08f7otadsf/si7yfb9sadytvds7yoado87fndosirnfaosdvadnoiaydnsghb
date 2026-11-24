@@ -136,14 +136,14 @@ describe("the session", () => {
   it("is connected once the phone answers", async () => {
     expect(get().connected).toBeNull();
     answering(() => json({ standing: "waiting" }));
-    startSession(false);
+    startSession();
     await vi.waitFor(() => expect(get().connected).toBe(true));
   });
 
   // 40 not connected when the phone cannot be reached, and it says so
   it("is not connected when the phone cannot be reached", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
-    startSession(false);
+    startSession();
     await vi.waitFor(() => expect(get().connected).toBe(false));
   });
 
@@ -154,7 +154,7 @@ describe("the session", () => {
     useViewer.setState({ connected: false, standing: "admitted", device, mapID: "a" });
     const renamed = { name: "iPad", maps: [{ id: "a", name: "Renamed", layers: [] }] };
     answering((url) => url.includes("/web/session") ? json({ standing: "admitted" }) : json(renamed));
-    startSession(false);
+    startSession();
     await vi.waitFor(() => expect(get().device?.maps[0]?.name).toBe("Renamed"));
     expect(get().connected).toBe(true);
     expect(get().notice).toBe("Connected again");
@@ -164,7 +164,7 @@ describe("the session", () => {
   // 45 a phone that never went away is not announced
   it("says nothing on the first beat or while it stays connected", async () => {
     answering(() => json({ standing: "waiting" }));
-    startSession(false);
+    startSession();
     await vi.waitFor(() => expect(get().connected).toBe(true));
     expect(get().notice).toBeNull();
   });
@@ -174,7 +174,7 @@ describe("the session", () => {
     vi.useFakeTimers();
     const fetcher = vi.fn(async () => { throw new TypeError("offline"); });
     vi.stubGlobal("fetch", fetcher);
-    startSession(false);
+    startSession();
     await vi.advanceTimersByTimeAsync(0);
     expect(fetcher).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(2000);
@@ -185,7 +185,7 @@ describe("the session", () => {
   // 40 a phone that answers but is not sharing is not connected either
   it("is not connected when the phone refuses the beat", async () => {
     answering(() => new Response("This phone is not sharing maps", { status: 503 }));
-    startSession(false);
+    startSession();
     await vi.waitFor(() => expect(get().connected).toBe(false));
   });
 

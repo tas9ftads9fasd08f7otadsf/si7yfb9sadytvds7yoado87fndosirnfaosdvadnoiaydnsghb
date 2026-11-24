@@ -1,7 +1,7 @@
-import { act, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetViewer, useViewer } from "@/store/viewer";
-import { Boot, Gate, Offline, StatusBar, UndrawnNote } from "./Overlays";
+import { AppOffer, Boot, Gate, Offline, StatusBar, UndrawnNote } from "./Overlays";
 
 describe("Offline", () => {
   beforeEach(resetViewer);
@@ -109,5 +109,32 @@ describe("Boot", () => {
     render(<Boot />);
     expect(screen.getByRole("alert").textContent)
       .toBe("Loading stopped: An asset of own-tatras answered 403. Trying again…");
+  });
+});
+
+describe("AppOffer", () => {
+  const iPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
+  beforeEach(() => {
+    resetViewer();
+    sessionStorage.clear();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  // 179 TestFlight ADKC: an iPhone may use the page; the app is offered over it, not instead of it
+  it("offers the app on an iPhone, and stays closed once closed", () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(iPhone);
+    const { unmount } = render(<AppOffer />);
+    expect(screen.getByRole("link", { name: "Open Riki Maps" }).getAttribute("href")).toBe("rikimaps://open");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("link")).toBeNull();
+    unmount();
+    render(<AppOffer />);
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  // 179 a computer, whatever its window's size, is offered nothing
+  it("offers nothing on a computer", () => {
+    render(<AppOffer />);
+    expect(screen.queryByRole("link")).toBeNull();
   });
 });

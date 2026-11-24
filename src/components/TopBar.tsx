@@ -102,8 +102,7 @@ export function TopBar() {
       <SearchField />
       <div className="end">
         <Traffic />
-        <span id="viewers" role="status" title={viewing} aria-label={viewing}
-          style={{ display: viewers == null ? "none" : "inline-flex" }}>
+        <span id="viewers" role="status" title={viewing} aria-label={viewing} hidden={viewers == null}>
           <Sym name="desktopcomputer" /><span id="viewerCount">{viewers}</span>
         </span>
         <NewMapButton />
