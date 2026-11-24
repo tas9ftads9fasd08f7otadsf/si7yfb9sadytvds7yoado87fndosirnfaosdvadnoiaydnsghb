@@ -56,6 +56,9 @@ describe("the build's flags", () => {
     const there = swiftBuildArgs("/Users/someone/rikimaps");
     expect(here).toContain("--swift-sdk");
     expect(here.join(" ")).toContain("-debug-info-format none");
+    // 178 PeerWebArrange.swift.o's .swift_modhash differed between two builds of one commit
+    expect(here.join(" ")).toContain("-Xswiftc -Xfrontend -Xswiftc -disable-incremental-llvm-codegen");
+
     expect(here.join(" ")).toContain("-file-prefix-map -Xswiftc /home/runner/work/site/rikimaps=/rikimaps");
     expect(here[here.indexOf("--scratch-path") + 1]).toBe(`${SCRATCH}/build`);
     expect(there[there.indexOf("--scratch-path") + 1]).toBe(here[here.indexOf("--scratch-path") + 1]);

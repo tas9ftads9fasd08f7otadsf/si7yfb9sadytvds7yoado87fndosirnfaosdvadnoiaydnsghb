@@ -105,7 +105,9 @@ jobs:
         run: |
           SWIFT="${SWIFT/#\~/$HOME}" rikimaps/tools/linux-core-tests.sh
 
+      # A module refused by its sum is kept too, to be compared with the pinned one.
       - uses: actions/upload-artifact@v6
+        if: always()
         with:
           name: riki-core
           path: dist/riki-core

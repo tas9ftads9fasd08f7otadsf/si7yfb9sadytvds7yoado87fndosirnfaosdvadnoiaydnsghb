@@ -45,7 +45,9 @@ export const SCRATCH = "/tmp/riki-core-build";
 export function swiftBuildArgs(dir, scratch = SCRATCH) {
   return ["build", "--swift-sdk", CONTRACT.sdk.id, "-c", "release", "--product", CONTRACT.product,
     "--scratch-path", path.join(scratch, "build"), "-debug-info-format", "none",
-    "-Xswiftc", "-file-prefix-map", "-Xswiftc", `${dir}=/rikimaps`];
+    "-Xswiftc", "-file-prefix-map", "-Xswiftc", `${dir}=/rikimaps`,
+    // 178 each object kept its IR's hash, which came out two ways, in the module's data
+    "-Xswiftc", "-Xfrontend", "-Xswiftc", "-disable-incremental-llvm-codegen"];
 }
 
 export const sha256Of = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -189,6 +191,28 @@ async function installSdk(swift, scratch) {
   await rm(file);
 }
 
+/** The objects the link took, in its order. */
+async function linked(release) {
+  return (await readFile(path.join(release, `${CONTRACT.product}.product`, "Objects.LinkFileList"), "utf8"))
+    .split("\n").filter(Boolean).map((file) => file.replace(/^'|'$/g, ""));
+}
+
+/** 178 Each object the link took, in its order, with its sum: two builds that differ say where. */
+async function objectSums(release) {
+  const lines = await Promise.all((await linked(release)).map(async (file) =>
+    `${sha256Of(await readFile(file))}  ${path.relative(release, file)}`));
+  return `${lines.join("\n")}\n`;
+}
+
+/** 178 The objects themselves, for two builds' differing one to be compared byte by byte. */
+async function keepObjects(release, into) {
+  for (const file of await linked(release)) {
+    const kept = path.join(into, path.relative(release, file));
+    await mkdir(path.dirname(kept), { recursive: true });
+    await writeFile(kept, await readFile(file));
+  }
+}
+
 export async function build({ dir, pin, out, env = process.env }) {
   const problem = checkoutProblem(dir, pin.ref);
   if (problem) throw new Error(problem);
@@ -204,9 +228,12 @@ export async function build({ dir, pin, out, env = process.env }) {
   if (!existsSync(opt)) throw new Error("wasm-opt is not installed: run npm ci");
   const wasm = path.join(out, "riki-core.wasm");
   execFileSync(opt, ["-Oz", "--strip-debug", "--strip-producers", "--all-features", built, "-o", wasm], { stdio: "inherit" });
+  await writeFile(path.join(out, "objects.sha256"), await objectSums(path.dirname(built)));
+  if (env.RIKI_CORE_OBJECTS) await keepObjects(path.dirname(built), env.RIKI_CORE_OBJECTS);
   const bytes = await readFile(wasm);
-  const version = await smoke(bytes);
   const sum = sha256Of(bytes);
+  console.log(`${os.cpus().length} cores; before wasm-opt sha256 ${sha256Of(await readFile(built))}, after ${sum}`);
+  const version = await smoke(bytes);
   verifyPinned(sum, pin.sha256);
   const size = { ...sizes(bytes), unoptimised: (await readFile(built)).length };
   verifySize(size);

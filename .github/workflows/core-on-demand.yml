@@ -73,6 +73,7 @@ jobs:
         env:
           RIKIMAPS_DIR: ${{ github.workspace }}/rikimaps
           RIKI_CORE_REF: ${{ steps.commit.outputs.sha }}
+          RIKI_CORE_OBJECTS: ${{ runner.temp }}/objects
         run: npm run build:core
 
       - name: Test the core at that commit
@@ -82,6 +83,7 @@ jobs:
           SWIFT="${SWIFT/#\~/$HOME}" rikimaps/tools/linux-core-tests.sh
 
       - uses: actions/upload-artifact@v6
+        if: success()
         with:
           name: riki-core-${{ steps.commit.outputs.sha }}
           path: dist/riki-core
@@ -93,3 +95,20 @@ jobs:
           SHA: ${{ steps.commit.outputs.sha }}
         run: |
           printf '### riki-core-%s\n\n`RIKI_CORE_REF=%s npm run fetch:core`\n' "$SHA" "$SHA" >> "$GITHUB_STEP_SUMMARY"
+
+      # 178 A build refused by its sum is kept under another name, for fetch:core never to take it.
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: refused-riki-core-${{ steps.commit.outputs.sha }}
+          path: dist/riki-core
+          if-no-files-found: ignore
+
+      # 178 Each run's objects apart, named by the run, which fetch:core never asks for.
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: objects-${{ github.run_id }}
+          path: ${{ runner.temp }}/objects
+          retention-days: 7
+          if-no-files-found: ignore
