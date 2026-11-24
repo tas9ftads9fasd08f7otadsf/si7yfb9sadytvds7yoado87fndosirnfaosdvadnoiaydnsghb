@@ -71,7 +71,14 @@ test("the rail's links carry the site's path", async ({ page, baseURL }) => {
 });
 
 test("nothing outside the build is served", async ({ request }) => {
-  for (const path of ["site.json", "Site.php", "config.example.php", "index.php/../site.json", "_next/../site.json"]) {
+  for (const path of ["Site.php", "config.example.php", "config.php", "index.php/../Site.php", "_next/../Site.php"]) {
     expect((await request.get(path)).status(), path).toBe(404);
   }
+});
+
+// 184 bug: the server check read site.json at each deploy and always met a 404
+test("site.json answers the release's version and commit, and nothing else of it", async ({ request }) => {
+  const answer = await request.get("site.json");
+  expect(answer.status()).toBe(200);
+  expect(Object.keys(await answer.json()).sort()).toEqual(["commit", "version"]);
 });

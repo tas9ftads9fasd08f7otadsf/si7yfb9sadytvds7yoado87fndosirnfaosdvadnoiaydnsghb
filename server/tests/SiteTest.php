@@ -18,8 +18,8 @@ final class SiteTest extends TestCase
         file_put_contents($this->folder . '/out/_next/static/chunks/a.js', 'const BASE="/__riki_base__";');
         file_put_contents($this->folder . '/out/riki-core.wasm', "\0asm\x01\0\0\0 /__riki_base__");
         file_put_contents($this->folder . '/secret.txt', 'outside the build');
-        file_put_contents($this->folder . '/site.json', json_encode(['version' => '0.1.0',
-            'pageSegments' => ['maps', 'data', 'servers', 'settings', 'new', 'unlock']]));
+        file_put_contents($this->folder . '/site.json', json_encode(['version' => '0.1.0', 'commit' => 'abc1234',
+            'core' => 'f00d', 'pageSegments' => ['maps', 'data', 'servers', 'settings', 'new', 'unlock']]));
         file_put_contents($this->folder . '/config.php',
             "<?php return ['container' => 'iCloud.test', 'apiToken' => 't', 'environment' => 'development'];");
     }
@@ -168,9 +168,22 @@ final class SiteTest extends TestCase
         $this->assertSame($config, json_decode($answer->body, true));
     }
 
+    // 184 bug: every request reached index.php, which refused site.json, so the server check warned at each deploy
+    public function testTheReleaseIsServedAsSiteJsonWithItsVersionAndCommitOnly(): void
+    {
+        foreach (['/index.php' => '/site.json', '/editor/index.php' => '/editor/site.json'] as $script => $uri) {
+            $answer = $this->ask($uri, $script);
+            $this->assertSame(200, $answer->status, $uri);
+            $this->assertSame('no-store', $answer->headers['Cache-Control']);
+            $this->assertSame(['version' => '0.1.0', 'commit' => 'abc1234'], json_decode($answer->body, true));
+        }
+        unlink($this->folder . '/site.json');
+        $this->assertSame(404, $this->ask('/site.json')->status);
+    }
+
     public function testNothingOutsideTheBuildIsReached(): void
     {
-        foreach (['/../secret.txt', '/%2e%2e/secret.txt', '/_next/../../secret.txt', '/site.json', '/config.php',
+        foreach (['/../secret.txt', '/%2e%2e/secret.txt', '/_next/../../secret.txt', '/config.php',
                      '/index.php/../secret.txt', '/.env', '/_next//static/chunks/a.js', '/nothing.js', "/a%00.js"] as $path) {
             $this->assertSame(404, $this->ask($path)->status, $path);
         }
