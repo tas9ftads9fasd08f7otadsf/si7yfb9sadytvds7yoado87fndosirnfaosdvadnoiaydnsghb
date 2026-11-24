@@ -58,7 +58,7 @@ test("a server's layer opens its own page, an API layer's under the server's sco
   await layer.screenshot({ path: "test-results/server-layer-page.png" });
   await page.reload();
   await expect(layer.locator("#serverScopePill")).toHaveText("Server · Caffès");
-  await layer.locator("#serverLayerBack").click();
+  await layer.locator("#serverOwnLayerBack").click();
   await expect(page.locator("#serverLayers")).toBeVisible();
 });
 
@@ -69,7 +69,7 @@ test("an Esri layer's page shows what it publishes, without a scope", async ({ p
   await page.locator("[data-server-card='0D5E1F00-0000-4000-8000-000000000002']").getByRole("button", { name: "View ZBGIS" }).click();
   await page.locator("#serverLayers").getByRole("button", { name: "Parcels C" }).click();
   const layer = page.locator("#serverLayerPage");
-  await expect(layer.locator("#serverLayerName")).toHaveText("Parcels C");
+  await expect(layer.locator("#serverOwnLayerName")).toHaveText("Parcels C");
   await expect(layer.locator("#serverLayerPublished")).toContainText("Slovakia");
   await expect(layer.locator("#serverScopePill")).toHaveCount(0);
 });

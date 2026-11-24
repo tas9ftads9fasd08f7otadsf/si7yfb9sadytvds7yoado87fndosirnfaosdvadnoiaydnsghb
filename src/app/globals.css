@@ -259,8 +259,8 @@ button.row:disabled { opacity: 0.6; cursor: default; }
 /* 186 as the app's ServerScopeHeader: the server's violet, a capsule and a tinted card */
 #serverLayerPage { --server: #5B3FD6; --server-pill: rgb(91 63 214 / 0.14); --server-banner: rgb(91 63 214 / 0.12); }
 #serverLayerPage .page-title { margin: 10px 16px 4px; font-size: 22px; font-weight: 700; }
-#serverLayerBack { display: inline-flex; align-items: center; gap: 4px; margin: 12px 16px 0; font-size: 14px; }
-#serverLayerPage.scoped #serverLayerBack { color: var(--server); }
+#serverOwnLayerBack { display: inline-flex; align-items: center; gap: 4px; margin: 12px 16px 0; font-size: 14px; }
+#serverLayerPage.scoped #serverOwnLayerBack { color: var(--server); }
 .server-scope { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; margin: 12px 16px 4px; }
 .server-scope .scope-pill { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 12px;
   border-radius: 15px; background: var(--server-pill); color: var(--server); font-size: 14px; font-weight: 600;
