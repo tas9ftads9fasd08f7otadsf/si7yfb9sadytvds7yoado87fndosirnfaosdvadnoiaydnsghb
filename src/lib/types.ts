@@ -667,6 +667,10 @@ export interface ServerRow {
   depth: number;
   pick: ServerPick;
   takes?: TakeOffer[];
+  /** 188 An API layer's own address; an older phone sends none. */
+  endpoint?: string;
+  /** 188 Typed in on the server's page, so it can be removed there. */
+  byHand?: boolean;
 }
 
 export interface ServerFact {
@@ -686,6 +690,17 @@ export interface Server {
   iconTintHex?: string | null;
   facts?: ServerFact[];
   allowsOffline?: boolean;
+  /** 188 Whether New layer is offered: every server but a directory. */
+  takesLayers?: boolean;
+  /** 188 The kind's own name (`arcgis`, `api`…), which says what New layer asks for. */
+  kindID?: string;
+}
+
+/** 188 A layer typed in on a server's page: an Esri layer's number, else its address. */
+export interface ServerLayerTyped {
+  name: string;
+  address?: string;
+  number?: number;
 }
 
 export interface ServerList {

@@ -75,4 +75,42 @@ describe("Servers", () => {
     await waitFor(() => expect(useViewer.getState().serverID).toBeNull());
     expect(String(fetcher.mock.calls[1]?.[0])).toBe("/riki/v1/servers/c/delete");
   });
+
+  // 188 an API server's rows name each endpoint; one typed in can be removed again
+  it("shows an API server's endpoints, and adds and removes one typed in", async () => {
+    const api: ServerList = { servers: [{ id: "a", name: "Caffès", line: "api.test · API", kind: "API", kindID: "api",
+      address: "https://api.test/v1/items.json", takesLayers: true,
+      rows: [{ kind: "layer", title: "items", depth: 0, endpoint: "https://api.test/v1/items.json", pick: { layer: "" } }] }] };
+    const shops = { kind: "layer", title: "shops", depth: 0, endpoint: "https://api.test/v1/shops.json", byHand: true,
+      pick: { layer: "byhand-1" } };
+    const fetcher = vi.fn(async (url: string) => new Response(JSON.stringify(url.includes("/add-layer")
+      ? { servers: [{ ...api.servers[0]!, rows: [...api.servers[0]!.rows, shops] }] } : api)));
+    vi.stubGlobal("fetch", fetcher);
+    useViewer.setState({ servers: api, editToken: "t", serverID: "a" });
+    render(<ServerPage />);
+    expect(screen.getByText("https://api.test/v1/items.json")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Remove from this server/ })).toBeNull();
+    const add = screen.getByRole("button", { name: "Add" }) as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    fireEvent.change(screen.getByRole("textbox", { name: "Address" }), { target: { value: "https://api.test/v1/shops.json" } });
+    fireEvent.click(add);
+    await waitFor(() => expect(screen.getByText("https://api.test/v1/shops.json")).toBeTruthy());
+    expect(String(fetcher.mock.calls[0]?.[0]))
+      .toBe("/riki/v1/servers/a/add-layer?name=&address=https%3A%2F%2Fapi.test%2Fv1%2Fshops.json");
+    fireEvent.click(screen.getByRole("button", { name: "Remove from this server shops" }));
+    await waitFor(() => expect(screen.queryByText("https://api.test/v1/shops.json")).toBeNull());
+    expect(String(fetcher.mock.calls[1]?.[0])).toBe("/riki/v1/servers/a/remove-layer?layer=byhand-1");
+  });
+
+  // 188 an Esri server's New layer asks the layer's number; a directory offers none
+  it("asks an Esri layer's number, and offers no New layer on a directory", () => {
+    useViewer.setState({ servers: { servers: [{ ...servers.servers[0]!, kindID: "arcgis", takesLayers: true }] },
+      editToken: "t", serverID: "s" });
+    const { unmount } = render(<ServerPage />);
+    expect(screen.getByRole("spinbutton", { name: "Layer number" })).toBeTruthy();
+    unmount();
+    useViewer.setState({ servers });
+    render(<ServerPage />);
+    expect(screen.queryByText("New layer")).toBeNull();
+  });
 });
