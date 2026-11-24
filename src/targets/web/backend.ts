@@ -18,6 +18,8 @@ import { drawnHere } from "./undrawn";
 import { Progress } from "./progress";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
 import type { CoreRow, CoreWrite } from "./records";
+import { keysOf } from "./sealed-keys";
+import { setRequestHeaders } from "@/lib/request-headers";
 import { changedFields, Conflict, stamped, write, type Plan } from "./writes";
 
 const notYet = (step: number) => () =>
@@ -26,7 +28,7 @@ const editing = notYet(4);
 const adding = notYet(5);
 
 /** What the site answers so far; the page offers no more. Packages, files, API layers and servers wait. */
-const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people"]);
+const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people", "exportMap"]);
 
 /** How often a change is tried, on freshly read rows after a conflict. */
 const TRIES = 3;
@@ -101,7 +103,11 @@ export function createBackend(parts: Parts): Backend {
   /** The rows as last read; a change elsewhere, or `fresh`, reads them again. */
   const rows = (fresh = false): Promise<CoreRow[]> => {
     if (fresh) reading = null;
-    reading ??= zones.rows().then((read) => { known ??= knownOf(read); return read; });
+    reading ??= zones.rows().then(async (read) => {
+      known ??= knownOf(read);
+      setRequestHeaders(await keysOf(read, (await parts.cloud.start())?.recordName ?? null));
+      return read;
+    });
     reading.catch(() => { reading = null; });
     return reading;
   };
@@ -383,7 +389,15 @@ export function createBackend(parts: Parts): Backend {
       return { ok: true, value: peopleOf(said, word, speaking) };
     },
 
-    newMap: editing, importMap: editing, exportMap: editing, duplicateMap: editing,
+    /** 176 The file the phone's Share writes, made by the core: keys are left out and named. */
+    async exportMap(id) {
+      const [core, read] = await Promise.all([parts.core(), rows()]);
+      const file = core.exportMap(read, id);
+      if ("refused" in file) return refused(file.status === 404 ? say("noSuchMap") : file.refused, file.status ?? 400);
+      return { ok: true, value: { blob: new Blob([file.text], { type: "application/json" }), name: file.name } };
+    },
+
+    newMap: editing, importMap: editing, duplicateMap: editing,
     deleteMap: editing, shelve: editing, askPeople: editing, setPicture: editing,
     layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
     otherLayers: adding, addCopies: adding,
