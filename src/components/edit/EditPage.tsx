@@ -43,7 +43,10 @@ export function EditPage() {
   return portable ? <EditFields key={epoch} /> : null;
 }
 
-const tabOf = (route: Route): EditTab => route.screen === "edit" ? route.tab : "layers";
+// 3701 The site keeps what it drew for a while but offers no offline download.
+const shownTabs = (): EditTab[] => EDIT_TABS.filter((tab) => tab !== "offline" || offers("offline"));
+const tabOf = (route: Route): EditTab =>
+  route.screen === "edit" && shownTabs().includes(route.tab) ? route.tab : "layers";
 
 /** 94 Edit map's tabs, as the design's W5–W9 split it. */
 export function EditTabs() {
@@ -51,7 +54,7 @@ export function EditTabs() {
   const tab = useViewer((state) => tabOf(state.route));
   return (
     <div role="tablist" id="editTabs" aria-label={words.edit}>
-      {EDIT_TABS.map((each) => (
+      {shownTabs().map((each) => (
         <button type="button" role="tab" key={each} id={`editTab-${each}`} aria-selected={each === tab}
           aria-controls="editBody" onClick={() => showEditTab(each)}>{words[each]}</button>
       ))}

@@ -24,8 +24,8 @@ export class CoreNotReady extends NotOnSite {}
 /** 82 The parts of the page a target may not answer yet; a screen offers only what it does. 86 `addLayer` is the panel
  * with a tile address and a service's layers; its packages, files, API layers and servers are offered apart.
  * 108 `people` reads who shares a map. 119 `fromMaps` copies the other maps' layers. 135 `saved` reads the phone's
- * saved places. 136 `publish` goes to the Gallery. */
-export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "fromMaps" | "coverage" | "pairing" | "people" | "regionPackages" | "category" | "saved" | "publish";
+ * saved places. 136 `publish` goes to the Gallery. 3701 `offline` downloads for offline: the phone, not the site. */
+export type Feature = "places" | "newMap" | "shelf" | "exportMap" | "duplicateMap" | "pictures" | "addLayer" | "addPackages" | "addFile" | "addAPI" | "servers" | "fromMaps" | "coverage" | "pairing" | "people" | "regionPackages" | "category" | "saved" | "publish" | "offline";
 
 /** 112 Why a region package did not come: no room, the host said no, the connection, a wrong size or an unreadable zip. */
 export class RegionFailed extends Error {

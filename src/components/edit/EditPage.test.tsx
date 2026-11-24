@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { backend } from "@backend";
 import type { Device, Portable } from "@/lib/types";
 import { resetViewer, useViewer } from "@/store/viewer";
 import { EditPage, EditTabs } from "./EditPage";
@@ -16,13 +17,25 @@ describe("Edit map's tabs", () => {
     useViewer.setState({ device, portable, mapID: "a", editToken: "t", editing: true,
       route: { screen: "edit", map: "a", tab: "layers" } });
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   // 94 the five tabs of W5–W9, the one in the address picked
   it("lists the five tabs and picks the address's", () => {
     render(<EditTabs />);
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent))
       .toEqual(["Layers", "General", "Styling", "Sharing", "Offline"]);
+    expect(screen.getByRole("tab", { name: "Layers" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  // 3701 the site offers no offline download, so its address falls back to Layers
+  it("leaves Offline out where the target offers no offline download", () => {
+    vi.spyOn(backend, "offers").mockImplementation((feature) => feature !== "offline");
+    useViewer.setState({ route: { screen: "edit", map: "a", tab: "offline" } });
+    render(<EditTabs />);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Layers", "General", "Styling", "Sharing"]);
     expect(screen.getByRole("tab", { name: "Layers" }).getAttribute("aria-selected")).toBe("true");
   });
 
