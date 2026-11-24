@@ -35,9 +35,10 @@ final class Site
     /**
      * @param list<string> $pageSegments
      * @param array<string, mixed>|null $config
+     * @param array{version: string, commit: string}|null $release
      */
     public function __construct(private string $root, private array $pageSegments, private ?array $config,
-        private ?RegionHost $regions = null)
+        private ?RegionHost $regions = null, private ?array $release = null)
     {
     }
 
@@ -51,7 +52,10 @@ final class Site
         // `regionsFiles` is for a test address's stand-in host; a deploy never writes it.
         $regions = $catalog === '' ? null : new RegionHost($catalog, $folder . '/cache', null,
             (string) ($config['regionsFiles'] ?? RegionHost::DRIVE));
-        return new self($folder . '/out', is_array($site) ? ($site['pageSegments'] ?? []) : [], $config, $regions);
+        $release = is_array($site) && isset($site['version'])
+            ? ['version' => (string) $site['version'], 'commit' => (string) ($site['commit'] ?? '')] : null;
+        return new self($folder . '/out', is_array($site) ? ($site['pageSegments'] ?? []) : [], $config, $regions,
+            $release);
     }
 
     /**
@@ -103,6 +107,11 @@ final class Site
         if ($path === '/config.json') {
             return $this->config === null ? new Answer(404)
                 : $this->sent(json_encode($this->config, JSON_UNESCAPED_SLASHES), 'json', 'no-store', $ifNoneMatch);
+        }
+        if ($path === '/site.json') {
+            // 184 The server check reads which release is deployed here.
+            return $this->release === null ? new Answer(404)
+                : $this->sent(json_encode($this->release, JSON_UNESCAPED_SLASHES), 'json', 'no-store', $ifNoneMatch);
         }
         $segments = explode('/', ltrim($path, '/'));
         if ($segments[0] === 'regions') {
