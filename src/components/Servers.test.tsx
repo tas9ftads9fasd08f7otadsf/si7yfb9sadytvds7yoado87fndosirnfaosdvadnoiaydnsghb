@@ -146,4 +146,28 @@ describe("Servers", () => {
     expect(JSON.parse(asked.get("headers") ?? "")).toEqual([{ name: "X-Key" }]);
     expect(JSON.parse(asked.get("login") ?? "")).toEqual({ isOn: true, page: "", seconds: 600 });
   });
+
+  // 186 a layer row opens the server's own page for it, an API layer's under the scope pill and banner
+  it("opens a layer's own page with the scope pill, banner and the maps using it", async () => {
+    const page = { name: "Caffès", serverName: "Caffès API", address: "https://api.test/caffes",
+      scope: { pill: "Server · Caffès API · version 2", banner: "You are editing the server's layer. 1 map uses it." },
+      look: [{ part: "markers", title: "Markers", detail: "Dot" }], versionNote: "Saving makes version 3.",
+      maps: [{ id: "m", name: "Coffee", state: "notAnswered", stateTitle: "Not answered", line: "On version 1" }],
+      footnote: "Add an API from Add layer." };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(page)));
+    vi.stubGlobal("fetch", fetcher);
+    useViewer.setState({ servers, editToken: "t", serverID: "s" });
+    const { rerender } = render(<ServerPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Parcels" }));
+    const route = useViewer.getState().route;
+    expect(route).toEqual({ screen: "servers", server: "s", part: "layers", layer: { layer: "0" } });
+    rerender(<ServerPage />);
+    await waitFor(() => expect(screen.getByText("Server · Caffès API · version 2")).toBeTruthy());
+    expect(String((fetcher.mock.calls[0] as unknown[])[0])).toBe("/riki/v1/server-layer?server=s&layer=0");
+    expect(screen.getByRole("note").textContent).toContain("1 map uses it");
+    expect(screen.getByText("Not answered").className).toContain("notAnswered");
+    expect(screen.getByText("On version 1")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+    expect(useViewer.getState().route).toEqual({ screen: "servers", server: "s", part: "layers" });
+  });
 });

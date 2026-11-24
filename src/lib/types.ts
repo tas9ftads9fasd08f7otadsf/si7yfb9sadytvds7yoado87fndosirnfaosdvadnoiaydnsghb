@@ -701,6 +701,20 @@ export interface Server {
   login?: CookiePreflight | null;
 }
 
+/** 186 A server's own layer page as the phone's shows it; an API layer's wears the scope. */
+export interface ServerLayerPage {
+  name: string;
+  serverName: string;
+  scope?: { pill: string; banner: string } | null;
+  address?: string | null;
+  look: { part: string; title: string; detail?: string | null }[];
+  versionNote?: string | null;
+  maps: { id: string; name: string; state: "upToDate" | "notAnswered" | "keptOwn" | string; stateTitle: string; line: string }[];
+  zooms?: string | null;
+  covers?: string | null;
+  footnote: string;
+}
+
 /** 187 The server form's address part as sent; a header without a value keeps the phone's. */
 export interface ServerForm {
   kind: string;

@@ -22,10 +22,23 @@ export type Screen =
   | { screen: "edit"; map: string; tab: EditTab; style?: string }
   | { screen: "details"; map: string; layer: string }
   | { screen: "data"; tab: DataTab }
-  | { screen: "servers"; server?: string; part?: ServerPart }
+  | { screen: "servers"; server?: string; part?: ServerPart; layer?: ServerLayerKey }
   | { screen: "saved"; id?: string }
   | { screen: "settings" }
   | { screen: "unlock"; key: string };
+
+/** 186 A server's layer, inside the service of a directory it came off when it did. */
+export interface ServerLayerKey { layer: string; service?: string }
+
+/** 186 One segment for both, so a layer with an empty id still has a path of its own. */
+export const serverLayerSegment = ({ layer, service }: ServerLayerKey) => `${layer}@${service ?? ""}`;
+
+function readServerLayer(segment: string | undefined): ServerLayerKey | undefined {
+  const at = segment?.indexOf("@") ?? -1;
+  if (segment == null || at < 0) return undefined;
+  const service = segment.slice(at + 1);
+  return service ? { layer: segment.slice(0, at), service } : { layer: segment.slice(0, at) };
+}
 
 export type Modal = { kind: "new" } | { kind: "add"; source: AddSource };
 
@@ -69,7 +82,7 @@ function readMap(map: string, rest: string[]): Route {
 }
 
 function readSegments(segments: string[]): Route {
-  const [first, second, third] = segments;
+  const [first, second, third, fourth] = segments;
   switch (first) {
     case undefined:
     case "index.html":
@@ -80,6 +93,9 @@ function readSegments(segments: string[]): Route {
       return { screen: "data", tab: isOneOf(DATA_TABS, second) ? second : "layers" };
     case "servers":
       if (!second) return { screen: "servers" };
+      if (third === "layers" && readServerLayer(fourth)) {
+        return { screen: "servers", server: second, part: "layers", layer: readServerLayer(fourth) };
+      }
       return { screen: "servers", server: second, part: isOneOf(SERVER_PARTS, third) ? third : "layers" };
     case "saved":
       return second ? { screen: "saved", id: second } : { screen: "saved" };
@@ -128,6 +144,7 @@ function screenPath(route: Screen): string {
     case "data":
       return join("data", route.tab);
     case "servers":
+      if (route.server && route.layer) return join("servers", route.server, "layers", serverLayerSegment(route.layer));
       return route.server ? join("servers", route.server, route.part ?? "layers") : "/servers";
     case "saved":
       return route.id ? join("saved", route.id) : "/saved";

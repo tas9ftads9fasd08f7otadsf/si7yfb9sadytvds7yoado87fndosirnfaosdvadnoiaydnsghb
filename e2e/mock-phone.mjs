@@ -1871,6 +1871,25 @@ async function answer(request, response) {
     }
     return send(response, 405, "");
   }
+  if (parts[2] === "server-layer" && parts.length === 3) {
+    // 186: as `PeerWebServerLayer` answers: the phone's own page, an API layer's under its scope.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const server = heldServers().find((each) => each.id === url.searchParams.get("server"));
+    const service = url.searchParams.get("service");
+    const row = server?.rows.find((each) => each.pick && each.pick.layer === url.searchParams.get("layer")
+      && (each.pick.service ?? null) === service);
+    if (!row) return send(response, 404, "");
+    const page = { name: row.title, serverName: server.name, look: [], maps: [],
+      footnote: "The map keeps this layer's service, so its other layers can be ticked later." };
+    if (server.kindID !== "api") return json(response, { ...page, zooms: "0–19", covers: "Slovakia" });
+    return json(response, { ...page, address: row.endpoint,
+      scope: { pill: `Server · ${server.name}`, banner: "You are editing the server's layer. No map of yours uses it yet." },
+      look: [{ part: "markers", title: "Markers", detail: "Dot · One colour" }, { part: "details", title: "Details" },
+        { part: "questions", title: "Questions" }],
+      versionNote: "Saving makes version 1. Maps that use this layer are asked whether to take it.",
+      footnote: "Add an API from Add layer › Servers, where its location key is picked." });
+  }
   if (parts[2] === "servers" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");

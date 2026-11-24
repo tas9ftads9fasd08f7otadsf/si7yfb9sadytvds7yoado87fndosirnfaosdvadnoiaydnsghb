@@ -256,6 +256,32 @@ button.row:disabled { opacity: 0.6; cursor: default; }
   :root:not([data-theme=light]) .server-look-banner .tone-tile { background: rgb(169 150 255 / 0.18); color: #A996FF; }
 }
 :root[data-theme="dark"] .server-look-banner .tone-tile { background: rgb(169 150 255 / 0.18); color: #A996FF; }
+/* 186 as the app's ServerScopeHeader: the server's violet, a capsule and a tinted card */
+#serverLayerPage { --server: #5B3FD6; --server-pill: rgb(91 63 214 / 0.14); --server-banner: rgb(91 63 214 / 0.12); }
+#serverLayerPage .page-title { margin: 10px 16px 4px; font-size: 22px; font-weight: 700; }
+#serverLayerBack { display: inline-flex; align-items: center; gap: 4px; margin: 12px 16px 0; font-size: 14px; }
+#serverLayerPage.scoped #serverLayerBack { color: var(--server); }
+.server-scope { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; margin: 12px 16px 4px; }
+.server-scope .scope-pill { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 12px;
+  border-radius: 15px; background: var(--server-pill); color: var(--server); font-size: 14px; font-weight: 600;
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.server-scope .scope-banner { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 18px;
+  background: var(--server-banner); color: var(--text); font-size: 14px; width: 100%; box-sizing: border-box; }
+.server-scope .scope-banner > :first-child { color: var(--server); font-size: 18px; flex: none; }
+#serverLayerAddress { font-family: ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
+.look-chip { flex: none; padding: 3px 9px; border-radius: 12px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.look-chip.upToDate { color: #1E8E3E; background: rgb(30 142 62 / 0.16); }
+.look-chip.notAnswered { color: #B26A00; background: rgb(178 106 0 / 0.16); }
+.look-chip.keptOwn { color: #0A64D6; background: rgb(10 100 214 / 0.16); }
+#serverLayers .row .open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; padding: 0;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+#serverLayers .row .open > :last-child { color: var(--tertiary); flex: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) #serverLayerPage { --server: #A996FF; --server-pill: rgb(169 150 255 / 0.18);
+    --server-banner: rgb(169 150 255 / 0.14); }
+}
+:root[data-theme="dark"] #serverLayerPage { --server: #A996FF; --server-pill: rgb(169 150 255 / 0.18);
+  --server-banner: rgb(169 150 255 / 0.14); }
 .server-look-review .row.head { gap: 12px; }
 .server-look-review .field.part { display: flex; flex-direction: column; gap: 4px; }
 .server-look-review .changed, .server-look-review .changed-here { color: var(--secondary); }

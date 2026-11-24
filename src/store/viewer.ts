@@ -7,10 +7,10 @@ import { CoreNotReady, NotOnSite, type Answer, type ChangedElsewhere, type Featu
 import type { Edit, Shelving } from "@/lib/edit";
 import { HEARTBEAT_EVERY, PLACE_LIVE_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
-import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
+import { type EditTab, type Route, type ServerLayerKey, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerChange, ServerForm, ServerLayerTyped, ServerList, ServerPick, ServerRow, ServerTune, ServiceRead,
+  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerChange, ServerForm, ServerLayerPage, ServerLayerTyped, ServerList, ServerPick, ServerRow, ServerTune, ServiceRead,
   Loading, SavedListing, SavedRow, SavedShape, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { NO_FILTER, type SavedFilter, savedBox, shownSaved } from "@/lib/saved";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
@@ -992,9 +992,18 @@ export function openServer(id: string | null) {
   }
 }
 
+/** 186 A server's own layer page, opened off its Layers as the phone's row opens it. */
+export function openServerLayer(server: string, layer: ServerLayerKey | null) {
+  go(layer ? { screen: "servers", server, part: "layers", layer } : { screen: "servers", server, part: "layers" });
+}
+
+export async function loadServerLayer(server: string, { layer, service }: ServerLayerKey): Promise<ServerLayerPage | null> {
+  return told(await editing(() => backend.serverLayer(server, layer, service)));
+}
+
 export function showServerPart(part: ServerPart) {
   const { route } = get();
-  if (route.screen === "servers" && route.server) go({ ...route, part });
+  if (route.screen === "servers" && route.server) go({ screen: "servers", server: route.server, part });
   else set({ serverPart: part });
 }
 

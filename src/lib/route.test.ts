@@ -29,6 +29,11 @@ const TABLE: [string, Route][] = [
   ["/servers/S1/layers", { screen: "servers", server: "S1", part: "layers" }],
   ["/servers/S1/general", { screen: "servers", server: "S1", part: "general" }],
   ["/servers/S1/sharing", { screen: "servers", server: "S1", part: "sharing" }],
+  // 186 a server's own layer page, an empty id and a directory's service kept in one segment
+  ["/servers/S1/layers/0%40", { screen: "servers", server: "S1", part: "layers", layer: { layer: "0" } }],
+  ["/servers/S1/layers/%40", { screen: "servers", server: "S1", part: "layers", layer: { layer: "" } }],
+  ["/servers/S1/layers/1%40https%3A%2F%2Fgis.test%2FBase%2FMapServer",
+    { screen: "servers", server: "S1", part: "layers", layer: { layer: "1", service: "https://gis.test/Base/MapServer" } }],
   // 135 the phone's saved places, and the one open
   ["/saved", { screen: "saved" }],
   ["/saved/6F1E2A10-0000-4000-8000-0000000000A1", { screen: "saved", id: "6F1E2A10-0000-4000-8000-0000000000A1" }],

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { NO_COOKIES } from "@/lib/api";
-import type { CookiePreflight, Server, ServerForm, ServerRow } from "@/lib/types";
+import type { ServerLayerKey } from "@/lib/route";
+import type { CookiePreflight, Server, ServerForm, ServerLayerPage, ServerRow } from "@/lib/types";
 import { listed } from "@/lib/words";
 import {
-  SERVER_KINDS, SERVER_PARTS, addServerLayer, deleteServer, duplicateServer, editServer, exportServer, loadServers, openServer,
-  removeServerLayer, saveServerForm, showServerPart, useViewer,
+  SERVER_KINDS, SERVER_PARTS, addServerLayer, deleteServer, duplicateServer, editServer, exportServer, loadServerLayer,
+  loadServers, openServer, openServerLayer, removeServerLayer, saveServerForm, showServerPart, useViewer,
 } from "@/store/viewer";
 import { Swatch } from "./edit/Styling";
 import { CommitField } from "./ui/CommitField";
@@ -45,7 +46,9 @@ export function ServerPage() {
   const words = useViewer((state) => state.words);
   const part = useViewer((state) => state.serverPart);
   const server = useViewer((state) => state.servers?.servers.find((each) => each.id === state.serverID));
+  const layer = useViewer((state) => (state.route.screen === "servers" ? state.route.layer : undefined));
   if (!server) return null;
+  if (layer) return <ServerLayerView key={`${layer.layer}@${layer.service ?? ""}`} server={server} keyed={layer} />;
   return (
     <>
       <div className="chips" role="tablist" aria-label={server.name} id="serverParts">
@@ -67,14 +70,96 @@ function RowLine({ row, server }: { row: ServerRow; server: Server }) {
   return (
     <div className={row.kind === "note" ? "row dimmed" : "row"} style={style} data-row-kind={row.kind}
       data-layer={row.pick?.layer}>
-      <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}
-        {row.endpoint ? <small className="endpoint">{row.endpoint}</small> : null}</span>
+      {row.kind === "layer" && row.pick ? (
+        <button type="button" className="open" aria-label={row.title}
+          onClick={() => openServerLayer(server.id, keyOf(row))}>
+          <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}
+            {row.endpoint ? <small className="endpoint">{row.endpoint}</small> : null}</span>
+          <Sym name="chevron.right" />
+        </button>
+      ) : (
+        <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}</span>
+      )}
       {row.byHand ? (
         <button type="button" className="icon-button danger" aria-label={`${words.removeFromServer} ${row.title}`}
           title={words.keptLayers} onClick={() => void removeServerLayer(server.id, row.pick.layer)}>
           <Sym name="trash" />
         </button>
       ) : null}
+    </div>
+  );
+}
+
+const keyOf = (row: ServerRow): ServerLayerKey => (typeof row.pick.service === "string"
+  ? { layer: row.pick.layer, service: row.pick.service } : { layer: row.pick.layer });
+
+/** 186 The pill and banner the app lays over every page under a server's API layer. */
+function ScopeHeader({ scope }: { scope: { pill: string; banner: string } }) {
+  return (
+    <div className="server-scope">
+      <span className="scope-pill" id="serverScopePill"><Sym name="server.rack" />{scope.pill}</span>
+      <div className="scope-banner" id="serverScopeBanner" role="note">
+        <Sym name="info.circle" /><span>{scope.banner}</span>
+      </div>
+    </div>
+  );
+}
+
+/** 186 A server's own layer page, laid out as the app's `ServerLayerScreen`. */
+function ServerLayerView({ server, keyed }: { server: Server; keyed: ServerLayerKey }) {
+  const words = useViewer((state) => state.words);
+  const [page, setPage] = useState<ServerLayerPage | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadServerLayer(server.id, keyed).then((found) => { if (live) setPage(found); });
+    return () => { live = false; };
+  }, [server.id, keyed]);
+  return (
+    <div id="serverLayerPage" className={page?.scope ? "scoped" : undefined}>
+      <button type="button" className="text-button" id="serverLayerBack" onClick={() => openServerLayer(server.id, null)}>
+        <Sym name="chevron.left" />{words.layers}
+      </button>
+      {!page ? <div className="foot-note">…</div> : (
+        <>
+          <h2 className="page-title" id="serverLayerName">{page.name}</h2>
+          {page.scope ? <ScopeHeader scope={page.scope} /> : null}
+          {page.address ? <>
+            <h2 className="title">{words.address}</h2>
+            <div className="list"><div className="row"><span className="words endpoint" id="serverLayerAddress">{page.address}</span></div></div>
+          </> : null}
+          {page.look.length ? <>
+            <h2 className="title">{words.whatMapsStart}</h2>
+            <div className="list" id="serverLayerLook">
+              {page.look.map((row) => (
+                <div className="row" key={row.part} data-part={row.part}>
+                  <span className="words">{row.title}{row.detail ? <small>{row.detail}</small> : null}</span>
+                </div>
+              ))}
+            </div>
+            {page.versionNote ? <div className="foot-note">{page.versionNote}</div> : null}
+          </> : null}
+          {page.maps.length ? <>
+            <h2 className="title">{words.mapsUsingLayer}</h2>
+            <div className="list" id="serverLayerMaps">
+              {page.maps.map((use) => (
+                <div className="row" key={use.id} data-map={use.id}>
+                  <span className="words">{use.name}<small>{use.line}</small></span>
+                  <span className={`look-chip ${use.state}`}>{use.stateTitle}</span>
+                </div>
+              ))}
+            </div>
+            <div className="foot-note">{words.onlyOwnMaps}</div>
+          </> : null}
+          {page.zooms || page.covers ? <>
+            <h2 className="title">{words.whatPublishes}</h2>
+            <div className="list" id="serverLayerPublished">
+              <Fact name={words.zooms} value={page.zooms ?? undefined} />
+              <Fact name={words.covers} value={page.covers ?? undefined} />
+            </div>
+          </> : null}
+          <div className="foot-note" id="serverLayerFootnote">{page.footnote}</div>
+        </>
+      )}
     </div>
   );
 }
