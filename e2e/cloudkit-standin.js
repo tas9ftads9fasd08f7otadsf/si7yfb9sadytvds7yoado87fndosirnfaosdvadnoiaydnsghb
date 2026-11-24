@@ -19,6 +19,7 @@
   const remember = (on) => { try { localStorage.setItem(FLAG, on ? "1" : "0"); } catch { /* signed out on reload */ } };
   let settings;
   let signIn = defer();
+  let silentWindow = false;
   let signOut = defer();
 
   function defer() {
@@ -83,6 +84,8 @@
   const showButtons = (on) => {
     const { signInButton, signOutButton } = settings.apiTokenAuth;
     button(signInButton.id, on ? null : "Sign in with Apple", () => {
+      // 185 Apple's window as it hung: opened from the click, and never answering.
+      if (silentWindow) return void window.open("about:blank", "", "width=525,height=640");
       remember(true);
       showButtons(true);
       call("public", "users/caller").then((who) => {
@@ -178,6 +181,7 @@
   };
   // The page under test calls these: a push as Apple would send it, and a sign-in window that was closed.
   window.__mockCloudPush = () => listeners.forEach((listener) => listener({ type: "mock" }));
+  window.__mockCloudSilentWindow = () => { silentWindow = true; };
   window.__mockCloudFailSignIn = () => {
     const failed = signIn;
     signIn = defer();

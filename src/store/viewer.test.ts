@@ -132,6 +132,14 @@ describe("the session", () => {
     expect(get().viewers).toBeNull();
   });
 
+  // 185 bug #167: a sign-in window that never answered was never said
+  it("keeps the unanswered sign-in window only while a session says so", () => {
+    applySession({ standing: "signedOut", signInUnanswered: true });
+    expect(get().signInUnanswered).toBe(true);
+    applySession({ standing: "signedOut" });
+    expect(get().signInUnanswered).toBe(false);
+  });
+
   // 40 the dot by the phone's name: connected once the phone answers a beat
   it("is connected once the phone answers", async () => {
     expect(get().connected).toBeNull();

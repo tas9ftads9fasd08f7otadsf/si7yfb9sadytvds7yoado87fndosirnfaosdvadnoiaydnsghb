@@ -177,6 +177,12 @@ const SUBSCRIPTIONS = { private: "riki-site-private", shared: "riki-site-shared"
 /** How often the databases are asked what changed where no subscription could be saved. */
 export const POLL_EVERY = 30_000;
 
+/** 185 How long Apple's sign-in window may stay open without answering before the card says so. */
+export const SIGN_IN_WAIT = 180_000;
+/** 185 A sign-in window closed this long without its answer having come never sent one. */
+export const CLOSED_GRACE = 3_000;
+const WATCH_EVERY = 1_000;
+
 /** CloudKit JS configured once; who is signed in, and what changed elsewhere. */
 export class Cloud {
   private container: Promise<CKContainer> | null = null;
@@ -188,6 +194,9 @@ export class Cloud {
   private readonly slots: Partial<Record<"in" | "out", Element>> = {};
   private listening = false;
   private polling: ReturnType<typeof setInterval> | null = null;
+  private clicking = false;
+  private watching: ReturnType<typeof setInterval> | null = null;
+  private unanswered = false;
 
   constructor(private readonly load: () => Promise<CloudKitJS> = loadScript,
     private readonly config: () => Promise<SiteConfig> = readConfig) {}
@@ -209,6 +218,11 @@ export class Cloud {
 
   async databases(): Promise<{ container: CKContainer; ownedBy: Person | null }> {
     return { container: await this.ready(), ownedBy: this.person };
+  }
+
+  /** 185 The last sign-in window closed or timed out and its answer never came. */
+  signInUnanswered(): boolean {
+    return this.unanswered;
   }
 
   onChanged(listener: () => void): () => void {
@@ -239,11 +253,13 @@ export class Cloud {
     for (const [button, id] of [["in", SIGN_IN_ID], ["out", SIGN_OUT_ID]] as const) {
       const slot = document.createElement("div");
       slot.id = id;
+      if (button === "in") slot.addEventListener("click", () => this.opening(), true);
       this.slots[button] = slot;
       holder.append(slot);
     }
     document.body.append(holder);
     this.holder = holder;
+    this.watchOpens();
     this.place("in");
     this.place("out");
   }
@@ -281,7 +297,51 @@ export class Cloud {
     }
   }
 
+  /** CloudKit JS opens its sign-in window from the button's click and keeps no handle a page can read. */
+  private watchOpens() {
+    const open = window.open.bind(window);
+    window.open = (...args: Parameters<typeof window.open>) => {
+      const opened = open(...args);
+      if (this.clicking) this.watch(opened);
+      return opened;
+    };
+  }
+
+  private opening() {
+    this.clicking = true;
+    // The library's own listener on the button runs after this one, in the same click.
+    setTimeout(() => { this.clicking = false; });
+  }
+
+  /** The library waits for a window's answer for ever; a closed or silent one is said on the card instead. */
+  private watch(opened: Window | null) {
+    this.stopWatching();
+    if (this.unanswered) {
+      this.unanswered = false;
+      this.tell();
+    }
+    const started = Date.now();
+    let closedAt: number | null = null;
+    this.watching = setInterval(() => {
+      if (this.person) return this.stopWatching();
+      const now = Date.now();
+      if (!opened || opened.closed) closedAt ??= now;
+      if ((closedAt !== null && now - closedAt >= CLOSED_GRACE) || now - started >= SIGN_IN_WAIT) {
+        this.stopWatching();
+        this.unanswered = true;
+        this.tell();
+      }
+    }, WATCH_EVERY);
+  }
+
+  private stopWatching() {
+    if (this.watching) clearInterval(this.watching);
+    this.watching = null;
+  }
+
   private async signedIn(container: CKContainer, identity: CKIdentity, announce = true) {
+    this.stopWatching();
+    this.unanswered = false;
     this.person = { name: await this.named(container, identity), recordName: identity.userRecordName };
     if (!this.listening) {
       this.listening = true;

@@ -67,6 +67,22 @@ test("a sign-in window that failed leaves the sign-in button working", async ({ 
   await expect(page.locator("#device")).toContainText("Riki Tester");
 });
 
+// 185 bug #167: Apple's sign-in window hung, and the card waited for it for ever, saying nothing
+test("a sign-in window closed without Apple's answer is said on the card", async ({ page }) => {
+  await mockCloud(page);
+  await page.goto("./");
+  await expect(page.locator("#gate")).toBeVisible();
+  await page.evaluate(() => window.__mockCloudSilentWindow());
+  const opened = page.waitForEvent("popup");
+  await page.locator("#signIn .apple-auth-button").click();
+  const popup = await opened;
+  await expect(page.locator("#signInUnanswered")).toBeHidden();
+  await popup.close();
+  await expect(page.locator("#signInUnanswered")).toHaveText(
+    "Apple's sign-in window did not answer. Close it and sign in again.", { timeout: 15_000 });
+  await expect(page.locator("#gate")).toBeVisible();
+});
+
 // 161 TestFlight AF8P bug: on a phone the button sat at the card's left, its words past its right edge
 test("the Sign in with Apple ID button sits centred in its card, its words in its middle", async ({ page }) => {
   await page.setViewportSize({ width: 428, height: 926 });

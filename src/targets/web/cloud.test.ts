@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Cloud, POLL_EVERY, refusesToken, SIGN_IN_ID, SIGN_OUT_ID, type CKContainer, type CKIdentity, type CloudKitJS } from "./cloud";
+import { CLOSED_GRACE, Cloud, POLL_EVERY, refusesToken, SIGN_IN_ID, SIGN_IN_WAIT, SIGN_OUT_ID, type CKContainer, type CKIdentity, type CloudKitJS } from "./cloud";
 import type { SiteConfig } from "./config";
 
 // 76 CloudKit JS configured once; sign-in, sign-out and notifications turn into onChanged
@@ -245,6 +245,84 @@ describe("Cloud", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // 185 bug #167: Apple's sign-in window hung, and the card waited for its answer for ever, saying nothing
+  describe("a sign-in window that never answers", () => {
+    afterEach(() => vi.useRealTimers());
+
+    async function signingIn() {
+      const popup = { closed: false };
+      const opened = vi.fn(() => popup as unknown as Window);
+      window.open = opened as unknown as typeof window.open;
+      const stub = kit();
+      const cloud = new Cloud(async () => stub.cloudkit, async () => config);
+      const told = vi.fn();
+      cloud.onChanged(told);
+      await cloud.start();
+      const card = document.createElement("div");
+      cloud.mount("in", card);
+      // CloudKit JS puts its own button in the slot and opens its window from that button's click.
+      const button = document.createElement("div");
+      button.addEventListener("click", () => window.open("https://idmsa.apple.com/signin", "", "width=525"));
+      card.firstElementChild!.append(button);
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+      return { stub, cloud, told, popup, opened, click: () => button.click() };
+    }
+
+    it("says so once the window has been closed a moment without Apple's answer", async () => {
+      const { cloud, told, popup, opened, click } = await signingIn();
+      click();
+      expect(opened).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(1_000);
+      popup.closed = true;
+      vi.advanceTimersByTime(CLOSED_GRACE);
+      expect(cloud.signInUnanswered()).toBe(false);
+      vi.advanceTimersByTime(1_000);
+      expect(cloud.signInUnanswered()).toBe(true);
+      expect(told).toHaveBeenCalledTimes(1);
+    });
+
+    it("says so of a window still open past the wait, and a sign-in after it clears it", async () => {
+      const { stub, cloud, click } = await signingIn();
+      click();
+      vi.advanceTimersByTime(SIGN_IN_WAIT - 1_000);
+      expect(cloud.signInUnanswered()).toBe(false);
+      vi.advanceTimersByTime(1_000);
+      expect(cloud.signInUnanswered()).toBe(true);
+      stub.signIn({ userRecordName: "rita" });
+      await flush();
+      expect(cloud.signInUnanswered()).toBe(false);
+    });
+
+    it("forgets what the last window said when the button opens a new one", async () => {
+      const { cloud, told, popup, click } = await signingIn();
+      popup.closed = true;
+      click();
+      vi.advanceTimersByTime(CLOSED_GRACE + 1_000);
+      expect(cloud.signInUnanswered()).toBe(true);
+      popup.closed = false;
+      click();
+      expect(cloud.signInUnanswered()).toBe(false);
+      expect(told).toHaveBeenCalledTimes(2);
+    });
+
+    it("says nothing of a window that answered", async () => {
+      const { stub, cloud, popup, click } = await signingIn();
+      click();
+      stub.signIn({ userRecordName: "rita" });
+      await flush();
+      popup.closed = true;
+      vi.advanceTimersByTime(SIGN_IN_WAIT);
+      expect(cloud.signInUnanswered()).toBe(false);
+    });
+
+    it("watches only a window its own button opened", async () => {
+      const { cloud } = await signingIn();
+      window.open("https://example.com/", "_blank");
+      vi.advanceTimersByTime(SIGN_IN_WAIT);
+      expect(cloud.signInUnanswered()).toBe(false);
+    });
   });
 
   it("fails when CloudKit JS cannot be loaded", async () => {

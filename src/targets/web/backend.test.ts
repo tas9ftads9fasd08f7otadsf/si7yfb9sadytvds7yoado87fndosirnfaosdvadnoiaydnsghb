@@ -153,7 +153,7 @@ function stack(options: Options = {}) {
     Object.assign(each.fields!, fields);
     each.recordChangeTag = `${each.recordChangeTag}x`;
   };
-  return { backend, seen, notify: () => notify({}), signIn: (identity: unknown) => signIn(identity), changes, core, saves,
+  return { backend, cloud, seen, notify: () => notify({}), signIn: (identity: unknown) => signIn(identity), changes, core, saves,
     shared, elsewhere, held };
 }
 
@@ -164,6 +164,14 @@ describe("WebBackend's reads", () => {
     signIn({ userRecordName: "rita" });
     await new Promise((resolve) => setTimeout(resolve));
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "admitted", edits: true, token: "icloud", device: "Rita", viewers: null } });
+  });
+
+  // 185 bug #167: a sign-in window that never answered left the card waiting, saying nothing
+  it("says a sign-in window went unanswered while no one is signed in", async () => {
+    const { backend, cloud } = stack({ signedIn: false });
+    await backend.session();
+    vi.spyOn(cloud, "signInUnanswered").mockReturnValue(true);
+    expect(await backend.session()).toEqual({ ok: true, value: { standing: "signedOut", signInUnanswered: true } });
   });
 
   // 134 bug: a refused token was a lost connection, so no one was told why they could not sign in

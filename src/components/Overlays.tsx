@@ -133,6 +133,7 @@ export function Gate() {
   const standing = useViewer((state) => state.standing);
   const connected = useViewer((state) => state.connected);
   const device = useViewer((state) => state.gateDevice);
+  const unanswered = useViewer((state) => state.signInUnanswered);
   const [asking, setAsking] = useState(false);
   const removed = standing === "removed";
   const signIn = useRef<HTMLDivElement>(null);
@@ -165,6 +166,7 @@ export function Gate() {
           <h1 id="gateTitle">{words.signInTitle}</h1>
           <p id="gateText">{words.signInText}</p>
           <div id="signIn" ref={signIn} />
+          {unanswered && <p id="signInUnanswered" role="alert">{words.signInUnanswered}</p>}
         </div>
       </div>
     );

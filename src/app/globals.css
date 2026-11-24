@@ -474,6 +474,7 @@ body.gated #gate { display: flex; }
 /* TestFlight AF8P: Apple's label sits at its button's middle only from a left-aligned line. */
 .apple-auth-button { text-align: left; }
 #signIn .apple-auth-button { margin: 16px auto 0; }
+#signInUnanswered { margin: 12px 0 0; color: var(--danger); }
 .sheet a.button { display: inline-flex; align-items: center; margin-top: 16px; height: 36px; padding: 0 18px;
   border-radius: 8px; background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none; }
 /* TestFlight AFKF: what a clicked feature carries, in the map's own popup. */

@@ -39,6 +39,8 @@ export interface ViewerState {
   /** Whether the phone answered last time it was asked; null until it has been. */
   connected: boolean | null;
   gateDevice: string;
+  /** 185 Apple's sign-in window never answered the last sign-in. */
+  signInUnanswered: boolean;
   /** The map is being read from the phone. */
   picking: boolean;
   /** The style or its tiles are still on their way. */
@@ -137,7 +139,7 @@ export interface Place {
 }
 
 const firstState = (): ViewerState => ({
-  route: { screen: "home" }, words: ENGLISH, standing: null, loading: null, loadFailed: null, edits: false, viewers: null, connected: null, gateDevice: "", picking: false, mapBusy: false, undrawn: new Set(),
+  route: { screen: "home" }, words: ENGLISH, standing: null, loading: null, loadFailed: null, edits: false, viewers: null, connected: null, gateDevice: "", signInUnanswered: false, picking: false, mapBusy: false, undrawn: new Set(),
   editToken: null, device: null,
   mapID: null, styleID: null, portable: null, hidden: new Set(), pictures: new Map(), sideShown: true,
   editing: false, editEpoch: 0, theme: "auto", notice: null, sharesLocation: false, traffic: null, regionOffer: null,
@@ -317,7 +319,8 @@ export function applySession(answer: SessionAnswer) {
   const was = get().standing;
   const drewDirect = loadsDirect(get());
   const edits = answer.edits === true;
-  set({ standing: answer.standing, edits, viewers: typeof answer.viewers === "number" ? answer.viewers : null });
+  set({ standing: answer.standing, edits, viewers: typeof answer.viewers === "number" ? answer.viewers : null,
+    signInUnanswered: answer.signInUnanswered === true });
   if (!edits && get().editToken) keepToken(null);
   else if (edits && answer.token && get().editToken !== answer.token) keepToken(answer.token);
   if (answer.device) set({ gateDevice: answer.device });

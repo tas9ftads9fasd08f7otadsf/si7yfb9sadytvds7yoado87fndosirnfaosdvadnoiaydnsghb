@@ -731,6 +731,8 @@ export interface SessionAnswer {
   token?: string;
   /** The phone lets a browser load tiles from their source. */
   direct?: boolean;
+  /** 185 The site's sign-in window closed or went silent without Apple's answer. */
+  signInUnanswered?: boolean;
 }
 
 /** 50 What Edit map's Availability and Styles rows read, as `PeerWebMapSwitches.Switches` writes it. */
