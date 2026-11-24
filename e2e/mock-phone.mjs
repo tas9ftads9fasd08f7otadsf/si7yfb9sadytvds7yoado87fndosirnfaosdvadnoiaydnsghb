@@ -1136,10 +1136,10 @@ const heldServers = () => [...SERVERS, ...phone.addedServers, ...phone.importedS
 
 const SERVERS = [
   { id: OSM, name: "OpenTopoMap", line: "Tiles", address: "https://tile.opentopomap.org/{z}/{x}/{y}.png",
-    kind: "Tile server", symbol: "mountain.2", rows: [
+    kind: "Tile server", kindID: "tiles", takesLayers: true, symbol: "mountain.2", rows: [
     { kind: "layer", title: "OpenTopoMap", subtitle: "Raster", depth: 0, pick: { server: OSM, layer: "" } }] },
   { id: ZBGIS, name: "ZBGIS", line: "Esri / ArcGIS · 3 services", address: "https://zbgis.test/arcgis/rest/services",
-    kind: "Esri / ArcGIS", facts: [{ name: "Version", value: "11.1" }], rows: [
+    kind: "Esri / ArcGIS", kindID: "arcgis", facts: [{ name: "Version", value: "11.1" }], rows: [
     { kind: "heading", title: "Base", depth: 0 },
     { kind: "heading", title: "Parcels", subtitle: "MapServer", depth: 1 },
     { kind: "layer", title: "Parcels C", subtitle: "Areas", depth: 2,
@@ -1221,9 +1221,10 @@ function startPlaces(kind, wanted) {
     box: { minLon: 20.2, minLat: 49.0, maxLon: 20.4, maxLat: 49.1 } }, title: "Poprad", detail: "Slovakia" }];
 }
 
-// As `PeerWebAddServer.kinds`; an API needs the phone's own form.
+// As `PeerWebAddServer.kinds`.
 const SERVER_KIND_LINES = { arcgis: "Esri / ArcGIS · 1 service", tilejson: "TileJSON · 1 layer",
-  tiles: "Tile server · 1 layer", wmts: "WMTS · 1 layer", wms: "WMS · 1 layer", mapproxy: "MapProxy · 1 layer" };
+  tiles: "Tile server · 1 layer", wmts: "WMTS · 1 layer", wms: "WMS · 1 layer", mapproxy: "MapProxy · 1 layer",
+  api: "API" };
 
 function portable(each) {
   return { id: each.id, name: each.name, note: each.note, category: each.category, nameTranslations: each.nameTranslations,
@@ -1788,6 +1789,14 @@ async function answer(request, response) {
     const id = randomUUID().toUpperCase();
     const name = url.searchParams.get("name") || new URL(address).host;
     const ogc = kind === "wmts" || kind === "wms";
+    if (kind === "api") {
+      // 188: one endpoint, the address itself, named by its path's last part.
+      const named = new URL(address).pathname.split("/").filter(Boolean).pop()?.split(".")[0] || name;
+      phone.addedServers.push({ id, name, line: `${new URL(address).host} · API`, kind: "API", kindID: "api", address,
+        takesLayers: true, rows: [{ kind: "layer", title: named, subtitle: "Points", depth: 0, endpoint: address,
+          pick: { server: id, layer: "" } }] });
+      return json(response, { servers: heldServers() });
+    }
     phone.addedServers.push({ id, name, line: SERVER_KIND_LINES[kind], rows: [
       { kind: "layer", title: ogc ? "National map" : "Geology", subtitle: ogc ? kind.toUpperCase() : "Areas", depth: 0,
         pick: { server: id, layer: ogc ? "pixelkarte" : "0" } }] });
@@ -1816,6 +1825,27 @@ async function answer(request, response) {
     }
     if (parts[4] === "delete") {
       phone.goneServers.add(server.id);
+      return json(response, { servers: heldServers() });
+    }
+    if (parts[4] === "add-layer") {
+      // 188: as `PeerWebServerEdit.typedLayer`: an address on the server's own host, or an Esri number.
+      const typed = url.searchParams.get("address") ?? "";
+      const number = url.searchParams.get("number");
+      const host = (address) => { try { return new URL(address).host; } catch { return null; } };
+      if (number == null && host(typed) !== host(server.address ?? "")) {
+        return send(response, 409, `The address has to be on ${host(server.address ?? "")}, as the server's is.`);
+      }
+      const layer = `byhand-${randomUUID()}`;
+      const title = url.searchParams.get("name") || (number ?? typed.split("/").pop().split(".")[0]);
+      const row = { kind: "layer", title, depth: 0, byHand: true, pick: { server: server.id, layer },
+        ...(server.kindID === "api" ? { endpoint: typed, subtitle: "Points" } : {}) };
+      phone.serverEdits.set(server.id, { ...phone.serverEdits.get(server.id), rows: [...server.rows, row] });
+      return json(response, { servers: heldServers() });
+    }
+    if (parts[4] === "remove-layer") {
+      const layer = url.searchParams.get("layer");
+      const rows = server.rows.filter((row) => !(row.byHand && row.pick?.layer === layer));
+      phone.serverEdits.set(server.id, { ...phone.serverEdits.get(server.id), rows });
       return json(response, { servers: heldServers() });
     }
     return send(response, 405, "");

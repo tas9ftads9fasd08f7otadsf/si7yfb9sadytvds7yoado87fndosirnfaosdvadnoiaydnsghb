@@ -128,6 +128,7 @@ export const ENGLISH = {
   newServer: "New server", serverAddress: "Address", "serverKind.arcgis": "Esri / ArcGIS",
   "serverKind.tilejson": "TileJSON", "serverKind.tiles": "Tile server",
   "serverKind.wmts": "WMTS", "serverKind.wms": "WMS", "serverKind.mapproxy": "MapProxy",
+  "serverKind.api": "API", newLayer: "New layer", layerNumber: "Layer number", removeFromServer: "Remove from this server",
   look: "Look", duplicateServer: "Duplicate", deleteServer: "Delete server", tapAgainDelete: "Tap again to delete",
   keptLayers: "Layers already taken from it stay on the maps that took them", serverSymbols: "",
   servers: "Servers", view: "View", general: "General", sharing: "Sharing", address: "Address", kind: "Kind",

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import type { Server, ServerRow } from "@/lib/types";
 import { listed } from "@/lib/words";
 import {
-  SERVER_PARTS, deleteServer, duplicateServer, editServer, exportServer, loadServers, openServer, showServerPart,
-  useViewer,
+  SERVER_PARTS, addServerLayer, deleteServer, duplicateServer, editServer, exportServer, loadServers, openServer,
+  removeServerLayer, showServerPart, useViewer,
 } from "@/store/viewer";
 import { Swatch } from "./edit/Styling";
 import { CommitField } from "./ui/CommitField";
@@ -59,12 +59,55 @@ export function ServerPage() {
   );
 }
 
-function RowLine({ row }: { row: ServerRow }) {
+function RowLine({ row, server }: { row: ServerRow; server: Server }) {
+  const words = useViewer((state) => state.words);
   const style = { paddingLeft: 14 + row.depth * 14 };
   return (
-    <div className={row.kind === "note" ? "row dimmed" : "row"} style={style} data-row-kind={row.kind}>
-      <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}</span>
+    <div className={row.kind === "note" ? "row dimmed" : "row"} style={style} data-row-kind={row.kind}
+      data-layer={row.pick?.layer}>
+      <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}
+        {row.endpoint ? <small className="endpoint">{row.endpoint}</small> : null}</span>
+      {row.byHand ? (
+        <button type="button" className="icon-button danger" aria-label={`${words.removeFromServer} ${row.title}`}
+          title={words.keptLayers} onClick={() => void removeServerLayer(server.id, row.pick.layer)}>
+          <Sym name="trash" />
+        </button>
+      ) : null}
     </div>
+  );
+}
+
+/** 188 The phone's New layer: an Esri layer by its number, any other by its address. */
+function NewServerLayer({ server }: { server: Server }) {
+  const words = useViewer((state) => state.words);
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [asking, setAsking] = useState(false);
+  const byNumber = server.kindID === "arcgis";
+  const number = Number.parseInt(address.trim(), 10);
+  const ready = byNumber ? Number.isInteger(number) && number >= 0 : address.trim() !== "";
+  const add = async () => {
+    setAsking(true);
+    const typed = byNumber ? { name: name.trim(), number } : { name: name.trim(), address: address.trim() };
+    if (await addServerLayer(server.id, typed)) {
+      setName("");
+      setAddress("");
+    }
+    setAsking(false);
+  };
+  return (
+    <>
+      <h2 className="title">{words.newLayer}</h2>
+      <div className="card" id="serverNewLayer"><div className="field">
+        <input type="text" id="serverNewLayerName" autoComplete="off" placeholder={words.name} aria-label={words.name}
+          value={name} onChange={(event) => setName(event.target.value)} />
+        <input type={byNumber ? "number" : "url"} id="serverNewLayerAddress" autoComplete="off" spellCheck={false}
+          placeholder={byNumber ? "0" : server.address} aria-label={byNumber ? words.layerNumber : words.address}
+          min={byNumber ? 0 : undefined} value={address} onChange={(event) => setAddress(event.target.value)} />
+      </div></div>
+      <button type="button" className="action" id="serverNewLayerAdd" disabled={!ready || asking}
+        onClick={() => void add()}><Sym name="plus" />{words.add}</button>
+    </>
   );
 }
 
@@ -73,7 +116,8 @@ function LayersPart({ server }: { server: Server }) {
   return (
     <div id="serverLayers">
       <h2 className="title">{words.whatServerHas}</h2>
-      <div className="list">{server.rows.map((row, index) => <RowLine key={index} row={row} />)}</div>
+      <div className="list">{server.rows.map((row, index) => <RowLine key={index} row={row} server={server} />)}</div>
+      {server.takesLayers ? <NewServerLayer server={server} /> : null}
     </div>
   );
 }

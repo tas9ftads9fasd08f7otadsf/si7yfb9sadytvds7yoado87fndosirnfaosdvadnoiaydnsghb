@@ -232,6 +232,7 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 .row:hover { background: var(--hover); }
 .row .words { flex: 1; min-width: 0; }
 .row .words small { display: block; color: var(--secondary); font-size: 12px; }
+.row .words small.endpoint { font-family: ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
 .row[data-locked] { opacity: 0.45; }
 button.row { width: 100%; border: 0; background: none; text-align: left; }
 button.row.picked { background: var(--fill); }
@@ -290,6 +291,7 @@ label.action { cursor: pointer; display: flex; align-items: center; justify-cont
 .icon-button { border: 0; background: none; color: var(--accent); padding: 5px; border-radius: 6px; display: flex; }
 .icon-button:hover:not(:disabled) { background: var(--hover); }
 .icon-button:disabled { color: var(--tertiary); cursor: default; }
+.icon-button.danger { color: var(--danger); }
 .icon-button.danger { color: var(--danger); }
 .action.danger { color: var(--danger); }
 .action:disabled { color: var(--tertiary); cursor: default; }
