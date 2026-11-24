@@ -43,6 +43,7 @@ export const ENGLISH = {
   refusedTitle: "iCloud refused this site",
   refusedText: "Apple did not accept this site's iCloud key, so no one can sign in. The site's owner has to set a new one.",
   signInTitle: "Sign in to iCloud", signInText: "Sign in with your Apple Account to see the maps in your iCloud.",
+  signInUnanswered: "Apple's sign-in window did not answer. Close it and sign in again.",
   changedBy: "{map} was changed by {author}", changedAway: "{map} was changed on another device",
   yourName: "Your name",
   notOnSite: "The site cannot do this yet.",

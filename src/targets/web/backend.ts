@@ -305,7 +305,9 @@ export function createBackend(parts: Parts): Backend {
       throw error;
     });
     if (person === "refused") return { ok: true, value: { standing: "refused" } };
-    if (!person) return { ok: true, value: { standing: "signedOut" } };
+    if (!person) {
+      return { ok: true, value: { standing: "signedOut", ...(parts.cloud.signInUnanswered() ? { signInUnanswered: true } : {}) } };
+    }
     regionsOn = Boolean((await parts.config().catch(() => null))?.regionsCatalog);
     return { ok: true, value: { standing: "admitted", edits: true, token: SITE_TOKEN, device: person.name, viewers: null } };
   };

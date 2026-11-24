@@ -73,6 +73,17 @@ describe("Gate", () => {
     expect(screen.getByRole("heading").textContent).toBe("Sign in to iCloud");
   });
 
+  // 185 bug #167: Apple's sign-in window hung and the card said nothing
+  it("says under the button when Apple's sign-in window did not answer, and nothing before", () => {
+    act(() => useViewer.setState({ standing: "signedOut" }));
+    const { rerender } = render(<Gate />);
+    expect(screen.queryByRole("alert")).toBeNull();
+    act(() => useViewer.setState({ signInUnanswered: true }));
+    rerender(<Gate />);
+    expect(screen.getByRole("alert").textContent).toBe("Apple's sign-in window did not answer. Close it and sign in again.");
+    expect(document.querySelector("#signIn + #signInUnanswered")).not.toBeNull();
+  });
+
   // 169 bug #166: the sign-in card showed a person's icon under the app's own
   it("shows the app's icon on the sign-in card and no person's", () => {
     act(() => useViewer.setState({ standing: "signedOut" }));
