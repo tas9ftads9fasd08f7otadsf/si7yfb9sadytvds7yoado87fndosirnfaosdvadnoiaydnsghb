@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Server, ServerRow } from "@/lib/types";
+import { NO_COOKIES } from "@/lib/api";
+import type { CookiePreflight, Server, ServerForm, ServerRow } from "@/lib/types";
 import { listed } from "@/lib/words";
 import {
-  SERVER_PARTS, addServerLayer, deleteServer, duplicateServer, editServer, exportServer, loadServers, openServer,
-  removeServerLayer, showServerPart, useViewer,
+  SERVER_KINDS, SERVER_PARTS, addServerLayer, deleteServer, duplicateServer, editServer, exportServer, loadServers, openServer,
+  removeServerLayer, saveServerForm, showServerPart, useViewer,
 } from "@/store/viewer";
 import { Swatch } from "./edit/Styling";
 import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
+import { Switch } from "./ui/Switch";
 import { Sym } from "./ui/Sym";
 
 /** 27 TestFlight AApG: each saved server a card with a blue View, as a map's card has. */
@@ -188,16 +190,119 @@ function ServerActions({ server }: { server: Server }) {
   );
 }
 
+type HeaderDraft = { name: string; value: string; isSet: boolean };
+
+function draftOf(server: Server) {
+  return {
+    kind: server.kindID ?? "", address: server.address ?? "", referrer: server.referrer ?? "",
+    headers: (server.headers ?? []).map((header): HeaderDraft => ({ ...header, value: "" })),
+    login: server.login ?? null
+  };
+}
+
+/** 187 What a draft sends: a header left blank keeps the value the phone holds. */
+export function formOf(draft: ReturnType<typeof draftOf>): ServerForm {
+  return { kind: draft.kind, address: draft.address.trim(), referrer: draft.referrer.trim(),
+    headers: draft.headers.filter((header) => header.name.trim()).map(({ name, value }) =>
+      (value ? { name: name.trim(), value } : { name: name.trim() })),
+    login: draft.login?.isOn ? draft.login : null };
+}
+
+/** 187 The server form's address, kind, headers and login; Save waits for the phone to read it. */
+function ServerFormCard({ server }: { server: Server }) {
+  const words = useViewer((state) => state.words);
+  const ages = useViewer((state) => state.servers?.cookieAges ?? []);
+  const [draft, setDraft] = useState(() => draftOf(server));
+  const [header, setHeader] = useState({ name: "", value: "" });
+  const [saving, setSaving] = useState(false);
+  const login: CookiePreflight = draft.login ?? NO_COOKIES;
+  const changed = JSON.stringify(formOf(draft)) !== JSON.stringify(formOf(draftOf(server)));
+  const setLogin = (next: CookiePreflight) => setDraft({ ...draft, login: next });
+  const save = async () => {
+    setSaving(true);
+    await saveServerForm(server.id, formOf(draft));
+    setSaving(false);
+  };
+  return (
+    <>
+      <h2 className="title">{words.serverForm}</h2>
+      <div className="card" id="serverForm">
+        <div className="field"><label htmlFor="serverFormKind">{words.kind}</label>
+          <select id="serverFormKind" value={draft.kind} onChange={(event) => setDraft({ ...draft, kind: event.target.value })}>
+            {SERVER_KINDS.map((each) => <option key={each} value={each}>{words[`serverKind.${each}`]}</option>)}
+          </select></div>
+        <div className="field"><label htmlFor="serverFormAddress">{words.address}</label>
+          <input type="url" id="serverFormAddress" autoComplete="off" spellCheck={false} value={draft.address}
+            onChange={(event) => setDraft({ ...draft, address: event.target.value })} /></div>
+        <div className="field"><label htmlFor="serverFormReferrer">{words.referrer}</label>
+          <input type="url" id="serverFormReferrer" autoComplete="off" spellCheck={false} value={draft.referrer}
+            onChange={(event) => setDraft({ ...draft, referrer: event.target.value })} /></div>
+      </div>
+      <h2 className="title">{words.headers}</h2>
+      <div className="card" id="serverHeaders">
+        {draft.headers.map((each, index) => (
+          <div className="row header" key={each.name} data-header={each.name} data-set={each.isSet ? "" : undefined}>
+            <span className="words">{each.name}<small>{each.isSet ? words.headerSaved : words.headerUnset}</small></span>
+            <input type="password" autoComplete="off" placeholder={words.headerValue} aria-label={`${each.name} ${words.headerValue}`}
+              value={each.value} onChange={(event) => setDraft({ ...draft, headers: draft.headers.map((one, at) =>
+                (at === index ? { ...one, value: event.target.value } : one)) })} />
+            <button type="button" className="link" aria-label={`${words.remove} ${each.name}`}
+              onClick={() => setDraft({ ...draft, headers: draft.headers.filter((_, at) => at !== index) })}>{words.remove}</button>
+          </div>
+        ))}
+        <div className="row header-add">
+          <input id="serverHeaderName" value={header.name} placeholder={words.headerName} aria-label={words.headerName}
+            autoCapitalize="off" spellCheck={false} onChange={(event) => setHeader({ ...header, name: event.target.value })} />
+          <input type="password" id="serverHeaderValue" value={header.value} autoComplete="off" placeholder={words.headerValue}
+            aria-label={words.headerValue} onChange={(event) => setHeader({ ...header, value: event.target.value })} />
+          <button type="button" className="link" id="serverHeaderAdd"
+            disabled={!header.name.trim() || draft.headers.some((one) => one.name.toLowerCase() === header.name.trim().toLowerCase())}
+            onClick={() => {
+              setDraft({ ...draft, headers: [...draft.headers, { name: header.name.trim(), value: header.value, isSet: false }] });
+              setHeader({ name: "", value: "" });
+            }}>{words.addHeader}</button>
+        </div>
+        <div className="foot-note">{words.valuesStayPhone}</div>
+      </div>
+      <div className="card" id="serverLogin">
+        <div className="row"><span className="words">{words.apiCookiesFirst}<small>{words.apiCookiesWhy}</small></span>
+          <Switch isOn={login.isOn} label={words.apiCookiesFirst} onChange={(isOn) => setLogin({ ...login, isOn })} /></div>
+        {login.isOn ? (
+          <>
+            <div className="field"><label htmlFor="serverCookiePage">{words.apiCookiePage}</label>
+              <input type="url" id="serverCookiePage" autoComplete="off" spellCheck={false} placeholder={words.apiSiteItself}
+                value={login.page} onChange={(event) => setLogin({ ...login, page: event.target.value })} /></div>
+            {ages.length ? (
+              <div className="field"><label htmlFor="serverCookieAge">{words.apiCookieAge}</label>
+                <select id="serverCookieAge" value={String(login.seconds)}
+                  onChange={(event) => setLogin({ ...login, seconds: Number(event.target.value) })}>
+                  {ages.map((age) => <option key={age.value} value={age.value}>{age.title}</option>)}
+                </select></div>
+            ) : null}
+            <div className="foot-note">{words.apiCookiesSent}</div>
+          </>
+        ) : null}
+      </div>
+      <button type="button" className="action" id="serverFormSave" disabled={!changed || saving || !draft.address.trim()}
+        onClick={() => void save()}><Sym name="checkmark" />{saving ? words.testing : words.save}</button>
+    </>
+  );
+}
+
 function GeneralPart({ server }: { server: Server }) {
   const words = useViewer((state) => state.words);
   return (
     <div id="serverGeneral">
       <LookCard server={server} />
-      <h2 className="title">{words.address}</h2>
-      <div className="list">
-        <Fact name={words.address} value={server.address} />
-        <Fact name={words.kind} value={server.kind} />
-      </div>
+      {server.kindID ? <ServerFormCard key={JSON.stringify(draftOf(server))} server={server} /> : (
+        <>
+          <h2 className="title">{words.address}</h2>
+          <div className="list">
+            <Fact name={words.address} value={server.address} />
+            <Fact name={words.kind} value={server.kind} />
+          </div>
+        </>
+      )}
       {server.facts?.length ? <>
         <h2 className="title">{words.whatItSupports}</h2>
         <div className="list" id="serverFacts">

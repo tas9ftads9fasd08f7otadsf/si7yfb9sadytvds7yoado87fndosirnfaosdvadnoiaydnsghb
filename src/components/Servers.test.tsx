@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ServerList } from "@/lib/types";
 import { resetViewer, useViewer } from "@/store/viewer";
-import { ServerCards, ServerPage } from "./Servers";
+import { ServerCards, ServerPage, formOf } from "./Servers";
 
 const servers: ServerList = { servers: [{
   id: "s", name: "ZBGIS", line: "Esri / ArcGIS · 1 service", address: "https://zbgis.test/arcgis/rest/services",
@@ -112,5 +112,38 @@ describe("Servers", () => {
     useViewer.setState({ servers });
     render(<ServerPage />);
     expect(screen.queryByText("New layer")).toBeNull();
+  });
+
+  // 187 a value is sent only when typed: the phone keeps the one it holds for a blank row
+  it("sends a header's value only when one was typed, and login only when it is on", () => {
+    const login = { isOn: false, page: "p", seconds: 60 };
+    expect(formOf({ kind: "api", address: " https://a.test/x ", referrer: " ", login,
+      headers: [{ name: "X-Key", value: "", isSet: true }, { name: " Token ", value: "s", isSet: false }, { name: " ", value: "v", isSet: false }] }))
+      .toEqual({ kind: "api", address: "https://a.test/x", referrer: "", login: null,
+        headers: [{ name: "X-Key" }, { name: "Token", value: "s" }] });
+  });
+
+  // 187 the form's rows open on what the phone holds; Save sends them and waits for its read
+  it("changes the address, headers and login on General, and Save waits for a change", async () => {
+    const held: ServerList = { cookieAges: [{ value: "0", title: "As they say" }, { value: "600", title: "10 min" }],
+      servers: [{ ...servers.servers[0]!, kindID: "arcgis", headers: [{ name: "X-Key", isSet: true }], login: null }] };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(held)));
+    vi.stubGlobal("fetch", fetcher);
+    useViewer.setState({ servers: held, editToken: "t", serverID: "s", serverPart: "general" });
+    render(<ServerPage />);
+    const save = screen.getByRole("button", { name: "Save" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    expect(screen.getByText("Saved on this device")).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Kind" }), { target: { value: "api" } });
+    fireEvent.click(screen.getByRole("switch", { name: "Ask a page for cookies first" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Ask again" }), { target: { value: "600" } });
+    expect(save.disabled).toBe(false);
+    fireEvent.click(save);
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    const asked = new URL(String((fetcher.mock.calls[0] as unknown[])[0]), "http://phone").searchParams;
+    expect(asked.get("kind")).toBe("api");
+    expect(asked.get("address")).toBe("https://zbgis.test/arcgis/rest/services");
+    expect(JSON.parse(asked.get("headers") ?? "")).toEqual([{ name: "X-Key" }]);
+    expect(JSON.parse(asked.get("login") ?? "")).toEqual({ isOn: true, page: "", seconds: 600 });
   });
 });

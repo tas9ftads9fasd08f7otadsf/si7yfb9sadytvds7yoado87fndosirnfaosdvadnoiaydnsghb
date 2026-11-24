@@ -160,6 +160,8 @@ export const backend: Backend = {
     const asked = Object.entries({ name, address, number: number?.toString() }).filter(([, value]) => value !== undefined);
     return editing(`${ROOT}/servers/${id}/add-layer?${new URLSearchParams(asked as [string, string][])}`);
   },
+  saveServerForm: (id, { kind, address, referrer, headers, login }) => editing(`${ROOT}/servers/${id}/form?${
+    new URLSearchParams({ kind, address, referrer, headers: JSON.stringify(headers), login: JSON.stringify(login) })}`),
   removeServerLayer: (id, layer) => editing(`${ROOT}/servers/${id}/remove-layer?${new URLSearchParams({ layer })}`),
   importServers: async (file) => editing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer()),
   exportServers: (id) =>
