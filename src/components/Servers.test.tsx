@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ServerList } from "@/lib/types";
 import { resetViewer, useViewer } from "@/store/viewer";
 import { ServerCards, ServerPage } from "./Servers";
@@ -12,6 +12,7 @@ const servers: ServerList = { servers: [{
 
 describe("Servers", () => {
   beforeEach(resetViewer);
+  afterEach(() => vi.unstubAllGlobals());
 
   // 27 TestFlight AApG: the card offers View, not its layers
   it("lists each server as a card with View, only to a browser that may edit", () => {
@@ -38,5 +39,40 @@ describe("Servers", () => {
     expect(screen.getByText("11.1")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Sharing" }));
     expect(screen.getByRole("button", { name: /Export/ })).toBeTruthy();
+  });
+
+  // 183 the name, mark and background go to the phone as picked, its answer redrawing the page
+  it("changes the server's look on General, as the phone's Look does", async () => {
+    const renamed: ServerList = { servers: [{ ...servers.servers[0]!, name: "ZBGIS SK", symbol: "globe", iconTintHex: "#B5D8F2" }] };
+    const fetcher = vi.fn<(url: string) => Promise<Response>>(async () => new Response(JSON.stringify(renamed)));
+    vi.stubGlobal("fetch", fetcher);
+    useViewer.setState({ servers, editToken: "t", serverID: "s", serverPart: "general",
+      words: { ...useViewer.getState().words, serverSymbols: "server.rack,globe", iconTints: "#B5D8F2" } });
+    render(<ServerPage />);
+    fireEvent.click(screen.getByRole("button", { name: "globe" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "globe" }).getAttribute("aria-pressed")).toBe("true"));
+    expect(String(fetcher.mock.calls[0]?.[0])).toBe("/riki/v1/servers/s/edit?symbol=globe");
+    fireEvent.click(screen.getByRole("button", { name: "Automatic" }));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    expect(String(fetcher.mock.calls[1]?.[0])).toBe("/riki/v1/servers/s/edit?tint=");
+  });
+
+  // 183 Duplicate opens the copy; Delete server asks a second press, then leaves the page
+  it("duplicates into the copy, and deletes only on a second press", async () => {
+    const copy = { ...servers.servers[0]!, id: "c", name: "ZBGIS copy" };
+    const fetcher = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith("/duplicate")
+      ? { servers: [...servers.servers, copy], opened: "c" } : { servers: [copy] })));
+    vi.stubGlobal("fetch", fetcher);
+    useViewer.setState({ servers, editToken: "t", serverID: "s", serverPart: "general" });
+    render(<ServerPage />);
+    fireEvent.click(screen.getByRole("button", { name: /Duplicate/ }));
+    await waitFor(() => expect(useViewer.getState().serverID).toBe("c"));
+    expect(useViewer.getState().serverPart).toBe("general");
+    fireEvent.click(screen.getByRole("button", { name: "Delete server ZBGIS copy" }));
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Layers already taken from it stay on the maps that took them")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Tap again to delete ZBGIS copy" }));
+    await waitFor(() => expect(useViewer.getState().serverID).toBeNull());
+    expect(String(fetcher.mock.calls[1]?.[0])).toBe("/riki/v1/servers/c/delete");
   });
 });

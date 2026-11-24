@@ -150,6 +150,12 @@ export const backend: Backend = {
     editing(`${ROOT}/maps/${mapID}/add-copies?${new URLSearchParams({ layers: layers.join(",") })}`),
   servers: () => editing(`${ROOT}/servers`, "GET"),
   addServer: (kind, address, name) => editing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`),
+  editServer: (id, { name, symbol, tintHex }) => {
+    const asked = Object.entries({ name, symbol, tint: tintHex }).filter(([, value]) => value !== undefined);
+    return editing(`${ROOT}/servers/${id}/edit?${new URLSearchParams(asked as [string, string][])}`);
+  },
+  duplicateServer: (id) => editing(`${ROOT}/servers/${id}/duplicate`),
+  deleteServer: (id) => editing(`${ROOT}/servers/${id}/delete`),
   importServers: async (file) => editing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer()),
   exportServers: (id) =>
     editing(id ? `${ROOT}/servson?${new URLSearchParams({ server: id })}` : `${ROOT}/servson`, "GET", undefined, saved),

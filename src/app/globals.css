@@ -994,6 +994,15 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #editBody .map-actions .tile { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center;
   justify-content: center; background: var(--cs-water); }
 #editBody .map-actions + .action, #editBody .map-actions ~ .confirm-delete { margin-top: 10px; }
+/* 183 a server's Duplicate and Delete, as the map's; Delete in red as the phone's row is */
+#serverActions { margin-top: 18px; }
+#serverActions .row.add { width: 100%; border: 0; background: none; text-align: left; color: var(--c-water);
+  font-size: 15px; font-weight: 500; }
+#serverActions .tile { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; background: var(--cs-water); flex: none; }
+#serverActions .row.add.danger { color: var(--danger); flex-wrap: wrap; }
+#serverActions .row.add.danger .tile { background: var(--cs-red); }
+#serverActions .row.add.danger small { flex-basis: 100%; padding-left: 44px; color: var(--sub); font-size: 13px; }
 
 /* 111 W16's icon tiles and switch rows; W11's tile slots and preview; W9's regions. */
 .symbol-tiles { display: flex; flex-wrap: wrap; gap: 8px; }

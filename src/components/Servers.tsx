@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Server, ServerRow } from "@/lib/types";
-import { SERVER_PARTS, exportServer, loadServers, openServer, showServerPart, useViewer } from "@/store/viewer";
+import { listed } from "@/lib/words";
+import {
+  SERVER_PARTS, deleteServer, duplicateServer, editServer, exportServer, loadServers, openServer, showServerPart,
+  useViewer,
+} from "@/store/viewer";
+import { Swatch } from "./edit/Styling";
+import { CommitField } from "./ui/CommitField";
 import { MarkTile } from "./ui/MarkTile";
 import { Sym } from "./ui/Sym";
 
@@ -77,10 +83,72 @@ function Fact({ name, value }: { name: string; value?: string }) {
   return <div className="row"><span className="words"><small>{name}</small>{value}</span></div>;
 }
 
+/** 183 As the phone's Look: a name, a mark and its background, each saved as it is picked. */
+function LookCard({ server }: { server: Server }) {
+  const words = useViewer((state) => state.words);
+  const symbol = server.symbol || "server.rack";
+  const tint = (server.iconTintHex ?? "").toUpperCase() || null;
+  const symbols = [...new Set([symbol, ...listed(words.serverSymbols)])];
+  const tints = listed(words.iconTints);
+  if (tint && !tints.includes(tint)) tints.push(tint);
+  return (
+    <>
+      <h2 className="title">{words.look}</h2>
+      <div className="card" id="serverLook">
+        <div className="field">
+          <label htmlFor="serverName">{words.name}</label>
+          <CommitField type="text" id="serverName" autoComplete="off" value={server.name} placeholder={server.name}
+            onCommit={(name) => { if (name.trim()) void editServer(server.id, { name: name.trim() }); }} />
+        </div>
+        <div className="field"><label>{words.icon}</label></div>
+        <div className="swatches" role="group" id="serverSymbols" aria-label={words.icon}>
+          {symbols.map((name) => (
+            <Swatch key={name} label={name} isPicked={name === symbol} tint={tint} data={{ "data-symbol": name }}
+              onPick={() => void editServer(server.id, { symbol: name })}><Sym name={name} /></Swatch>
+          ))}
+        </div>
+        <div className="field"><label>{words.background}</label></div>
+        <div className="swatches" role="group" id="serverTints" aria-label={words.background}>
+          <CommitField type="color" value={(tint ?? "#8E8E93").toLowerCase()} aria-label={words.pickColour}
+            title={words.pickColour} onCommit={(hex) => void editServer(server.id, { tintHex: hex.toUpperCase() })} />
+          <Swatch label={words["theme.auto"]} isPicked={!tint} onPick={() => void editServer(server.id, { tintHex: "" })}>
+            <Sym name="wand.and.stars" />
+          </Swatch>
+          {tints.map((hex) => (
+            <Swatch key={hex} label={hex} isPicked={hex === tint} tint={hex} data={{ "data-hex": hex }}
+              onPick={() => void editServer(server.id, { tintHex: hex })} />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** 183 The phone's Duplicate and Delete server; a second press deletes, as its row asks. */
+function ServerActions({ server }: { server: Server }) {
+  const words = useViewer((state) => state.words);
+  const [asked, setAsked] = useState<string | null>(null);
+  const isAsked = asked === server.id;
+  return (
+    <div className="list map-actions" id="serverActions">
+      <button type="button" className="row add" id="duplicateServer" onClick={() => void duplicateServer(server.id)}>
+        <span className="tile"><Sym name="plus.square.on.square" /></span>{words.duplicateServer}
+      </button>
+      <button type="button" className="row add danger" id="deleteServer" title={words.keptLayers}
+        aria-label={`${isAsked ? words.tapAgainDelete : words.deleteServer} ${server.name}`}
+        onClick={() => (isAsked ? void deleteServer(server.id) : setAsked(server.id))}>
+        <span className="tile"><Sym name="trash" /></span>{isAsked ? words.tapAgainDelete : words.deleteServer}
+        {isAsked ? <small>{words.keptLayers}</small> : null}
+      </button>
+    </div>
+  );
+}
+
 function GeneralPart({ server }: { server: Server }) {
   const words = useViewer((state) => state.words);
   return (
     <div id="serverGeneral">
+      <LookCard server={server} />
       <h2 className="title">{words.address}</h2>
       <div className="list">
         <Fact name={words.address} value={server.address} />
@@ -92,6 +160,7 @@ function GeneralPart({ server }: { server: Server }) {
           {server.facts.map((fact) => <Fact key={fact.name} name={fact.name} value={fact.value} />)}
         </div>
       </> : null}
+      <ServerActions server={server} />
     </div>
   );
 }
