@@ -2,7 +2,7 @@ import type { Protocol } from "pmtiles";
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk, Sharer } from "@/lib/people";
 import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing, PublishAnswer, PublishOffer, PublishRequest, PublishStarted, SavedListing, SavedShape,
-  LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerList, ServerPick, SessionAnswer,
+  LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerChange, ServerList, ServerPick, SessionAnswer,
   SharePeople, RegionNeed, RegionRow } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
@@ -164,6 +164,9 @@ export interface Backend {
   addCopies(mapID: string, layers: string[]): Promise<Answer<Portable>>;
   servers(): Promise<Answer<ServerList>>;
   addServer(kind: string, address: string, name: string): Promise<Answer<ServerList>>;
+  editServer(id: string, change: ServerChange): Promise<Answer<ServerList>>;
+  duplicateServer(id: string): Promise<Answer<ServerList>>;
+  deleteServer(id: string): Promise<Answer<ServerList>>;
   importServers(file: Blob): Promise<Answer<ServerList>>;
   exportServers(id?: string): Promise<Answer<Saved>>;
   addServerLayers(mapID: string, picks: ServerPick[]): Promise<Answer<Portable>>;

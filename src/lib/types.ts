@@ -690,6 +690,15 @@ export interface Server {
 
 export interface ServerList {
   servers: Server[];
+  /** 183 The copy a duplicate made, opened as the phone opens it. */
+  opened?: string;
+}
+
+/** 183 A server's name, mark and background as its General changes them; "" tint is Auto. */
+export interface ServerChange {
+  name?: string;
+  symbol?: string;
+  tintHex?: string;
 }
 
 export interface AddressReading {

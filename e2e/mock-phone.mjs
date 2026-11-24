@@ -50,7 +50,7 @@ function freshMaps() {
 
 let phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
   maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
-  tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+  tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], serverEdits: new Map(), goneServers: new Set(), identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [], serverLookAnswers: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 
@@ -174,7 +174,7 @@ function freshRegions() {
 function reset() {
   phone = { name: "Riki's iPad", asksFirst: false, guests: new Map(), removedAddresses: new Set(),
     maps: [...realMaps(), ...freshMaps()], served: true, liveAsks: [], regions: freshRegions(), location: null,
-    tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
+    tokens: new Set(), pairs: new Map(), placeAsks: [], addedServers: [], importedServers: [], serverEdits: new Map(), goneServers: new Set(), identified: [], answersServers: false, pictureKinds: [], dxfAdds: [], detailsAsked: [], laysOutDetails: false, trainDelay: 3, liveWindow: 120, liveAnsweredAt: null, rowsOnly: false, searchAsks: [], searchMissing: false, apiAdds: [], keptCookie: "", languages: ["de", "sk"], droppedSymbols: new Set(), listsRowIcons: true, takesTranslations: true,
     offlineAsks: [], discarded: [], esriAsks: [], serverLookAnswers: [],
     legendEverywhere: true, ownsSettings: true, shares: freshShares(), folderShares: {} };
 }
@@ -1129,6 +1129,11 @@ function layerOptions(each) {
 // 2966: the phone's saved servers, as `PeerWebServers` walks them.
 const OSM = "0D5E1F00-0000-4000-8000-000000000001";
 const ZBGIS = "0D5E1F00-0000-4000-8000-000000000002";
+// 183: as `PeerWebServerEdit` keeps them: the shipped list stays, edits and deletions lie over it.
+const heldServers = () => [...SERVERS, ...phone.addedServers, ...phone.importedServers]
+  .filter((server) => !phone.goneServers.has(server.id))
+  .map((server) => ({ ...server, ...phone.serverEdits.get(server.id) }));
+
 const SERVERS = [
   { id: OSM, name: "OpenTopoMap", line: "Tiles", address: "https://tile.opentopomap.org/{z}/{x}/{y}.png",
     kind: "Tile server", symbol: "mountain.2", rows: [
@@ -1604,7 +1609,7 @@ function edit(each, query, response) {
 
 const WORDS = { language: "en", words: { "layers.1": "1 layer", "layers.2": "2 layers",
   languages: "de,sk", "language.de": "German", "language.sk": "Slovak",
-  mapSymbols: "map,mountain.2,tent", styleSymbols: "map,snowflake,sun.max", iconTints: "#F2B8B5,#B5D8F2",
+  mapSymbols: "map,mountain.2,tent", serverSymbols: "server.rack,globe,map", styleSymbols: "map,snowflake,sun.max", iconTints: "#F2B8B5,#B5D8F2",
   folderSymbols: FOLDER_SYMBOLS.join(",") } };
 
 // Read off `out/`, as the app reads its bundle; nothing outside it.
@@ -1769,7 +1774,7 @@ async function answer(request, response) {
       if (SERVERS.some((held) => held.name === server.name)) continue;
       phone.importedServers.push({ id: randomUUID().toUpperCase(), name: server.name, line: "Tiles", rows: [] });
     }
-    return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
+    return json(response, { servers: heldServers() });
   }
   if (parts[2] === "add-server" && parts.length === 3) {
     // 2996: as `PeerWebAddServer` answers: read first, then saved and listed with the rest.
@@ -1786,12 +1791,39 @@ async function answer(request, response) {
     phone.addedServers.push({ id, name, line: SERVER_KIND_LINES[kind], rows: [
       { kind: "layer", title: ogc ? "National map" : "Geology", subtitle: ogc ? kind.toUpperCase() : "Areas", depth: 0,
         pick: { server: id, layer: ogc ? "pixelkarte" : "0" } }] });
-    return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
+    return json(response, { servers: heldServers() });
+  }
+  if (parts[2] === "servers" && parts.length === 5) {
+    // 183: as `PeerWebServerEdit` answers: the servers as they now are, a duplicate naming its copy.
+    if (method !== "POST") return send(response, 405, "");
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const server = heldServers().find((each) => each.id === parts[3]);
+    if (!server) return send(response, 404, "");
+    if (parts[4] === "edit") {
+      const change = { ...phone.serverEdits.get(server.id) };
+      const name = (url.searchParams.get("name") ?? "").trim();
+      if (name) change.name = name;
+      if (url.searchParams.get("symbol")) change.symbol = url.searchParams.get("symbol");
+      if (url.searchParams.has("tint")) change.iconTintHex = url.searchParams.get("tint") || undefined;
+      phone.serverEdits.set(server.id, change);
+      return json(response, { servers: heldServers() });
+    }
+    if (parts[4] === "duplicate") {
+      const id = randomUUID().toUpperCase();
+      phone.addedServers.push({ ...server, id, name: `${server.name} copy` });
+      return json(response, { servers: heldServers(), opened: id });
+    }
+    if (parts[4] === "delete") {
+      phone.goneServers.add(server.id);
+      return json(response, { servers: heldServers() });
+    }
+    return send(response, 405, "");
   }
   if (parts[2] === "servers" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
-    return json(response, { servers: [...SERVERS, ...phone.addedServers, ...phone.importedServers] });
+    return json(response, { servers: heldServers() });
   }
   if (parts[2] === "saved" && parts.length <= 4) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");

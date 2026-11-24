@@ -10,7 +10,7 @@ import { BY_NAME } from "@/lib/places";
 import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerList, ServerPick, ServerRow, ServerTune, ServiceRead,
+  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerChange, ServerList, ServerPick, ServerRow, ServerTune, ServiceRead,
   Loading, SavedListing, SavedRow, SavedShape, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { NO_FILTER, type SavedFilter, savedBox, shownSaved } from "@/lib/saved";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
@@ -1179,6 +1179,29 @@ export async function addServer(kind: string, address: string, name: string): Pr
   if (!servers) return false;
   set({ servers });
   return true;
+}
+
+/** 183 The phone changes the server's General and answers with the servers as they now are. */
+export async function editServer(id: string, change: ServerChange): Promise<boolean> {
+  const servers = told(await editing(() => backend.editServer(id, change)));
+  if (servers) set({ servers });
+  return servers != null;
+}
+
+/** 183 As the phone's Duplicate: the copy opens on its General. */
+export async function duplicateServer(id: string) {
+  const servers = told(await editing(() => backend.duplicateServer(id)));
+  if (!servers) return;
+  set({ servers });
+  if (servers.opened) go({ screen: "servers", server: servers.opened, part: "general" });
+}
+
+/** 183 The server goes; layers taken from it stay on their maps, as on the phone. */
+export async function deleteServer(id: string) {
+  const servers = told(await editing(() => backend.deleteServer(id)));
+  if (!servers) return;
+  set({ servers });
+  openServer(null);
 }
 
 export function tickServerRow(key: string, pick: ServerPick) {
