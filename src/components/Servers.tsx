@@ -116,12 +116,12 @@ function ServerLayerView({ server, keyed }: { server: Server; keyed: ServerLayer
   }, [server.id, keyed]);
   return (
     <div id="serverLayerPage" className={page?.scope ? "scoped" : undefined}>
-      <button type="button" className="text-button" id="serverLayerBack" onClick={() => openServerLayer(server.id, null)}>
+      <button type="button" className="text-button" id="serverOwnLayerBack" onClick={() => openServerLayer(server.id, null)}>
         <Sym name="chevron.backward" />{words.layers}
       </button>
       {!page ? <div className="foot-note">…</div> : (
         <>
-          <h2 className="page-title" id="serverLayerName">{page.name}</h2>
+          <h2 className="page-title" id="serverOwnLayerName">{page.name}</h2>
           {page.scope ? <ScopeHeader scope={page.scope} /> : null}
           {page.address ? <>
             <h2 className="title">{words.address}</h2>
