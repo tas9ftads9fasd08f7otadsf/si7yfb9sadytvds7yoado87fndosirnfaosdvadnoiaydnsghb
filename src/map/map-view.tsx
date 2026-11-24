@@ -13,6 +13,7 @@ import { textValues } from "@/lib/feature";
 import { type ShownFeature, drawStyle, failed, isDark, notice, showPlace, shownMapOf, useViewer } from "@/store/viewer";
 import type { MapControl, SavedMark } from "./control";
 import { heightModel, threeDView } from "./three-d";
+import { requestHeaders } from "@/lib/request-headers";
 
 const PICK = 6;
 const MOST_ANSWERS = 20;
@@ -35,7 +36,12 @@ export function createMapView(container: HTMLElement): MapControl {
   const map = new maplibregl.Map({
     container, style: { version: 8, sources: {}, layers: [] },
     center: OPENING.center, zoom: OPENING.zoom, hash: true, validateStyle: false, attributionControl: false,
-    maxPitch: 85
+    maxPitch: 85,
+    // A layer's header keys go to its own host only.
+    transformRequest: (url) => {
+      const headers = requestHeaders(url);
+      return headers ? { url, headers } : { url };
+    }
   });
   // Among the map's own controls, where a browser's location button is looked for.
   const phoneButton = document.createElement("button");

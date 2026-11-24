@@ -162,6 +162,8 @@ export function refusesToken(error: unknown): boolean {
 
 export interface Person {
   name: string;
+  /** The user record name in this container, which rikimaps 3656 seals a map's keys with. */
+  recordName?: string;
 }
 
 const nameOf = (identity: CKIdentity | undefined): string => {
@@ -280,7 +282,7 @@ export class Cloud {
   }
 
   private async signedIn(container: CKContainer, identity: CKIdentity, announce = true) {
-    this.person = { name: await this.named(container, identity) };
+    this.person = { name: await this.named(container, identity), recordName: identity.userRecordName };
     if (!this.listening) {
       this.listening = true;
       void container.registerForNotifications().then(async () => {
