@@ -1,4 +1,4 @@
-/* A page for a computer's screen: a top bar, a rail, the screen beside it, a status line. */
+/* A computer's page: a top bar, a rail, the screen beside it, a status line; 179 a phone's below. */
 /* 30 the design's palette; the names before it point at it until their screens move. */
 :root {
   --ground: #f2f2f7; --card: #ffffff; --text: #1c1c1e; --sub: #6c6c70; --sep: rgba(60, 60, 67, 0.16);
@@ -114,7 +114,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   padding: 0 14px; font-size: 15px; }
 #viewers, #traffic { display: none; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 20px;
   background: var(--inset); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-#traffic { display: inline-flex; }
+#traffic, #viewers:not([hidden]) { display: inline-flex; }
 #viewers .sym, #traffic .sym { font-size: 14px; color: var(--sub); }
 #traffic span { min-width: 58px; }
 #rail { position: absolute; top: var(--top); bottom: var(--status); left: 0; width: var(--rail); z-index: 4;
@@ -419,7 +419,7 @@ body.side-hidden #regionNeeds { left: calc(var(--rail) + 12px); }
 #offline .spinner { width: 16px; height: 16px; border-width: 2px; margin: 0; }
 
 /* Item 1994: until the phone lets this browser in, nothing it shares is drawn. */
-#gate, #small { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
+#gate { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
   padding: 24px; background: var(--scrim); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 body.gated #gate { display: flex; }
 /* 134: no one is signed in, so the editor behind is not shown either. */
@@ -456,11 +456,6 @@ body.gated #gate { display: flex; }
 @media (prefers-reduced-motion: reduce) {
   .pending, #loadingBar i { animation: none; }
   #loadingBar i { width: 100%; opacity: 0.5; }
-}
-/* Item 1994: a phone's or a small window's size is not supported; the app is the way there. */
-@media (max-width: 899px), (max-height: 499px) {
-  html:not([data-any-size]) #small { display: flex; z-index: 30; }
-  html:not([data-any-size]) :is(#top, #rail, #side, #map, #status) { visibility: hidden; }
 }
 /* 131: Riki Maps' own icon, rounded as the home screen rounds it. */
 .app-icon { display: inline-block; flex: none; border-radius: 22.5%; background: center / cover no-repeat;
@@ -1106,3 +1101,74 @@ body.place-open .maplibregl-ctrl-bottom-right { right: 396px; }
 .trail button[aria-current="location"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 #apiTree .row > button.words { text-align: left; background: none; border: 0; padding: 0; flex: 1; }
 #apiTree .row > button.words:disabled { opacity: .6; }
+
+/* 179 TestFlight ADKC: on a phone the rail is a tab bar, the side bar a sheet over the map. */
+#appOffer { display: none; }
+@media (max-width: 899px) {
+  :root { --top: 56px; --rail: 0px; --side: 100%; --status: calc(58px + env(safe-area-inset-bottom)); }
+  body.editing { --side: 100%; }
+  #top { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; padding: 0 8px; }
+  #top .start, #top .end { gap: 4px; }
+  #appName, #sideToggle, #mapPicker, #viewers:not([hidden]), #traffic, #device { display: none; }
+  #searchBox kbd { display: none; }
+  #topNewMap { width: 40px; padding: 0; font-size: 0; justify-content: center; }
+  #topNewMap .sym { font-size: 17px; }
+  #rail { top: auto; bottom: 0; right: 0; width: auto; height: var(--status); flex-direction: row; justify-content: space-around;
+    gap: 0; padding: 0 4px env(safe-area-inset-bottom); box-shadow: 0 -1px 0 var(--sep); z-index: 7; }
+  #rail a, #rail button { flex: 1; min-width: 0; width: auto; max-width: 84px; height: 50px; border-radius: 14px; font-size: 10px; }
+  #rail :is(a, button) span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #rail .sym { font-size: 20px; }
+  #rail .foot { margin-top: 0; }
+  #side { top: auto; height: min(58%, 520px); right: 0; border-radius: 22px 22px 0 0; z-index: 4;
+    box-shadow: 0 -8px 30px var(--shadow); }
+  body.editing #side { top: var(--top); height: auto; border-radius: 0; }
+  body.side-hidden #side { transform: translateY(100%); }
+  #map, body.side-hidden #map { left: 0; }
+  #details, #data, #settings, #maps { left: 0; bottom: var(--status); }
+  #data, #settings, #maps { padding: 18px 16px 24px; }
+  :is(#data, #settings, #maps) h1 { font-size: 28px; }
+  #data .data-row, #data .data-table.sized .data-row { grid-template-columns: minmax(0, 1fr) auto; padding: 10px 14px; }
+  #data .data-row > :is(span:nth-child(2), span:nth-child(3), .size-cell) { display: none; }
+  #data .data-tabs, #maps .data-tabs { overflow-x: auto; max-width: 100%; }
+  #maps .maps-grid { grid-template-columns: minmax(0, 1fr); }
+  #maps .tile-preview { width: auto; margin-top: 0; }
+  #maps #mapsFind { max-width: none; }
+  #details { display: flex; flex-direction: column; overflow-y: auto; }
+  #details .pane-head { padding: 16px 16px 0; }
+  #details .pane-head h1 span { font-size: 22px; }
+  #details :is(.layout-pane, .settings-pane) { padding: 16px; overflow: visible; }
+  #details .details-pane { flex: none; }
+  #details .preview-pane { padding-top: 16px; }
+  #details .preview-pane .sheet { width: 100%; max-width: 390px; }
+  .edit-head { padding: 16px 16px 0; }
+  .edit-head h1 span { font-size: 22px; }
+  #editTabs { gap: 2px; }
+  #editTabs button { padding: 0 2px; font-size: 12px; }
+  #editBody { padding: 8px 16px 24px; }
+  #editBody .layer-settings { padding-left: 14px; }
+  .styling-grid { grid-template-columns: minmax(0, 1fr); }
+  #livePreview { display: none; }
+  #placePanel { top: auto; left: 8px; right: 8px; bottom: calc(var(--status) + 8px); width: auto; max-height: 62%; z-index: 7; }
+  #switcher { top: calc(var(--top) + 12px); right: 12px; }
+  #switcherPanel { width: calc(100vw - 24px); max-height: calc(100dvh - var(--top) - var(--status) - 80px); }
+  .maplibregl-ctrl-bottom-right { bottom: 16px; padding-right: 12px; }
+  .maplibregl-ctrl-bottom-left { left: 12px; bottom: 10px; }
+  .maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib { max-width: calc(100vw - 96px); }
+  #status { display: none; }
+  #regionOffer, body.side-hidden #regionOffer { left: 0; }
+  :is(#undrawnNote, #regionNeeds), body.side-hidden :is(#undrawnNote, #regionNeeds) { left: 12px; right: 12px; }
+  .modal { width: 100%; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 18px 16px;
+    border-radius: 24px; }
+  .modal-head h1 { font-size: 22px; }
+  .modal .starts .grid, #publish .category-tiles { grid-template-columns: minmax(0, 1fr); }
+  .modal.wide { width: 100%; height: calc(100dvh - 16px); flex-direction: column; }
+  .modal .sources { width: auto; flex-direction: row; overflow-x: auto; padding: 14px 12px 6px; }
+  .modal .sources h1 { display: none; }
+  .modal .sources button { flex: none; }
+  .modal .source-body { padding: 12px 16px 18px; }
+  #appOffer { position: absolute; z-index: 5; top: calc(var(--top) + 64px); left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 4px 0 8px; border-radius: 22px;
+    white-space: nowrap; }
+  #appOffer a { color: var(--link); font-weight: 600; text-decoration: none; }
+  #appOffer .tool.round { width: 36px; height: 36px; background: none; }
+}

@@ -63,6 +63,16 @@ describe("map layers", () => {
     expect(useViewer.getState().editing).toBe(true);
   });
 
+  // 179 bug: the switcher stood over the Maps page, which covers the map it switches
+  it("leaves the pages that cover the map", () => {
+    for (const screen of ["maps", "data", "settings"] as const) {
+      show({ editToken: "t", route: { screen } });
+      const { container, unmount } = render(<LayerSwitcher />);
+      expect(container.innerHTML).toBe("");
+      unmount();
+    }
+  });
+
   // 90 a browser that may only look gets the style alone, and none for a map of one style
   it("gives a looking browser the style and no switches", () => {
     show();
