@@ -232,6 +232,7 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 .row:hover { background: var(--hover); }
 .row .words { flex: 1; min-width: 0; }
 .row .words small { display: block; color: var(--secondary); font-size: 12px; }
+.row .words small.endpoint { font-family: ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
 .row[data-locked] { opacity: 0.45; }
 button.row { width: 100%; border: 0; background: none; text-align: left; }
 button.row.picked { background: var(--fill); }
@@ -255,6 +256,45 @@ button.row:disabled { opacity: 0.6; cursor: default; }
   :root:not([data-theme=light]) .server-look-banner .tone-tile { background: rgb(169 150 255 / 0.18); color: #A996FF; }
 }
 :root[data-theme="dark"] .server-look-banner .tone-tile { background: rgb(169 150 255 / 0.18); color: #A996FF; }
+/* 190 the app's preview over Add layer's server layer page, and its read row */
+#serverLayerPreview .preview-frame { position: relative; margin: 8px 8px 0; border-radius: 16px; overflow: hidden;
+  background: var(--inset); height: 220px; }
+#serverLayerPreview .preview-tiles { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%;
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  touch-action: none; cursor: grab; user-select: none; }
+#serverLayerPreview .tile { display: block; aspect-ratio: 1; background: center / cover no-repeat; }
+#serverLayerPreview .preview-zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column;
+  gap: 4px; background: var(--card); border-radius: 10px; padding: 2px; }
+#serverLayerPreview .read-row { gap: 10px; min-height: 52px; }
+#serverLayerPreview .read-row .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--tertiary); }
+#serverLayerPreview .read-row[data-works=true] .dot { background: #1E8E3E; }
+#serverLayerPreview .read-row[data-works=false] .dot { background: var(--danger); }
+/* 186 as the app's ServerScopeHeader: the server's violet, a capsule and a tinted card */
+#serverLayerPage { --server: #5B3FD6; --server-pill: rgb(91 63 214 / 0.14); --server-banner: rgb(91 63 214 / 0.12); }
+#serverLayerPage .page-title { margin: 10px 16px 4px; font-size: 22px; font-weight: 700; }
+#serverOwnLayerBack { display: inline-flex; align-items: center; gap: 4px; margin: 12px 16px 0; font-size: 14px; }
+#serverLayerPage.scoped #serverOwnLayerBack { color: var(--server); }
+.server-scope { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; margin: 12px 16px 4px; }
+.server-scope .scope-pill { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 12px;
+  border-radius: 15px; background: var(--server-pill); color: var(--server); font-size: 14px; font-weight: 600;
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.server-scope .scope-banner { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 18px;
+  background: var(--server-banner); color: var(--text); font-size: 14px; width: 100%; box-sizing: border-box; }
+.server-scope .scope-banner > :first-child { color: var(--server); font-size: 18px; flex: none; }
+#serverLayerAddress { font-family: ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
+.look-chip { flex: none; padding: 3px 9px; border-radius: 12px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.look-chip.upToDate { color: #1E8E3E; background: rgb(30 142 62 / 0.16); }
+.look-chip.notAnswered { color: #B26A00; background: rgb(178 106 0 / 0.16); }
+.look-chip.keptOwn { color: #0A64D6; background: rgb(10 100 214 / 0.16); }
+#serverLayers .row .open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; padding: 0;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+#serverLayers .row .open > :last-child { color: var(--tertiary); flex: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) #serverLayerPage { --server: #A996FF; --server-pill: rgb(169 150 255 / 0.18);
+    --server-banner: rgb(169 150 255 / 0.14); }
+}
+:root[data-theme="dark"] #serverLayerPage { --server: #A996FF; --server-pill: rgb(169 150 255 / 0.18);
+  --server-banner: rgb(169 150 255 / 0.14); }
 .server-look-review .row.head { gap: 12px; }
 .server-look-review .field.part { display: flex; flex-direction: column; gap: 4px; }
 .server-look-review .changed, .server-look-review .changed-here { color: var(--secondary); }
@@ -291,6 +331,7 @@ label.action { cursor: pointer; display: flex; align-items: center; justify-cont
 .icon-button:hover:not(:disabled) { background: var(--hover); }
 .icon-button:disabled { color: var(--tertiary); cursor: default; }
 .icon-button.danger { color: var(--danger); }
+.icon-button.danger { color: var(--danger); }
 .action.danger { color: var(--danger); }
 .action:disabled { color: var(--tertiary); cursor: default; }
 .confirm-delete { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); }
@@ -315,9 +356,10 @@ label.action { cursor: pointer; display: flex; align-items: center; justify-cont
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; }
 .card.options .sign-grid li { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .card.options .sign-grid .sign { flex: none; width: 24px; height: 24px; background: center / contain no-repeat; }
-.card.options .row.header input, .card.options .row.header-add input { min-width: 0; flex: 1; font: inherit;
+.card.options .row.header input, .card.options .row.header-add input,
+#serverHeaders .row.header input, #serverHeaders .row.header-add input { min-width: 0; flex: 1; font: inherit;
   padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; }
-.card.options .row.header-add { gap: 6px; }
+.card.options .row.header-add, #serverHeaders .row.header-add { gap: 6px; }
 .card.options .row.probe[data-reachable=true] .words { color: var(--on, inherit); }
 .card.options .row.probe[data-reachable=false] .words { color: var(--danger); }
 .field select { width: 100%; font: inherit; padding: 5px 4px; border-radius: 6px; border: 1px solid var(--line);

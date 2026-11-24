@@ -1134,12 +1134,19 @@ const heldServers = () => [...SERVERS, ...phone.addedServers, ...phone.importedS
   .filter((server) => !phone.goneServers.has(server.id))
   .map((server) => ({ ...server, ...phone.serverEdits.get(server.id) }));
 
+// 187: as `PeerWebServers.Listing` says them, with the login's Ask again rates.
+const COOKIE_AGES = [{ value: "0", title: "As they say" }, { value: "600", title: "10 min" }];
+const listedServers = () => ({ servers: heldServers(), cookieAges: COOKIE_AGES });
+const SERVER_KIND_TITLES = { arcgis: "Esri / ArcGIS", tilejson: "TileJSON", tiles: "Tile server", wmts: "WMTS",
+  wms: "WMS", mapproxy: "MapProxy", api: "API" };
+
 const SERVERS = [
   { id: OSM, name: "OpenTopoMap", line: "Tiles", address: "https://tile.opentopomap.org/{z}/{x}/{y}.png",
-    kind: "Tile server", symbol: "mountain.2", rows: [
+    kind: "Tile server", kindID: "tiles", takesLayers: true, symbol: "mountain.2",
+    headers: [{ name: "X-Api-Key", isSet: true }], referrer: null, login: null, rows: [
     { kind: "layer", title: "OpenTopoMap", subtitle: "Raster", depth: 0, pick: { server: OSM, layer: "" } }] },
   { id: ZBGIS, name: "ZBGIS", line: "Esri / ArcGIS · 3 services", address: "https://zbgis.test/arcgis/rest/services",
-    kind: "Esri / ArcGIS", facts: [{ name: "Version", value: "11.1" }], rows: [
+    kind: "Esri / ArcGIS", kindID: "arcgis", facts: [{ name: "Version", value: "11.1" }], rows: [
     { kind: "heading", title: "Base", depth: 0 },
     { kind: "heading", title: "Parcels", subtitle: "MapServer", depth: 1 },
     { kind: "layer", title: "Parcels C", subtitle: "Areas", depth: 2,
@@ -1221,9 +1228,10 @@ function startPlaces(kind, wanted) {
     box: { minLon: 20.2, minLat: 49.0, maxLon: 20.4, maxLat: 49.1 } }, title: "Poprad", detail: "Slovakia" }];
 }
 
-// As `PeerWebAddServer.kinds`; an API needs the phone's own form.
+// As `PeerWebAddServer.kinds`.
 const SERVER_KIND_LINES = { arcgis: "Esri / ArcGIS · 1 service", tilejson: "TileJSON · 1 layer",
-  tiles: "Tile server · 1 layer", wmts: "WMTS · 1 layer", wms: "WMS · 1 layer", mapproxy: "MapProxy · 1 layer" };
+  tiles: "Tile server · 1 layer", wmts: "WMTS · 1 layer", wms: "WMS · 1 layer", mapproxy: "MapProxy · 1 layer",
+  api: "API" };
 
 function portable(each) {
   return { id: each.id, name: each.name, note: each.note, category: each.category, nameTranslations: each.nameTranslations,
@@ -1774,7 +1782,7 @@ async function answer(request, response) {
       if (SERVERS.some((held) => held.name === server.name)) continue;
       phone.importedServers.push({ id: randomUUID().toUpperCase(), name: server.name, line: "Tiles", rows: [] });
     }
-    return json(response, { servers: heldServers() });
+    return json(response, listedServers());
   }
   if (parts[2] === "add-server" && parts.length === 3) {
     // 2996: as `PeerWebAddServer` answers: read first, then saved and listed with the rest.
@@ -1788,10 +1796,18 @@ async function answer(request, response) {
     const id = randomUUID().toUpperCase();
     const name = url.searchParams.get("name") || new URL(address).host;
     const ogc = kind === "wmts" || kind === "wms";
+    if (kind === "api") {
+      // 188: one endpoint, the address itself, named by its path's last part.
+      const named = new URL(address).pathname.split("/").filter(Boolean).pop()?.split(".")[0] || name;
+      phone.addedServers.push({ id, name, line: `${new URL(address).host} · API`, kind: "API", kindID: "api", address,
+        takesLayers: true, rows: [{ kind: "layer", title: named, subtitle: "Points", depth: 0, endpoint: address,
+          pick: { server: id, layer: "" } }] });
+      return json(response, listedServers());
+    }
     phone.addedServers.push({ id, name, line: SERVER_KIND_LINES[kind], rows: [
       { kind: "layer", title: ogc ? "National map" : "Geology", subtitle: ogc ? kind.toUpperCase() : "Areas", depth: 0,
         pick: { server: id, layer: ogc ? "pixelkarte" : "0" } }] });
-    return json(response, { servers: heldServers() });
+    return json(response, listedServers());
   }
   if (parts[2] === "servers" && parts.length === 5) {
     // 183: as `PeerWebServerEdit` answers: the servers as they now are, a duplicate naming its copy.
@@ -1807,23 +1823,91 @@ async function answer(request, response) {
       if (url.searchParams.get("symbol")) change.symbol = url.searchParams.get("symbol");
       if (url.searchParams.has("tint")) change.iconTintHex = url.searchParams.get("tint") || undefined;
       phone.serverEdits.set(server.id, change);
-      return json(response, { servers: heldServers() });
+      return json(response, listedServers());
     }
     if (parts[4] === "duplicate") {
       const id = randomUUID().toUpperCase();
       phone.addedServers.push({ ...server, id, name: `${server.name} copy` });
-      return json(response, { servers: heldServers(), opened: id });
+      return json(response, { ...listedServers(), opened: id });
     }
     if (parts[4] === "delete") {
       phone.goneServers.add(server.id);
-      return json(response, { servers: heldServers() });
+      return json(response, listedServers());
+    }
+    if (parts[4] === "form") {
+      // 187: as `PeerWebServerForm`: a new address is read first; values stay here, the page hears isSet.
+      const address = (url.searchParams.get("address") ?? "").trim();
+      if (address.includes("silent")) return send(response, 409, "Server replied 404");
+      const kindID = url.searchParams.get("kind");
+      if (!SERVER_KIND_TITLES[kindID]) return send(response, 409, "This kind of server cannot be taken");
+      const was = new Map((server.headers ?? []).map((header) => [header.name.toLowerCase(), header.isSet]));
+      const headers = JSON.parse(url.searchParams.get("headers") || "[]").map((header) =>
+        ({ name: header.name, isSet: Boolean(header.value) || Boolean(was.get(header.name.toLowerCase())) }));
+      const login = JSON.parse(url.searchParams.get("login") || "null");
+      phone.serverEdits.set(server.id, { ...phone.serverEdits.get(server.id), address, kindID,
+        kind: SERVER_KIND_TITLES[kindID], referrer: url.searchParams.get("referrer") || null, headers, login });
+      return json(response, listedServers());
+    }
+    if (parts[4] === "add-layer") {
+      // 188: as `PeerWebServerEdit.typedLayer`: an address on the server's own host, or an Esri number.
+      const typed = url.searchParams.get("address") ?? "";
+      const number = url.searchParams.get("number");
+      const host = (address) => { try { return new URL(address).host; } catch { return null; } };
+      if (number == null && host(typed) !== host(server.address ?? "")) {
+        return send(response, 409, `The address has to be on ${host(server.address ?? "")}, as the server's is.`);
+      }
+      const layer = `byhand-${randomUUID()}`;
+      const title = url.searchParams.get("name") || (number ?? typed.split("/").pop().split(".")[0]);
+      const row = { kind: "layer", title, depth: 0, byHand: true, pick: { server: server.id, layer },
+        ...(server.kindID === "api" ? { endpoint: typed, subtitle: "Points" } : {}) };
+      phone.serverEdits.set(server.id, { ...phone.serverEdits.get(server.id), rows: [...server.rows, row] });
+      return json(response, listedServers());
+    }
+    if (parts[4] === "remove-layer") {
+      const layer = url.searchParams.get("layer");
+      const rows = server.rows.filter((row) => !(row.byHand && row.pick?.layer === layer));
+      phone.serverEdits.set(server.id, { ...phone.serverEdits.get(server.id), rows });
+      return json(response, listedServers());
     }
     return send(response, 405, "");
+  }
+  if (parts[2] === "server-preview" && parts.length === 3) {
+    // 190: as `PeerWebServerPreview`: Read again's row, then each tile drawn by the phone with its keys.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const server = heldServers().find((each) => each.id === url.searchParams.get("server"));
+    if (!server) return send(response, 404, "");
+    if (url.searchParams.has("z")) {
+      return send(response, 200, PIXEL, "image/png");
+    }
+    if ((server.address ?? "").includes("silent")) return json(response, { works: false, said: "Server replied 404" });
+    if (server.kindID === "api") return json(response, { works: true, said: "Answered" });
+    return json(response, { works: true, said: "256 px · PNG",
+      picture: { z: 7, x: 70, y: 44, minZoom: 0, maxZoom: 17 } });
+  }
+  if (parts[2] === "server-layer" && parts.length === 3) {
+    // 186: as `PeerWebServerLayer` answers: the phone's own page, an API layer's under its scope.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const server = heldServers().find((each) => each.id === url.searchParams.get("server"));
+    const service = url.searchParams.get("service");
+    const row = server?.rows.find((each) => each.pick && each.pick.layer === url.searchParams.get("layer")
+      && (each.pick.service ?? null) === service);
+    if (!row) return send(response, 404, "");
+    const page = { name: row.title, serverName: server.name, look: [], maps: [],
+      footnote: "The map keeps this layer's service, so its other layers can be ticked later." };
+    if (server.kindID !== "api") return json(response, { ...page, zooms: "0–19", covers: "Slovakia" });
+    return json(response, { ...page, address: row.endpoint,
+      scope: { pill: `Server · ${server.name}`, banner: "You are editing the server's layer. No map of yours uses it yet." },
+      look: [{ part: "markers", title: "Markers", detail: "Dot · One colour" }, { part: "details", title: "Details" },
+        { part: "questions", title: "Questions" }],
+      versionNote: "Saving makes version 1. Maps that use this layer are asked whether to take it.",
+      footnote: "Add an API from Add layer › Servers, where its location key is picked." });
   }
   if (parts[2] === "servers" && parts.length === 3) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
-    return json(response, { servers: heldServers() });
+    return json(response, listedServers());
   }
   if (parts[2] === "saved" && parts.length <= 4) {
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");

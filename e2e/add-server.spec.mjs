@@ -43,7 +43,8 @@ test("a server that does not answer says why", async ({ page }) => {
 test("New server offers WMTS and WMS, and a WMTS lists its layers", async ({ page }) => {
   await openNewServer(page);
   const kinds = await page.locator("#serverKind option").allTextContents();
-  expect(kinds).toEqual(["Esri / ArcGIS", "TileJSON", "Tile server", "WMTS", "WMS", "MapProxy"]);
+  // 188 an API server is taken too
+  expect(kinds).toEqual(["Esri / ArcGIS", "TileJSON", "Tile server", "WMTS", "WMS", "MapProxy", "API"]);
   await page.locator("#serverKind").selectOption("wmts");
   await page.locator("#serverAddress").fill("https://wmts.geo.admin.ch/1.0.0/WMTSCapabilities.xml");
   const asked = page.waitForRequest((request) => request.url().includes("/add-server?"));

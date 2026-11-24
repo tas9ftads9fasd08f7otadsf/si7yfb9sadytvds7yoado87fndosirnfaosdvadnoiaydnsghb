@@ -7,10 +7,10 @@ import { CoreNotReady, NotOnSite, type Answer, type ChangedElsewhere, type Featu
 import type { Edit, Shelving } from "@/lib/edit";
 import { HEARTBEAT_EVERY, PLACE_LIVE_EVERY, RETRY_EVERY, THEME_KEY, TOKEN_KEY, typedKey } from "@/lib/page";
 import { BY_NAME } from "@/lib/places";
-import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
+import { type EditTab, type Route, type ServerLayerKey, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerChange, ServerList, ServerPick, ServerRow, ServerTune, ServiceRead,
+  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerChange, ServerForm, ServerLayerPage, ServerLayerTyped, ServerList, ServerPreviewRead, ServerPick, ServerRow, ServerTune, ServiceRead,
   Loading, SavedListing, SavedRow, SavedShape, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { NO_FILTER, type SavedFilter, savedBox, shownSaved } from "@/lib/saved";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
@@ -992,9 +992,31 @@ export function openServer(id: string | null) {
   }
 }
 
+/** 186 A server's own layer page, opened off its Layers as the phone's row opens it. */
+export function openServerLayer(server: string, layer: ServerLayerKey | null) {
+  go(layer ? { screen: "servers", server, part: "layers", layer } : { screen: "servers", server, part: "layers" });
+}
+
+/** 190 As the app's Read again: the layer's address asked with the phone's keys; a refusal is no reply. */
+export async function readServerLayer(server: string, { layer, service }: ServerLayerKey): Promise<ServerPreviewRead> {
+  const answer = await editing(() => backend.serverPreview(server, layer, service));
+  return answer?.ok ? answer.value : { works: false, said: answer?.said ?? "" };
+}
+
+/** 190 One tile of the picture, drawn by the phone with its keys; nothing when it has none. */
+export async function serverPreviewTile(server: string, { layer, service }: ServerLayerKey,
+  tile: { z: number; x: number; y: number }): Promise<Blob | null> {
+  const answer = await editing(() => backend.serverPreviewTile(server, layer, service, tile), { quiet: true });
+  return answer?.ok ? answer.value : null;
+}
+
+export async function loadServerLayer(server: string, { layer, service }: ServerLayerKey): Promise<ServerLayerPage | null> {
+  return told(await editing(() => backend.serverLayer(server, layer, service)));
+}
+
 export function showServerPart(part: ServerPart) {
   const { route } = get();
-  if (route.screen === "servers" && route.server) go({ ...route, part });
+  if (route.screen === "servers" && route.server) go({ screen: "servers", server: route.server, part });
   else set({ serverPart: part });
 }
 
@@ -1171,7 +1193,7 @@ export async function loadServers() {
 }
 
 /** The kinds a browser may add; an API server needs the phone's own form. */
-export const SERVER_KINDS = ["arcgis", "tilejson", "tiles", "wmts", "wms", "mapproxy"] as const;
+export const SERVER_KINDS = ["arcgis", "tilejson", "tiles", "wmts", "wms", "mapproxy", "api"] as const;
 
 /** The phone reads the address first and answers with its servers, the new one among them. */
 export async function addServer(kind: string, address: string, name: string): Promise<boolean> {
@@ -1202,6 +1224,26 @@ export async function deleteServer(id: string) {
   if (!servers) return;
   set({ servers });
   openServer(null);
+}
+
+/** 187 As the server form's Save: the phone reads the address with these keys before keeping it. */
+export async function saveServerForm(id: string, form: ServerForm): Promise<boolean> {
+  const servers = told(await editing(() => backend.saveServerForm(id, form)));
+  if (servers) set({ servers });
+  return servers != null;
+}
+
+/** 188 As the phone's New layer: kept on the server, beside what it publishes. */
+export async function addServerLayer(id: string, typed: ServerLayerTyped): Promise<boolean> {
+  const servers = told(await editing(() => backend.addServerLayer(id, typed)));
+  if (servers) set({ servers });
+  return servers != null;
+}
+
+/** 188 Layers already taken from it stay on the maps that took them. */
+export async function removeServerLayer(id: string, layer: string) {
+  const servers = told(await editing(() => backend.removeServerLayer(id, layer)));
+  if (servers) set({ servers });
 }
 
 export function tickServerRow(key: string, pick: ServerPick) {

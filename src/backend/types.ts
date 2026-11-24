@@ -2,7 +2,7 @@ import type { Protocol } from "pmtiles";
 import type { Edit, Shelving } from "@/lib/edit";
 import type { PeopleAsk, Sharer } from "@/lib/people";
 import type { APIAsk, APIRead, DXFReading, APIReading, CoveragePlaces, CoverageSummary, Device, DetailsSheet, EsriChange, EsriListing, FoundPlace, IdentifyListing, PublishAnswer, PublishOffer, PublishRequest, PublishStarted, SavedListing, SavedShape,
-  LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerChange, ServerList, ServerPick, SessionAnswer,
+  LayerOptions, LayerTest, Loading, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, Packages, PhonePlace, Portable, RegionList, ServerChange, ServerForm, ServerLayerPage, ServerLayerTyped, ServerPreviewRead, ServerList, ServerPick, SessionAnswer,
   SharePeople, RegionNeed, RegionRow } from "@/lib/types";
 
 /** What was asked for, or why not: the status and the words that came with it. */
@@ -167,6 +167,13 @@ export interface Backend {
   editServer(id: string, change: ServerChange): Promise<Answer<ServerList>>;
   duplicateServer(id: string): Promise<Answer<ServerList>>;
   deleteServer(id: string): Promise<Answer<ServerList>>;
+  addServerLayer(id: string, typed: ServerLayerTyped): Promise<Answer<ServerList>>;
+  removeServerLayer(id: string, layer: string): Promise<Answer<ServerList>>;
+  saveServerForm(id: string, form: ServerForm): Promise<Answer<ServerList>>;
+  serverLayer(id: string, layer: string, service?: string): Promise<Answer<ServerLayerPage>>;
+  serverPreview(id: string, layer: string, service?: string): Promise<Answer<ServerPreviewRead>>;
+  serverPreviewTile(id: string, layer: string, service: string | undefined, tile: { z: number; x: number; y: number }):
+    Promise<Answer<Blob>>;
   importServers(file: Blob): Promise<Answer<ServerList>>;
   exportServers(id?: string): Promise<Answer<Saved>>;
   addServerLayers(mapID: string, picks: ServerPick[]): Promise<Answer<Portable>>;
