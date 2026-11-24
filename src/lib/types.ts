@@ -667,6 +667,10 @@ export interface ServerRow {
   depth: number;
   pick: ServerPick;
   takes?: TakeOffer[];
+  /** 188 An API layer's own address; an older phone sends none. */
+  endpoint?: string;
+  /** 188 Typed in on the server's page, so it can be removed there. */
+  byHand?: boolean;
 }
 
 export interface ServerFact {
@@ -686,12 +690,39 @@ export interface Server {
   iconTintHex?: string | null;
   facts?: ServerFact[];
   allowsOffline?: boolean;
+  /** 188 Whether New layer is offered: every server but a directory. */
+  takesLayers?: boolean;
+  /** 188 The kind's own name (`arcgis`, `api`…), which says what New layer asks for. */
+  kindID?: string;
+  /** 187 The header names it is asked with, and whether the phone's keychain holds a value. */
+  headers?: { name: string; isSet: boolean }[];
+  referrer?: string | null;
+  /** 187 The page asked for cookies first, as the server form's login rows set it. */
+  login?: CookiePreflight | null;
+}
+
+/** 187 The server form's address part as sent; a header without a value keeps the phone's. */
+export interface ServerForm {
+  kind: string;
+  address: string;
+  referrer: string;
+  headers: { name: string; value?: string }[];
+  login: CookiePreflight | null;
+}
+
+/** 188 A layer typed in on a server's page: an Esri layer's number, else its address. */
+export interface ServerLayerTyped {
+  name: string;
+  address?: string;
+  number?: number;
 }
 
 export interface ServerList {
   servers: Server[];
   /** 183 The copy a duplicate made, opened as the phone opens it. */
   opened?: string;
+  /** 187 How long a login's cookies are kept, as the phone offers it. */
+  cookieAges?: APIChoice[];
 }
 
 /** 183 A server's name, mark and background as its General changes them; "" tint is Auto. */

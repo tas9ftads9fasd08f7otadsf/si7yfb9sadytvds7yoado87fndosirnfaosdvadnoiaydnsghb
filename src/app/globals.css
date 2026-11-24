@@ -232,6 +232,7 @@ h2.title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-
 .row:hover { background: var(--hover); }
 .row .words { flex: 1; min-width: 0; }
 .row .words small { display: block; color: var(--secondary); font-size: 12px; }
+.row .words small.endpoint { font-family: ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
 .row[data-locked] { opacity: 0.45; }
 button.row { width: 100%; border: 0; background: none; text-align: left; }
 button.row.picked { background: var(--fill); }
@@ -291,6 +292,7 @@ label.action { cursor: pointer; display: flex; align-items: center; justify-cont
 .icon-button:hover:not(:disabled) { background: var(--hover); }
 .icon-button:disabled { color: var(--tertiary); cursor: default; }
 .icon-button.danger { color: var(--danger); }
+.icon-button.danger { color: var(--danger); }
 .action.danger { color: var(--danger); }
 .action:disabled { color: var(--tertiary); cursor: default; }
 .confirm-delete { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); }
@@ -315,9 +317,10 @@ label.action { cursor: pointer; display: flex; align-items: center; justify-cont
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; }
 .card.options .sign-grid li { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .card.options .sign-grid .sign { flex: none; width: 24px; height: 24px; background: center / contain no-repeat; }
-.card.options .row.header input, .card.options .row.header-add input { min-width: 0; flex: 1; font: inherit;
+.card.options .row.header input, .card.options .row.header-add input,
+#serverHeaders .row.header input, #serverHeaders .row.header-add input { min-width: 0; flex: 1; font: inherit;
   padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; }
-.card.options .row.header-add { gap: 6px; }
+.card.options .row.header-add, #serverHeaders .row.header-add { gap: 6px; }
 .card.options .row.probe[data-reachable=true] .words { color: var(--on, inherit); }
 .card.options .row.probe[data-reachable=false] .words { color: var(--danger); }
 .field select { width: 100%; font: inherit; padding: 5px 4px; border-radius: 6px; border: 1px solid var(--line);
