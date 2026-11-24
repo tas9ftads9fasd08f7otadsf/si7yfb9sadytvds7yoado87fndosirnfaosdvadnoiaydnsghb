@@ -82,6 +82,7 @@ jobs:
           SWIFT="${SWIFT/#\~/$HOME}" rikimaps/tools/linux-core-tests.sh
 
       - uses: actions/upload-artifact@v6
+        if: success()
         with:
           name: riki-core-${{ steps.commit.outputs.sha }}
           path: dist/riki-core
@@ -93,3 +94,11 @@ jobs:
           SHA: ${{ steps.commit.outputs.sha }}
         run: |
           printf '### riki-core-%s\n\n`RIKI_CORE_REF=%s npm run fetch:core`\n' "$SHA" "$SHA" >> "$GITHUB_STEP_SUMMARY"
+
+      # 178 A build refused by its sum is kept under another name, for fetch:core never to take it.
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: refused-riki-core-${{ steps.commit.outputs.sha }}
+          path: dist/riki-core
+          if-no-files-found: ignore

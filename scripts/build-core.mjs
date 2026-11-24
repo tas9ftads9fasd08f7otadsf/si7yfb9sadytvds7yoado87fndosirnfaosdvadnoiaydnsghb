@@ -191,6 +191,14 @@ async function installSdk(swift, scratch) {
   await rm(file);
 }
 
+/** 178 Each object the link took, in its order, with its sum: two builds that differ say where. */
+async function objectSums(release) {
+  const list = (await readFile(path.join(release, `${CONTRACT.product}.product`, "Objects.LinkFileList"), "utf8"))
+    .split("\n").filter(Boolean);
+  const lines = await Promise.all(list.map(async (file) => `${sha256Of(await readFile(file.replace(/^'|'$/g, "")))}  ${path.relative(release, file.replace(/^'|'$/g, ""))}`));
+  return `${lines.join("\n")}\n`;
+}
+
 export async function build({ dir, pin, out, env = process.env }) {
   const problem = checkoutProblem(dir, pin.ref);
   if (problem) throw new Error(problem);
@@ -206,6 +214,7 @@ export async function build({ dir, pin, out, env = process.env }) {
   if (!existsSync(opt)) throw new Error("wasm-opt is not installed: run npm ci");
   const wasm = path.join(out, "riki-core.wasm");
   execFileSync(opt, ["-Oz", "--strip-debug", "--strip-producers", "--all-features", built, "-o", wasm], { stdio: "inherit" });
+  await writeFile(path.join(out, "objects.sha256"), await objectSums(path.dirname(built)));
   const bytes = await readFile(wasm);
   const sum = sha256Of(bytes);
   console.log(`${os.cpus().length} cores; before wasm-opt sha256 ${sha256Of(await readFile(built))}, after ${sum}`);
