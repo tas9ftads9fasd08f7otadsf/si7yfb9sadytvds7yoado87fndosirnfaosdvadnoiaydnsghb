@@ -39,7 +39,9 @@ test("Edit map offers what the site does and leaves out the rest, staying connec
   // 94 each tab looked through, as what the site leaves out may sit under any
   await editTab(page, "General");
   await expect(page.getByRole("textbox", { name: "Name" }).first()).toBeVisible();
-  for (const tab of ["General", "Offline", "Layers"]) {
+  // 3701 the site offers no offline download, so it has no Offline tab
+  await expect(page.locator("#editTab-offline")).toHaveCount(0);
+  for (const tab of ["General", "Layers"]) {
     await editTab(page, tab);
     // 176 Export map is the site's since riki_export
     for (const id of ["#duplicateMap", "#coverageBox", "#iconPictureFile", "#takePreview"]) {

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { backend } from "@backend";
 import type { ServerList } from "@/lib/types";
 import { resetViewer, useViewer } from "@/store/viewer";
 import { AddLayer, matchingServers } from "./AddLayer";
@@ -101,5 +102,17 @@ describe("Add layer's Servers", () => {
     fireEvent.click(screen.getByRole("button", { name: "Adjust before adding" }));
     fireEvent.click(screen.getByRole("button", { name: "Change" }));
     expect(screen.getByText("1 layers selected")).toBeTruthy();
+  });
+
+  // 3701 the site offers no offline download, so a layer's page has no switch for it
+  it("leaves out Allow offline download where the target offers none", () => {
+    seed();
+    const offers = vi.spyOn(backend, "offers").mockImplementation((feature) => feature !== "offline");
+    render(<AddLayer source="server" />);
+    fireEvent.click(screen.getByRole("button", { name: /III-1 Plochy/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Adjust before adding" }));
+    expect(screen.getByText("Address and login come from the server")).toBeTruthy();
+    expect(screen.queryByRole("switch", { name: "Allow offline download" })).toBeNull();
+    offers.mockRestore();
   });
 });

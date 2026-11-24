@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Server, ServerRow, ServerTune } from "@/lib/types";
 import { listed } from "@/lib/words";
-import { addTunedServerLayer, tuneServerRow, useViewer } from "@/store/viewer";
+import { addTunedServerLayer, offers, tuneServerRow, useViewer } from "@/store/viewer";
 import { Sym } from "../ui/Sym";
 import { Switch } from "../ui/Switch";
 import { Swatch } from "./Styling";
@@ -101,11 +101,13 @@ export function ServerLayerPage({ server, row }: { server: Server; row: ServerRo
             {take?.explains ? <small>{take.explains}</small> : null}
           </div>
         ) : null}
-        <div className="row" id="serverLayerOffline">
-          <span className="words">{words.allowOffline}<small>{words.checkTerms}</small></span>
-          <Switch isOn={picked.allowsOffline} label={words.allowOffline}
-            onChange={(isOn) => pick({ allowsOffline: isOn })} />
-        </div>
+        {offers("offline") ? (
+          <div className="row" id="serverLayerOffline">
+            <span className="words">{words.allowOffline}<small>{words.checkTerms}</small></span>
+            <Switch isOn={picked.allowsOffline} label={words.allowOffline}
+              onChange={(isOn) => pick({ allowsOffline: isOn })} />
+          </div>
+        ) : null}
       </div>
 
       <div className="source-foot">
