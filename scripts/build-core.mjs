@@ -45,7 +45,9 @@ export const SCRATCH = "/tmp/riki-core-build";
 export function swiftBuildArgs(dir, scratch = SCRATCH) {
   return ["build", "--swift-sdk", CONTRACT.sdk.id, "-c", "release", "--product", CONTRACT.product,
     "--scratch-path", path.join(scratch, "build"), "-debug-info-format", "none",
-    "-Xswiftc", "-file-prefix-map", "-Xswiftc", `${dir}=/rikimaps`];
+    "-Xswiftc", "-file-prefix-map", "-Xswiftc", `${dir}=/rikimaps`,
+    // 178 each object kept its IR's hash, which came out two ways, in the module's data
+    "-Xswiftc", "-Xfrontend", "-Xswiftc", "-disable-incremental-llvm-codegen"];
 }
 
 export const sha256Of = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -189,10 +191,6 @@ async function installSdk(swift, scratch) {
   await rm(file);
 }
 
-/** 178 The compiler's own Swift hashes with a seed per run, so one file built two ways. */
-export const buildEnv = (env, swift) => ({ ...env, PATH: `${path.dirname(swift)}:${env.PATH}`,
-  SWIFT_DETERMINISTIC_HASHING: "1" });
-
 /** The objects the link took, in its order. */
 async function linked(release) {
   return (await readFile(path.join(release, `${CONTRACT.product}.product`, "Objects.LinkFileList"), "utf8"))
@@ -224,7 +222,7 @@ export async function build({ dir, pin, out, env = process.env }) {
   await installSdk(swift, scratch);
   const cwd = path.join(dir, CONTRACT.package);
   // Nothing is written in the checkout: SwiftPM's scratch is ours.
-  execFileSync(swift, swiftBuildArgs(dir, scratch), { cwd, stdio: "inherit", env: buildEnv(env, swift) });
+  execFileSync(swift, swiftBuildArgs(dir, scratch), { cwd, stdio: "inherit", env: { ...env, PATH: `${path.dirname(swift)}:${env.PATH}` } });
   const built = path.join(scratch, "build", "wasm32-unknown-wasip1", "release", `${CONTRACT.product}.wasm`);
   const opt = path.join(ROOT, "node_modules", ".bin", "wasm-opt");
   if (!existsSync(opt)) throw new Error("wasm-opt is not installed: run npm ci");
