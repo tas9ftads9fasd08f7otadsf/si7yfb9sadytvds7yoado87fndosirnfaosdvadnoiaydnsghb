@@ -132,6 +132,8 @@ export const ENGLISH = {
   mapsUsingLayer: "Maps using this layer", whatMapsStart: "What maps start from", whatPublishes: "What it publishes",
   onlyOwnMaps: "Only you see this list: it counts your own maps that took the layer from this server.",
   zooms: "Zooms", covers: "Covers",
+  readAgain: "Read again", readDone: "Read", readingNow: "Reading…", noReply: "No reply from the server",
+  noPicture: "There is no picture of this layer to be had.", previewZoomIn: "Zoom in", previewZoomOut: "Zoom out",
   serverForm: "Server", headers: "Headers", addHeader: "Add header", referrer: "Referrer",
   headerSaved: "Saved on this device", headerUnset: "Not set on this device",
   valuesStayPhone: "Values stay on the phone's keychain; this page is told only whether one is set.",

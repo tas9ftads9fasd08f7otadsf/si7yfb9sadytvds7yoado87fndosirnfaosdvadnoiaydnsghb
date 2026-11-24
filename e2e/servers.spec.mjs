@@ -86,3 +86,27 @@ test("Change on a layer's page goes back to the servers, the tick kept", async (
   await expect(page.locator("#addServerLayers")).toBeEnabled();
   await expect(zbgis.getByRole("button", { name: /Orthophoto/ })).toHaveAttribute("aria-pressed", "true");
 });
+
+// 190: the app's preview and Read again: the phone reads the layer, then draws each tile with its keys.
+test("a layer's page reads it, draws its picture, and reads it again", async ({ page }) => {
+  await openServers(page);
+  const zbgis = page.locator("[data-server='0D5E1F00-0000-4000-8000-000000000002']");
+  await zbgis.getByRole("button", { name: /Parcels C/ }).click();
+  const read = page.waitForRequest((request) => request.url().includes("/server-preview?") && !request.url().includes("z="));
+  await zbgis.getByRole("button", { name: "Adjust before adding" }).click();
+  const asked = new URL((await read).url()).searchParams;
+  expect(asked.get("layer")).toBe("0");
+  expect(asked.get("service")).toBe("https://zbgis.test/Base/Parcels/MapServer");
+  const preview = page.locator("#serverLayerPreview");
+  await expect(preview.locator("#serverLayerRead")).toHaveAttribute("data-works", "true");
+  await expect(preview.locator("#serverLayerRead")).toContainText("256 px · PNG");
+  await expect(preview.locator(".tile")).toHaveCount(15);
+  await expect(preview.locator(".tile[data-tile='7/70/44']")).toHaveClass(/drawn/);
+  await page.locator("#addLayerDialog").screenshot({ path: "test-results/server-layer-preview.png" });
+  await preview.getByRole("button", { name: "Zoom in" }).click();
+  await expect(preview.locator(".tile[data-tile='8/140/88']")).toHaveClass(/drawn/);
+  const again = page.waitForRequest((request) => request.url().includes("/server-preview?") && !request.url().includes("z="));
+  await preview.locator("#serverLayerReadAgain").click();
+  await again;
+  await expect(preview.locator(".tile[data-tile='7/70/44']")).toBeVisible();
+});

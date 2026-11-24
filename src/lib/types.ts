@@ -701,6 +701,13 @@ export interface Server {
   login?: CookiePreflight | null;
 }
 
+/** 190 Read again's row, and where the layer's picture opens when the phone can draw one. */
+export interface ServerPreviewRead {
+  works: boolean;
+  said: string;
+  picture?: { z: number; x: number; y: number; minZoom: number; maxZoom: number } | null;
+}
+
 /** 186 A server's own layer page as the phone's shows it; an API layer's wears the scope. */
 export interface ServerLayerPage {
   name: string;

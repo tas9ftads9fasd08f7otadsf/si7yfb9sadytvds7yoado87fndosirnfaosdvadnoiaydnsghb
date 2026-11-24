@@ -10,7 +10,7 @@ import { BY_NAME } from "@/lib/places";
 import { type EditTab, type Route, type ServerLayerKey, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerChange, ServerForm, ServerLayerPage, ServerLayerTyped, ServerList, ServerPick, ServerRow, ServerTune, ServiceRead,
+  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerChange, ServerForm, ServerLayerPage, ServerLayerTyped, ServerList, ServerPreviewRead, ServerPick, ServerRow, ServerTune, ServiceRead,
   Loading, SavedListing, SavedRow, SavedShape, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { NO_FILTER, type SavedFilter, savedBox, shownSaved } from "@/lib/saved";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
@@ -995,6 +995,19 @@ export function openServer(id: string | null) {
 /** 186 A server's own layer page, opened off its Layers as the phone's row opens it. */
 export function openServerLayer(server: string, layer: ServerLayerKey | null) {
   go(layer ? { screen: "servers", server, part: "layers", layer } : { screen: "servers", server, part: "layers" });
+}
+
+/** 190 As the app's Read again: the layer's address asked with the phone's keys; a refusal is no reply. */
+export async function readServerLayer(server: string, { layer, service }: ServerLayerKey): Promise<ServerPreviewRead> {
+  const answer = await editing(() => backend.serverPreview(server, layer, service));
+  return answer?.ok ? answer.value : { works: false, said: answer?.said ?? "" };
+}
+
+/** 190 One tile of the picture, drawn by the phone with its keys; nothing when it has none. */
+export async function serverPreviewTile(server: string, { layer, service }: ServerLayerKey,
+  tile: { z: number; x: number; y: number }): Promise<Blob | null> {
+  const answer = await editing(() => backend.serverPreviewTile(server, layer, service, tile), { quiet: true });
+  return answer?.ok ? answer.value : null;
 }
 
 export async function loadServerLayer(server: string, { layer, service }: ServerLayerKey): Promise<ServerLayerPage | null> {

@@ -160,6 +160,11 @@ export const backend: Backend = {
     const asked = Object.entries({ name, address, number: number?.toString() }).filter(([, value]) => value !== undefined);
     return editing(`${ROOT}/servers/${id}/add-layer?${new URLSearchParams(asked as [string, string][])}`);
   },
+  serverPreview: (server, layer, service) => editing(`${ROOT}/server-preview?${
+    new URLSearchParams({ server, layer, ...(service ? { service } : {}) })}`, "GET"),
+  serverPreviewTile: (server, layer, service, { z, x, y }) => editing(`${ROOT}/server-preview?${new URLSearchParams({
+    server, layer, ...(service ? { service } : {}), z: String(z), x: String(x), y: String(y) })}`, "GET", undefined,
+  (answer) => answer.blob()),
   serverLayer: (server, layer, service) => editing(`${ROOT}/server-layer?${
     new URLSearchParams({ server, layer, ...(service ? { service } : {}) })}`, "GET"),
   saveServerForm: (id, { kind, address, referrer, headers, login }) => editing(`${ROOT}/servers/${id}/form?${
