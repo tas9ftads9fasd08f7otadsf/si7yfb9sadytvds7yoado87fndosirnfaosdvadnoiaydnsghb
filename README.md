@@ -101,6 +101,8 @@ owner, reader for a read-only participant, else the member row's `roleRaw` (not 
 `riki_switches` (rikimaps 3650, ABI 0.6.0) takes `{rows, id}` and answers a map's switches as a phone's
 `GET /maps/<id>/switches` does, for Edit map and the Styles rows; what only a phone holds (Settings › Map, removed
 built-in styles, Delete, the lock) is off.
+`riki_export` (rikimaps 3651, ABI 0.7.0) takes `{rows, id}` and answers `{name, text}`, the `.mapson` a phone's
+`GET /maps/<id>/mapson` hands out: signed, keys left out and named, no servers, proxies or header values.
 A map the person shares is moved by Core Data into a private zone of its own, `com.apple.coredata.cloudkit.share.<UUID>`, so the site reads that zone beside the mirror zone and the shared database's.
 Without Swift, run `.github/workflows/core-on-demand.yml` by hand (`gh workflow run core-on-demand.yml`, with
 `-f ref=<rikimaps commit, branch or tag>` for another than the pin): it builds and tests the core and keeps

@@ -23,7 +23,7 @@ async function realCore() {
   wasi.initialize(instance as unknown as Parameters<WASI["initialize"]>[0]);
   const exports = instance.exports as unknown as CoreExports;
   return { core: coreOf(exports), hasPeople: typeof exports.riki_people === "function",
-    hasSwitches: typeof exports.riki_switches === "function" };
+    hasSwitches: typeof exports.riki_switches === "function", hasExport: typeof exports.riki_export === "function" };
 }
 
 /** The rows as the site reads them from CloudKit: `rowOf` for the mirror's records, `shareRowOf` for a share. */
@@ -93,5 +93,24 @@ describe.skipIf(!ASKED && !existsSync(MODULE))("the real riki-core.wasm on recor
       legendEverywhere: true, worldEverywhere: true });
     expect(core.switches(read, DOPRAVA)).toMatchObject({ ownsSettings: false });
     expect(core.switches(read, "nothing")).toMatchObject({ refused: "noSuchMap" });
+  });
+
+  // 176 riki_export: the file is the map the rows hold, signed and in the schema it names
+  it("writes a map's .mapson under its name, or says not ready in a module from before rikimaps 3651", async () => {
+    const { core, hasExport } = await realCore();
+    const read = await rows();
+    if (!hasExport) {
+      expect(() => core.exportMap(read, TATRAS)).toThrow(CoreNotReady);
+      return;
+    }
+    const name = core.map(read, TATRAS).name;
+    const file = core.exportMap(read, TATRAS);
+    if ("refused" in file) throw new Error(`riki_export refused ${file.refused}`);
+    expect(file.name).toBe(`${name.replaceAll("/", "-").trim()}.mapson`);
+    const mapson = JSON.parse(file.text) as Record<string, unknown>;
+    expect(mapson).toMatchObject({ name, _schemaVersion: 1 });
+    expect(String(mapson.$schema)).toMatch(/mapson\.schema\.json$/);
+    expect(String(mapson._signature)).toMatch(/^[A-Za-z0-9+/]{43}=$/);
+    expect(core.exportMap(read, "nothing")).toMatchObject({ refused: "noSuchMap", status: 404 });
   });
 });

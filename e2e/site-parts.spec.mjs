@@ -41,7 +41,8 @@ test("Edit map offers what the site does and leaves out the rest, staying connec
   await expect(page.getByRole("textbox", { name: "Name" }).first()).toBeVisible();
   for (const tab of ["General", "Offline", "Layers"]) {
     await editTab(page, tab);
-    for (const id of ["#exportMap", "#duplicateMap", "#coverageBox", "#iconPictureFile", "#takePreview"]) {
+    // 176 Export map is the site's since riki_export
+    for (const id of ["#duplicateMap", "#coverageBox", "#iconPictureFile", "#takePreview"]) {
       await expect(page.locator(id)).toHaveCount(0);
     }
   }

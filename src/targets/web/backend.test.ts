@@ -4,7 +4,7 @@ import account from "../../../e2e/fixtures/cloud-account.json";
 import type { Device, MapSwitches, Portable } from "@/lib/types";
 import { Cloud, type CKBatchResult, type CKContainer, type CKRecord, type CKSave, type CKZoneChanges, type CloudKitJS } from "./cloud";
 import { CoreNotReady, NotOnSite, type Feature } from "@/backend/types";
-import { CoreMissing, type AddAsk, type Added, type AddressRead, type Applied, type Core, type HistoryEntry, type PeopleRead, type ReadAsk } from "./core";
+import { CoreMissing, type AddAsk, type Added, type AddressRead, type Applied, type Core, type HistoryEntry, type MapsonFile, type PeopleRead, type ReadAsk } from "./core";
 import { queryOf } from "@/lib/edit";
 import { createBackend } from "./backend";
 import type { Reach } from "./reach";
@@ -29,6 +29,8 @@ interface Options {
   /** 108 What the core reads of a share. */
   people?: () => PeopleRead | { refused: string; status?: number };
   switches?: () => MapSwitches | { refused: string; status?: number };
+  /** 176 What the core writes as the map's file. */
+  exported?: () => MapsonFile | { refused: string; status?: number };
   /** 85 Which hosts answer a browser; every one does by default. */
   reach?: Reach;
   /** 86 What the core reads an address as, by round; the recorded answer by default. */
@@ -126,7 +128,8 @@ function stack(options: Options = {}) {
     addTiles: vi.fn(() => account.core.riki_add_layer as unknown as Applied),
     changes: () => options.changes?.() ?? [],
     people: vi.fn(() => options.people?.() ?? (account.core.riki_people as unknown as PeopleRead)),
-    switches: vi.fn(() => options.switches?.() ?? (account.core.riki_switches as unknown as MapSwitches))
+    switches: vi.fn(() => options.switches?.() ?? (account.core.riki_switches as unknown as MapSwitches)),
+    exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile))
   };
   const kept = new Map<string, unknown>();
   const keeping: Keeping = { load: async <T,>(key: string) => kept.get(key) as T | undefined, save: async (k, v) => { kept.set(k, v); } };
@@ -607,11 +610,44 @@ describe("WebBackend's people", () => {
   });
 });
 
+describe("WebBackend's export", () => {
+  const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
+
+  // 176 Export map answered "not on the site yet"; the core writes the file the phone's Share does
+  it("offers Export map and hands the core the rows, saving its text under its name as JSON", async () => {
+    const { backend, core } = stack();
+    expect(backend.offers("exportMap")).toBe(true);
+    const answer = await backend.exportMap(TATRAS);
+    const [rows, id] = vi.mocked(core.exportMap).mock.calls[0]!;
+    expect(id).toBe(TATRAS);
+    expect(rows.some((row) => row.entity === "SharedMap")).toBe(true);
+    expect(answer.ok).toBe(true);
+    if (!answer.ok) return;
+    expect(answer.value.name).toBe("High Tatras.mapson");
+    expect(answer.value.blob.type).toBe("application/json");
+    expect(JSON.parse(await answer.value.blob.text())).toMatchObject({ name: "High Tatras", _schemaVersion: 1 });
+  });
+
+  it("says no such map in the site's words for a map the rows lack, and passes on any other refusal", async () => {
+    const none = stack({ exported: () => ({ refused: "noSuchMap", status: 404 }) });
+    await none.backend.words();
+    expect(await none.backend.exportMap("nope")).toEqual({ ok: false, status: 404, said: "Taká mapa nie je" });
+    const other = stack({ exported: () => ({ refused: "encodeFailed", status: 500 }) });
+    expect(await other.backend.exportMap(TATRAS)).toEqual({ ok: false, status: 500, said: "encodeFailed" });
+  });
+
+  // 176 a module from before rikimaps 3651 has no riki_export, which the page tells as rules not ready
+  it("says the core's rules are not ready while the module lacks the call", async () => {
+    const lacking = stack({ exported: () => { throw new CoreNotReady("no riki_export"); } });
+    await expect(lacking.backend.exportMap(TATRAS)).rejects.toBeInstanceOf(CoreNotReady);
+  });
+});
+
 describe("WebBackend's parts not built yet", () => {
   // 82 the site said "Not connected" for a write it refuses as not done yet
   it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
     const { backend } = stack();
-    const parts: Feature[] = ["newMap", "shelf", "exportMap", "duplicateMap", "pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
+    const parts: Feature[] = ["newMap", "shelf", "duplicateMap", "pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
     expect(parts.filter((part) => backend.offers(part))).toEqual([]);
     // 86 only the tile address and a service's layers are added from the site so far
     expect(backend.offers("addLayer")).toBe(true);
