@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { DXFReading, OtherMap, PackageRow, ServerRow } from "@/lib/types";
+import type { DXFReading, OtherMap, PackageRow, Server, ServerRow } from "@/lib/types";
 import { FILE_KINDS, SERVER_KINDS, addCopies, addFile, isDXF, readDXF, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
   exportServers, importServers, loadOtherLayers, loadPackages, loadServers, offers, tickCopy, tickPackage, tickServerRow, tickServiceLayer,
   useViewer } from "@/store/viewer";
@@ -188,12 +188,39 @@ function ServerLine({ row }: { row: ServerRow }) {
   const isTicked = useViewer((state) => state.serverPicks.has(key));
   const style = { paddingLeft: 14 + row.depth * 14 };
   const lines = <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}</span>;
-  if (row.kind !== "layer") return <div className={row.kind === "note" ? "row dimmed" : "row"} style={style}>{lines}</div>;
+  if (row.kind === "note") return <div className="row dimmed server-note" style={style}>{lines}</div>;
+  if (row.kind !== "layer") return <div className="row server-heading" style={style}><Sym name="folder" />{lines}</div>;
   return (
-    <button type="button" className={isTicked ? "row picked" : "row"} style={style} aria-pressed={isTicked}
-      data-layer={row.pick.layer} onClick={() => tickServerRow(key, row.pick)}>
-      {lines}<Sym name={tickName(isTicked)} />
+    <button type="button" className={isTicked ? "row server-pick picked" : "row server-pick"} style={style}
+      aria-pressed={isTicked} data-layer={row.pick.layer} onClick={() => tickServerRow(key, row.pick)}>
+      <span className="tick" aria-hidden="true">{isTicked ? <Sym name="checkmark" /> : null}</span>{lines}
     </button>
+  );
+}
+
+/** 180 A server whose name or address matches keeps every row; else only the rows that match. */
+export function matchingServers(servers: Server[], query: string): Server[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return servers;
+  const names = (...texts: (string | null | undefined)[]) => texts.some((text) => text?.toLowerCase().includes(needle));
+  return servers.flatMap((server) => {
+    if (names(server.name, server.line, server.address)) return [server];
+    const rows = server.rows.filter((row) => row.kind === "layer" && names(row.title, row.subtitle));
+    return rows.length ? [{ ...server, rows }] : [];
+  });
+}
+
+/** 180 As the app's Servers page: the server's tile and lines, its rows folding away under them. */
+function ServerCard({ server, isOpen, onFold }: { server: Server; isOpen: boolean; onFold: () => void }) {
+  return (
+    <div className="card server-card" data-server={server.id}>
+      <button type="button" className="row server-head" aria-expanded={isOpen} onClick={onFold}>
+        <MarkTile symbol={server.symbol ?? "server.rack"} tint={server.iconTintHex} small />
+        <span className="words">{server.name}<small>{server.line}</small></span>
+        <Sym name={isOpen ? "chevron.up" : "chevron.down"} />
+      </button>
+      {isOpen ? server.rows.map((row, index) => <ServerLine key={index} row={row} />) : null}
+    </div>
   );
 }
 
@@ -254,25 +281,49 @@ function NewServer() {
 function Servers() {
   const words = useViewer((state) => state.words);
   const servers = useViewer((state) => state.servers);
-  const hasPicks = useViewer((state) => state.serverPicks.size > 0);
+  const ticked = useViewer((state) => state.serverPicks.size);
+  const [query, setQuery] = useState("");
+  const [folded, setFolded] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (!servers) void loadServers();
   }, [servers]);
   if (!servers) return <Skeleton />;
+  const shown = matchingServers(servers.servers, query);
+  const fold = (id: string) => setFolded((was) => {
+    const next = new Set(was);
+    if (!next.delete(id)) next.add(id);
+    return next;
+  });
   return (
     <>
-      <h2 className="title">{words.yourServers}</h2>
+      <div className="card search"><div className="field">
+        <input type="search" id="serverSearch" autoComplete="off" spellCheck={false} placeholder={words.searchServers}
+          aria-label={words.searchServers} value={query} onChange={(event) => setQuery(event.target.value)} />
+      </div></div>
+      <div className="title-row">
+        <h2 className="title">{words.yourServers}</h2>
+        <button type="button" className="text-button" id="serverNew"
+          onClick={() => document.getElementById("serverAddress")?.focus()}>
+          <Sym name="plus" />{words.newServer}
+        </button>
+      </div>
       {servers.servers.length === 0 ? <div className="foot-note">{words.noServers}</div> : (
         <>
-          {servers.servers.map((server) => (
-            <div className="card" data-server={server.id} key={server.id}>
-              <div className="row"><span className="words">{server.name}<small>{server.line}</small></span></div>
-              {server.rows.map((row, index) => <ServerLine key={index} row={row} />)}
-            </div>
+          {shown.length === 0 ? (
+            <div className="foot-note" id="serverNoMatch">{filledIn(words.noLayerMatches, "query", query.trim())}</div>
+          ) : shown.map((server) => (
+            <ServerCard key={server.id} server={server} isOpen={query.trim() !== "" || !folded.has(server.id)}
+              onFold={() => fold(server.id)} />
           ))}
-          <button type="button" className="action" id="addServerLayers" disabled={!hasPicks} onClick={addServerLayers}>
-            <Sym name="plus" />{words.add}
-          </button>
+          <div className="source-foot">
+            <span className="foot-note" id="serverTicked">
+              {ticked ? filledIn(words.layersSelected, "count", String(ticked)) : words.nothingSelected}
+            </span>
+            <button type="button" className="action" id="addServerLayers" disabled={ticked === 0}
+              onClick={addServerLayers}>
+              <Sym name="plus" />{ticked ? filledIn(words.addCount, "count", String(ticked)) : words.add}
+            </button>
+          </div>
         </>
       )}
       <ServerFiles />
