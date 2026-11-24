@@ -10,7 +10,7 @@ import { BY_NAME } from "@/lib/places";
 import { type EditTab, type Route, type ServerLayerKey, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerChange, ServerForm, ServerLayerPage, ServerLayerTyped, ServerList, ServerPreviewRead, ServerPick, ServerRow, ServerTune, ServiceRead,
+  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerChange, ServerForm, ServerLayerPage, ServerLayerTyped, ServerList, ServerPreviewRead, FoundServers, ServerPick, ServerRow, ServerTune, ServiceRead,
   Loading, SavedListing, SavedRow, SavedShape, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { NO_FILTER, type SavedFilter, savedBox, shownSaved } from "@/lib/saved";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
@@ -1196,11 +1196,17 @@ export async function loadServers() {
 export const SERVER_KINDS = ["arcgis", "tilejson", "tiles", "wmts", "wms", "mapproxy", "api"] as const;
 
 /** The phone reads the address first and answers with its servers, the new one among them. */
-export async function addServer(kind: string, address: string, name: string): Promise<boolean> {
-  const servers = told(await editing(() => backend.addServer(kind, address, name)));
+export async function addServer(kind: string, address: string, name: string,
+  found?: { id: string; page: string }): Promise<boolean> {
+  const servers = told(await editing(() => backend.addServer(kind, address, name, found)));
   if (!servers) return false;
   set({ servers });
   return true;
+}
+
+/** 189 From a website: the phone reads the page and the files it loads, nothing on it run. */
+export async function findServers(page: string): Promise<FoundServers | null> {
+  return told(await editing(() => backend.findServers(page)));
 }
 
 /** 183 The phone changes the server's General and answers with the servers as they now are. */

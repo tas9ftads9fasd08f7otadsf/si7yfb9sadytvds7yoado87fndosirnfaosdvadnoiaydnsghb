@@ -149,7 +149,9 @@ export const backend: Backend = {
   addCopies: (mapID, layers) =>
     editing(`${ROOT}/maps/${mapID}/add-copies?${new URLSearchParams({ layers: layers.join(",") })}`),
   servers: () => editing(`${ROOT}/servers`, "GET"),
-  addServer: (kind, address, name) => editing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`),
+  addServer: (kind, address, name, found) => editing(`${ROOT}/add-server?${
+    new URLSearchParams({ kind, address, name, ...(found ? { found: found.id, page: found.page } : {}) })}`),
+  findServers: (page) => editing(`${ROOT}/find-servers?${new URLSearchParams({ page })}`, "GET"),
   editServer: (id, { name, symbol, tintHex }) => {
     const asked = Object.entries({ name, symbol, tint: tintHex }).filter(([, value]) => value !== undefined);
     return editing(`${ROOT}/servers/${id}/edit?${new URLSearchParams(asked as [string, string][])}`);

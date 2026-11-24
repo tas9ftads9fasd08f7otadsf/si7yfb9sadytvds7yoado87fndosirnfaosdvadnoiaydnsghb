@@ -1871,6 +1871,21 @@ async function answer(request, response) {
     }
     return send(response, 405, "");
   }
+  if (parts[2] === "find-servers" && parts.length === 3) {
+    // 189: as `PeerWebServerFind`: the page read for servers; a header's value never leaves the phone.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const page = url.searchParams.get("page") ?? "";
+    if (!/^https?:\/\//.test(page)) return send(response, 409, "That is not a web address.");
+    if (page.includes("empty")) return json(response, { page, found: [] });
+    return json(response, { page, found: [
+      { id: "https://gis.tuzvo.test/arcgis/rest/services/Hofm/MapServer/2", title: "Forest map", kind: "arcgis",
+        kindTitle: "Esri", host: "gis.tuzvo.test", symbol: "globe",
+        address: "https://gis.tuzvo.test/arcgis/rest/services/Hofm/MapServer", headerNames: ["X-Key"] },
+      { id: "https://tiles.tuzvo.test/{z}/{x}/{y}.png", title: "Base", kind: "tiles", kindTitle: "Tiles",
+        host: "tiles.tuzvo.test", symbol: "server.rack", address: "https://tiles.tuzvo.test/{z}/{x}/{y}.png",
+        headerNames: [] }] });
+  }
   if (parts[2] === "server-preview" && parts.length === 3) {
     // 190: as `PeerWebServerPreview`: Read again's row, then each tile drawn by the phone with its keys.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");

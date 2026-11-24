@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { DXFReading, OtherMap, PackageRow, Server, ServerRow } from "@/lib/types";
+import type { DXFReading, FoundServer, FoundServers, OtherMap, PackageRow, Server, ServerRow } from "@/lib/types";
 import { FILE_KINDS, SERVER_KINDS, addCopies, addFile, isDXF, readDXF, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
-  exportServers, importServers, loadOtherLayers, loadPackages, loadServers, offers, tickCopy, tickPackage, tickServerRow, tickServiceLayer,
+  exportServers, findServers, importServers, loadOtherLayers, loadPackages, loadServers, offers, tickCopy, tickPackage, tickServerRow, tickServiceLayer,
   tuneServerRow, useViewer } from "@/store/viewer";
 import { mapControl } from "@/map/control";
 import { filledIn } from "@/lib/words";
@@ -257,6 +257,44 @@ function ServerFiles() {
   );
 }
 
+/** 189 The server form's From a website: a page read for the servers it uses, one picked into the form. */
+export function FromWebsite({ onPick }: { onPick: (found: FoundServer, page: string) => void }) {
+  const words = useViewer((state) => state.words);
+  const [page, setPage] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [result, setResult] = useState<FoundServers | null>(null);
+  const scan = async () => {
+    setScanning(true);
+    setResult(null);
+    setResult(await findServers(page.trim()));
+    setScanning(false);
+  };
+  return (
+    <div className="card" id="serverWebsite">
+      <div className="row"><span className="words">{words.fromWebsite}<small>{words.fromWebsiteNote}</small></span></div>
+      <div className="field">
+        <input type="url" id="serverWebsiteAddress" autoComplete="off" spellCheck={false} placeholder="https://mapy.tuzvo.sk/hofm/"
+          aria-label={words.fromWebsite} value={page} onChange={(event) => setPage(event.target.value)} />
+      </div>
+      <button type="button" className="row add" id="serverWebsiteScan" disabled={!page.trim() || scanning}
+        onClick={() => void scan()}><Sym name="magnifyingglass" />{scanning ? words.readingPage : words.findServers}</button>
+      <div className="foot-note">{words.onlyPageFiles}</div>
+      {result ? (
+        <div className="list" id="serverWebsiteFound" aria-label={words.serversItUses}>
+          {result.found.length === 0 ? <div className="foot-note">{words.noServerOnPage}</div> : result.found.map((found) => (
+            <button type="button" className="row add" key={found.id} data-found={found.id}
+              aria-label={`${found.title}, ${found.kindTitle}`} onClick={() => onPick(found, result.page)}>
+              <Sym name={found.symbol} />
+              <span className="words">{found.title}<small>{found.kindTitle} · {found.host}</small></span>
+              <Sym name="plus.circle.fill" />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** 2996 A server named by its address; the phone reads it before saving it. */
 function NewServer() {
   const words = useViewer((state) => state.words);
@@ -264,17 +302,27 @@ function NewServer() {
   const [address, setAddress] = useState("");
   const [name, setName] = useState("");
   const [reading, setReading] = useState(false);
+  const [found, setFound] = useState<{ id: string; page: string; address: string } | null>(null);
   const submit = async () => {
     setReading(true);
-    if (await addServer(kind, address.trim(), name.trim())) {
+    const picked = found && found.address === address.trim() ? { id: found.id, page: found.page } : undefined;
+    if (await addServer(kind, address.trim(), name.trim(), picked)) {
       setAddress("");
       setName("");
+      setFound(null);
     }
     setReading(false);
+  };
+  const pick = (server: FoundServer, page: string) => {
+    if ((SERVER_KINDS as readonly string[]).includes(server.kind)) setKind(server.kind);
+    setAddress(server.address);
+    if (server.title.trim()) setName(server.title);
+    setFound({ id: server.id, page, address: server.address });
   };
   return (
     <>
       <h2 className="title">{words.newServer}</h2>
+      <FromWebsite onPick={pick} />
       <div className="card"><div className="field">
         <select id="serverKind" aria-label={words.newServer} value={kind} onChange={(event) => setKind(event.target.value)}>
           {SERVER_KINDS.map((each) => <option key={each} value={each}>{words[`serverKind.${each}`]}</option>)}

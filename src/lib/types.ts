@@ -701,6 +701,23 @@ export interface Server {
   login?: CookiePreflight | null;
 }
 
+/** 189 From a website: a service the page uses that can be saved as a server; header values stay on the phone. */
+export interface FoundServer {
+  id: string;
+  title: string;
+  kind: string;
+  kindTitle: string;
+  host: string;
+  symbol: string;
+  address: string;
+  headerNames: string[];
+}
+
+export interface FoundServers {
+  page: string;
+  found: FoundServer[];
+}
+
 /** 190 Read again's row, and where the layer's picture opens when the phone can draw one. */
 export interface ServerPreviewRead {
   works: boolean;
