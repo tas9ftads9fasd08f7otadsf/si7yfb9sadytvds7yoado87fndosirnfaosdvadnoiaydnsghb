@@ -14,7 +14,8 @@ test("a server's View opens its page on Layers, then General and Sharing", async
   await expect(page.locator("#serverTitle")).toHaveText("ZBGIS");
   await expect(page.locator("#serverLayers")).toContainText("Parcels E");
   await page.locator("#serverParts").getByRole("tab", { name: "General" }).click();
-  await expect(page.locator("#serverGeneral")).toContainText("https://zbgis.test/arcgis/rest/services");
+  // 187 the address is the server form's to change now
+  await expect(page.locator("#serverFormAddress")).toHaveValue("https://zbgis.test/arcgis/rest/services");
   await expect(page.locator("#serverFacts")).toContainText("11.1");
   await page.locator("#serverParts").getByRole("tab", { name: "Sharing" }).click();
   const saved = page.waitForEvent("download");

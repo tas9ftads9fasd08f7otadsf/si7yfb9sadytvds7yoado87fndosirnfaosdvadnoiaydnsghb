@@ -40,7 +40,8 @@ test("every screen's address opens it, and a reload keeps it", async ({ page }) 
     [`/maps/${BRATISLAVA}`, async () => expect(page.locator("#mapName")).toHaveText("Bratislava")],
     [`/maps/${TATRAS}/style/${WINTER}`, async () => expect(page.locator("#sideStyle")).toHaveText("Winter")],
     [`/maps/${TATRAS}/edit/layers`, async () => expect(page.locator("#editTitle")).toHaveText("Edit map")],
-    [`/servers/${ZBGIS}/general`, async () => expect(page.locator("#serverGeneral")).toContainText("zbgis.test")],
+    // 187 the address is the server form's to change now
+    [`/servers/${ZBGIS}/general`, async () => expect(page.locator("#serverFormAddress")).toHaveValue(/zbgis\.test/)],
     ["/maps", async () => expect(page.locator("#railMaps")).toHaveAttribute("aria-current", "page")]
   ];
   for (const [address, shows] of screens) {

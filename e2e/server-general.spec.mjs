@@ -45,3 +45,36 @@ test("Duplicate opens the copy, and Delete server takes a second press", async (
   await expect(page.locator("[data-server-card]", { hasText: "ZBGIS copy" })).toHaveCount(0);
   await expect(page.locator(`[data-server-card='${ZBGIS}']`)).toHaveCount(1);
 });
+
+const OSM = "0D5E1F00-0000-4000-8000-000000000001";
+
+// 187: as the phone's server form: the address, kind, headers and login are sent together and read first.
+test("a server's address, headers and login are changed on its General", async ({ page }) => {
+  await openViewer(page, `/e/7q4-k29`);
+  await page.locator("#railServers").click();
+  await page.locator(`[data-server-card='${OSM}']`).getByRole("button", { name: "View OpenTopoMap" }).click();
+  await page.locator("#serverParts").getByRole("tab", { name: "General" }).click();
+  const form = page.locator("#serverForm");
+  await expect(form.locator("#serverFormKind")).toHaveValue("tiles");
+  await expect(page.locator("#serverHeaders [data-header='X-Api-Key']")).toContainText("Saved on this device");
+  await expect(page.locator("#serverFormSave")).toBeDisabled();
+  await form.locator("#serverFormAddress").fill("https://silent.test/{z}/{x}/{y}.png");
+  await page.locator("#serverFormSave").click();
+  await expect(page.getByText("Server replied 404")).toBeVisible();
+  await form.locator("#serverFormAddress").fill("https://tiles.example.org/{z}/{x}/{y}.png");
+  await page.locator("#serverHeaderName").fill("Authorization");
+  await page.locator("#serverHeaderValue").fill("Bearer s3cret");
+  await page.locator("#serverHeaderAdd").click();
+  await page.locator("#serverLogin").getByRole("switch").click();
+  await page.locator("#serverCookieAge").selectOption("600");
+  const saved = page.waitForRequest((one) => one.url().includes(`/servers/${OSM}/form?`));
+  await page.locator("#serverFormSave").click();
+  const asked = new URL((await saved).url()).searchParams;
+  expect(asked.get("address")).toBe("https://tiles.example.org/{z}/{x}/{y}.png");
+  expect(JSON.parse(asked.get("headers"))).toEqual([{ name: "X-Api-Key" }, { name: "Authorization", value: "Bearer s3cret" }]);
+  expect(JSON.parse(asked.get("login"))).toEqual({ isOn: true, page: "", seconds: 600 });
+  await expect(page.locator("#serverHeaders [data-header='Authorization']")).toContainText("Saved on this device");
+  await expect(page.locator("#serverHeaders input[type=password]").first()).toHaveValue("");
+  await expect(page.locator("#serverFormSave")).toBeDisabled();
+  await page.locator("#serverGeneral").screenshot({ path: "test-results/server-form.png" });
+});

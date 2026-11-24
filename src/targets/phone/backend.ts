@@ -156,6 +156,15 @@ export const backend: Backend = {
   },
   duplicateServer: (id) => editing(`${ROOT}/servers/${id}/duplicate`),
   deleteServer: (id) => editing(`${ROOT}/servers/${id}/delete`),
+  addServerLayer: (id, { name, address, number }) => {
+    const asked = Object.entries({ name, address, number: number?.toString() }).filter(([, value]) => value !== undefined);
+    return editing(`${ROOT}/servers/${id}/add-layer?${new URLSearchParams(asked as [string, string][])}`);
+  },
+  serverLayer: (server, layer, service) => editing(`${ROOT}/server-layer?${
+    new URLSearchParams({ server, layer, ...(service ? { service } : {}) })}`, "GET"),
+  saveServerForm: (id, { kind, address, referrer, headers, login }) => editing(`${ROOT}/servers/${id}/form?${
+    new URLSearchParams({ kind, address, referrer, headers: JSON.stringify(headers), login: JSON.stringify(login) })}`),
+  removeServerLayer: (id, layer) => editing(`${ROOT}/servers/${id}/remove-layer?${new URLSearchParams({ layer })}`),
   importServers: async (file) => editing(`${ROOT}/import-servers`, "POST", await file.arrayBuffer()),
   exportServers: (id) =>
     editing(id ? `${ROOT}/servson?${new URLSearchParams({ server: id })}` : `${ROOT}/servson`, "GET", undefined, saved),
