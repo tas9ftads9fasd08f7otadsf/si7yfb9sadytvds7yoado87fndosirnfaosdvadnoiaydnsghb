@@ -52,3 +52,37 @@ test("a server's card folds, and a tick is counted beside Add", async ({ page })
   await page.locator("#serverSearch").fill("Orthophoto");
   await expect(zbgis.locator("button[data-layer]")).toHaveCount(1);
 });
+
+// 182: a ticked layer's sliders open its own page, as the app's; Add sends that layer alone, tuned.
+test("a ticked layer is tuned on its own page and added as tuned", async ({ page }) => {
+  await openServers(page);
+  const zbgis = page.locator("[data-server='0D5E1F00-0000-4000-8000-000000000002']");
+  await zbgis.getByRole("button", { name: /Parcels C/ }).click();
+  await zbgis.getByRole("button", { name: "Adjust before adding" }).click();
+  const layerPage = page.locator(".server-layer-page");
+  await expect(layerPage).toContainText("ZBGIS › Parcels C");
+  await expect(page.locator("#serverTicked")).toHaveCount(0);
+  await page.locator("#serverLayerName").fill("Parcels, current");
+  await layerPage.getByRole("radio", { name: "Features" }).click();
+  await expect(layerPage).toContainText("Downloaded in full");
+  await page.locator("#addLayerDialog").screenshot({ path: "test-results/server-layer-page.png" });
+  const asked = page.waitForRequest((request) => request.url().includes("/add-server-layers?"));
+  await page.locator("#addTunedServerLayer").click();
+  const picks = JSON.parse(new URL((await asked).url()).searchParams.get("picks"));
+  expect(picks).toEqual([{ server: "0D5E1F00-0000-4000-8000-000000000002",
+    service: "https://zbgis.test/Base/Parcels/MapServer", layer: "0", name: "Parcels, current", take: "features" }]);
+  await expect(page.locator("#editBody input[value='Parcels, current']")).toHaveCount(1);
+});
+
+// 182: Change goes back to the servers with the tick kept.
+test("Change on a layer's page goes back to the servers, the tick kept", async ({ page }) => {
+  await openServers(page);
+  const zbgis = page.locator("[data-server='0D5E1F00-0000-4000-8000-000000000002']");
+  await zbgis.getByRole("button", { name: /Orthophoto/ }).click();
+  await zbgis.getByRole("button", { name: "Adjust before adding" }).click();
+  await expect(page.locator(".server-layer-page")).toBeVisible();
+  await expect(page.locator("#serverLayerTake")).toHaveCount(0);
+  await page.locator("#serverLayerChange").click();
+  await expect(page.locator("#addServerLayers")).toBeEnabled();
+  await expect(zbgis.getByRole("button", { name: /Orthophoto/ })).toHaveAttribute("aria-pressed", "true");
+});

@@ -15,9 +15,13 @@ async function open(page, request, query = {}) {
 }
 
 // 172: a server look above the one answered is asked about, in a banner naming the parts.
+// 182: as the app's card: a 46 px tile and Review, the parts under the title.
 test("the banner names the parts the server changed", async ({ page, request }) => {
   const panel = await open(page, request);
-  await expect(panel.getByRole("status")).toContainText("Server update · Map markers and Details changed");
+  await expect(panel.getByRole("status").locator("small")).toHaveText("Map markers and Details changed");
+  const review = await panel.getByRole("button", { name: "Review" }).boundingBox();
+  expect(Math.round(review.height)).toBe(46);
+  await panel.getByRole("status").screenshot({ path: "test-results/server-update-card.png" });
   await expect(panel.getByRole("heading", { name: "Map markers" })).toBeVisible();
 });
 

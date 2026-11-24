@@ -10,7 +10,7 @@ import { BY_NAME } from "@/lib/places";
 import { type EditTab, type Route, type ServerPart, mapOf, pathOf, readRoute } from "@/lib/route";
 import type { RegionOffer } from "@/lib/region";
 import type { APIAsk, APIRead, APIReading, DXFReading, Coverage, CoveragePlaces, EsriChange, EsriListing, CoverageSide, CoverageSideKey, CoverageSummary, Device, FoundPlace,
-  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, ServerList, ServerPick, ServiceRead,
+  LayerOptions, LayerTest, MapSwitches, OtherLayers, RoadSigns, RoadSignsAsk, OfflineAsk, OfflinePlan, PackageRow, Packages, Pictures, Portable, Region, Server, ServerList, ServerPick, ServerRow, ServerTune, ServiceRead,
   Loading, SavedListing, SavedRow, SavedShape, SessionAnswer, SharedMap, DetailsSheet, RegionList, Standing, StackLayer, Start } from "@/lib/types";
 import { NO_FILTER, type SavedFilter, savedBox, shownSaved } from "@/lib/saved";
 import { ENGLISH, type Words, filledIn, readPhoneWords } from "@/lib/words";
@@ -80,6 +80,8 @@ export interface ViewerState {
   serverID: string | null;
   serverPart: ServerPart;
   serverPicks: Map<string, ServerPick>;
+  /** 182 The ticked layer whose own page is open, as the app's sliders open it. */
+  serverTuning: { server: Server; row: ServerRow } | null;
   serviceRead: ServiceRead | null;
   layerOptions: LayerOptions | null;
   optionsOpen: Set<string>;
@@ -142,7 +144,7 @@ const firstState = (): ViewerState => ({
   pointerText: "", addedLanguages: new Set(), startKind: null, startFound: null, coverage: null,
   coverageShown: false, coverageSide: "include", coverageOpen: new Map(), coverageQuery: "", coveragePlaces: null,
   packages: null, packageTicks: new Set(), addingPackages: false, servers: null, serverID: null, serverPart: "layers",
-  otherLayers: null, copyTicks: new Set(), serverPicks: new Map(),
+  otherLayers: null, copyTicks: new Set(), serverPicks: new Map(), serverTuning: null,
   serviceRead: null, layerOptions: null, optionsOpen: new Set(), directAllowed: false, tilesDirect: false,
   switches: null, originsOpen: new Set(), offline: null, offlineAsk: null, offlineOpen: false, esri: null, esriOpen: null,
   switcherOpen: false, mapCardOpen: true, place: null, nameHits: null, foundPlaces: null, regionList: null, sideStyles: false,
@@ -480,7 +482,7 @@ export async function pickMap(id: string, styleID: string | null) {
   set({ picking: true, mapID: id, addedLanguages: new Set(), startKind: null, startFound: null, coverage: null, coverageShown: false,
     coverageOpen: new Map(), packages: null, addingPackages: false, switches: null, offline: null, offlineAsk: null, offlineOpen: false, esri: null,
     esriOpen: null,
-    otherLayers: null, copyTicks: new Set(), serverPicks: new Map(), serviceRead: null,
+    otherLayers: null, copyTicks: new Set(), serverPicks: new Map(), serverTuning: null, serviceRead: null,
     layerOptions: null, optionsOpen: new Set(), originsOpen: new Set() });
   let portable: Portable | null = null;
   try {
@@ -1224,6 +1226,22 @@ export async function readAPI(address: string, reading?: APIReading | null, ask?
 
 export const addAPI = (address: string, reading: APIReading, name: string, ask?: APIAsk) =>
   addedBy((mapID) => backend.addAPI(mapID, address, reading, name, ask));
+
+/** 182 Opens a ticked layer's own page, or closes it back onto the servers. */
+export function tuneServerRow(tuning: { server: Server; row: ServerRow } | null) {
+  set({ serverTuning: tuning });
+}
+
+/** 182 Adds the tuned layer alone; the other ticks stay for the servers page. */
+export async function addTunedServerLayer(tune: ServerTune) {
+  const tuning = get().serverTuning;
+  if (!tuning) return;
+  const key = JSON.stringify(tuning.row.pick);
+  if (!await addedBy((mapID) => backend.addServerLayers(mapID, [{ ...tuning.row.pick, ...tune }]))) return;
+  const serverPicks = new Map(get().serverPicks);
+  serverPicks.delete(key);
+  set({ serverPicks, serverTuning: null });
+}
 
 export async function addServerLayers() {
   const picks = [...get().serverPicks.values()];

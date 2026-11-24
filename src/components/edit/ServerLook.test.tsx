@@ -25,9 +25,11 @@ describe("a layer's server update", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   // 172: the banner names the parts and the options stay below it.
+  // 182: as the app's card, the title over the changed parts.
   it("says which parts the server changed and keeps the options", () => {
     show(look);
-    expect(screen.getByRole("status").textContent).toContain("Server update · Map markers and Details changed");
+    expect(screen.getByRole("status").querySelector("b")?.textContent).toBe("Server update");
+    expect(screen.getByRole("status").querySelector("small")?.textContent).toBe("Map markers and Details changed");
     expect(screen.getByRole("button", { name: "Review" })).toBeTruthy();
     expect(screen.getByLabelText("Address")).toBeTruthy();
   });

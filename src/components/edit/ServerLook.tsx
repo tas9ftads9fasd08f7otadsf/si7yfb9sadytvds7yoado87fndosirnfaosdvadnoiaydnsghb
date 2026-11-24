@@ -8,14 +8,14 @@ import { Sym } from "../ui/Sym";
 
 const said = (titles: string[]) => new Intl.ListFormat(undefined, { style: "long", type: "conjunction" }).format(titles);
 
-/** 172: one line above a layer's options saying the server has a newer look, with a Review pill. */
+/** 172, 182: as the app's update card: the server's tile, what changed, and a yellow Review. */
 export function ServerLookBanner({ look, review }: { look: ServerLookAsk; review: () => void }) {
   const words = useViewer((state) => state.words);
   return (
     <div className="server-look-banner" role="status" data-server-version={look.version}>
-      <Sym name="arrow.triangle.2.circlepath" />
+      <span className="tone-tile" aria-hidden="true"><Sym name="arrow.up.circle" /></span>
       <span className="words"><b>{words.serverUpdate}</b>
-        {" · "}{filledIn(words.serverChanged, "parts", said(look.parts.map((one) => one.title)))}</span>
+        <small>{filledIn(words.serverChanged, "parts", said(look.parts.map((one) => one.title)))}</small></span>
       <button type="button" className="pill review" onClick={review}>{words.reviewServer}</button>
     </div>
   );

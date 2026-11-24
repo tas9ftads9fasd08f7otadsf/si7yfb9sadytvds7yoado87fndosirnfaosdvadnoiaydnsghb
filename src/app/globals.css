@@ -242,10 +242,19 @@ button.row:disabled { opacity: 0.6; cursor: default; }
 .row.dimmed { color: var(--secondary); }
 .card.options { margin: 0 8px 8px; }
 .card.options .foot-note { margin: 2px 14px 10px; }
-.server-look-banner { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 8px 12px;
-  border-radius: 10px; background: var(--cs-water); color: var(--c-water); font-size: 13px; }
-.server-look-banner .words { flex: 1; min-width: 0; }
-.server-look-banner .pill.review { height: 28px; padding: 0 12px; background: #F5C542; color: #3A2D00; }
+.server-look-banner { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; padding: 12px;
+  border-radius: 16px; background: var(--card); color: var(--text); }
+.server-look-banner .tone-tile { flex: none; display: grid; place-items: center; width: 46px; height: 46px;
+  border-radius: 12px; background: rgb(91 63 214 / 0.14); color: #5B3FD6; font-size: 22px; }
+.server-look-banner .words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.server-look-banner .words b { font-weight: 600; }
+.server-look-banner .words small { color: var(--sub); font-size: 12px; }
+#editBody .server-look-banner .pill.review, .server-look-banner .pill.review { flex: none; height: 46px; padding: 0 18px; border-radius: 23px;
+  background: #FFD60A; color: #1C1600; font-size: 16px; font-weight: 600; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) .server-look-banner .tone-tile { background: rgb(169 150 255 / 0.18); color: #A996FF; }
+}
+:root[data-theme="dark"] .server-look-banner .tone-tile { background: rgb(169 150 255 / 0.18); color: #A996FF; }
 .server-look-review .row.head { gap: 12px; }
 .server-look-review .field.part { display: flex; flex-direction: column; gap: 4px; }
 .server-look-review .changed, .server-look-review .changed-here { color: var(--secondary); }
@@ -633,6 +642,27 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
 #addLayerPart .source-foot .action { margin: 0; width: auto; height: 46px; padding: 0 22px; border-radius: 23px;
   background: var(--c-water); color: var(--on-accent); font-weight: 700; }
 #addLayerPart .source-foot .action:disabled { background: var(--inset); color: var(--tertiary); }
+#addLayerPart .server-pick-line { display: flex; align-items: stretch; background: var(--cs-water); }
+#addLayerPart .server-card > .server-pick-line + .row, #addLayerPart .server-card > .row + .server-pick-line,
+#addLayerPart .server-card > .server-pick-line + .server-pick-line { box-shadow: inset 0 1px 0 var(--sep); }
+#addLayerPart .server-pick-line .server-pick { flex: 1; min-width: 0; background: none; }
+#addLayerPart .server-pick-line .tune { flex: none; width: 52px; border: 0; background: none; color: var(--c-water);
+  font-size: 17px; cursor: pointer; }
+#addLayerPart .servers-chip { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px;
+  margin: 0 auto 8px; border: 0; border-radius: 22px; background: var(--card); box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+  font: inherit; font-weight: 600; color: var(--text); cursor: pointer; }
+#addLayerPart .servers-chip > .sym:first-child { color: var(--c-water); }
+#addLayerPart .servers-chip > .sym:last-child { color: var(--sub); font-size: 11px; }
+#addLayerPart .server-layer-page { display: flex; flex-direction: column; }
+#addLayerPart .server-layer-page .source-row { gap: 14px; padding: 14px 16px 14px 18px; }
+#addLayerPart .server-layer-page .source-row > .sym { color: var(--c-water); font-size: 20px; }
+#addLayerPart .server-layer-page .source-row .words { font-weight: 500; }
+#addLayerPart .server-layer-page .field.take { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+#addLayerPart .server-layer-page .field.take small { color: var(--sub); }
+#addLayerPart .server-layer-page #serverLayerOffline { gap: 12px; min-height: 58px; padding: 0 16px; }
+#addLayerPart .server-layer-page #serverLayerOffline .words { flex: 1; min-width: 0; }
+#addLayerPart .server-layer-page #serverLayerOffline .switch { flex: none; width: 42px; padding: 0; }
+#addLayerPart .server-layer-page .source-foot > span { flex: 1; }
 /* 94 A layer's row: the handle, the layer and its switch, its settings folding out under it. */
 #editBody .layer-item + .layer-item, #editBody .layer-item + .row { box-shadow: inset 0 1px 0 var(--sep); }
 #editBody .layer-item .row { padding: 6px 14px 6px 8px; }

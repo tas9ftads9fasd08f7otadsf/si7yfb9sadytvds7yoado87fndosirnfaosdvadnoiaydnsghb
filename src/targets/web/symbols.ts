@@ -1,6 +1,6 @@
 import {
   ArrowDownToLine, Bed, Bike, Binoculars, Building2, Bus, CableCar, Calendar, Camera, Car, Castle, Check,
-  ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Church, Circle, CircleArrowDown, CircleCheck, CircleMinus,
+  ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Church, Circle, CircleArrowDown, CircleArrowUp, CircleCheck, CircleMinus,
   CirclePlus, CircleUser, Clock, Coffee, Compass, Copy, CopyPlus, Cross, Database, Download, Droplet, Eye, Flag,
   Flame, Folder, FolderPlus, Footprints, Fuel, Globe, Heart, Hospital, House, Image, Info, Landmark, Layers,
   Layers3, LayoutGrid, Link, LocateFixed, Lock, LockOpen, Map as MapIcon, MapPin, Menu, Minus, Monitor, Moon,
@@ -13,7 +13,7 @@ import {
 
 /** 133: the page's own SF Symbol names, as the open set draws them; Apple's may not be drawn on the web. */
 const NAMED: Record<string, string> = {
-  "app": Smartphone, "arrow.clockwise": RotateCw, "arrow.down.circle": CircleArrowDown,
+  "app": Smartphone, "arrow.clockwise": RotateCw, "arrow.down.circle": CircleArrowDown, "arrow.up.circle": CircleArrowUp,
   "arrow.down.to.line": ArrowDownToLine, "arrow.uturn.backward": Undo2, "capsule": Pill, "checkmark": Check,
   "checkmark.circle": CircleCheck, "checkmark.circle.fill": CircleCheck, "chevron.backward": ChevronLeft, "chevron.down": ChevronDown,
   "chevron.forward": ChevronRight, "chevron.right": ChevronRight, "chevron.up": ChevronUp, "circle": Circle,
