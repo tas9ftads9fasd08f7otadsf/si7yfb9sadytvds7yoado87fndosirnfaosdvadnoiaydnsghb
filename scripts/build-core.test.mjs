@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import account from "../e2e/fixtures/cloud-account.json";
 import { fakeCoreWasm } from "../e2e/fake-core.mjs";
-import { CONTRACT, SCRATCH, SIZE_BUDGET, checkoutProblem, pinFor, readPin, sha256Of, sizes, smoke, swiftBuildArgs, verifyPinned, verifySize, verifySum } from "./build-core.mjs";
+import { CONTRACT, SCRATCH, buildEnv, SIZE_BUDGET, checkoutProblem, pinFor, readPin, sha256Of, sizes, smoke, swiftBuildArgs, verifyPinned, verifySize, verifySum } from "./build-core.mjs";
 
 const shimArgs = vi.hoisted(() => []);
 vi.mock("@bjorn3/browser_wasi_shim", async (original) => {
@@ -56,11 +56,18 @@ describe("the build's flags", () => {
     const there = swiftBuildArgs("/Users/someone/rikimaps");
     expect(here).toContain("--swift-sdk");
     expect(here.join(" ")).toContain("-debug-info-format none");
-    // 178 the same commit built to 197261… and 498d19… on two runners
-    expect(here.join(" ")).toContain("-j 1 -Xswiftc -num-threads -Xswiftc 1");
+
     expect(here.join(" ")).toContain("-file-prefix-map -Xswiftc /home/runner/work/site/rikimaps=/rikimaps");
     expect(here[here.indexOf("--scratch-path") + 1]).toBe(`${SCRATCH}/build`);
     expect(there[there.indexOf("--scratch-path") + 1]).toBe(here[here.indexOf("--scratch-path") + 1]);
+  });
+});
+
+// 178 PeerWebArrange.swift.o came out two ways from one commit, as the compiler's hashing is seeded
+describe("the build's environment", () => {
+  it("fixes the compiler's hash seed and puts the toolchain first, keeping the rest", () => {
+    const env = buildEnv({ PATH: "/usr/bin", HOME: "/h" }, "/t/usr/bin/swift");
+    expect(env).toEqual({ PATH: "/t/usr/bin:/usr/bin", HOME: "/h", SWIFT_DETERMINISTIC_HASHING: "1" });
   });
 });
 
