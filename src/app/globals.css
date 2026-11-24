@@ -609,6 +609,30 @@ body.editing .maplibregl-ctrl-top-left .zoom-badge { margin-top: 64px; }
   padding: 0; }
 :is(#editBody, .source-part) .icon-button:not(.danger) { background: var(--inset); color: var(--text); }
 :is(#editBody, .source-part) select { height: 36px; border-radius: 12px; border: 0; background: var(--inset); padding: 0 10px; }
+/* 180 Servers as the app draws them: a card each, ticks on the leading edge, the count at the foot. */
+#addLayerPart .card.search { margin-bottom: 4px; }
+#addLayerPart .title-row .text-button { display: flex; align-items: center; gap: 4px; font-weight: 400; }
+#addLayerPart .server-card { padding: 0; overflow: hidden; }
+#addLayerPart .server-card + .server-card { margin-top: 10px; }
+#addLayerPart .server-head { min-height: 58px; padding: 12px 14px; }
+#addLayerPart .server-head .words { font-weight: 600; }
+#addLayerPart .server-head > .sym { color: var(--sub); font-size: 13px; }
+#addLayerPart .server-card > .row + .row { box-shadow: inset 0 1px 0 var(--sep); }
+#addLayerPart .server-heading { min-height: 50px; }
+#addLayerPart .server-heading > .sym { width: 22px; color: var(--sub); }
+#addLayerPart .server-pick { min-height: 52px; }
+#addLayerPart .server-pick.picked { background: var(--cs-water); }
+#addLayerPart .server-pick.picked .words { font-weight: 500; }
+#addLayerPart .server-pick .tick { flex: none; width: 22px; height: 22px; border-radius: 7px; box-sizing: border-box;
+  border: 2px solid var(--sub); display: flex; align-items: center; justify-content: center; }
+#addLayerPart .server-pick.picked .tick { border: 0; background: var(--c-water); color: var(--on-accent); }
+#addLayerPart .server-pick .tick .sym { font-size: 13px; }
+#addLayerPart .source-foot { position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px;
+  margin-top: 14px; padding: 10px 0 2px; background: linear-gradient(transparent, var(--ground) 40%); }
+#addLayerPart .source-foot .foot-note { flex: 1; margin: 0 4px; white-space: nowrap; }
+#addLayerPart .source-foot .action { margin: 0; width: auto; height: 46px; padding: 0 22px; border-radius: 23px;
+  background: var(--c-water); color: var(--on-accent); font-weight: 700; }
+#addLayerPart .source-foot .action:disabled { background: var(--inset); color: var(--tertiary); }
 /* 94 A layer's row: the handle, the layer and its switch, its settings folding out under it. */
 #editBody .layer-item + .layer-item, #editBody .layer-item + .row { box-shadow: inset 0 1px 0 var(--sep); }
 #editBody .layer-item .row { padding: 6px 14px 6px 8px; }

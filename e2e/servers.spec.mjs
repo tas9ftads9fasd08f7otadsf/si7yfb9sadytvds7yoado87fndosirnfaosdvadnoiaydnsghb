@@ -36,3 +36,19 @@ test("ticked server layers are added in the order they were ticked", async ({ pa
   await expect(page.locator("#editBody input[value='Orthophoto']")).toHaveCount(1);
   await expect(page.locator("#editBody input[value='Parcels E']")).toHaveCount(1);
 });
+
+// 180: as the app's Servers page: a card per server folding its rows, ticks counted at the foot.
+test("a server's card folds, and a tick is counted beside Add", async ({ page }) => {
+  await openServers(page);
+  const zbgis = page.locator("[data-server='0D5E1F00-0000-4000-8000-000000000002']");
+  const head = zbgis.locator(".server-head");
+  await expect(head).toHaveAttribute("aria-expanded", "true");
+  await zbgis.getByRole("button", { name: /Orthophoto/ }).click();
+  await expect(page.locator("#serverTicked")).not.toHaveText("Nothing selected");
+  await expect(page.locator("#addServerLayers")).toBeEnabled();
+  await page.locator("#addLayerDialog").screenshot({ path: "test-results/servers-part.png" });
+  await head.click();
+  await expect(zbgis.locator("button[data-layer]")).toHaveCount(0);
+  await page.locator("#serverSearch").fill("Orthophoto");
+  await expect(zbgis.locator("button[data-layer]")).toHaveCount(1);
+});

@@ -119,6 +119,7 @@ export const ENGLISH = {
   tileURL: "Tile URL", files: "Files", chooseFile: "Choose a file", dxfCoordinates: "Coordinates", dxfChoose: "Choose",
   fileKinds: "GeoJSON, KML, KMZ, GPX, PMTiles or MBTiles up to 16 MB. You can also drop it on the map.",
   yourServers: "Your servers", noServers: "No server saved yet.", exportServers: "Export servers",
+  searchServers: "Search servers and services", layersSelected: "{count} layers selected",
   importServers: "Import servers",
   "TerrainControl.Enable": "3D relief, off", "TerrainControl.Disable": "3D relief, on",
   newServer: "New server", serverAddress: "Address", "serverKind.arcgis": "Esri / ArcGIS",
