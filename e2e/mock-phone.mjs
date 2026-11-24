@@ -1138,7 +1138,10 @@ const SERVERS = [
     { kind: "heading", title: "Base", depth: 0 },
     { kind: "heading", title: "Parcels", subtitle: "MapServer", depth: 1 },
     { kind: "layer", title: "Parcels C", subtitle: "Areas", depth: 2,
-      pick: { server: ZBGIS, service: "https://zbgis.test/Base/Parcels/MapServer", layer: "0" } },
+      pick: { server: ZBGIS, service: "https://zbgis.test/Base/Parcels/MapServer", layer: "0" },
+      takes: [{ id: "live", title: "Live", explains: "Fetched for the view as you pan; needs a signal." },
+        { id: "features", title: "Features", explains: "Downloaded in full and drawn offline. Big layers take a while." },
+        { id: "image", title: "Image", explains: "The service draws a picture; nothing in it can be tapped or searched." }] },
     { kind: "layer", title: "Parcels E", subtitle: "Areas", depth: 2,
       pick: { server: ZBGIS, service: "https://zbgis.test/Base/Parcels/MapServer", layer: "1" } },
     { kind: "layer", title: "Orthophoto", subtitle: "ImageServer", depth: 0,
@@ -2076,11 +2079,14 @@ async function answer(request, response) {
     if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
     const picks = JSON.parse(url.searchParams.get("picks") || "[]");
     const rows = [...SERVERS, ...phone.addedServers].flatMap((server) => server.rows).filter((row) => row.pick);
-    const found = picks.map((pick) => rows.find((row) => JSON.stringify(row.pick) === JSON.stringify(pick)))
-      .filter(Boolean);
+    // 3683: a pick may carry the layer page's tuning, which lands on the made layer.
+    const names = (pick) => JSON.stringify({ server: pick.server, service: pick.service, layer: pick.layer });
+    const found = picks.map((pick) => ({ pick, row: rows.find((row) => names(row.pick) === names(pick)) }))
+      .filter((each) => each.row);
     if (!found.length) return send(response, 404, "This change does not fit the map");
-    each.layers.push(...found.map((row) => ({ id: randomUUID().toUpperCase(), name: row.title,
-      kind: "From a server", symbol: "server.rack", isEnabled: true })));
+    each.layers.push(...found.map(({ pick, row }) => ({ id: randomUUID().toUpperCase(), name: pick.name || row.title,
+      kind: "From a server", symbol: pick.symbol || "server.rack", isEnabled: true,
+      ...pick.tintHex ? { tintHex: pick.tintHex } : {} })));
     each.revision += 1;
     return json(response, portable(each));
   }

@@ -644,12 +644,29 @@ export interface ServerPick {
   [key: string]: unknown;
 }
 
+/** 182 What the layer page sets before adding; an older phone ignores it. */
+export interface ServerTune {
+  name?: string;
+  symbol?: string;
+  tintHex?: string;
+  allowsOffline?: boolean;
+  take?: string;
+}
+
+/** 182 One way an Esri layer can be taken, the phone's own pick first. */
+export interface TakeOffer {
+  id: string;
+  title: string;
+  explains: string;
+}
+
 export interface ServerRow {
   kind: "layer" | "note" | string;
   title: string;
   subtitle?: string;
   depth: number;
   pick: ServerPick;
+  takes?: TakeOffer[];
 }
 
 export interface ServerFact {
@@ -668,6 +685,7 @@ export interface Server {
   symbol?: string;
   iconTintHex?: string | null;
   facts?: ServerFact[];
+  allowsOffline?: boolean;
 }
 
 export interface ServerList {

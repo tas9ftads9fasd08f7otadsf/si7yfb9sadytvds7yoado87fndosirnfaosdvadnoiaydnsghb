@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import type { DXFReading, OtherMap, PackageRow, Server, ServerRow } from "@/lib/types";
 import { FILE_KINDS, SERVER_KINDS, addCopies, addFile, isDXF, readDXF, addPackages, addServer, addServerLayers, addServiceLayers, addTiles,
   exportServers, importServers, loadOtherLayers, loadPackages, loadServers, offers, tickCopy, tickPackage, tickServerRow, tickServiceLayer,
-  useViewer } from "@/store/viewer";
+  tuneServerRow, useViewer } from "@/store/viewer";
 import { mapControl } from "@/map/control";
 import { filledIn } from "@/lib/words";
 import { Skeleton } from "../Overlays";
 import { APILayer } from "./APILayer";
+import { ServerLayerPage } from "./ServerLayerPage";
 import { MarkTile } from "../ui/MarkTile";
 import { Sym } from "../ui/Sym";
 
@@ -183,18 +184,29 @@ function ServiceLayers() {
   );
 }
 
-function ServerLine({ row }: { row: ServerRow }) {
+function ServerLine({ row, server }: { row: ServerRow; server: Server }) {
+  const words = useViewer((state) => state.words);
   const key = JSON.stringify(row.pick);
   const isTicked = useViewer((state) => state.serverPicks.has(key));
   const style = { paddingLeft: 14 + row.depth * 14 };
   const lines = <span className="words">{row.title}{row.subtitle ? <small>{row.subtitle}</small> : null}</span>;
   if (row.kind === "note") return <div className="row dimmed server-note" style={style}>{lines}</div>;
   if (row.kind !== "layer") return <div className="row server-heading" style={style}><Sym name="folder" />{lines}</div>;
-  return (
+  const pickButton = (
     <button type="button" className={isTicked ? "row server-pick picked" : "row server-pick"} style={style}
       aria-pressed={isTicked} data-layer={row.pick.layer} onClick={() => tickServerRow(key, row.pick)}>
       <span className="tick" aria-hidden="true">{isTicked ? <Sym name="checkmark" /> : null}</span>{lines}
     </button>
+  );
+  if (!isTicked) return pickButton;
+  return (
+    <div className="server-pick-line">
+      {pickButton}
+      <button type="button" className="tune" aria-label={words.adjustBeforeAdding} title={words.adjustBeforeAdding}
+        data-tune={row.pick.layer} onClick={() => tuneServerRow({ server, row })}>
+        <Sym name="slider.horizontal.3" />
+      </button>
+    </div>
   );
 }
 
@@ -219,7 +231,7 @@ function ServerCard({ server, isOpen, onFold }: { server: Server; isOpen: boolea
         <span className="words">{server.name}<small>{server.line}</small></span>
         <Sym name={isOpen ? "chevron.up" : "chevron.down"} />
       </button>
-      {isOpen ? server.rows.map((row, index) => <ServerLine key={index} row={row} />) : null}
+      {isOpen ? server.rows.map((row, index) => <ServerLine key={index} row={row} server={server} />) : null}
     </div>
   );
 }
@@ -282,12 +294,14 @@ function Servers() {
   const words = useViewer((state) => state.words);
   const servers = useViewer((state) => state.servers);
   const ticked = useViewer((state) => state.serverPicks.size);
+  const tuning = useViewer((state) => state.serverTuning);
   const [query, setQuery] = useState("");
   const [folded, setFolded] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (!servers) void loadServers();
   }, [servers]);
   if (!servers) return <Skeleton />;
+  if (tuning) return <ServerLayerPage server={tuning.server} row={tuning.row} />;
   const shown = matchingServers(servers.servers, query);
   const fold = (id: string) => setFolded((was) => {
     const next = new Set(was);
@@ -426,6 +440,12 @@ function Packages() {
 }
 
 /** Add layer's part for one source: packages, tiles, a file, an API, a server, a map. */
+/** 182 The layer page stands alone, as the app's does; the new-server form waits under the list. */
+function ServersPart() {
+  const isTuning = useViewer((state) => state.serverTuning != null);
+  return isTuning ? <Servers /> : <><Servers /><NewServer /></>;
+}
+
 export function AddLayer({ source }: { source: AddSource }) {
   const hasRead = useViewer((state) => state.serviceRead != null);
   switch (source) {
@@ -438,7 +458,7 @@ export function AddLayer({ source }: { source: AddSource }) {
     case "api":
       return <APILayer />;
     case "server":
-      return <><Servers /><NewServer /></>;
+      return <ServersPart />;
     case "copy":
       return <FromMaps />;
   }
