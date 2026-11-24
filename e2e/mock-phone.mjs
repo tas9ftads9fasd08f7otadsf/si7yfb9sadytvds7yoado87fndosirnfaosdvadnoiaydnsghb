@@ -1871,6 +1871,35 @@ async function answer(request, response) {
     }
     return send(response, 405, "");
   }
+  if (parts[2] === "find-servers" && parts.length === 3) {
+    // 189: as `PeerWebServerFind`: the page read for servers; a header's value never leaves the phone.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const page = url.searchParams.get("page") ?? "";
+    if (!/^https?:\/\//.test(page)) return send(response, 409, "That is not a web address.");
+    if (page.includes("empty")) return json(response, { page, found: [] });
+    return json(response, { page, found: [
+      { id: "https://gis.tuzvo.test/arcgis/rest/services/Hofm/MapServer/2", title: "Forest map", kind: "arcgis",
+        kindTitle: "Esri", host: "gis.tuzvo.test", symbol: "globe",
+        address: "https://gis.tuzvo.test/arcgis/rest/services/Hofm/MapServer", headerNames: ["X-Key"] },
+      { id: "https://tiles.tuzvo.test/{z}/{x}/{y}.png", title: "Base", kind: "tiles", kindTitle: "Tiles",
+        host: "tiles.tuzvo.test", symbol: "server.rack", address: "https://tiles.tuzvo.test/{z}/{x}/{y}.png",
+        headerNames: [] }] });
+  }
+  if (parts[2] === "server-preview" && parts.length === 3) {
+    // 190: as `PeerWebServerPreview`: Read again's row, then each tile drawn by the phone with its keys.
+    if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");
+    if (!bearsToken(request)) return send(response, 401, "Type the edit password again");
+    const server = heldServers().find((each) => each.id === url.searchParams.get("server"));
+    if (!server) return send(response, 404, "");
+    if (url.searchParams.has("z")) {
+      return send(response, 200, PIXEL, "image/png");
+    }
+    if ((server.address ?? "").includes("silent")) return json(response, { works: false, said: "Server replied 404" });
+    if (server.kindID === "api") return json(response, { works: true, said: "Answered" });
+    return json(response, { works: true, said: "256 px · PNG",
+      picture: { z: 7, x: 70, y: 44, minZoom: 0, maxZoom: 17 } });
+  }
   if (parts[2] === "server-layer" && parts.length === 3) {
     // 186: as `PeerWebServerLayer` answers: the phone's own page, an API layer's under its scope.
     if (!request.headers.authorization) return send(response, 403, "This browser may not change maps");

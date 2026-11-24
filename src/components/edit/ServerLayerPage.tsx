@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Server, ServerRow, ServerTune } from "@/lib/types";
 import { listed } from "@/lib/words";
 import { addTunedServerLayer, offers, tuneServerRow, useViewer } from "@/store/viewer";
 import { Sym } from "../ui/Sym";
 import { Switch } from "../ui/Switch";
+import { LayerPreview } from "./LayerPreview";
 import { Swatch } from "./Styling";
 
 /** 182 An Esri layer taken as features is told apart by feature inks, as the app's form does. */
@@ -36,6 +37,9 @@ export function ServerLayerPage({ server, row }: { server: Server; row: ServerRo
   const back = () => tuneServerRow(null);
   const take = row.takes?.find((offer) => offer.id === picked.take);
   const symbols = listed(words.layerSymbols);
+  const service = typeof row.pick.service === "string" ? row.pick.service : undefined;
+  const keyed = useMemo(() => (service ? { layer: row.pick.layer, service } : { layer: row.pick.layer }),
+    [row.pick.layer, service]);
   const add = async () => {
     setAdding(true);
     await addTunedServerLayer(tuneOf(row, server, picked));
@@ -46,6 +50,8 @@ export function ServerLayerPage({ server, row }: { server: Server; row: ServerRo
       <button type="button" className="servers-chip" id="serverLayerBack" onClick={back}>
         <Sym name="server.rack" />{words.servers}<Sym name="chevron.down" />
       </button>
+
+      <LayerPreview server={server.id} keyed={keyed} />
 
       <h2 className="title">{words.apiSource}</h2>
       <div className="card">

@@ -406,7 +406,7 @@ export function createBackend(parts: Parts): Backend {
     readAddress,
     addTiles,
     addServiceLayers,
-    addServer: adding, editServer: adding, duplicateServer: adding, deleteServer: adding, addServerLayer: adding, removeServerLayer: adding, saveServerForm: adding, serverLayer: adding, importServers: adding, exportServers: adding, addServerLayers: adding, readAPI: adding,
+    addServer: adding, findServers: adding, editServer: adding, duplicateServer: adding, deleteServer: adding, addServerLayer: adding, removeServerLayer: adding, saveServerForm: adding, serverLayer: adding, serverPreview: adding, serverPreviewTile: adding, importServers: adding, exportServers: adding, addServerLayers: adding, readAPI: adding,
     addAPI: adding, addFile: adding, readDXF: adding, esriServices: adding,
     changeEsriService: adding, coverage: adding, coveragePlaces: adding,
     publishOffer: adding, publishSend: adding, publishAnswer: adding, publishCancel: adding,

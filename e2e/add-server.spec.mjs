@@ -56,3 +56,33 @@ test("New server offers WMTS and WMS, and a WMTS lists its layers", async ({ pag
   await page.locator("#addServerLayers").click();
   await expect(page.locator("#editBody input[value='National map']")).toHaveCount(1);
 });
+
+// 189: From a website: the phone reads the page, a found server fills New server, and Add names the pick.
+test("a server found on a website fills New server and is added as found", async ({ page }) => {
+  await openNewServer(page);
+  const website = page.locator("#serverWebsite");
+  await website.locator("#serverWebsiteAddress").fill("https://mapy.tuzvo.test/hofm/");
+  const scanned = page.waitForRequest((request) => request.url().includes("/find-servers?"));
+  await website.locator("#serverWebsiteScan").click();
+  expect(new URL((await scanned).url()).searchParams.get("page")).toBe("https://mapy.tuzvo.test/hofm/");
+  await expect(website.locator("[data-found]")).toHaveCount(2);
+  await page.locator("#serverWebsite").screenshot({ path: "test-results/server-from-website.png" });
+  await website.getByRole("button", { name: "Forest map, Esri" }).click();
+  await expect(page.locator("#serverKind")).toHaveValue("arcgis");
+  await expect(page.locator("#serverAddress")).toHaveValue("https://gis.tuzvo.test/arcgis/rest/services/Hofm/MapServer");
+  await expect(page.locator("#serverName")).toHaveValue("Forest map");
+  const added = page.waitForRequest((request) => request.url().includes("/add-server?"));
+  await page.locator("#addServer").click();
+  const asked = new URL((await added).url()).searchParams;
+  expect(asked.get("found")).toBe("https://gis.tuzvo.test/arcgis/rest/services/Hofm/MapServer/2");
+  expect(asked.get("page")).toBe("https://mapy.tuzvo.test/hofm/");
+  await expect(page.locator("[data-server]").filter({ hasText: "Forest map" })).toBeVisible();
+});
+
+// 189: a page that draws nothing a server can be made of says so.
+test("a website with no servers says so", async ({ page }) => {
+  await openNewServer(page);
+  await page.locator("#serverWebsiteAddress").fill("https://empty.example.test/");
+  await page.locator("#serverWebsiteScan").click();
+  await expect(page.locator("#serverWebsiteFound")).toContainText("None of what this page draws can be saved as a server.");
+});

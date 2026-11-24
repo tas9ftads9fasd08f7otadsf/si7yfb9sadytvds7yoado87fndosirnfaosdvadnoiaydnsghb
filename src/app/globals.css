@@ -256,6 +256,19 @@ button.row:disabled { opacity: 0.6; cursor: default; }
   :root:not([data-theme=light]) .server-look-banner .tone-tile { background: rgb(169 150 255 / 0.18); color: #A996FF; }
 }
 :root[data-theme="dark"] .server-look-banner .tone-tile { background: rgb(169 150 255 / 0.18); color: #A996FF; }
+/* 190 the app's preview over Add layer's server layer page, and its read row */
+#serverLayerPreview .preview-frame { position: relative; margin: 8px 8px 0; border-radius: 16px; overflow: hidden;
+  background: var(--inset); height: 220px; }
+#serverLayerPreview .preview-tiles { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%;
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  touch-action: none; cursor: grab; user-select: none; }
+#serverLayerPreview .tile { display: block; aspect-ratio: 1; background: center / cover no-repeat; }
+#serverLayerPreview .preview-zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column;
+  gap: 4px; background: var(--card); border-radius: 10px; padding: 2px; }
+#serverLayerPreview .read-row { gap: 10px; min-height: 52px; }
+#serverLayerPreview .read-row .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--tertiary); }
+#serverLayerPreview .read-row[data-works=true] .dot { background: #1E8E3E; }
+#serverLayerPreview .read-row[data-works=false] .dot { background: var(--danger); }
 /* 186 as the app's ServerScopeHeader: the server's violet, a capsule and a tinted card */
 #serverLayerPage { --server: #5B3FD6; --server-pill: rgb(91 63 214 / 0.14); --server-banner: rgb(91 63 214 / 0.12); }
 #serverLayerPage .page-title { margin: 10px 16px 4px; font-size: 22px; font-weight: 700; }

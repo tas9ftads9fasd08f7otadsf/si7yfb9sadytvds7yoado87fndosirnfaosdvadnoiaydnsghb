@@ -149,7 +149,9 @@ export const backend: Backend = {
   addCopies: (mapID, layers) =>
     editing(`${ROOT}/maps/${mapID}/add-copies?${new URLSearchParams({ layers: layers.join(",") })}`),
   servers: () => editing(`${ROOT}/servers`, "GET"),
-  addServer: (kind, address, name) => editing(`${ROOT}/add-server?${new URLSearchParams({ kind, address, name })}`),
+  addServer: (kind, address, name, found) => editing(`${ROOT}/add-server?${
+    new URLSearchParams({ kind, address, name, ...(found ? { found: found.id, page: found.page } : {}) })}`),
+  findServers: (page) => editing(`${ROOT}/find-servers?${new URLSearchParams({ page })}`, "GET"),
   editServer: (id, { name, symbol, tintHex }) => {
     const asked = Object.entries({ name, symbol, tint: tintHex }).filter(([, value]) => value !== undefined);
     return editing(`${ROOT}/servers/${id}/edit?${new URLSearchParams(asked as [string, string][])}`);
@@ -160,6 +162,11 @@ export const backend: Backend = {
     const asked = Object.entries({ name, address, number: number?.toString() }).filter(([, value]) => value !== undefined);
     return editing(`${ROOT}/servers/${id}/add-layer?${new URLSearchParams(asked as [string, string][])}`);
   },
+  serverPreview: (server, layer, service) => editing(`${ROOT}/server-preview?${
+    new URLSearchParams({ server, layer, ...(service ? { service } : {}) })}`, "GET"),
+  serverPreviewTile: (server, layer, service, { z, x, y }) => editing(`${ROOT}/server-preview?${new URLSearchParams({
+    server, layer, ...(service ? { service } : {}), z: String(z), x: String(x), y: String(y) })}`, "GET", undefined,
+  (answer) => answer.blob()),
   serverLayer: (server, layer, service) => editing(`${ROOT}/server-layer?${
     new URLSearchParams({ server, layer, ...(service ? { service } : {}) })}`, "GET"),
   saveServerForm: (id, { kind, address, referrer, headers, login }) => editing(`${ROOT}/servers/${id}/form?${
