@@ -44,8 +44,9 @@ describe("the pin", () => {
     expect(CONTRACT.sdk.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(CONTRACT.toolchain.sha256).toMatch(/^[0-9a-f]{64}$/);
     // 158 rikimaps 3560 lists riki_people, 175 3650 riki_switches, 176 3651 riki_export; others are refused
-    expect(CONTRACT.calls).toHaveLength(10);
-    expect(CONTRACT.calls.slice(-2)).toEqual(["riki_switches", "riki_export"]);
+    // 195 rikimaps 3731's module lists the ten calls 3671 to 3702 added, which the site does not ask yet
+    expect(CONTRACT.calls).toHaveLength(20);
+    expect(CONTRACT.calls.slice(-2)).toEqual(["riki_road_signs", "riki_read_tiles"]);
   });
 });
 

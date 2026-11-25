@@ -32,7 +32,8 @@ export const CONTRACT = {
     sha256: "fe4e8648309fce86ea522e9e0d1dc48e82df6ba6e5743dbf0c53db8429fb5224"
   },
   calls: ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer",
-    "riki_people", "riki_switches", "riki_export"],
+    "riki_people", "riki_switches", "riki_export", "riki_duplicate", "riki_shelve", "riki_delete", "riki_new_map",
+    "riki_import", "riki_packages", "riki_copies", "riki_esri_services", "riki_road_signs", "riki_read_tiles"],
   exports: ["memory", "riki_alloc", "riki_free", "riki_version"]
 };
 

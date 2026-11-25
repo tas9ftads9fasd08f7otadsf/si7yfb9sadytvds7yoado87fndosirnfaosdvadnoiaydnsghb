@@ -68,7 +68,7 @@ core only once `rikiCore.ref` in `package.json` pins a rikimaps commit: `npm run
 it (`RIKIMAPS_DIR` is a checkout of rikimaps at that commit, read only; the build writes `dist/riki-core/` here:
 the module, its `.sha256` and its size). It runs rikimaps' documented swift build
 (`tools/linux-core/wasm/README.md`, Swift 6.2 and its WebAssembly SDK, both checked against their pinned sums),
-`wasm-opt -Oz` from the `binaryen` package, holds it to 5 MB brotli (`SIZE_BUDGET`; it is 3.5 MB without ICU's data, rikimaps 3551), and loads the module as the site does, its name as the shim's one argument
+`wasm-opt -Oz` from the `binaryen` package, holds it to 5 MB brotli (`SIZE_BUDGET`; it is 4.4 MB at rikimaps 3731, without ICU's data since 3551), and loads the module as the site does, its name as the shim's one argument
 (Foundation traps without an `argv[0]`), calling `riki_version` and, once it is ready, `riki_maps`. The order is
 `npm run build:core`, `npm run build:web`, `npm run pack:web`; until a commit is pinned `pack:web` says so and packs
 without a core, and the deploy refuses such a zip unless it is run by hand for a test address (`without_core`). To
@@ -103,6 +103,7 @@ owner, reader for a read-only participant, else the member row's `roleRaw` (not 
 built-in styles, Delete, the lock) is off.
 `riki_export` (rikimaps 3651, ABI 0.7.0) takes `{rows, id}` and answers `{name, text}`, the `.mapson` a phone's
 `GET /maps/<id>/mapson` hands out: signed, keys left out and named, no servers, proxies or header values.
+From rikimaps 3731 the module carries no field or case names (Swift's reflection metadata), only the type names Swift's runtime needs and the JSON keys of its answers; `real-core.test.ts` checks a few that only reflection would carry. The pinned module also lists the ten calls rikimaps 3671 to 3702 added (`riki_duplicate` to `riki_read_tiles`), which the site does not ask yet.
 A map the person shares is moved by Core Data into a private zone of its own, `com.apple.coredata.cloudkit.share.<UUID>`, so the site reads that zone beside the mirror zone and the shared database's.
 Without Swift, run `.github/workflows/core-on-demand.yml` by hand (`gh workflow run core-on-demand.yml`, with
 `-f ref=<rikimaps commit, branch or tag>` for another than the pin): it builds and tests the core and keeps

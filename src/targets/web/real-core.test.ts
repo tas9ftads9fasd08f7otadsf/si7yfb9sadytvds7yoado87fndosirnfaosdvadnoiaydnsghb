@@ -113,4 +113,10 @@ describe.skipIf(!ASKED && !existsSync(MODULE))("the real riki-core.wasm on recor
     expect(String(mapson._signature)).toMatch(/^[A-Za-z0-9+/]{43}=$/);
     expect(core.exportMap(read, "nothing")).toMatchObject({ refused: "noSuchMap", status: 404 });
   });
+
+  // 195 the module anyone can download spelled out the app's field names (rikimaps 3731)
+  it("names none of the app's fields that only Swift's reflection would carry", () => {
+    const text = readFileSync(MODULE).toString("latin1");
+    expect(["blockedReason", "buttonToActions", "aerialWinterMaxzoom"].filter((field) => text.includes(field))).toEqual([]);
+  });
 });
