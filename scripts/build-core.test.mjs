@@ -4,7 +4,21 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import account from "../e2e/fixtures/cloud-account.json";
 import { fakeCoreWasm } from "../e2e/fake-core.mjs";
-import { CONTRACT, SCRATCH, SIZE_BUDGET, checkoutProblem, pinFor, readPin, sha256Of, sizes, smoke, swiftBuildArgs, verifyPinned, verifySize, verifySum } from "./build-core.mjs";
+import {
+  CONTRACT,
+  SCRATCH,
+  SIZE_BUDGET,
+  checkoutProblem,
+  pinFor,
+  readPin,
+  sha256Of,
+  sizes,
+  smoke,
+  swiftBuildArgs,
+  verifyPinned,
+  verifySize,
+  verifySum,
+} from "./build-core.mjs";
 
 const shimArgs = vi.hoisted(() => []);
 vi.mock("@bjorn3/browser_wasi_shim", async (original) => {
@@ -29,8 +43,10 @@ describe("the pin", () => {
   // 96 bug: RIKI_CORE_REF kept the pinned sum, so another commit's module was always refused
   it("drops the pinned sum for another commit and keeps it for the pinned one, short or full", () => {
     const pinned = { ref: "b60e9e4c95a00d747580d89a777fdc34818324ff", sha256: "f".repeat(64) };
-    expect(pinFor(pinned, "0123456789abcdef0123456789abcdef01234567"))
-      .toEqual({ ref: "0123456789abcdef0123456789abcdef01234567", sha256: null });
+    expect(pinFor(pinned, "0123456789abcdef0123456789abcdef01234567")).toEqual({
+      ref: "0123456789abcdef0123456789abcdef01234567",
+      sha256: null,
+    });
     expect(pinFor(pinned, undefined)).toEqual(pinned);
     expect(pinFor(pinned, "b60e9e4c95")).toEqual(pinned);
     expect(pinFor(pinned, pinned.ref)).toEqual(pinned);
@@ -110,11 +126,15 @@ describe("the rikimaps checkout", () => {
   });
 
   it("is refused at another commit, naming both", () => {
-    expect(checkoutProblem(checkout(true), "abc1234", () => "fff9999")).toMatch(/is at fff9999, but rikiCore.ref pins abc1234/);
+    expect(checkoutProblem(checkout(true), "abc1234", () => "fff9999")).toMatch(
+      /is at fff9999, but rikiCore.ref pins abc1234/,
+    );
   });
 
   it("is refused without the core's package, and an export without git cannot be told from the pin", () => {
-    expect(checkoutProblem(mkdtempSync(path.join(tmpdir(), "nothing-")), "abc")).toMatch(/no tools\/linux-core\/wasm\/Package.swift/);
+    expect(checkoutProblem(mkdtempSync(path.join(tmpdir(), "nothing-")), "abc")).toMatch(
+      /no tools\/linux-core\/wasm\/Package.swift/,
+    );
     expect(checkoutProblem(checkout(false), "abc")).toBeNull();
   });
 });
@@ -148,7 +168,11 @@ describe("the module loaded as the site loads it", () => {
   });
 
   it("is refused when it lists other calls than the site asks, or says no version", async () => {
-    await expect(smoke(fakeCoreWasm({ riki_version: { version: "0.1.0", calls: ["riki_maps"], ready: [] } }))).rejects.toThrow("it lists the calls");
-    await expect(smoke(fakeCoreWasm({ riki_version: { version: "x", calls, ready: calls } }))).rejects.toThrow("riki_version says");
+    await expect(
+      smoke(fakeCoreWasm({ riki_version: { version: "0.1.0", calls: ["riki_maps"], ready: [] } })),
+    ).rejects.toThrow("it lists the calls");
+    await expect(smoke(fakeCoreWasm({ riki_version: { version: "x", calls, ready: calls } }))).rejects.toThrow(
+      "riki_version says",
+    );
   });
 });

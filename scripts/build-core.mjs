@@ -24,17 +24,36 @@ export const CONTRACT = {
   toolchain: {
     release: "swift-6.2-RELEASE",
     url: "https://download.swift.org/swift-6.2-release/ubuntu2404/swift-6.2-RELEASE/swift-6.2-RELEASE-ubuntu24.04.tar.gz",
-    sha256: "8e3d63a3371caad495e694414b9b9a22c5f68c6473077406c7296472a41bc077"
+    sha256: "8e3d63a3371caad495e694414b9b9a22c5f68c6473077406c7296472a41bc077",
   },
   sdk: {
     id: "swift-6.2-RELEASE_wasm",
     url: "https://download.swift.org/swift-6.2-release/wasm-sdk/swift-6.2-RELEASE/swift-6.2-RELEASE_wasm.artifactbundle.tar.gz",
-    sha256: "fe4e8648309fce86ea522e9e0d1dc48e82df6ba6e5743dbf0c53db8429fb5224"
+    sha256: "fe4e8648309fce86ea522e9e0d1dc48e82df6ba6e5743dbf0c53db8429fb5224",
   },
-  calls: ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer",
-    "riki_people", "riki_switches", "riki_export", "riki_duplicate", "riki_shelve", "riki_delete", "riki_new_map",
-    "riki_import", "riki_packages", "riki_copies", "riki_esri_services", "riki_road_signs", "riki_read_tiles"],
-  exports: ["memory", "riki_alloc", "riki_free", "riki_version"]
+  calls: [
+    "riki_maps",
+    "riki_map",
+    "riki_apply",
+    "riki_style",
+    "riki_changes",
+    "riki_read_address",
+    "riki_add_layer",
+    "riki_people",
+    "riki_switches",
+    "riki_export",
+    "riki_duplicate",
+    "riki_shelve",
+    "riki_delete",
+    "riki_new_map",
+    "riki_import",
+    "riki_packages",
+    "riki_copies",
+    "riki_esri_services",
+    "riki_road_signs",
+    "riki_read_tiles",
+  ],
+  exports: ["memory", "riki_alloc", "riki_free", "riki_version"],
 };
 
 const SEMVER = /^\d+\.\d+\.\d+$/;
@@ -44,11 +63,28 @@ export const SCRATCH = "/tmp/riki-core-build";
 
 /** The arguments of the documented swift build, plus what makes its bytes the same at any checkout path. */
 export function swiftBuildArgs(dir, scratch = SCRATCH) {
-  return ["build", "--swift-sdk", CONTRACT.sdk.id, "-c", "release", "--product", CONTRACT.product,
-    "--scratch-path", path.join(scratch, "build"), "-debug-info-format", "none",
-    "-Xswiftc", "-file-prefix-map", "-Xswiftc", `${dir}=/rikimaps`,
+  return [
+    "build",
+    "--swift-sdk",
+    CONTRACT.sdk.id,
+    "-c",
+    "release",
+    "--product",
+    CONTRACT.product,
+    "--scratch-path",
+    path.join(scratch, "build"),
+    "-debug-info-format",
+    "none",
+    "-Xswiftc",
+    "-file-prefix-map",
+    "-Xswiftc",
+    `${dir}=/rikimaps`,
     // 178 each object kept its IR's hash, which came out two ways, in the module's data
-    "-Xswiftc", "-Xfrontend", "-Xswiftc", "-disable-incremental-llvm-codegen"];
+    "-Xswiftc",
+    "-Xfrontend",
+    "-Xswiftc",
+    "-disable-incremental-llvm-codegen",
+  ];
 }
 
 export const sha256Of = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -59,8 +95,10 @@ export const SIZE_BUDGET = 5_000_000;
 /** 156 Fails a module heavier than the budget, as one that links ICU's language data again is. */
 export function verifySize(size, budget = SIZE_BUDGET) {
   if (size.brotli > budget) {
-    throw new Error(`riki-core.wasm is ${size.brotli} bytes brotli, over the budget of ${budget}: `
-      + "rikimaps' tools/linux-core/wasm/README.md says what the module may not carry, ICU's data first");
+    throw new Error(
+      `riki-core.wasm is ${size.brotli} bytes brotli, over the budget of ${budget}: ` +
+        "rikimaps' tools/linux-core/wasm/README.md says what the module may not carry, ICU's data first",
+    );
   }
 }
 
@@ -83,7 +121,11 @@ export function pinFor(pinned, asked) {
 }
 
 /** Whether the rikimaps checkout is at the pinned commit; an export without git cannot say. */
-export function checkoutProblem(dir, ref, git = (args) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8" }).trim()) {
+export function checkoutProblem(
+  dir,
+  ref,
+  git = (args) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8" }).trim(),
+) {
   if (!existsSync(path.join(dir, CONTRACT.package, "Package.swift"))) {
     return `${dir} has no ${CONTRACT.package}/Package.swift: it is not a rikimaps checkout with the core`;
   }
@@ -101,7 +143,9 @@ export function verifySum(bytes, wanted, what) {
 /** The module's own checksum against the pin: a build that is not the pinned one is not shipped. */
 export function verifyPinned(got, pinned) {
   if (pinned && got !== pinned) {
-    throw new Error(`riki-core.wasm built to ${got}, but rikiCore.sha256 in package.json is ${pinned}: bump the pin if the commit changed`);
+    throw new Error(
+      `riki-core.wasm built to ${got}, but rikiCore.sha256 in package.json is ${pinned}: bump the pin if the commit changed`,
+    );
   }
 }
 
@@ -136,7 +180,8 @@ export async function smoke(bytes) {
   };
   const version = read(e.riki_version());
   if (!SEMVER.test(String(version.version))) throw new Error(`riki_version says ${JSON.stringify(version)}`);
-  if (JSON.stringify(version.calls) !== JSON.stringify(CONTRACT.calls)) throw new Error(`it lists the calls ${version.calls}`);
+  if (JSON.stringify(version.calls) !== JSON.stringify(CONTRACT.calls))
+    throw new Error(`it lists the calls ${version.calls}`);
   // 155 a call said to be ready answers for real
   if ((version.ready ?? []).includes("riki_maps") && !Array.isArray(call("riki_maps", { rows: [] }).maps)) {
     throw new Error("riki_maps is listed as ready but lists no maps");
@@ -144,7 +189,8 @@ export async function smoke(bytes) {
   for (const name of CONTRACT.calls) {
     if ((version.ready ?? []).includes(name)) continue;
     const answer = call(name, { rows: [], id: "m" });
-    if (answer.refused !== "coreNotReady") throw new Error(`${name} answered ${JSON.stringify(answer)} where its rules are not in yet`);
+    if (answer.refused !== "coreNotReady")
+      throw new Error(`${name} answered ${JSON.stringify(answer)} where its rules are not in yet`);
   }
   return version;
 }
@@ -182,7 +228,9 @@ async function download(url, file, wanted) {
 }
 
 async function installSdk(swift, scratch) {
-  const listed = execFileSync(swift, ["sdk", "list"], { encoding: "utf8" }).split("\n").map((line) => line.trim());
+  const listed = execFileSync(swift, ["sdk", "list"], { encoding: "utf8" })
+    .split("\n")
+    .map((line) => line.trim());
   if (listed.includes(CONTRACT.sdk.id)) return;
   console.log(`installing ${CONTRACT.sdk.id}`);
   const file = path.join(scratch, "sdk.tar.gz");
@@ -195,13 +243,16 @@ async function installSdk(swift, scratch) {
 /** The objects the link took, in its order. */
 async function linked(release) {
   return (await readFile(path.join(release, `${CONTRACT.product}.product`, "Objects.LinkFileList"), "utf8"))
-    .split("\n").filter(Boolean).map((file) => file.replace(/^'|'$/g, ""));
+    .split("\n")
+    .filter(Boolean)
+    .map((file) => file.replace(/^'|'$/g, ""));
 }
 
 /** 178 Each object the link took, in its order, with its sum: two builds that differ say where. */
 async function objectSums(release) {
-  const lines = await Promise.all((await linked(release)).map(async (file) =>
-    `${sha256Of(await readFile(file))}  ${path.relative(release, file)}`));
+  const lines = await Promise.all(
+    (await linked(release)).map(async (file) => `${sha256Of(await readFile(file))}  ${path.relative(release, file)}`),
+  );
   return `${lines.join("\n")}\n`;
 }
 
@@ -223,12 +274,18 @@ export async function build({ dir, pin, out, env = process.env }) {
   await installSdk(swift, scratch);
   const cwd = path.join(dir, CONTRACT.package);
   // Nothing is written in the checkout: SwiftPM's scratch is ours.
-  execFileSync(swift, swiftBuildArgs(dir, scratch), { cwd, stdio: "inherit", env: { ...env, PATH: `${path.dirname(swift)}:${env.PATH}` } });
+  execFileSync(swift, swiftBuildArgs(dir, scratch), {
+    cwd,
+    stdio: "inherit",
+    env: { ...env, PATH: `${path.dirname(swift)}:${env.PATH}` },
+  });
   const built = path.join(scratch, "build", "wasm32-unknown-wasip1", "release", `${CONTRACT.product}.wasm`);
   const opt = path.join(ROOT, "node_modules", ".bin", "wasm-opt");
   if (!existsSync(opt)) throw new Error("wasm-opt is not installed: run npm ci");
   const wasm = path.join(out, "riki-core.wasm");
-  execFileSync(opt, ["-Oz", "--strip-debug", "--strip-producers", "--all-features", built, "-o", wasm], { stdio: "inherit" });
+  execFileSync(opt, ["-Oz", "--strip-debug", "--strip-producers", "--all-features", built, "-o", wasm], {
+    stdio: "inherit",
+  });
   await writeFile(path.join(out, "objects.sha256"), await objectSums(path.dirname(built)));
   if (env.RIKI_CORE_OBJECTS) await keepObjects(path.dirname(built), env.RIKI_CORE_OBJECTS);
   const bytes = await readFile(wasm);
@@ -239,7 +296,10 @@ export async function build({ dir, pin, out, env = process.env }) {
   const size = { ...sizes(bytes), unoptimised: (await readFile(built)).length };
   verifySize(size);
   await writeFile(`${wasm}.sha256`, `${sum}  riki-core.wasm\n`);
-  await writeFile(path.join(out, "riki-core.size.json"), `${JSON.stringify({ version: version.version, ready: version.ready ?? [], ...size }, null, 2)}\n`);
+  await writeFile(
+    path.join(out, "riki-core.size.json"),
+    `${JSON.stringify({ version: version.version, ready: version.ready ?? [], ...size }, null, 2)}\n`,
+  );
   await rm(scratch, { recursive: true, force: true });
   return { sum, size, version };
 }
@@ -252,16 +312,25 @@ async function main() {
     return;
   }
   const dir = process.env.RIKIMAPS_DIR;
-  if (!dir) throw new Error("RIKIMAPS_DIR is not set: point it at a rikimaps checkout at rikiCore.ref (read only; nothing is written in it)");
+  if (!dir)
+    throw new Error(
+      "RIKIMAPS_DIR is not set: point it at a rikimaps checkout at rikiCore.ref (read only; nothing is written in it)",
+    );
   if (!find("tar")) throw new Error("tar is not installed");
   const out = process.env.RIKI_CORE_DIR || path.join(ROOT, "dist", "riki-core");
   await rm(out, { recursive: true, force: true });
   await mkdir(out, { recursive: true });
   const { sum, size, version } = await build({ dir, pin, out });
-  console.log(`riki-core.wasm ${version.version} (rikimaps ${pin.ref.slice(0, 10)}): ${size.raw} bytes, ${size.brotli} brotli, `
-    + `${size.unoptimised} before wasm-opt; sha256 ${sum}`);
+  console.log(
+    `riki-core.wasm ${version.version} (rikimaps ${pin.ref.slice(0, 10)}): ${size.raw} bytes, ${size.brotli} brotli, ` +
+      `${size.unoptimised} before wasm-opt; sha256 ${sum}`,
+  );
   if (process.env.GITHUB_STEP_SUMMARY) {
-    await writeFile(process.env.GITHUB_STEP_SUMMARY, `### riki-core.wasm ${version.version}\n\n| raw | brotli |\n|---|---|\n| ${size.raw} bytes | ${size.brotli} bytes |\n\nsha256: \`${sum}\`\n`, { flag: "a" });
+    await writeFile(
+      process.env.GITHUB_STEP_SUMMARY,
+      `### riki-core.wasm ${version.version}\n\n| raw | brotli |\n|---|---|\n| ${size.raw} bytes | ${size.brotli} bytes |\n\nsha256: \`${sum}\`\n`,
+      { flag: "a" },
+    );
   }
 }
 
