@@ -12,3 +12,4 @@ server/config.php
 server/.phpunit.cache/
 server/.phpunit.result.cache
 e2e/real/
+.build/
