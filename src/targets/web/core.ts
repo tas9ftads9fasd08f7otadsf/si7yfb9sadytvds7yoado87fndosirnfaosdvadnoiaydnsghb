@@ -1,6 +1,6 @@
 import { WASI } from "@bjorn3/browser_wasi_shim";
 import { CoreNotReady } from "@/backend/types";
-import type { AddressReading, Device, MapSwitches, OtherLayers, Portable, ShareRole } from "@/lib/types";
+import type { AddressReading, Device, MapSwitches, OtherLayers, Packages, Portable, ShareRole } from "@/lib/types";
 import { BASE } from "./base";
 import type { CoreRow, CoreWrite } from "./records";
 import type { StoredForCore } from "./regions/packages";
@@ -125,6 +125,12 @@ export interface Core {
   exportMap(rows: CoreRow[], mapID: string): MapsonFile | { refused: string; status?: number };
   /** 198 Edit map's Duplicate as new rows; `CoreNotReady` before rikimaps 3671. */
   duplicate(rows: CoreRow[], mapID: string): Made | { refused: string; status?: number; said?: string };
+  /** 204 Add layer's Riki packages, `pieces` those the browser holds; `CoreNotReady` before rikimaps 3684. */
+  packages(
+    rows: CoreRow[],
+    mapID: string,
+    pieces: string[],
+  ): Packages | { refused: string; status?: number; said?: string };
   /** 203 Add layer's From your maps: the other maps' layers to tick; `CoreNotReady` before rikimaps 3685. */
   otherLayers(rows: CoreRow[], mapID: string): OtherLayers | { refused: string; status?: number; said?: string };
   /** 203 The ticked layers copied for the map, which `apply` then adds. */
@@ -213,6 +219,8 @@ export interface CoreExports {
   riki_export?(pointer: number, length: number): number;
   /** 198 In modules from rikimaps 3671 on. */
   riki_duplicate?(pointer: number, length: number): number;
+  /** 204 In modules from rikimaps 3684 on. */
+  riki_packages?(pointer: number, length: number): number;
   /** 203 In modules from rikimaps 3685 on. */
   riki_copies?(pointer: number, length: number): number;
   /** 201 In modules from rikimaps 3675 on. */
@@ -237,6 +245,7 @@ type Call =
   | "riki_switches"
   | "riki_export"
   | "riki_duplicate"
+  | "riki_packages"
   | "riki_copies"
   | "riki_shelve"
   | "riki_delete"
@@ -291,6 +300,7 @@ export function coreOf(exports: CoreExports): Core {
     switches: (rows, mapID) => callJSON(exports, "riki_switches", { rows, id: mapID }),
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
+    packages: (rows, mapID, pieces) => callJSON(exports, "riki_packages", { rows, id: mapID, pieces }),
     otherLayers: (rows, mapID) => callJSON(exports, "riki_copies", { rows, id: mapID }),
     copyLayers: (rows, mapID, layers) => callJSON(exports, "riki_copies", { rows, id: mapID, layers }),
     shelve: (rows, shelf) => callJSON(exports, "riki_shelve", { rows, shelf }),
