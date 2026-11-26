@@ -56,6 +56,8 @@ describe("the core's wrapper", () => {
       riki_switches: respond,
       riki_export: respond,
       riki_duplicate: respond,
+      riki_new_map: respond,
+      riki_import: respond,
     };
   }
 
@@ -160,6 +162,16 @@ describe("the core's wrapper", () => {
     expect(coreOf(exports).exportMap([], "M")).toEqual({ rows: [], id: "M" });
     const without: CoreExports = { ...exports, riki_export: undefined };
     expect(() => coreOf(without).exportMap([], "M")).toThrow(CoreNotReady);
+  });
+
+  // 199 riki_new_map and riki_import take the rows and what was typed or read; older modules are not ready
+  it("asks riki_new_map with the name and riki_import with the text, and says not ready without them", () => {
+    const exports = echo();
+    expect(coreOf(exports).newMap([], "Lakes")).toEqual({ rows: [], name: "Lakes" });
+    expect(coreOf(exports).importMap([], "{}", true)).toEqual({ rows: [], text: "{}", allowUnsigned: true });
+    const without: CoreExports = { ...exports, riki_new_map: undefined, riki_import: undefined };
+    expect(() => coreOf(without).newMap([], "Lakes")).toThrow(CoreNotReady);
+    expect(() => coreOf(without).importMap([], "{}", true)).toThrow(CoreNotReady);
   });
 
   // 198 riki_duplicate takes the rows and the map's id; a module from before rikimaps 3671 is not ready
