@@ -17,13 +17,15 @@ const stayedConnected = async (page) => {
   expect(await page.evaluate(() => window.sawOffline)).toBe(false);
 };
 
-test("the Maps screen offers no New map, Import, sorting or Servers, and stays connected", async ({ page }) => {
+// 199 New map and Import are the site's since riki_new_map and riki_import
+test("the Maps screen offers New map and Import but no sorting or Servers, and stays connected", async ({ page }) => {
   await mockCloud(page, { signedIn: true });
   await page.goto("./");
   await page.locator("#current .hero").waitFor();
   await page.locator("#railMaps").click();
   await expect(page.locator("#others")).toContainText("Doprava");
-  await expect(page.locator("#newMap")).toHaveCount(0);
+  await expect(page.locator("#mapsNew")).toBeVisible();
+  await expect(page.locator("#mapsImport")).toBeVisible();
   await expect(page.locator("#sortAZ")).toHaveCount(0);
   await expect(page.locator("#railServers")).toHaveCount(0);
   await expect(page.locator("#serverCards")).toHaveCount(0);
