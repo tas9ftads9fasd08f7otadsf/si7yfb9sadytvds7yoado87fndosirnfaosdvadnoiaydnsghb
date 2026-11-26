@@ -22,6 +22,7 @@ import {
   type Applied,
   type Core,
   type HistoryEntry,
+  type Imported,
   type Made,
   type Deleted,
   type MapsonFile,
@@ -59,6 +60,9 @@ interface Options {
   duplicated?: () => Made | { refused: string; status?: number; said?: string };
   /** 200 What the core says a deleted map takes. */
   deleted?: () => Deleted | { refused: string; status?: number; said?: string };
+  /** 199 What the core makes as a new map, and of a file. */
+  made?: () => Made | { refused: string; status?: number; said?: string };
+  imported?: () => Imported | { refused: string; status?: number; said?: string };
   /** 85 Which hosts answer a browser; every one does by default. */
   reach?: Reach;
   /** 86 What the core reads an address as, by round; the recorded answer by default. */
@@ -244,6 +248,8 @@ function stack(options: Options = {}) {
     exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile)),
     duplicate: vi.fn(() => options.duplicated?.() ?? (account.core.riki_duplicate as unknown as Made)),
     deleteMap: vi.fn(() => options.deleted?.() ?? (account.core.riki_delete as unknown as Deleted)),
+    newMap: vi.fn(() => options.made?.() ?? (account.core.riki_new_map as unknown as Made)),
+    importMap: vi.fn(() => options.imported?.() ?? (account.core.riki_import as unknown as Imported)),
   };
   const kept = new Map<string, unknown>();
   const keeping: Keeping = {
@@ -476,7 +482,8 @@ describe("WebBackend's reads", () => {
   // 78 only editing a map is built; the later steps' writes still reject
   it("keeps rejecting the writes of later steps", async () => {
     const { backend } = stack();
-    await expect(backend.newMap("x")).rejects.toThrow("step 4");
+    // 199 New map is the site's since riki_new_map, 200 Delete since riki_delete; Test layer still waits
+    await expect(backend.testLayer("M", "L")).rejects.toThrow("step 4");
     await expect(backend.addFile("M", new File([], "a.gpx"))).rejects.toThrow("step 5");
   });
 
@@ -1175,16 +1182,76 @@ describe("WebBackend's delete", () => {
   });
 });
 
+describe("WebBackend's new maps", () => {
+  // 199 New map answered "not on the site yet"; the core makes the blank map New map does on the phone
+  it("offers New map and creates the core's rows for the typed name, opening the map it made", async () => {
+    const { backend, core, saves } = stack();
+    expect(backend.offers("newMap")).toBe(true);
+    expect(await backend.newMap("Lakes")).toEqual({ ok: true, value: { id: account.core.riki_new_map.map.id } });
+    expect(vi.mocked(core.newMap).mock.calls[0]![1]).toBe("Lakes");
+    const [records, where] = saves.mock.calls[0]!;
+    expect(where).toEqual({ zoneID: { zoneName: "com.apple.coredata.cloudkit.zone" }, atomic: true });
+    expect(records.map((record) => [record.recordType, record.fields.CD_name?.value])).toEqual([
+      ["CD_SharedMap", "Lakes"],
+    ]);
+  });
+
+  it("passes on the core's refusal of a blank name and writes nothing", async () => {
+    const { backend, saves } = stack({ made: () => ({ refused: "blankName", status: 400 }) });
+    expect(await backend.newMap(" ")).toEqual({ ok: false, status: 400, said: "blankName" });
+    expect(saves).not.toHaveBeenCalled();
+  });
+
+  // 199 Import answered "not on the site yet"; the core reads the file as the phone's import does
+  it("imports every map of a file in one batch, unsigned ones allowed as on the phone, and opens the first", async () => {
+    const { backend, core, saves } = stack();
+    const file = new Blob(['{"name":"Pieniny"}'], { type: "application/json" });
+    expect(await backend.importMap(file)).toEqual({ ok: true, value: { id: account.core.riki_import.maps[0]!.id } });
+    const [, text, unsigned] = vi.mocked(core.importMap).mock.calls[0]!;
+    expect([text, unsigned]).toEqual(['{"name":"Pieniny"}', true]);
+    expect(saves).toHaveBeenCalledTimes(1);
+    expect(saves.mock.calls[0]![0].filter((record) => record.recordType === "CD_SharedMap")).toHaveLength(2);
+  });
+
+  // 199 each imported map's rows are the site's own, so CloudKit's push of them is no news
+  it("tells no one of the rows an import wrote, whichever map they belong to", async () => {
+    const { backend, notify } = stack();
+    const listener = vi.fn();
+    backend.onChanged(listener);
+    await backend.maps();
+    await backend.importMap(new Blob(["{}"]));
+    notify();
+    await vi.waitFor(() => expect(listener).toHaveBeenCalled());
+    expect(listener.mock.calls[0]![0]).toEqual([]);
+  });
+
+  it("passes on what the core says of a file that is no map", async () => {
+    const { backend, saves } = stack({ imported: () => ({ refused: "notAMap", status: 409 }) });
+    expect(await backend.importMap(new Blob(["{}"]))).toEqual({ ok: false, status: 409, said: "notAMap" });
+    expect(saves).not.toHaveBeenCalled();
+  });
+
+  // 199 a module from before rikimaps 3679 and 3680 lacks the calls, which the page tells as rules not ready
+  it("says the core's rules are not ready while the module lacks the calls", async () => {
+    const notReady = () => {
+      throw new CoreNotReady("no riki_new_map");
+    };
+    const lacking = stack({ made: notReady, imported: notReady });
+    await expect(lacking.backend.newMap("Lakes")).rejects.toBeInstanceOf(CoreNotReady);
+    await expect(lacking.backend.importMap(new Blob(["{}"]))).rejects.toBeInstanceOf(CoreNotReady);
+  });
+});
+
 describe("WebBackend's parts not built yet", () => {
   // 82 the site said "Not connected" for a write it refuses as not done yet
   it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
     const { backend } = stack();
-    // 198 Duplicate map is the site's since riki_duplicate
-    const parts: Feature[] = ["newMap", "shelf", "pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
+    // 198 Duplicate map is the site's since riki_duplicate, 199 New map since riki_new_map
+    const parts: Feature[] = ["shelf", "pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
     expect(parts.filter((part) => backend.offers(part))).toEqual([]);
     // 86 only the tile address and a service's layers are added from the site so far
     expect(backend.offers("addLayer")).toBe(true);
-    await expect(backend.newMap("Alps")).rejects.toBeInstanceOf(NotOnSite);
+    await expect(backend.shelve({ sort: "nameAscending" } as never)).rejects.toBeInstanceOf(NotOnSite);
     await expect(backend.servers()).rejects.toBeInstanceOf(NotOnSite);
     await expect(backend.addAPI("M", "https://t/x", { kind: "x" } as never, "n")).rejects.toBeInstanceOf(NotOnSite);
   });
