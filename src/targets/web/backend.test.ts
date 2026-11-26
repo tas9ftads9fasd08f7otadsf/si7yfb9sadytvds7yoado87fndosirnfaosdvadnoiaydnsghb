@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
-import type { Device, MapSwitches, Portable } from "@/lib/types";
+import type { Device, MapSwitches, OtherLayers, Portable } from "@/lib/types";
 import {
   Cloud,
   type CKBatchResult,
@@ -54,6 +54,9 @@ interface Options {
   exported?: () => MapsonFile | { refused: string; status?: number };
   /** 198 What the core makes as a map's copy. */
   duplicated?: () => Made | { refused: string; status?: number; said?: string };
+  /** 203 What the core lists of the other maps' layers, and copies of the ticked ones. */
+  others?: () => OtherLayers | { refused: string; status?: number; said?: string };
+  copied?: () => { layers: unknown[] } | { refused: string; status?: number; said?: string };
   /** 85 Which hosts answer a browser; every one does by default. */
   reach?: Reach;
   /** 86 What the core reads an address as, by round; the recorded answer by default. */
@@ -220,6 +223,8 @@ function stack(options: Options = {}) {
     switches: vi.fn(() => options.switches?.() ?? (account.core.riki_switches as unknown as MapSwitches)),
     exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile)),
     duplicate: vi.fn(() => options.duplicated?.() ?? (account.core.riki_duplicate as unknown as Made)),
+    otherLayers: vi.fn(() => options.others?.() ?? (account.core.riki_copies as unknown as OtherLayers)),
+    copyLayers: vi.fn(() => options.copied?.() ?? { layers: account.core.riki_copies.layers }),
   };
   const kept = new Map<string, unknown>();
   const keeping: Keeping = {
@@ -1042,11 +1047,61 @@ describe("WebBackend's duplicate", () => {
   });
 });
 
+describe("WebBackend's copies from other maps", () => {
+  const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
+  const RIDGES = account.core.riki_copies.groups[0]!.rows[0]!.layer;
+
+  // 203 Add layer's From your maps answered "not on the site yet"; the core lists them as the phone does
+  it("offers From your maps and lists the other maps' layers the core reads", async () => {
+    const { backend, core } = stack();
+    expect(backend.offers("fromMaps")).toBe(true);
+    const listing = await backend.otherLayers(TATRAS);
+    expect(listing.ok && listing.value.groups.map((group) => group.name)).toEqual(["Beskydy"]);
+    expect(vi.mocked(core.otherLayers).mock.calls[0]![1]).toBe(TATRAS);
+  });
+
+  it("copies the ticked layers and adds them as an edit does, with its rows written", async () => {
+    const { backend, core, saves } = stack();
+    expect((await backend.addCopies(TATRAS, [RIDGES])).ok).toBe(true);
+    expect(vi.mocked(core.copyLayers).mock.calls[0]!.slice(1)).toEqual([TATRAS, [RIDGES]]);
+    expect(vi.mocked(core.apply).mock.calls[0]![0]).toMatchObject({
+      id: TATRAS,
+      layers: account.core.riki_copies.layers,
+    });
+    expect(saves).toHaveBeenCalled();
+  });
+
+  it("passes on the core's refusal of a layer it will not copy, as an edit's, and adds nothing", async () => {
+    const { backend, core, saves } = stack({
+      copied: () => ({ refused: "notCopied", status: 409, said: "Its server is not in your servers" }),
+    });
+    expect(await backend.addCopies(TATRAS, [RIDGES])).toEqual({ ok: false, status: 409, said: "notCopied" });
+    expect(core.apply).not.toHaveBeenCalled();
+    expect(saves).not.toHaveBeenCalled();
+  });
+
+  it("says no such map in the site's words for a map the rows lack", async () => {
+    const { backend } = stack({ others: () => ({ refused: "noSuchMap", status: 404 }) });
+    await backend.words();
+    expect(await backend.otherLayers("nope")).toEqual({ ok: false, status: 404, said: "Taká mapa nie je" });
+  });
+
+  // 203 a module from before rikimaps 3685 has no riki_copies, which the page tells as rules not ready
+  it("says the core's rules are not ready while the module lacks the call", async () => {
+    const lacking = stack({
+      others: () => {
+        throw new CoreNotReady("no riki_copies");
+      },
+    });
+    await expect(lacking.backend.otherLayers(TATRAS)).rejects.toBeInstanceOf(CoreNotReady);
+  });
+});
+
 describe("WebBackend's parts not built yet", () => {
   // 82 the site said "Not connected" for a write it refuses as not done yet
   it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
     const { backend } = stack();
-    // 198 Duplicate map is the site's since riki_duplicate
+    // 198 Duplicate map is the site's since riki_duplicate, 203 From your maps since riki_copies
     const parts: Feature[] = ["newMap", "shelf", "pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
     expect(parts.filter((part) => backend.offers(part))).toEqual([]);
     // 86 only the tile address and a service's layers are added from the site so far

@@ -56,6 +56,7 @@ describe("the core's wrapper", () => {
       riki_switches: respond,
       riki_export: respond,
       riki_duplicate: respond,
+      riki_copies: respond,
     };
   }
 
@@ -160,6 +161,15 @@ describe("the core's wrapper", () => {
     expect(coreOf(exports).exportMap([], "M")).toEqual({ rows: [], id: "M" });
     const without: CoreExports = { ...exports, riki_export: undefined };
     expect(() => coreOf(without).exportMap([], "M")).toThrow(CoreNotReady);
+  });
+
+  // 203 riki_copies lists with the map alone and copies with the ticked layers; before rikimaps 3685, not ready
+  it("asks riki_copies for the listing or for the copies, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).otherLayers([], "M")).toEqual({ rows: [], id: "M" });
+    expect(coreOf(exports).copyLayers([], "M", ["L"])).toEqual({ rows: [], id: "M", layers: ["L"] });
+    const without: CoreExports = { ...exports, riki_copies: undefined };
+    expect(() => coreOf(without).otherLayers([], "M")).toThrow(CoreNotReady);
   });
 
   // 198 riki_duplicate takes the rows and the map's id; a module from before rikimaps 3671 is not ready
