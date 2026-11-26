@@ -31,6 +31,8 @@ export interface ApplyAsk {
   styleID: string | null;
   edit?: Record<string, string>;
   layers?: unknown[];
+  /** 202 A picture the browser sized, base64; none takes the picture away. */
+  picture?: { kind: "icon" | "preview" | "styleIcon"; style?: string; data?: string };
   author: string | null;
 }
 
@@ -129,6 +131,8 @@ export interface Core {
     mapID: string,
     pieces: string[],
   ): Packages | { refused: string; status?: number; said?: string };
+  /** 201 The Maps list arranged, `shelf` as the phone's `/shelf` query; `CoreNotReady` before rikimaps 3675. */
+  shelve(rows: CoreRow[], shelf: Record<string, string>): Shelved | { refused: string; status?: number; said?: string };
   /** 200 The Maps sheet's Delete, the name as typed; `CoreNotReady` before rikimaps 3678. */
   deleteMap(
     rows: CoreRow[],
@@ -143,6 +147,12 @@ export interface Core {
     text: string,
     allowUnsigned: boolean,
   ): Imported | { refused: string; status?: number; said?: string };
+}
+
+/** 201 The rows an arrangement changes, and the list as it stands after. */
+export interface Shelved {
+  write: CoreWrite[];
+  catalog: Device;
 }
 
 /** 200 What a deleted map takes with it: records in one zone, or private zones whole. */
@@ -203,6 +213,8 @@ export interface CoreExports {
   riki_duplicate?(pointer: number, length: number): number;
   /** 204 In modules from rikimaps 3684 on. */
   riki_packages?(pointer: number, length: number): number;
+  /** 201 In modules from rikimaps 3675 on. */
+  riki_shelve?(pointer: number, length: number): number;
   /** 200 In modules from rikimaps 3678 on. */
   riki_delete?(pointer: number, length: number): number;
   /** 199 In modules from rikimaps 3679 on. */
@@ -224,6 +236,7 @@ type Call =
   | "riki_export"
   | "riki_duplicate"
   | "riki_packages"
+  | "riki_shelve"
   | "riki_delete"
   | "riki_new_map"
   | "riki_import";
@@ -277,6 +290,7 @@ export function coreOf(exports: CoreExports): Core {
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
     packages: (rows, mapID, pieces) => callJSON(exports, "riki_packages", { rows, id: mapID, pieces }),
+    shelve: (rows, shelf) => callJSON(exports, "riki_shelve", { rows, shelf }),
     deleteMap: (rows, mapID, name) => callJSON(exports, "riki_delete", { rows, id: mapID, name }),
     newMap: (rows, name) => callJSON(exports, "riki_new_map", { rows, name }),
     importMap: (rows, text, allowUnsigned) => callJSON(exports, "riki_import", { rows, text, allowUnsigned }),

@@ -17,8 +17,8 @@ const stayedConnected = async (page) => {
   expect(await page.evaluate(() => window.sawOffline)).toBe(false);
 };
 
-// 199 New map and Import are the site's since riki_new_map and riki_import
-test("the Maps screen offers New map and Import but no sorting or Servers, and stays connected", async ({ page }) => {
+// 199 New map and Import are the site's since riki_new_map and riki_import, 201 sorting since riki_shelve
+test("the Maps screen offers New map, Import and sorting but no Servers, and stays connected", async ({ page }) => {
   await mockCloud(page, { signedIn: true });
   await page.goto("./");
   await page.locator("#current .hero").waitFor();
@@ -26,7 +26,7 @@ test("the Maps screen offers New map and Import but no sorting or Servers, and s
   await expect(page.locator("#others")).toContainText("Doprava");
   await expect(page.locator("#mapsNew")).toBeVisible();
   await expect(page.locator("#mapsImport")).toBeVisible();
-  await expect(page.locator("#sortAZ")).toHaveCount(0);
+  await expect(page.locator("#sortAZ")).toBeVisible();
   await expect(page.locator("#railServers")).toHaveCount(0);
   await expect(page.locator("#serverCards")).toHaveCount(0);
   await stayedConnected(page);
@@ -45,8 +45,8 @@ test("Edit map offers what the site does and leaves out the rest, staying connec
   await expect(page.locator("#editTab-offline")).toHaveCount(0);
   for (const tab of ["General", "Layers"]) {
     await editTab(page, tab);
-    // 176 Export map is the site's since riki_export, 198 Duplicate map since riki_duplicate
-    for (const id of ["#coverageBox", "#iconPictureFile", "#takePreview"]) {
+    // 176 Export map is the site's since riki_export, 198 Duplicate map since riki_duplicate, 202 pictures
+    for (const id of ["#coverageBox"]) {
       await expect(page.locator(id)).toHaveCount(0);
     }
   }

@@ -57,6 +57,7 @@ describe("the core's wrapper", () => {
       riki_export: respond,
       riki_duplicate: respond,
       riki_packages: respond,
+      riki_shelve: respond,
       riki_delete: respond,
       riki_new_map: respond,
       riki_import: respond,
@@ -172,6 +173,17 @@ describe("the core's wrapper", () => {
     expect(coreOf(exports).packages([], "M", ["roads"])).toEqual({ rows: [], id: "M", pieces: ["roads"] });
     const without: CoreExports = { ...exports, riki_packages: undefined };
     expect(() => coreOf(without).packages([], "M", [])).toThrow(CoreNotReady);
+  });
+
+  // 201 riki_shelve takes the rows and the shelf query; a module before rikimaps 3675 is not ready
+  it("asks riki_shelve with the rows and the shelf, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).shelve([], { sort: "nameAscending" })).toEqual({
+      rows: [],
+      shelf: { sort: "nameAscending" },
+    });
+    const without: CoreExports = { ...exports, riki_shelve: undefined };
+    expect(() => coreOf(without).shelve([], {})).toThrow(CoreNotReady);
   });
 
   // 200 riki_delete takes the rows, the map and the name as typed; a module before rikimaps 3678 is not ready

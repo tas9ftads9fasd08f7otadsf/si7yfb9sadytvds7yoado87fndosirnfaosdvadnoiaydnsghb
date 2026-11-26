@@ -24,6 +24,7 @@ import {
   type HistoryEntry,
   type Imported,
   type Made,
+  type Shelved,
   type Deleted,
   type MapsonFile,
   type PeopleRead,
@@ -60,6 +61,8 @@ interface Options {
   duplicated?: () => Made | { refused: string; status?: number; said?: string };
   /** 204 What the core lists as Add layer's Riki packages. */
   listed?: () => Packages | { refused: string; status?: number; said?: string };
+  /** 201 What the core makes of an arrangement of the Maps list. */
+  shelved?: () => Shelved | { refused: string; status?: number; said?: string };
   /** 200 What the core says a deleted map takes. */
   deleted?: () => Deleted | { refused: string; status?: number; said?: string };
   /** 199 What the core makes as a new map, and of a file. */
@@ -250,6 +253,7 @@ function stack(options: Options = {}) {
     exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile)),
     duplicate: vi.fn(() => options.duplicated?.() ?? (account.core.riki_duplicate as unknown as Made)),
     packages: vi.fn(() => options.listed?.() ?? (account.core.riki_packages as unknown as Packages)),
+    shelve: vi.fn(() => options.shelved?.() ?? (account.core.riki_shelve as unknown as Shelved)),
     deleteMap: vi.fn(() => options.deleted?.() ?? (account.core.riki_delete as unknown as Deleted)),
     newMap: vi.fn(() => options.made?.() ?? (account.core.riki_new_map as unknown as Made)),
     importMap: vi.fn(() => options.imported?.() ?? (account.core.riki_import as unknown as Imported)),
@@ -292,6 +296,12 @@ function stack(options: Options = {}) {
     base: "/editor",
     languages: () => options.languages ?? ["sk"],
     ...(options.regions ? { regions: options.regions } : {}),
+    painter: {
+      open: async (picture: Blob) =>
+        (await picture.text()) === "no picture" ? null : { width: 400, height: 300, source: picture },
+      paint: async (_source: unknown, cut: { width: number }, type: string) =>
+        new Blob([`${type} ${cut.width}`], { type }),
+    },
   });
   /** Another device wrote this record: a new tag and the fields it set. */
   const elsewhere = (recordName: string, fields: Record<string, { value: unknown; type: string }>) => {
@@ -1111,6 +1121,103 @@ describe("WebBackend's Riki packages", () => {
   });
 });
 
+describe("WebBackend's pictures", () => {
+  const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
+  const bytes = (text: string) => new TextEncoder().encode(text).buffer as ArrayBuffer;
+
+  // 202 the icon, preview and style pictures answered "not on the site yet"; the core writes what the browser sized
+  it("offers pictures and hands the core the icon squared as the phone squares it, as base64", async () => {
+    const { backend, core, saves } = stack();
+    expect(backend.offers("pictures")).toBe(true);
+    expect((await backend.setPicture(TATRAS, "icon", bytes("photo"))).ok).toBe(true);
+    const ask = vi.mocked(core.apply).mock.calls[0]![0];
+    expect(ask).toMatchObject({ id: TATRAS, styleID: null, picture: { kind: "icon" } });
+    expect(atob(ask.picture!.data!)).toBe("image/png 132");
+    expect(saves).toHaveBeenCalled();
+  });
+
+  it("sends a preview as a JPEG and a style's picture with its style", async () => {
+    const { backend, core } = stack();
+    await backend.setPicture(TATRAS, "preview", bytes("shot"));
+    await backend.setPicture(TATRAS, "styleIcon", bytes("photo"), "B1");
+    const [preview, style] = vi.mocked(core.apply).mock.calls.map((call) => call[0].picture!);
+    expect(atob(preview!.data!)).toBe("image/jpeg 400");
+    expect(style).toMatchObject({ kind: "styleIcon", style: "B1" });
+  });
+
+  it("takes a picture away when none is given", async () => {
+    const { backend, core } = stack();
+    await backend.setPicture(TATRAS, "icon", new ArrayBuffer(0));
+    expect(vi.mocked(core.apply).mock.calls[0]![0].picture).toEqual({ kind: "icon" });
+  });
+
+  it("refuses a file the browser cannot draw, asking the core nothing", async () => {
+    const { backend, core } = stack();
+    expect(await backend.setPicture(TATRAS, "icon", bytes("no picture"))).toEqual({
+      ok: false,
+      status: 409,
+      said: "badPicture",
+    });
+    expect(core.apply).not.toHaveBeenCalled();
+  });
+});
+
+describe("WebBackend's shelf", () => {
+  const SHARE_ZONE = account.zones.private[1]!.zoneID.zoneName;
+
+  // 201 the Maps screen's order, sorting and folders answered "not on the site yet"
+  it("offers the shelf and saves what the core arranges, one batch in each map's own zone", async () => {
+    const { backend, core, saves } = stack();
+    expect(backend.offers("shelf")).toBe(true);
+    const answer = await backend.shelve({ kind: "sort", sort: "nameDescending" });
+    expect(vi.mocked(core.shelve).mock.calls[0]![1]).toEqual({ sort: "nameDescending" });
+    expect(saves.mock.calls.map(([records, where]) => [where, records.map((record) => record.recordName)])).toEqual([
+      [{ zoneID: { zoneName: "com.apple.coredata.cloudkit.zone" }, atomic: true }, ["own-tatras"]],
+      [{ zoneID: { zoneName: SHARE_ZONE }, atomic: true }, ["own-beskydy"]],
+    ]);
+    expect(saves.mock.calls.every(([records]) => records.every((record) => record.recordChangeTag))).toBe(true);
+    expect(answer.ok && answer.value.maps.map((each) => each.name)).toEqual(
+      account.core.riki_shelve.catalog.maps.map((each) => each.name),
+    );
+  });
+
+  // 201 the list is named for the person when the core names no device, as the Maps screen's read does
+  it("names the list for the signed-in person", async () => {
+    const { backend } = stack({ shelved: () => ({ write: [], catalog: { name: "", maps: [] } as unknown as Device }) });
+    expect(await backend.shelve({ kind: "order", maps: [] })).toMatchObject({
+      ok: true,
+      value: { name: "Riki Tester" },
+    });
+  });
+
+  it("asks the core again on freshly read rows when a row changed elsewhere meanwhile", async () => {
+    const { backend, core, saves } = stack();
+    saves.mockResolvedValueOnce({ hasErrors: true, errors: [{ recordName: "own-tatras", ckErrorCode: "CONFLICT" }] });
+    expect((await backend.shelve({ kind: "leave", map: "M" })).ok).toBe(true);
+    expect(vi.mocked(core.shelve)).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes on the core's refusal and saves nothing", async () => {
+    const { backend, saves } = stack({ shelved: () => ({ refused: "sharedFolder", status: 409 }) });
+    expect(await backend.shelve({ kind: "folderTint", folder: "F", tint: "#B5D8F2" })).toEqual({
+      ok: false,
+      status: 409,
+      said: "sharedFolder",
+    });
+    expect(saves).not.toHaveBeenCalled();
+  });
+
+  // 201 a module from before rikimaps 3675 has no riki_shelve, which the page tells as rules not ready
+  it("says the core's rules are not ready while the module lacks the call", async () => {
+    const lacking = stack({
+      shelved: () => {
+        throw new CoreNotReady("no riki_shelve");
+      },
+    });
+    await expect(lacking.backend.shelve({ kind: "sort", sort: "nameAscending" })).rejects.toBeInstanceOf(CoreNotReady);
+  });
+});
+
 describe("WebBackend's delete", () => {
   const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
   const BESKYDY = "6F1E2A10-0000-4000-8000-000000000003";
@@ -1283,12 +1390,13 @@ describe("WebBackend's parts not built yet", () => {
   // 82 the site said "Not connected" for a write it refuses as not done yet
   it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
     const { backend } = stack();
-    // 198 Duplicate map is the site's since riki_duplicate, 199 New map since riki_new_map, 204 the Riki packages since riki_packages
-    const parts: Feature[] = ["shelf", "pictures", "addFile", "addAPI", "servers", "coverage"];
+    // 198 Duplicate map is the site's since riki_duplicate, 199 New map since riki_new_map, 201 the shelf since riki_shelve, 202 pictures since riki_apply takes them, 204 the Riki packages since riki_packages
+    const parts: Feature[] = ["addFile", "addAPI", "servers", "coverage"];
     expect(parts.filter((part) => backend.offers(part))).toEqual([]);
     // 86 only the tile address and a service's layers are added from the site so far
     expect(backend.offers("addLayer")).toBe(true);
-    await expect(backend.shelve({ sort: "nameAscending" } as never)).rejects.toBeInstanceOf(NotOnSite);
+    // 201 the shelf is the site's since riki_shelve; layer options still wait
+    await expect(backend.layerOptions("M")).rejects.toBeInstanceOf(NotOnSite);
     await expect(backend.servers()).rejects.toBeInstanceOf(NotOnSite);
     await expect(backend.addAPI("M", "https://t/x", { kind: "x" } as never, "n")).rejects.toBeInstanceOf(NotOnSite);
   });
