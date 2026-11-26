@@ -131,6 +131,35 @@ export interface Core {
     mapID: string,
     layers: string[],
   ): { layers: unknown[] } | { refused: string; status?: number; said?: string };
+  /** 200 The Maps sheet's Delete, the name as typed; `CoreNotReady` before rikimaps 3678. */
+  deleteMap(
+    rows: CoreRow[],
+    mapID: string,
+    name: string,
+  ): Deleted | { refused: string; status?: number; said?: string };
+  /** 199 New map's blank map as new rows; `CoreNotReady` before rikimaps 3679. */
+  newMap(rows: CoreRow[], name: string): Made | { refused: string; status?: number; said?: string };
+  /** 199 A .mapson file's maps as new rows; `CoreNotReady` before rikimaps 3680. */
+  importMap(
+    rows: CoreRow[],
+    text: string,
+    allowUnsigned: boolean,
+  ): Imported | { refused: string; status?: number; said?: string };
+}
+
+/** 200 What a deleted map takes with it: records in one zone, or private zones whole. */
+export interface Deleted {
+  reach: "onlyYou" | "everyone" | "yourList";
+  database: "private" | "shared";
+  zone: string;
+  remove: string[];
+  removeZones: string[];
+}
+
+/** 199 A file's maps the core made, in the file's order, and hosts whose keys the file held. */
+export interface Imported extends Omit<Made, "map"> {
+  maps: { id: string; name: string }[];
+  leftHosts: string[];
 }
 
 /** 198 A map of the person's own the core made: its new rows, the zone they go to, and the map. */
@@ -176,6 +205,12 @@ export interface CoreExports {
   riki_duplicate?(pointer: number, length: number): number;
   /** 203 In modules from rikimaps 3685 on. */
   riki_copies?(pointer: number, length: number): number;
+  /** 200 In modules from rikimaps 3678 on. */
+  riki_delete?(pointer: number, length: number): number;
+  /** 199 In modules from rikimaps 3679 on. */
+  riki_new_map?(pointer: number, length: number): number;
+  /** 199 In modules from rikimaps 3680 on. */
+  riki_import?(pointer: number, length: number): number;
 }
 
 type Call =
@@ -190,7 +225,10 @@ type Call =
   | "riki_switches"
   | "riki_export"
   | "riki_duplicate"
-  | "riki_copies";
+  | "riki_copies"
+  | "riki_delete"
+  | "riki_new_map"
+  | "riki_import";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -242,6 +280,9 @@ export function coreOf(exports: CoreExports): Core {
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
     otherLayers: (rows, mapID) => callJSON(exports, "riki_copies", { rows, id: mapID }),
     copyLayers: (rows, mapID, layers) => callJSON(exports, "riki_copies", { rows, id: mapID, layers }),
+    deleteMap: (rows, mapID, name) => callJSON(exports, "riki_delete", { rows, id: mapID, name }),
+    newMap: (rows, name) => callJSON(exports, "riki_new_map", { rows, name }),
+    importMap: (rows, text, allowUnsigned) => callJSON(exports, "riki_import", { rows, text, allowUnsigned }),
   };
 }
 
