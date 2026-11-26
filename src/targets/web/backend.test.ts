@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
-import type { Device, MapSwitches, OtherLayers, Packages, Portable } from "@/lib/types";
+import type { Device, EsriListing, MapSwitches, OtherLayers, Packages, Portable } from "@/lib/types";
 import {
   Cloud,
   type CKBatchResult,
@@ -59,6 +59,8 @@ interface Options {
   exported?: () => MapsonFile | { refused: string; status?: number };
   /** 198 What the core makes as a map's copy. */
   duplicated?: () => Made | { refused: string; status?: number; said?: string };
+  /** 205 What the core lists as the map's Esri services. */
+  esri?: () => EsriListing | { refused: string; status?: number; said?: string };
   /** 204 What the core lists as Add layer's Riki packages. */
   listed?: () => Packages | { refused: string; status?: number; said?: string };
   /** 203 What the core lists of the other maps' layers, and copies of the ticked ones. */
@@ -255,6 +257,7 @@ function stack(options: Options = {}) {
     switches: vi.fn(() => options.switches?.() ?? (account.core.riki_switches as unknown as MapSwitches)),
     exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile)),
     duplicate: vi.fn(() => options.duplicated?.() ?? (account.core.riki_duplicate as unknown as Made)),
+    esriServices: vi.fn(() => options.esri?.() ?? (account.core.riki_esri_services as unknown as EsriListing)),
     packages: vi.fn(() => options.listed?.() ?? (account.core.riki_packages as unknown as Packages)),
     otherLayers: vi.fn(() => options.others?.() ?? (account.core.riki_copies as unknown as OtherLayers)),
     copyLayers: vi.fn(() => options.copied?.() ?? { layers: account.core.riki_copies.layers }),
@@ -1089,6 +1092,63 @@ describe("WebBackend's duplicate", () => {
       },
     });
     await expect(lacking.backend.duplicateMap(TATRAS)).rejects.toBeInstanceOf(CoreNotReady);
+  });
+});
+
+describe("WebBackend's Esri services", () => {
+  const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
+  const HIKING = account.core.riki_esri_services.services[0]!.id;
+
+  // 205 Edit map's Esri services were missing on the site; the core lists them as the phone does
+  it("lists the map's Esri services, their times in the browser's time zone", async () => {
+    const { backend, core } = stack();
+    const listing = await backend.esriServices(TATRAS);
+    expect(listing.ok && listing.value.services.map((each) => each.name)).toEqual(["Hiking"]);
+    const [, id, zone] = vi.mocked(core.esriServices).mock.calls[0]!;
+    expect([id, zone]).toEqual([TATRAS, Intl.DateTimeFormat().resolvedOptions().timeZone]);
+  });
+
+  // 205 Forget keeps the service's layers as the map's own, as the core's forgetService edit does
+  it("forgets a service through the core's edit, writing its rows", async () => {
+    const { backend, core, saves } = stack();
+    expect((await backend.changeEsriService(TATRAS, HIKING, { kind: "forget" })).ok).toBe(true);
+    expect(vi.mocked(core.apply).mock.calls[0]![0]).toMatchObject({ id: TATRAS, edit: { forgetService: HIKING } });
+    expect(saves).toHaveBeenCalled();
+  });
+
+  it("takes a service's layer off by removing the map's layer that draws it", async () => {
+    const { backend, core } = stack();
+    expect((await backend.changeEsriService(TATRAS, HIKING, { kind: "remove", layer: 3 })).ok).toBe(true);
+    expect(vi.mocked(core.apply).mock.calls[0]![0].edit).toEqual({ removeLayer: "L1" });
+  });
+
+  it("refuses to take off a layer the map does not draw, asking for no edit", async () => {
+    const { backend, core } = stack();
+    expect(await backend.changeEsriService(TATRAS, HIKING, { kind: "remove", layer: 4 })).toEqual({
+      ok: false,
+      status: 404,
+      said: "unknownLayer",
+    });
+    expect(core.apply).not.toHaveBeenCalled();
+  });
+
+  // 205 taking a layer and reading the service again download features, which stays a phone's (2026-11-24)
+  it("leaves taking a layer and reading the service again to a phone", async () => {
+    const { backend } = stack();
+    await expect(backend.changeEsriService(TATRAS, HIKING, { kind: "add", layer: 4 })).rejects.toBeInstanceOf(
+      NotOnSite,
+    );
+    await expect(backend.changeEsriService(TATRAS, HIKING, { kind: "read" })).rejects.toBeInstanceOf(NotOnSite);
+  });
+
+  // 205 a module from before rikimaps 3689 has no riki_esri_services, which the page tells as rules not ready
+  it("says the core's rules are not ready while the module lacks the call", async () => {
+    const lacking = stack({
+      esri: () => {
+        throw new CoreNotReady("no riki_esri_services");
+      },
+    });
+    await expect(lacking.backend.esriServices(TATRAS)).rejects.toBeInstanceOf(CoreNotReady);
   });
 });
 
