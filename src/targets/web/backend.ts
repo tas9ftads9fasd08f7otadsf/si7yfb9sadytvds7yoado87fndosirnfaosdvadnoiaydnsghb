@@ -4,7 +4,7 @@ import { createRegionPackages } from "./regions/packages";
 import { loadStored, registerArchives } from "./regions/source";
 import { browserStore, type PackageStore } from "./regions/store";
 import { queryOf, type Edit } from "@/lib/edit";
-import type { Portable, SessionAnswer } from "@/lib/types";
+import type { EsriChange, Portable, SessionAnswer } from "@/lib/types";
 import { ENGLISH, type Words } from "@/lib/words";
 import { storedAuthor, type Author } from "./author";
 import { BASE } from "./base";
@@ -334,6 +334,34 @@ export function createBackend(parts: Parts): Backend {
     });
   };
 
+  const timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  /** 205 Forget keeps the service's layers as the map's own; taking a layer off removes the map's layer drawing it. */
+  const changeEsriService = async (mapID: string, serviceID: string, asked: EsriChange): Promise<Answer<Portable>> => {
+    if (asked.kind === "add" || asked.kind === "read") {
+      throw new NotOnSite("Taking an Esri layer or reading its service again downloads features, which a phone does");
+    }
+    if (asked.kind === "forget") {
+      return through(mapID, null, (core, read, author) =>
+        core.apply({ rows: read, id: mapID, styleID: null, edit: { forgetService: serviceID }, author }),
+      );
+    }
+    return through(mapID, null, (core, read, author) => {
+      const listing = core.esriServices(read, mapID, timeZone());
+      if ("refused" in listing) return listing;
+      const service = listing.services.find((each) => each.id === serviceID);
+      const layer = service?.layers.find((each) => each.id === asked.layer)?.layer;
+      if (!layer) return { refused: "unknownLayer", status: 404 };
+      return core.apply({
+        rows: read,
+        id: mapID,
+        styleID: null,
+        edit: queryOf({ kind: "removeLayer", layer }),
+        author,
+      });
+    });
+  };
+
   const addTiles = async (mapID: string, template: string): Promise<Answer<Portable>> =>
     through(mapID, null, (core, read, author) =>
       core.addTiles({
@@ -531,8 +559,16 @@ export function createBackend(parts: Parts): Backend {
     addAPI: adding,
     addFile: adding,
     readDXF: adding,
-    esriServices: adding,
-    changeEsriService: adding,
+    /** 205 Edit map's Esri services as the core reads them from the map's rows. */
+    async esriServices(mapID) {
+      const [core, read] = await Promise.all([parts.core(), rows()]);
+      const said = core.esriServices(read, mapID, timeZone());
+      if ("refused" in said) {
+        return refused(said.status === 404 ? say("noSuchMap") : (said.said ?? said.refused), said.status ?? 400);
+      }
+      return { ok: true, value: said };
+    },
+    changeEsriService,
     coverage: adding,
     coveragePlaces: adding,
     publishOffer: adding,
