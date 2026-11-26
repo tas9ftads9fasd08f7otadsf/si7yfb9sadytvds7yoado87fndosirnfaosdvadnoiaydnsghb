@@ -103,8 +103,16 @@ export interface CKSubscription {
 
 export interface CKDatabase extends CKReading {
   newRecordsBatch(options: { zoneID: ZoneID; atomic: boolean }): CKBatch;
-  saveSubscriptions(subscriptions: CKSubscription | CKSubscription[]): Promise<{ errors?: CKError[]; hasErrors?: boolean }>;
-  fetchDatabaseChanges(options?: { syncToken?: string }): Promise<{ zones?: unknown[]; syncToken?: string; moreComing?: boolean }>;
+  saveSubscriptions(
+    subscriptions: CKSubscription | CKSubscription[],
+  ): Promise<{ errors?: CKError[]; hasErrors?: boolean }>;
+  fetchDatabaseChanges(options?: {
+    syncToken?: string;
+  }): Promise<{ zones?: unknown[]; syncToken?: string; moreComing?: boolean }>;
+  /** 200 Deletes the zones whole, with every record and share in them. */
+  deleteRecordZones(
+    zoneIDs: ZoneID | ZoneID[],
+  ): Promise<{ zones?: { zoneID: ZoneID }[]; errors?: CKError[]; hasErrors?: boolean }>;
 }
 
 /** `users/caller` answers the record name only; a discovered user has the name too, if discoverable. */
@@ -155,9 +163,10 @@ export function loadScript(src = CLOUDKIT_SRC): Promise<CloudKitJS> {
 
 /** 134 Apple refuses the site's API token: no one can sign in until its owner sets a new one. */
 export function refusesToken(error: unknown): boolean {
-  const said = error as Partial<CKError> & { message?: string } | null;
-  return [said?.ckErrorCode, said?.serverErrorCode, said?.message].some((each) =>
-    typeof each === "string" && each.includes("AUTHENTICATION_FAILED"));
+  const said = error as (Partial<CKError> & { message?: string }) | null;
+  return [said?.ckErrorCode, said?.serverErrorCode, said?.message].some(
+    (each) => typeof each === "string" && each.includes("AUTHENTICATION_FAILED"),
+  );
 }
 
 export interface Person {
@@ -198,14 +207,18 @@ export class Cloud {
   private watching: ReturnType<typeof setInterval> | null = null;
   private unanswered = false;
 
-  constructor(private readonly load: () => Promise<CloudKitJS> = loadScript,
-    private readonly config: () => Promise<SiteConfig> = readConfig) {}
+  constructor(
+    private readonly load: () => Promise<CloudKitJS> = loadScript,
+    private readonly config: () => Promise<SiteConfig> = readConfig,
+  ) {}
 
   /** The container set up once; a set-up that failed is tried again, unless Apple refused the token. */
   private ready(): Promise<CKContainer> {
     if (!this.container) {
       this.container = this.setUp();
-      this.container.catch((error: unknown) => { if (!refusesToken(error)) this.container = null; });
+      this.container.catch((error: unknown) => {
+        if (!refusesToken(error)) this.container = null;
+      });
     }
     return this.container;
   }
@@ -250,7 +263,10 @@ export class Cloud {
     if (this.holder) return;
     const holder = document.createElement("div");
     holder.hidden = true;
-    for (const [button, id] of [["in", SIGN_IN_ID], ["out", SIGN_OUT_ID]] as const) {
+    for (const [button, id] of [
+      ["in", SIGN_IN_ID],
+      ["out", SIGN_OUT_ID],
+    ] as const) {
       const slot = document.createElement("div");
       slot.id = id;
       if (button === "in") slot.addEventListener("click", () => this.opening(), true);
@@ -269,14 +285,20 @@ export class Cloud {
     this.makeButtons();
     if (!this.configured) {
       cloudkit.configure({
-        containers: [{
-          containerIdentifier: config.container,
-          apiTokenAuth: { apiToken: config.apiToken, persist: true,
-            signInButton: { id: SIGN_IN_ID, theme: "black" }, signOutButton: { id: SIGN_OUT_ID, theme: "black" } },
-          environment: config.environment,
-          // The library's own default is development, whatever the environment.
-          apnsEnvironment: config.environment
-        }]
+        containers: [
+          {
+            containerIdentifier: config.container,
+            apiTokenAuth: {
+              apiToken: config.apiToken,
+              persist: true,
+              signInButton: { id: SIGN_IN_ID, theme: "black" },
+              signOutButton: { id: SIGN_OUT_ID, theme: "black" },
+            },
+            environment: config.environment,
+            // The library's own default is development, whatever the environment.
+            apnsEnvironment: config.environment,
+          },
+        ],
       });
       this.configured = cloudkit.getDefaultContainer();
     }
@@ -310,7 +332,9 @@ export class Cloud {
   private opening() {
     this.clicking = true;
     // The library's own listener on the button runs after this one, in the same click.
-    setTimeout(() => { this.clicking = false; });
+    setTimeout(() => {
+      this.clicking = false;
+    });
   }
 
   /** The library waits for a window's answer for ever; a closed or silent one is said on the card instead. */
@@ -345,10 +369,15 @@ export class Cloud {
     this.person = { name: await this.named(container, identity), recordName: identity.userRecordName };
     if (!this.listening) {
       this.listening = true;
-      void container.registerForNotifications().then(async () => {
-        container.addNotificationListener(() => this.tell());
-        await this.subscribe(container);
-      }, () => { this.listening = false; });
+      void container.registerForNotifications().then(
+        async () => {
+          container.addNotificationListener(() => this.tell());
+          await this.subscribe(container);
+        },
+        () => {
+          this.listening = false;
+        },
+      );
     }
     void container.whenUserSignsOut().then(() => {
       this.person = null;
@@ -365,9 +394,14 @@ export class Cloud {
    */
   private async subscribe(container: CKContainer) {
     try {
-      const saved = await Promise.all((["private", "shared"] as const).map((scope) =>
-        (scope === "private" ? container.privateCloudDatabase : container.sharedCloudDatabase)
-          .saveSubscriptions({ subscriptionID: SUBSCRIPTIONS[scope], subscriptionType: "database" })));
+      const saved = await Promise.all(
+        (["private", "shared"] as const).map((scope) =>
+          (scope === "private" ? container.privateCloudDatabase : container.sharedCloudDatabase).saveSubscriptions({
+            subscriptionID: SUBSCRIPTIONS[scope],
+            subscriptionType: "database",
+          }),
+        ),
+      );
       const failed = saved.flatMap((each) => each.errors ?? []).filter((each) => each.ckErrorCode !== "EXISTS");
       if (failed.length > 0) throw new Error(failed[0]!.reason ?? failed[0]!.ckErrorCode);
     } catch {
@@ -386,7 +420,9 @@ export class Cloud {
           const answer = await db.fetchDatabaseChanges({ syncToken: tokens[scope] });
           tokens[scope] = answer.syncToken ?? tokens[scope];
           if (!first && (answer.zones?.length ?? 0) > 0) changed = true;
-        } catch { /* asked again next time */ }
+        } catch {
+          /* asked again next time */
+        }
       }
       if (changed) this.tell();
     };
@@ -401,7 +437,9 @@ export class Cloud {
 
   /** A sign-in window closed or failed rejects the promise, and the library makes a new one. */
   private waitForSignIn(container: CKContainer) {
-    container.whenUserSignsIn().then((identity) => this.signedIn(container, identity),
-      () => this.waitForSignIn(container));
+    container.whenUserSignsIn().then(
+      (identity) => this.signedIn(container, identity),
+      () => this.waitForSignIn(container),
+    );
   }
 }

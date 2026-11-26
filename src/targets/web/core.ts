@@ -123,6 +123,12 @@ export interface Core {
   exportMap(rows: CoreRow[], mapID: string): MapsonFile | { refused: string; status?: number };
   /** 198 Edit map's Duplicate as new rows; `CoreNotReady` before rikimaps 3671. */
   duplicate(rows: CoreRow[], mapID: string): Made | { refused: string; status?: number; said?: string };
+  /** 200 The Maps sheet's Delete, the name as typed; `CoreNotReady` before rikimaps 3678. */
+  deleteMap(
+    rows: CoreRow[],
+    mapID: string,
+    name: string,
+  ): Deleted | { refused: string; status?: number; said?: string };
   /** 199 New map's blank map as new rows; `CoreNotReady` before rikimaps 3679. */
   newMap(rows: CoreRow[], name: string): Made | { refused: string; status?: number; said?: string };
   /** 199 A .mapson file's maps as new rows; `CoreNotReady` before rikimaps 3680. */
@@ -131,6 +137,15 @@ export interface Core {
     text: string,
     allowUnsigned: boolean,
   ): Imported | { refused: string; status?: number; said?: string };
+}
+
+/** 200 What a deleted map takes with it: records in one zone, or private zones whole. */
+export interface Deleted {
+  reach: "onlyYou" | "everyone" | "yourList";
+  database: "private" | "shared";
+  zone: string;
+  remove: string[];
+  removeZones: string[];
 }
 
 /** 199 A file's maps the core made, in the file's order, and hosts whose keys the file held. */
@@ -180,6 +195,8 @@ export interface CoreExports {
   riki_export?(pointer: number, length: number): number;
   /** 198 In modules from rikimaps 3671 on. */
   riki_duplicate?(pointer: number, length: number): number;
+  /** 200 In modules from rikimaps 3678 on. */
+  riki_delete?(pointer: number, length: number): number;
   /** 199 In modules from rikimaps 3679 on. */
   riki_new_map?(pointer: number, length: number): number;
   /** 199 In modules from rikimaps 3680 on. */
@@ -198,6 +215,7 @@ type Call =
   | "riki_switches"
   | "riki_export"
   | "riki_duplicate"
+  | "riki_delete"
   | "riki_new_map"
   | "riki_import";
 
@@ -249,6 +267,7 @@ export function coreOf(exports: CoreExports): Core {
     switches: (rows, mapID) => callJSON(exports, "riki_switches", { rows, id: mapID }),
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
+    deleteMap: (rows, mapID, name) => callJSON(exports, "riki_delete", { rows, id: mapID, name }),
     newMap: (rows, name) => callJSON(exports, "riki_new_map", { rows, name }),
     importMap: (rows, text, allowUnsigned) => callJSON(exports, "riki_import", { rows, text, allowUnsigned }),
   };

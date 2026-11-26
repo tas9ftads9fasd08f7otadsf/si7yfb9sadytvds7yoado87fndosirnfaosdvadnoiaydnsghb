@@ -56,6 +56,7 @@ describe("the core's wrapper", () => {
       riki_switches: respond,
       riki_export: respond,
       riki_duplicate: respond,
+      riki_delete: respond,
       riki_new_map: respond,
       riki_import: respond,
     };
@@ -162,6 +163,14 @@ describe("the core's wrapper", () => {
     expect(coreOf(exports).exportMap([], "M")).toEqual({ rows: [], id: "M" });
     const without: CoreExports = { ...exports, riki_export: undefined };
     expect(() => coreOf(without).exportMap([], "M")).toThrow(CoreNotReady);
+  });
+
+  // 200 riki_delete takes the rows, the map and the name as typed; a module before rikimaps 3678 is not ready
+  it("asks riki_delete with the map and the typed name, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).deleteMap([], "M", "High Tatras")).toEqual({ rows: [], id: "M", name: "High Tatras" });
+    const without: CoreExports = { ...exports, riki_delete: undefined };
+    expect(() => coreOf(without).deleteMap([], "M", "x")).toThrow(CoreNotReady);
   });
 
   // 199 riki_new_map and riki_import take the rows and what was typed or read; older modules are not ready
