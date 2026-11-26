@@ -3,8 +3,8 @@ import { siteSymbolURL } from "./symbols";
 import { createRegionPackages } from "./regions/packages";
 import { loadStored, registerArchives } from "./regions/source";
 import { browserStore, type PackageStore } from "./regions/store";
-import { queryOf, type Edit } from "@/lib/edit";
-import type { Portable, SessionAnswer } from "@/lib/types";
+import { queryOf, shelfQueryOf, type Edit } from "@/lib/edit";
+import type { Device, Portable, SessionAnswer } from "@/lib/types";
 import { ENGLISH, type Words } from "@/lib/words";
 import { storedAuthor, type Author } from "./author";
 import { BASE } from "./base";
@@ -25,7 +25,7 @@ import { peopleOf, type Say } from "./people";
 import { createReach, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
 import { Progress } from "./progress";
-import { indexedKeeping, Zones, type Keeping } from "./zones";
+import { indexedKeeping, MIRROR_ZONE, Zones, type Keeping } from "./zones";
 import type { CoreRow, CoreWrite } from "./records";
 import { keysOf } from "./sealed-keys";
 import { base64Of, canvasPainter, sizedPicture, type Painter } from "./pictures";
@@ -45,6 +45,7 @@ const OFFERED: ReadonlySet<Feature> = new Set<Feature>([
   "duplicateMap",
   "newMap",
   "pictures",
+  "shelf",
 ]);
 
 /** How often a change is tried, on freshly read rows after a conflict. */
@@ -283,6 +284,46 @@ export function createBackend(parts: Parts): Backend {
     reading = null;
     const first = "map" in answer ? answer.map : answer.maps[0];
     return first ? { ok: true, value: { id: first.id } } : refused(say("noSuchMap"), 404);
+  };
+
+  /** 201 The Maps list arranged by the core; each row is saved in its own map's zone, one batch per zone. */
+  const shelve = async (shelving: Parameters<Backend["shelve"]>[0]): Promise<Answer<Device>> => {
+    const [core, { container }, person] = await Promise.all([
+      parts.core(),
+      parts.cloud.databases(),
+      parts.cloud.start(),
+    ]);
+    for (let attempt = 0; attempt < TRIES; attempt += 1) {
+      const read = await rows(attempt > 0);
+      const said = core.shelve(read, shelfQueryOf(shelving));
+      if ("refused" in said) return refused(said.said ?? said.refused, said.status ?? 400);
+      const zones = new Map<string, { row?: CoreRow; plan: Plan }>();
+      for (const each of said.write) {
+        const row = read.find((found) => found.id === each.id && found.entity === each.entity);
+        const home = row ?? mapRow(read, ownerOf(each));
+        const key = `${home?.database ?? "private"}/${home?.zone ?? MIRROR_ZONE}`;
+        const zone = zones.get(key) ?? { ...(home ? { row: home } : {}), plan: { save: [], remove: [] } };
+        zone.plan.save.push({ write: each, ...(row ? { row } : {}) });
+        zones.set(key, zone);
+      }
+      try {
+        for (const { row, plan } of zones.values()) {
+          const db = row?.database === "shared" ? container.sharedCloudDatabase : container.privateCloudDatabase;
+          const where = { zoneName: row?.zone ?? MIRROR_ZONE, ...(row?.owner ? { ownerRecordName: row.owner } : {}) };
+          const tags = await write(db, where, plan);
+          for (const { write: each } of plan.save) {
+            const tag = tags.get(each.id);
+            if (tag && known) known.rows.set(each.id, { tag, owner: ownerOf(each) });
+          }
+        }
+      } catch (error) {
+        if (!(error instanceof Conflict)) throw error;
+        continue;
+      }
+      reading = null;
+      return { ok: true, value: { ...said.catalog, name: said.catalog.name || person?.name || "iCloud" } };
+    }
+    return refused(say("changeRefused"), 412);
   };
 
   /** 200 The records or zones the core says a deleted map takes; the next read leaves them out. */
@@ -588,7 +629,7 @@ export function createBackend(parts: Parts): Backend {
     },
     /** 200 The Maps sheet's Delete once the name is typed; another's map is left under People instead. */
     deleteMap: (id, name) => remove((core, read) => core.deleteMap(read, id, name)),
-    shelve: editing,
+    shelve,
     askPeople: editing,
     setPicture,
     layerOptions: editing,
