@@ -62,6 +62,20 @@ export type Shelving =
   /** 56 `#RRGGBB`, or blank for the named map's ground. */
   | { kind: "folderTint"; folder: string; tint: string };
 
+/** 52 An arrangement of the Maps list as `PeerWebShelf.shelving` reads it. */
+export function shelfQueryOf(shelving: Shelving): Record<string, string> {
+  switch (shelving.kind) {
+    case "order": return { order: shelving.maps.join(",") };
+    case "sort": return { sort: shelving.sort };
+    case "makeFolder": return { folder: shelving.name, maps: shelving.maps.join(",") };
+    case "join": return { stack: shelving.folder, map: shelving.map };
+    case "leave": return { leave: shelving.map };
+    case "renameFolder": return { stack: shelving.folder, name: shelving.name };
+    case "folderSymbol": return { stack: shelving.folder, symbol: shelving.symbol };
+    case "folderTint": return { stack: shelving.folder, iconTint: shelving.tint };
+  }
+}
+
 /** An edit as `/edit` reads it, the query `PeerWebEdit(query:)` takes apart. */
 export function queryOf(edit: Edit): Record<string, string> {
   switch (edit.kind) {

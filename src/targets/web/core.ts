@@ -123,6 +123,14 @@ export interface Core {
   exportMap(rows: CoreRow[], mapID: string): MapsonFile | { refused: string; status?: number };
   /** 198 Edit map's Duplicate as new rows; `CoreNotReady` before rikimaps 3671. */
   duplicate(rows: CoreRow[], mapID: string): Made | { refused: string; status?: number; said?: string };
+  /** 201 The Maps list arranged, `shelf` as the phone's `/shelf` query; `CoreNotReady` before rikimaps 3675. */
+  shelve(rows: CoreRow[], shelf: Record<string, string>): Shelved | { refused: string; status?: number; said?: string };
+}
+
+/** 201 The rows an arrangement changes, and the list as it stands after. */
+export interface Shelved {
+  write: CoreWrite[];
+  catalog: Device;
 }
 
 /** 198 A map of the person's own the core made: its new rows, the zone they go to, and the map. */
@@ -166,6 +174,8 @@ export interface CoreExports {
   riki_export?(pointer: number, length: number): number;
   /** 198 In modules from rikimaps 3671 on. */
   riki_duplicate?(pointer: number, length: number): number;
+  /** 201 In modules from rikimaps 3675 on. */
+  riki_shelve?(pointer: number, length: number): number;
 }
 
 type Call =
@@ -179,7 +189,8 @@ type Call =
   | "riki_people"
   | "riki_switches"
   | "riki_export"
-  | "riki_duplicate";
+  | "riki_duplicate"
+  | "riki_shelve";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -229,6 +240,7 @@ export function coreOf(exports: CoreExports): Core {
     switches: (rows, mapID) => callJSON(exports, "riki_switches", { rows, id: mapID }),
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
+    shelve: (rows, shelf) => callJSON(exports, "riki_shelve", { rows, shelf }),
   };
 }
 

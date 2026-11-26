@@ -21,6 +21,7 @@ import {
   type Core,
   type HistoryEntry,
   type Made,
+  type Shelved,
   type MapsonFile,
   type PeopleRead,
   type ReadAsk,
@@ -54,6 +55,8 @@ interface Options {
   exported?: () => MapsonFile | { refused: string; status?: number };
   /** 198 What the core makes as a map's copy. */
   duplicated?: () => Made | { refused: string; status?: number; said?: string };
+  /** 201 What the core makes of an arrangement of the Maps list. */
+  shelved?: () => Shelved | { refused: string; status?: number; said?: string };
   /** 85 Which hosts answer a browser; every one does by default. */
   reach?: Reach;
   /** 86 What the core reads an address as, by round; the recorded answer by default. */
@@ -220,6 +223,7 @@ function stack(options: Options = {}) {
     switches: vi.fn(() => options.switches?.() ?? (account.core.riki_switches as unknown as MapSwitches)),
     exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile)),
     duplicate: vi.fn(() => options.duplicated?.() ?? (account.core.riki_duplicate as unknown as Made)),
+    shelve: vi.fn(() => options.shelved?.() ?? (account.core.riki_shelve as unknown as Shelved)),
   };
   const kept = new Map<string, unknown>();
   const keeping: Keeping = {
@@ -1042,12 +1046,68 @@ describe("WebBackend's duplicate", () => {
   });
 });
 
+describe("WebBackend's shelf", () => {
+  const SHARE_ZONE = account.zones.private[1]!.zoneID.zoneName;
+
+  // 201 the Maps screen's order, sorting and folders answered "not on the site yet"
+  it("offers the shelf and saves what the core arranges, one batch in each map's own zone", async () => {
+    const { backend, core, saves } = stack();
+    expect(backend.offers("shelf")).toBe(true);
+    const answer = await backend.shelve({ kind: "sort", sort: "nameDescending" });
+    expect(vi.mocked(core.shelve).mock.calls[0]![1]).toEqual({ sort: "nameDescending" });
+    expect(saves.mock.calls.map(([records, where]) => [where, records.map((record) => record.recordName)])).toEqual([
+      [{ zoneID: { zoneName: "com.apple.coredata.cloudkit.zone" }, atomic: true }, ["own-tatras"]],
+      [{ zoneID: { zoneName: SHARE_ZONE }, atomic: true }, ["own-beskydy"]],
+    ]);
+    expect(saves.mock.calls.every(([records]) => records.every((record) => record.recordChangeTag))).toBe(true);
+    expect(answer.ok && answer.value.maps.map((each) => each.name)).toEqual(
+      account.core.riki_shelve.catalog.maps.map((each) => each.name),
+    );
+  });
+
+  // 201 the list is named for the person when the core names no device, as the Maps screen's read does
+  it("names the list for the signed-in person", async () => {
+    const { backend } = stack({ shelved: () => ({ write: [], catalog: { name: "", maps: [] } as unknown as Device }) });
+    expect(await backend.shelve({ kind: "order", maps: [] })).toMatchObject({
+      ok: true,
+      value: { name: "Riki Tester" },
+    });
+  });
+
+  it("asks the core again on freshly read rows when a row changed elsewhere meanwhile", async () => {
+    const { backend, core, saves } = stack();
+    saves.mockResolvedValueOnce({ hasErrors: true, errors: [{ recordName: "own-tatras", ckErrorCode: "CONFLICT" }] });
+    expect((await backend.shelve({ kind: "leave", map: "M" })).ok).toBe(true);
+    expect(vi.mocked(core.shelve)).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes on the core's refusal and saves nothing", async () => {
+    const { backend, saves } = stack({ shelved: () => ({ refused: "sharedFolder", status: 409 }) });
+    expect(await backend.shelve({ kind: "folderTint", folder: "F", tint: "#B5D8F2" })).toEqual({
+      ok: false,
+      status: 409,
+      said: "sharedFolder",
+    });
+    expect(saves).not.toHaveBeenCalled();
+  });
+
+  // 201 a module from before rikimaps 3675 has no riki_shelve, which the page tells as rules not ready
+  it("says the core's rules are not ready while the module lacks the call", async () => {
+    const lacking = stack({
+      shelved: () => {
+        throw new CoreNotReady("no riki_shelve");
+      },
+    });
+    await expect(lacking.backend.shelve({ kind: "sort", sort: "nameAscending" })).rejects.toBeInstanceOf(CoreNotReady);
+  });
+});
+
 describe("WebBackend's parts not built yet", () => {
   // 82 the site said "Not connected" for a write it refuses as not done yet
   it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
     const { backend } = stack();
-    // 198 Duplicate map is the site's since riki_duplicate
-    const parts: Feature[] = ["newMap", "shelf", "pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
+    // 198 Duplicate map is the site's since riki_duplicate, 201 the shelf since riki_shelve
+    const parts: Feature[] = ["newMap", "pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
     expect(parts.filter((part) => backend.offers(part))).toEqual([]);
     // 86 only the tile address and a service's layers are added from the site so far
     expect(backend.offers("addLayer")).toBe(true);

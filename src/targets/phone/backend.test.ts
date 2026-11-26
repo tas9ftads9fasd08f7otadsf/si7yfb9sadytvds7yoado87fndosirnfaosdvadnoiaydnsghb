@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { queryOf, type Edit, type Shelving } from "@/lib/edit";
-import { apiAskQuery, backend, esriQueryOf, offlineQueryOf, shelfQueryOf } from "./backend";
+import { queryOf, shelfQueryOf, type Edit, type Shelving } from "@/lib/edit";
+import { apiAskQuery, backend, esriQueryOf, offlineQueryOf } from "./backend";
 import { savedName } from "./phone";
 
 // 36 every edit is the query `PeerWebEdit(query:)` reads, as the store sent it before the split

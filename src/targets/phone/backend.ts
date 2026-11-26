@@ -1,5 +1,5 @@
 import type { Answer, Backend, PairStarted, Saved } from "@/backend/types";
-import { queryOf, type Shelving } from "@/lib/edit";
+import { queryOf, shelfQueryOf } from "@/lib/edit";
 import { peoplePathOf, peopleQueryOf } from "@/lib/people";
 import type { APIAsk, APIRead, EsriChange, OfflineAsk, PhonePlace, Portable, SessionAnswer } from "@/lib/types";
 import { EDIT_CHECK, PAIR, ROOT, SESSION, WORDS_PATH, readJSON, readJSONIfAny, savedName } from "./phone";
@@ -25,20 +25,6 @@ async function editing<T>(path: string, method = "POST", body?: BodyInit,
 
 const saved = async (answer: Response): Promise<Saved> =>
   ({ blob: await answer.blob(), name: savedName(answer.headers.get("Content-Disposition") ?? "") });
-
-/** 52 An arrangement of the Maps list as `PeerWebShelf.shelving` reads it. */
-export function shelfQueryOf(shelving: Shelving): Record<string, string> {
-  switch (shelving.kind) {
-    case "order": return { order: shelving.maps.join(",") };
-    case "sort": return { sort: shelving.sort };
-    case "makeFolder": return { folder: shelving.name, maps: shelving.maps.join(",") };
-    case "join": return { stack: shelving.folder, map: shelving.map };
-    case "leave": return { leave: shelving.map };
-    case "renameFolder": return { stack: shelving.folder, name: shelving.name };
-    case "folderSymbol": return { stack: shelving.folder, symbol: shelving.symbol };
-    case "folderTint": return { stack: shelving.folder, iconTint: shelving.tint };
-  }
-}
 
 /** 3397 What `PeerWebAPIForm` reads off the query; the cookie itself goes in a header, never the address. */
 export function apiAskQuery(ask: APIAsk = {}): Record<string, string> {
