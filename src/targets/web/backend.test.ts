@@ -5,10 +5,12 @@ import type { Device, MapSwitches, Portable } from "@/lib/types";
 import {
   Cloud,
   type CKBatchResult,
+  type CKError,
   type CKContainer,
   type CKRecord,
   type CKSave,
   type CKZoneChanges,
+  type ZoneID,
   type CloudKitJS,
 } from "./cloud";
 import { CoreNotReady, NotOnSite, type Feature } from "@/backend/types";
@@ -21,6 +23,7 @@ import {
   type Core,
   type HistoryEntry,
   type Made,
+  type Deleted,
   type MapsonFile,
   type PeopleRead,
   type ReadAsk,
@@ -54,6 +57,8 @@ interface Options {
   exported?: () => MapsonFile | { refused: string; status?: number };
   /** 198 What the core makes as a map's copy. */
   duplicated?: () => Made | { refused: string; status?: number; said?: string };
+  /** 200 What the core says a deleted map takes. */
+  deleted?: () => Deleted | { refused: string; status?: number; said?: string };
   /** 85 Which hosts answer a browser; every one does by default. */
   reach?: Reach;
   /** 86 What the core reads an address as, by round; the recorded answer by default. */
@@ -77,14 +82,15 @@ function stack(options: Options = {}) {
   let notify: (n: unknown) => void = () => {};
   let signIn: (identity: unknown) => void = () => {};
   const held = structuredClone(account.zones) as unknown as {
-    private: { zoneID: { zoneName: string }; records: CKRecord[] }[];
-    shared: { zoneID: { zoneName: string }; records: CKRecord[] }[];
+    private: { zoneID: { zoneName: string }; records: CKRecord[]; deleted?: string[] }[];
+    shared: { zoneID: { zoneName: string }; records: CKRecord[]; deleted?: string[] }[];
   };
   // 87 a zone's options, as the library takes them: it builds the `zones` of the request itself
   const changes = vi.fn(async (options: CKZoneChanges | CKZoneChanges[]) => {
     const [zone] = [options].flat();
     const found = [...held.private, ...held.shared].find((each) => each.zoneID.zoneName === zone!.zoneID.zoneName);
-    return { zones: [{ zoneID: zone!.zoneID, syncToken: "t", records: found?.records ?? [] }] };
+    const deleted = (found?.deleted ?? []).map((recordName) => ({ recordName, deleted: true }));
+    return { zones: [{ zoneID: zone!.zoneID, syncToken: "t", records: [...(found?.records ?? []), ...deleted] }] };
   });
   const all = () => [...held.private, ...held.shared].flatMap((zone) => zone.records);
   let version = 0;
@@ -95,7 +101,7 @@ function stack(options: Options = {}) {
       where: unknown,
       removals: { recordName: string; recordChangeTag?: string }[],
     ) => Promise<CKBatchResult>
-  >(async (records) => {
+  >(async (records, _where, removals = []) => {
     const refused = options.saving?.(records);
     if (refused) return refused;
     const stale = records.find(
@@ -109,6 +115,12 @@ function stack(options: Options = {}) {
         hasErrors: true,
         errors: [{ recordName: stale.recordName, ckErrorCode: "CONFLICT", serverErrorCode: "CONFLICT" }],
       };
+    // 200 a deleted record is gone from its zone, as the server drops it
+    for (const zone of [...held.private, ...held.shared]) {
+      const gone = zone.records.filter((found) => removals.some((each) => each.recordName === found.recordName));
+      zone.records = zone.records.filter((found) => !gone.includes(found));
+      zone.deleted = [...(zone.deleted ?? []), ...gone.map((found) => found.recordName)];
+    }
     return {
       records: records.map((record) => {
         let each = all().find((found) => found.recordName === record.recordName);
@@ -159,6 +171,16 @@ function stack(options: Options = {}) {
   const shared = vi.fn<(...asked: Parameters<typeof saves>) => Promise<CKBatchResult>>(async () => ({
     records: [{ recordName: "shared-doprava", recordChangeTag: "s2" }],
   }));
+  /** 200 Zones deleted whole: each is gone from the listing, and its records with it. */
+  const zonesDeleted = vi.fn(
+    async (
+      ids: ZoneID | ZoneID[],
+    ): Promise<{ zones?: { zoneID: ZoneID }[]; errors?: CKError[]; hasErrors?: boolean }> => {
+      const asked = [ids].flat();
+      held.private = held.private.filter((zone) => !asked.some((each) => each.zoneName === zone.zoneID.zoneName));
+      return { zones: asked.map((zoneID) => ({ zoneID })) };
+    },
+  );
   const container = {
     setUpAuth: async () => {
       if (options.refused) throw { ckErrorCode: "AUTHENTICATION_FAILED", reason: "check the API Token" };
@@ -178,6 +200,7 @@ function stack(options: Options = {}) {
     },
     privateCloudDatabase: {
       ...database,
+      deleteRecordZones: zonesDeleted,
       fetchAllRecordZones: async () => ({ zones: held.private.map((each) => ({ zoneID: each.zoneID })) }),
     },
     sharedCloudDatabase: {
@@ -220,6 +243,7 @@ function stack(options: Options = {}) {
     switches: vi.fn(() => options.switches?.() ?? (account.core.riki_switches as unknown as MapSwitches)),
     exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile)),
     duplicate: vi.fn(() => options.duplicated?.() ?? (account.core.riki_duplicate as unknown as Made)),
+    deleteMap: vi.fn(() => options.deleted?.() ?? (account.core.riki_delete as unknown as Deleted)),
   };
   const kept = new Map<string, unknown>();
   const keeping: Keeping = {
@@ -278,6 +302,7 @@ function stack(options: Options = {}) {
     shared,
     elsewhere,
     held,
+    zonesDeleted,
   };
 }
 
@@ -1039,6 +1064,114 @@ describe("WebBackend's duplicate", () => {
       },
     });
     await expect(lacking.backend.duplicateMap(TATRAS)).rejects.toBeInstanceOf(CoreNotReady);
+  });
+});
+
+describe("WebBackend's delete", () => {
+  const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
+  const BESKYDY = "6F1E2A10-0000-4000-8000-000000000003";
+  const SHARE_ZONE = account.zones.private[1]!.zoneID.zoneName;
+
+  // 200 Delete answered "not on the site yet" though the page offered it where riki_switches said who loses the map
+  it("deletes the records the core names, with the tags they were read at, in the map's zone", async () => {
+    const { backend, core, saves, zonesDeleted } = stack();
+    expect(await backend.deleteMap(TATRAS, "High Tatras")).toEqual({ ok: true, value: null });
+    const [, id, typed] = vi.mocked(core.deleteMap).mock.calls[0]!;
+    expect([id, typed]).toEqual([TATRAS, "High Tatras"]);
+    const [records, where, removals] = saves.mock.calls[0]!;
+    expect(records).toEqual([]);
+    expect(where).toEqual({ zoneID: { zoneName: "com.apple.coredata.cloudkit.zone" }, atomic: true });
+    expect(removals.map((each) => each.recordName)).toEqual(["own-tatras", "own-tatras-layer"]);
+    expect(removals.every((each) => each.recordChangeTag)).toBe(true);
+    expect(zonesDeleted).not.toHaveBeenCalled();
+  });
+
+  // 200 a map shared alone takes its share and its data zone with it, as the app's dropTheShare does
+  it("deletes a shared map's private zones whole, a zone already gone being no failure", async () => {
+    const dataZone = "riki.data.6F1E2A10-0000-4000-8000-000000000003";
+    const { backend, saves, zonesDeleted } = stack({
+      deleted: () => ({
+        reach: "everyone",
+        database: "private",
+        zone: SHARE_ZONE,
+        remove: [],
+        removeZones: [SHARE_ZONE, dataZone],
+      }),
+    });
+    zonesDeleted.mockImplementationOnce(async (ids) => ({
+      zones: [{ zoneID: [ids].flat()[0]! }],
+      errors: [{ ckErrorCode: "ZONE_NOT_FOUND", zoneID: { zoneName: dataZone } }],
+      hasErrors: true,
+    }));
+    expect(await backend.deleteMap(BESKYDY, "Beskydy")).toEqual({ ok: true, value: null });
+    expect(zonesDeleted.mock.calls[0]![0]).toEqual([{ zoneName: SHARE_ZONE }, { zoneName: dataZone }]);
+    expect(saves).not.toHaveBeenCalled();
+  });
+
+  it("throws what CloudKit says when it refuses to delete a zone for another cause", async () => {
+    const { backend, zonesDeleted } = stack({
+      deleted: () => ({
+        reach: "everyone",
+        database: "private",
+        zone: SHARE_ZONE,
+        remove: [],
+        removeZones: [SHARE_ZONE],
+      }),
+    });
+    zonesDeleted.mockResolvedValueOnce({
+      errors: [{ ckErrorCode: "NOT_AUTHENTICATED", reason: "sign in" }],
+      hasErrors: true,
+    });
+    await expect(backend.deleteMap(BESKYDY, "Beskydy")).rejects.toThrow("sign in");
+  });
+
+  // 200 a deleted map's rows stayed in the kept rows, so the Maps screen listed it again
+  it("reads the rows again without the deleted map, and tells no one of it", async () => {
+    const { backend, notify, seen } = stack();
+    const listener = vi.fn();
+    backend.onChanged(listener);
+    await backend.maps();
+    await backend.deleteMap(TATRAS, "High Tatras");
+    await backend.maps();
+    const listed = seen.at(-1) as { id: string }[];
+    expect(listed.map((row) => row.id)).not.toContain("own-tatras");
+    expect(listed.map((row) => row.id)).toContain("own-beskydy");
+    notify();
+    await vi.waitFor(() => expect(listener).toHaveBeenCalled());
+    expect(listener.mock.calls[0]![0]).toEqual([]);
+  });
+
+  it("passes on the core's words for a name typed wrong, and deletes nothing", async () => {
+    const { backend, saves } = stack({
+      deleted: () => ({ refused: "nameDiffers", status: 409, said: "Type the map's name to delete it" }),
+    });
+    expect(await backend.deleteMap(TATRAS, "Tatras")).toEqual({
+      ok: false,
+      status: 409,
+      said: "Type the map's name to delete it",
+    });
+    expect(saves).not.toHaveBeenCalled();
+  });
+
+  it("says the map changed elsewhere when a record was changed since it was read", async () => {
+    const { backend, saves } = stack();
+    saves.mockResolvedValueOnce({ hasErrors: true, errors: [{ recordName: "own-tatras", ckErrorCode: "CONFLICT" }] });
+    await backend.words();
+    expect(await backend.deleteMap(TATRAS, "High Tatras")).toEqual({
+      ok: false,
+      status: 412,
+      said: "Mapa sa zmenila inde.",
+    });
+  });
+
+  // 200 a module from before rikimaps 3678 has no riki_delete, which the page tells as rules not ready
+  it("says the core's rules are not ready while the module lacks the call", async () => {
+    const lacking = stack({
+      deleted: () => {
+        throw new CoreNotReady("no riki_delete");
+      },
+    });
+    await expect(lacking.backend.deleteMap(TATRAS, "High Tatras")).rejects.toBeInstanceOf(CoreNotReady);
   });
 });
 

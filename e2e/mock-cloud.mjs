@@ -88,6 +88,8 @@ export async function mockCloud(page, { signedIn = false, answers, refusesToken 
       if (operationType === "delete" || operationType === "forceDelete") {
         zone.records.splice(zone.records.indexOf(held), 1);
         zone.version += 1;
+        // 200 the zone's changes report a deleted record, so a reader's kept copy is dropped
+        (zone.deleted ??= []).push({ recordName: record.recordName, changedAt: zone.version });
         return { recordName: record.recordName, deleted: true };
       }
       if (!held) {
@@ -142,8 +144,10 @@ export async function mockCloud(page, { signedIn = false, answers, refusesToken 
           return { zoneID, serverErrorCode: "BAD_REQUEST", reason: "Invalid sync token" };
         }
         const since = Number(String(syncToken ?? "").split("-").pop()) || 0;
-        const records = zone.records.filter((record) => record.changedAt > since)
-          .map((record) => ({ ...record, changedAt: undefined, zoneID }));
+        const records = [...zone.records.filter((record) => record.changedAt > since)
+          .map((record) => ({ ...record, changedAt: undefined, zoneID })),
+          ...(zone.deleted ?? []).filter((each) => each.changedAt > since)
+            .map(({ recordName }) => ({ recordName, deleted: true, zoneID }))];
         return { zoneID, records, syncToken: `${database}-${zone.version}`, moreComing: false };
       });
       return reply(route, 200, { zones: answered });
@@ -161,6 +165,17 @@ export async function mockCloud(page, { signedIn = false, answers, refusesToken 
         if (subscription.subscriptionType !== "database") return { serverErrorCode: "BAD_REQUEST", reason: "unsupported type" };
         subscriptions.add(key);
         return subscription;
+      }) });
+    }
+    if (endpoint === "zones/modify") {
+      return reply(route, 200, { zones: body.operations.map(({ operationType, zone: { zoneID } }) => {
+        const held = account.zones.find((each) => each.database === database && each.zoneID.zoneName === zoneID.zoneName);
+        if (operationType !== "delete") return { zoneID, serverErrorCode: "BAD_REQUEST", reason: "unsupported operation" };
+        if (!held || gone.has(`${database}/${zoneID.zoneName}`)) {
+          return { zoneID, serverErrorCode: "ZONE_NOT_FOUND", reason: "no such zone" };
+        }
+        gone.add(`${database}/${zoneID.zoneName}`);
+        return { zoneID, deleted: true };
       }) });
     }
     if (endpoint === "records/modify") {

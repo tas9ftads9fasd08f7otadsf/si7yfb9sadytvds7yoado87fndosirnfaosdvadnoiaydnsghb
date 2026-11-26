@@ -11,7 +11,7 @@ import { BASE } from "./base";
 import { Cloud, refusesToken } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
-import { loadCore, type AddressRead, type Applied, type Core, type Made, type Reply } from "./core";
+import { loadCore, type AddressRead, type Applied, type Core, type Made, type Deleted, type Reply } from "./core";
 import { peopleOf, type Say } from "./people";
 import { createReach, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
@@ -261,6 +261,45 @@ export function createBackend(parts: Parts): Backend {
     return { ok: true, value: { id: answer.map.id } };
   };
 
+  /** 200 The records or zones the core says a deleted map takes; the next read leaves them out. */
+  const remove = async (
+    asked: (core: Core, read: CoreRow[]) => Deleted | { refused: string; status?: number; said?: string },
+  ): Promise<Answer<null>> => {
+    const [core, read] = await Promise.all([parts.core(), rows(true)]);
+    const answer = asked(core, read);
+    if ("refused" in answer) {
+      return refused(answer.status === 404 ? say("noSuchMap") : (answer.said ?? answer.refused), answer.status ?? 400);
+    }
+    const { container } = await parts.cloud.databases();
+    const db = answer.database === "shared" ? container.sharedCloudDatabase : container.privateCloudDatabase;
+    const zones = new Set(answer.removeZones);
+    const gone = read.filter(
+      (row) =>
+        row.database === answer.database &&
+        (zones.has(row.zone) || (row.zone === answer.zone && answer.remove.includes(row.id))),
+    );
+    try {
+      if (zones.size > 0) {
+        const done = await container.privateCloudDatabase.deleteRecordZones(
+          [...zones].map((zoneName) => ({ zoneName })),
+        );
+        const failed = (done.errors ?? []).find((each) => each.ckErrorCode !== "ZONE_NOT_FOUND");
+        if (failed) throw new Error(failed.reason ?? failed.ckErrorCode ?? "CloudKit refused to delete the zone");
+      } else {
+        const home = gone.find((row) => row.entity === "SharedMap");
+        const zone = { zoneName: answer.zone, ...(home?.owner ? { ownerRecordName: home.owner } : {}) };
+        await write(db, zone, { save: [], remove: gone.filter((row) => answer.remove.includes(row.id)) });
+      }
+    } catch (error) {
+      if (!(error instanceof Conflict)) throw error;
+      return refused(say("changeRefused"), 412);
+    }
+    for (const row of gone) known?.rows.delete(row.id);
+    if (undoing && gone.some((row) => row.entity === "SharedMap" && row.fields.id === undoing?.mapID)) undoing = null;
+    reading = null;
+    return { ok: true, value: null };
+  };
+
   const change = (mapID: string, styleID: string | null, edit: Edit) =>
     through(mapID, styleID, (core, read, author) =>
       core.apply({ rows: read, id: mapID, styleID, edit: queryOf(edit), author }),
@@ -499,7 +538,8 @@ export function createBackend(parts: Parts): Backend {
 
     newMap: editing,
     importMap: editing,
-    deleteMap: editing,
+    /** 200 The Maps sheet's Delete once the name is typed; another's map is left under People instead. */
+    deleteMap: (id, name) => remove((core, read) => core.deleteMap(read, id, name)),
     shelve: editing,
     askPeople: editing,
     setPicture: editing,

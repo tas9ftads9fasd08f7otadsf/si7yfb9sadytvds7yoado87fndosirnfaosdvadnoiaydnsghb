@@ -141,6 +141,10 @@
       return split(await call(name, "changes/zone", { zones }), "zones");
     },
     fetchAllRecordZones: async () => split(await call(name, "zones/list"), "zones"),
+    async deleteRecordZones(zoneIDs) {
+      const operations = [].concat(zoneIDs).map((zoneID) => ({ operationType: "delete", zone: { zoneID } }));
+      return split(await call(name, "zones/modify", { operations }), "zones");
+    },
     async saveSubscriptions(subscriptions) {
       const operations = [].concat(subscriptions).map((subscription) => ({ operationType: "create", subscription }));
       return split(await call(name, "subscriptions/modify", { operations }), "subscriptions");
