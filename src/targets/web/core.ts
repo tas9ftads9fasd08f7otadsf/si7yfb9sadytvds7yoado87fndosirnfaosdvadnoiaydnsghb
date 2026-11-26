@@ -168,8 +168,18 @@ export interface CoreExports {
   riki_duplicate?(pointer: number, length: number): number;
 }
 
-type Call = "riki_maps" | "riki_map" | "riki_apply" | "riki_style" | "riki_changes" | "riki_read_address" | "riki_add_layer"
-  | "riki_people" | "riki_switches" | "riki_export" | "riki_duplicate";
+type Call =
+  | "riki_maps"
+  | "riki_map"
+  | "riki_apply"
+  | "riki_style"
+  | "riki_changes"
+  | "riki_read_address"
+  | "riki_add_layer"
+  | "riki_people"
+  | "riki_switches"
+  | "riki_export"
+  | "riki_duplicate";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -188,7 +198,8 @@ export function callJSON<T>(exports: CoreExports, call: Call, request: unknown):
   exports.riki_free(output, length + 4);
   const answer = JSON.parse(text) as T;
   // While the rules are still moving into the module, a call it cannot answer yet says so by this word.
-  if ((answer as { refused?: unknown } | null)?.refused === "coreNotReady") throw new CoreNotReady(`riki-core.wasm cannot answer ${call} yet`);
+  if ((answer as { refused?: unknown } | null)?.refused === "coreNotReady")
+    throw new CoreNotReady(`riki-core.wasm cannot answer ${call} yet`);
   return answer;
 }
 
@@ -217,7 +228,7 @@ export function coreOf(exports: CoreExports): Core {
     people: (rows, mapID) => callJSON(exports, "riki_people", { rows, id: mapID }),
     switches: (rows, mapID) => callJSON(exports, "riki_switches", { rows, id: mapID }),
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
-    duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID })
+    duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
   };
 }
 
@@ -250,20 +261,26 @@ async function bytesOf(answer: Response, onBytes?: (done: number, total: number 
 }
 
 /** Instantiates `riki-core.wasm` once, with the WASI shim the Swift runtime asks for. */
-export function loadCore(fetcher: typeof fetch = fetch, base = BASE,
-  onBytes?: (done: number, total: number | null) => void): Promise<Core> {
+export function loadCore(
+  fetcher: typeof fetch = fetch,
+  base = BASE,
+  onBytes?: (done: number, total: number | null) => void,
+): Promise<Core> {
   loaded ??= (async () => {
     const address = `${base}/riki-core.wasm`;
     const answer = await fetcher(address);
     if (!answer.ok) throw new CoreMissing(address);
     const wasi = new WASI(CORE_ARGS, [], []);
-    const { instance } = await WebAssembly.instantiate(await bytesOf(answer, onBytes),
-      { wasi_snapshot_preview1: wasi.wasiImport as unknown as WebAssembly.ModuleImports });
+    const { instance } = await WebAssembly.instantiate(await bytesOf(answer, onBytes), {
+      wasi_snapshot_preview1: wasi.wasiImport as unknown as WebAssembly.ModuleImports,
+    });
     const exports = instance.exports as unknown as CoreExports & { _initialize?: () => void };
     if (exports._initialize) wasi.initialize(instance as unknown as Parameters<WASI["initialize"]>[0]);
     return coreOf(exports);
   })();
-  loaded.catch(() => { loaded = null; });
+  loaded.catch(() => {
+    loaded = null;
+  });
   return loaded;
 }
 
