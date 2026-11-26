@@ -29,13 +29,11 @@ test("Import writes every map of the file to the person's own zone and opens the
   const calls = await recordCoreCalls(page, ["riki_import"]);
   const cloud = await mockCloud(page, { signedIn: true });
   await mapsScreen(page);
-  await page
-    .locator("#mapsImportFile")
-    .setInputFiles({
-      name: "Pieniny.mapson",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify({ name: "Pieniny" })),
-    });
+  await page.locator("#mapsImportFile").setInputFiles({
+    name: "Pieniny.mapson",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ name: "Pieniny" })),
+  });
   await expect.poll(() => cloud.record("C0FFEE00-0000-4000-8000-0000000000F1")?.fields.CD_name?.value).toBe("Orava");
   expect(cloud.record("C0FFEE00-0000-4000-8000-0000000000E1")?.fields.CD_name?.value).toBe("Pieniny");
   const [call] = await calls();
