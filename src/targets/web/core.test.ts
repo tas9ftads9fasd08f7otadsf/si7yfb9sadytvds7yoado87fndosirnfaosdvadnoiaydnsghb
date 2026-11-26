@@ -33,11 +33,30 @@ describe("the core's wrapper", () => {
       new Uint8Array(memory.buffer, at + 4, length).set(request);
       return at;
     };
-    const alloc = (length: number) => { const at = top; top += length; return at; };
-    return { memory, riki_alloc: alloc, riki_free: (p, l) => { freed.push([p, l]); }, freed,
-      riki_maps: respond, riki_map: respond, riki_apply: respond, riki_style: respond, riki_changes: respond,
-      riki_read_address: respond, riki_add_layer: respond, riki_people: respond,
-      riki_switches: respond, riki_export: respond };
+    const alloc = (length: number) => {
+      const at = top;
+      top += length;
+      return at;
+    };
+    return {
+      memory,
+      riki_alloc: alloc,
+      riki_free: (p, l) => {
+        freed.push([p, l]);
+      },
+      freed,
+      riki_maps: respond,
+      riki_map: respond,
+      riki_apply: respond,
+      riki_style: respond,
+      riki_changes: respond,
+      riki_read_address: respond,
+      riki_add_layer: respond,
+      riki_people: respond,
+      riki_switches: respond,
+      riki_export: respond,
+      riki_duplicate: respond,
+    };
   }
 
   it("writes the request as JSON, reads the answer back and frees both buffers", () => {
@@ -52,10 +71,26 @@ describe("the core's wrapper", () => {
     expect(core.map([], "M")).toEqual({ rows: [], id: "M" });
     // 110 the site's glyphs and sprite and 112 the region packages held go with the catalog, for the core to put in the style
     // 165 each package carries its JSON files' text and its region's facts, which the style builder reads
-    const stored = [{ region: "tatry", piece: "base", version: 7, files: ["contents.json", "base.pmtiles"],
-      texts: { "contents.json": "{}" }, country: "slovensko", range: false, bbox: [19.6, 49.1, 20.4, 49.3] }];
-    const catalog = { glyphsBase: "https://s/glyphs", spriteBase: "https://s/sprites/temaki-sprite", stored,
-      theme: "dark" as const, hidden: ["h"], tiles: "2x2" };
+    const stored = [
+      {
+        region: "tatry",
+        piece: "base",
+        version: 7,
+        files: ["contents.json", "base.pmtiles"],
+        texts: { "contents.json": "{}" },
+        country: "slovensko",
+        range: false,
+        bbox: [19.6, 49.1, 20.4, 49.3],
+      },
+    ];
+    const catalog = {
+      glyphsBase: "https://s/glyphs",
+      spriteBase: "https://s/sprites/temaki-sprite",
+      stored,
+      theme: "dark" as const,
+      hidden: ["h"],
+      tiles: "2x2",
+    };
     // 165 riki_style names the map `id`, as every other call does
     expect(core.style([], "M", "S", catalog)).toEqual({ rows: [], id: "M", styleID: "S", catalog });
   });
@@ -64,7 +99,13 @@ describe("the core's wrapper", () => {
   it("asks riki_apply with the edit and the author, and riki_changes with the rows", () => {
     const exports = echo();
     const core = coreOf(exports);
-    const ask: Parameters<typeof core.apply>[0] = { rows: [], id: "M", styleID: null, edit: { name: "x" }, author: "Rita" };
+    const ask: Parameters<typeof core.apply>[0] = {
+      rows: [],
+      id: "M",
+      styleID: null,
+      edit: { name: "x" },
+      author: "Rita",
+    };
     expect(core.apply(ask)).toEqual(ask);
     expect(core.changes([])).toEqual({ rows: [] });
   });
@@ -74,17 +115,26 @@ describe("the core's wrapper", () => {
     const exports = echo();
     expect(() => callJSON(exports, "riki_map", { refused: "coreNotReady", call: "riki_map" })).toThrow(CoreNotReady);
     expect(() => coreOf(exports).maps([])).not.toThrow();
-    expect(callJSON(exports, "riki_apply", { refused: "Only the owner may do this", status: 403 }))
-      .toEqual({ refused: "Only the owner may do this", status: 403 });
+    expect(callJSON(exports, "riki_apply", { refused: "Only the owner may do this", status: 403 })).toEqual({
+      refused: "Only the owner may do this",
+      status: 403,
+    });
   });
 
   // 165 an address is read with the capabilities' text, and the ticked layers are made from the same text
   it("asks riki_read_address with the address and the document, and riki_add_layer with the picks", () => {
     const core = coreOf(echo());
-    expect(core.readAddress({ address: "https://a.example/wms", document: "<x/>" }))
-      .toEqual({ address: "https://a.example/wms", document: "<x/>" });
-    const ask: Parameters<typeof core.addLayer>[0] = { rows: [], id: "M", address: "https://a.example/wms",
-      picks: ["roads"], document: "<x/>" };
+    expect(core.readAddress({ address: "https://a.example/wms", document: "<x/>" })).toEqual({
+      address: "https://a.example/wms",
+      document: "<x/>",
+    });
+    const ask: Parameters<typeof core.addLayer>[0] = {
+      rows: [],
+      id: "M",
+      address: "https://a.example/wms",
+      picks: ["roads"],
+      document: "<x/>",
+    };
     expect(core.addLayer(ask)).toEqual(ask);
   });
 
@@ -112,6 +162,14 @@ describe("the core's wrapper", () => {
     expect(() => coreOf(without).exportMap([], "M")).toThrow(CoreNotReady);
   });
 
+  // 198 riki_duplicate takes the rows and the map's id; a module from before rikimaps 3671 is not ready
+  it("asks riki_duplicate with the rows and the map, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).duplicate([], "M")).toEqual({ rows: [], id: "M" });
+    const without: CoreExports = { ...exports, riki_duplicate: undefined };
+    expect(() => coreOf(without).duplicate([], "M")).toThrow(CoreNotReady);
+  });
+
   it("loads a module through the WASI shim and answers what it recorded", async () => {
     const bytes = fakeCoreWasm(account.core);
     const fetcher = async () => new Response(bytes.slice().buffer as ArrayBuffer, { status: 200 });
@@ -119,17 +177,27 @@ describe("the core's wrapper", () => {
     expect(core.maps([]).maps.map((each) => each.name)).toEqual(["High Tatras", "Doprava"]);
     expect(core.map([], "x").name).toBe("High Tatras");
     // 78 the stand-in holds the edit's answer and the history's too
-    expect(core.apply({ rows: [], id: "x", styleID: null, edit: { name: "n" }, author: null }))
-      .toMatchObject({ write: [{ id: "own-tatras-layer" }] });
+    expect(core.apply({ rows: [], id: "x", styleID: null, edit: { name: "n" }, author: null })).toMatchObject({
+      write: [{ id: "own-tatras-layer" }],
+    });
     expect(core.changes([])).toEqual([]);
     // 108 and who holds a map
     expect(core.people([], "x")).toMatchObject({ shared: true, role: "editor", linkRole: null });
     // 86 the stand-in holds what an address reads as, and the rows an added layer writes
-    expect(core.readAddress({ address: "https://cors.example/{z}/{x}/{y}.png" }))
-      .toEqual({ kind: "direct", probe: "https://cors.example/0/0/0.png" });
-    expect(core.addTiles({ rows: [], mapID: "x", styleID: null, author: null, origin: "web",
-      add: { kind: "tiles", address: "https://cors.example/{z}/{x}/{y}.png", replies: [] } }))
-      .toMatchObject({ write: [{ id: "own-tatras-layer-2" }], history: { id: "change-web-2" } });
+    expect(core.readAddress({ address: "https://cors.example/{z}/{x}/{y}.png" })).toEqual({
+      kind: "direct",
+      probe: "https://cors.example/0/0/0.png",
+    });
+    expect(
+      core.addTiles({
+        rows: [],
+        mapID: "x",
+        styleID: null,
+        author: null,
+        origin: "web",
+        add: { kind: "tiles", address: "https://cors.example/{z}/{x}/{y}.png", replies: [] },
+      }),
+    ).toMatchObject({ write: [{ id: "own-tatras-layer-2" }], history: { id: "change-web-2" } });
     expect(await loadCore(fetcher as typeof fetch, "/editor")).toBe(core);
   });
 
@@ -155,16 +223,26 @@ describe("the core's wrapper", () => {
     forgetCore();
     const bytes = fakeCoreWasm(account.core).slice();
     const half = Math.floor(bytes.length / 2);
-    const fetcher = async () => new Response(new ReadableStream({ start(controller) {
-      controller.enqueue(bytes.slice(0, half));
-      controller.enqueue(bytes.slice(half));
-      controller.close();
-    } }), { status: 200, headers: { "content-length": String(bytes.length) } });
+    const fetcher = async () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(bytes.slice(0, half));
+            controller.enqueue(bytes.slice(half));
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { "content-length": String(bytes.length) } },
+      );
     const told: [number, number | null][] = [];
     const core = await loadCore(fetcher as typeof fetch, "/editor", (done, total) => told.push([done, total]));
     expect(core.maps([]).maps).toHaveLength(2);
-    expect(told).toEqual([[0, bytes.length], [half, bytes.length], [bytes.length, bytes.length],
-      [bytes.length, bytes.length]]);
+    expect(told).toEqual([
+      [0, bytes.length],
+      [half, bytes.length],
+      [bytes.length, bytes.length],
+      [bytes.length, bytes.length],
+    ]);
     forgetCore();
   });
 

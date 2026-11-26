@@ -11,7 +11,7 @@ import { BASE } from "./base";
 import { Cloud, refusesToken } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
-import { loadCore, type AddressRead, type Applied, type Core, type Reply } from "./core";
+import { loadCore, type AddressRead, type Applied, type Core, type Made, type Reply } from "./core";
 import { peopleOf, type Say } from "./people";
 import { createReach, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
@@ -28,7 +28,7 @@ const editing = notYet(4);
 const adding = notYet(5);
 
 /** What the site answers so far; the page offers no more. Packages, files, API layers and servers wait. */
-const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people", "exportMap"]);
+const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people", "exportMap", "duplicateMap"]);
 
 /** How often a change is tried, on freshly read rows after a conflict. */
 const TRIES = 3;
@@ -75,8 +75,12 @@ export interface Parts {
 const ownerOf = (row: CoreRow) => (row.entity === "SharedMap" ? row.id : String(row.fields.map ?? ""));
 
 const knownOf = (read: CoreRow[]): Known => ({
-  rows: new Map(read.filter((row) => MAP_ENTITIES.includes(row.entity)).map((row) => [row.id, { tag: row.tag, owner: ownerOf(row) }])),
-  changes: new Set(read.filter((row) => row.entity === "SharedMapChange").map((row) => row.id))
+  rows: new Map(
+    read
+      .filter((row) => MAP_ENTITIES.includes(row.entity))
+      .map((row) => [row.id, { tag: row.tag, owner: ownerOf(row) }]),
+  ),
+  changes: new Set(read.filter((row) => row.entity === "SharedMapChange").map((row) => row.id)),
 });
 
 const refused = (said: string, status = 400): Answer<never> => ({ ok: false, status, said });
@@ -87,8 +91,12 @@ export function createBackend(parts: Parts): Backend {
   const regions = createRegionPackages({ store: kept, fetcher: parts.fetcher, base: parts.base });
   /** 112 Whether the server was set up to fetch region packages; known once the session has read the config. */
   let regionsOn = false;
-  const zones = new Zones(async () => (await parts.cloud.databases()).container, parts.keeping, parts.fetcher,
-    parts.progress);
+  const zones = new Zones(
+    async () => (await parts.cloud.databases()).container,
+    parts.keeping,
+    parts.fetcher,
+    parts.progress,
+  );
   const listeners = new Set<(changed?: ChangedElsewhere[]) => void>();
   let reading: Promise<CoreRow[]> | null = null;
   let known: Known | null = null;
@@ -108,7 +116,9 @@ export function createBackend(parts: Parts): Backend {
       setRequestHeaders(await keysOf(read, (await parts.cloud.start())?.recordName ?? null));
       return read;
     });
-    reading.catch(() => { reading = null; });
+    reading.catch(() => {
+      reading = null;
+    });
     return reading;
   };
 
@@ -128,8 +138,13 @@ export function createBackend(parts: Parts): Backend {
       const row = read.find((each) => each.entity === "SharedMap" && each.id === owner);
       if (!row) return [];
       const mapID = String(row.fields.id ?? owner);
-      return [{ mapID, name: names.get(mapID) ?? String(row.fields.name ?? ""),
-        author: news.find((each) => each.map === owner)?.author || null }];
+      return [
+        {
+          mapID,
+          name: names.get(mapID) ?? String(row.fields.name ?? ""),
+          author: news.find((each) => each.map === owner)?.author || null,
+        },
+      ];
     });
   };
 
@@ -145,8 +160,11 @@ export function createBackend(parts: Parts): Backend {
     read.find((row) => row.entity === "SharedMap" && (row.fields.id === mapID || row.id === mapID));
 
   /** Plans and saves a change to the map's zone, reading the rows again on a conflict. */
-  const commit = async (mapID: string, plan: (core: Core, read: CoreRow[]) => { plan: Plan } | { said: string; status: number },
-    done: (plan: Plan, tags: Map<string, string>) => void): Promise<Answer<Portable>> => {
+  const commit = async (
+    mapID: string,
+    plan: (core: Core, read: CoreRow[]) => { plan: Plan } | { said: string; status: number },
+    done: (plan: Plan, tags: Map<string, string>) => void,
+  ): Promise<Answer<Portable>> => {
     const core = await parts.core();
     const { container } = await parts.cloud.databases();
     for (let attempt = 0; attempt < TRIES; attempt += 1) {
@@ -157,7 +175,11 @@ export function createBackend(parts: Parts): Backend {
       if (!("plan" in planned)) return refused(planned.said, planned.status);
       const db = home.database === "shared" ? container.sharedCloudDatabase : container.privateCloudDatabase;
       try {
-        const tags = await write(db, { zoneName: home.zone, ...(home.owner ? { ownerRecordName: home.owner } : {}) }, planned.plan);
+        const tags = await write(
+          db,
+          { zoneName: home.zone, ...(home.owner ? { ownerRecordName: home.owner } : {}) },
+          planned.plan,
+        );
         done(planned.plan, tags);
         return { ok: true, value: core.map(await rows(true), mapID) };
       } catch (error) {
@@ -179,51 +201,92 @@ export function createBackend(parts: Parts): Backend {
   };
 
   /** Asks the core for rows to write, and saves them; both a change and an added layer go this way. */
-  const through = async (mapID: string, styleID: string | null,
-    ask: (core: Core, rows: CoreRow[], author: string | null) => Applied): Promise<Answer<Portable>> => {
+  const through = async (
+    mapID: string,
+    styleID: string | null,
+    ask: (core: Core, rows: CoreRow[], author: string | null) => Applied,
+  ): Promise<Answer<Portable>> => {
     const author = parts.author.read() || (await parts.cloud.start())?.name || null;
     const tried: { owner: string; undo: Undoing | null } = { owner: "", undo: null };
-    return commit(mapID, (core, read) => {
-      const applied = ask(core, read, author);
-      if ("refused" in applied) return { said: applied.refused, status: applied.status ?? 400 };
-      const rowOf = (id: string) => read.find((row) => row.id === id);
-      const gone = (applied.remove ?? []).flatMap((id) => rowOf(id) ?? []);
-      const before: CoreWrite[] = [];
-      const after: CoreWrite[] = [];
-      for (const each of applied.write) {
-        const row = rowOf(each.id);
-        if (!row) continue;
-        const names = changedFields(each, row);
-        const keep = { entity: row.entity, id: row.id, ...(row.refs ? { refs: row.refs } : {}) };
-        before.push({ ...keep, fields: Object.fromEntries(names.map((name) => [name, row.fields[name] ?? null])) });
-        after.push({ ...keep, fields: Object.fromEntries(names.map((name) => [name, each.fields[name] ?? null])) });
-      }
-      const created = applied.write.filter((each) => !rowOf(each.id)).map((each) => each.id);
-      tried.owner = mapRow(read, mapID)?.id ?? "";
-      tried.undo = { mapID, before, after, created, removed: gone };
-      const saves = [...applied.write, ...(applied.history ? [stamped(applied.history)] : [])];
-      return { plan: { save: saves.map((each) => ({ write: each, row: rowOf(each.id) })), remove: gone } };
-    }, (plan, tags) => {
-      written(plan, tags, tried.owner);
-      undoing = tried.undo;
-    });
+    return commit(
+      mapID,
+      (core, read) => {
+        const applied = ask(core, read, author);
+        if ("refused" in applied) return { said: applied.refused, status: applied.status ?? 400 };
+        const rowOf = (id: string) => read.find((row) => row.id === id);
+        const gone = (applied.remove ?? []).flatMap((id) => rowOf(id) ?? []);
+        const before: CoreWrite[] = [];
+        const after: CoreWrite[] = [];
+        for (const each of applied.write) {
+          const row = rowOf(each.id);
+          if (!row) continue;
+          const names = changedFields(each, row);
+          const keep = { entity: row.entity, id: row.id, ...(row.refs ? { refs: row.refs } : {}) };
+          before.push({ ...keep, fields: Object.fromEntries(names.map((name) => [name, row.fields[name] ?? null])) });
+          after.push({ ...keep, fields: Object.fromEntries(names.map((name) => [name, each.fields[name] ?? null])) });
+        }
+        const created = applied.write.filter((each) => !rowOf(each.id)).map((each) => each.id);
+        tried.owner = mapRow(read, mapID)?.id ?? "";
+        tried.undo = { mapID, before, after, created, removed: gone };
+        const saves = [...applied.write, ...(applied.history ? [stamped(applied.history)] : [])];
+        return { plan: { save: saves.map((each) => ({ write: each, row: rowOf(each.id) })), remove: gone } };
+      },
+      (plan, tags) => {
+        written(plan, tags, tried.owner);
+        undoing = tried.undo;
+      },
+    );
+  };
+
+  /** 198 A map the core made from the rows, its new rows created in the zone the core names. */
+  const create = async (
+    made: (core: Core, read: CoreRow[]) => Made | { refused: string; status?: number; said?: string },
+  ): Promise<Answer<{ id: string }>> => {
+    const [core, read] = await Promise.all([parts.core(), rows()]);
+    const answer = made(core, read);
+    if ("refused" in answer) {
+      return refused(answer.status === 404 ? say("noSuchMap") : (answer.said ?? answer.refused), answer.status ?? 400);
+    }
+    const { container } = await parts.cloud.databases();
+    const db = answer.database === "shared" ? container.sharedCloudDatabase : container.privateCloudDatabase;
+    const plan: Plan = { save: answer.write.map((each) => ({ write: each })), remove: [] };
+    try {
+      const tags = await write(db, { zoneName: answer.zone }, plan);
+      written(plan, tags, answer.write.find((each) => each.entity === "SharedMap")?.id ?? "");
+    } catch (error) {
+      if (!(error instanceof Conflict)) throw error;
+      return refused(say("changeRefused"), 412);
+    }
+    reading = null;
+    return { ok: true, value: { id: answer.map.id } };
   };
 
   const change = (mapID: string, styleID: string | null, edit: Edit) =>
-    through(mapID, styleID, (core, read, author) => core.apply({ rows: read, id: mapID, styleID, edit: queryOf(edit), author }));
+    through(mapID, styleID, (core, read, author) =>
+      core.apply({ rows: read, id: mapID, styleID, edit: queryOf(edit), author }),
+    );
 
   const reply = async (url: string): Promise<Reply | null> => {
     if ((await parts.reach.answers(url)) === false) return null;
     try {
       const answer = await parts.fetcher(url, { mode: "cors", credentials: "omit" });
-      return { url, status: answer.status, contentType: answer.headers.get("content-type") ?? "", text: await answer.text() };
+      return {
+        url,
+        status: answer.status,
+        contentType: answer.headers.get("content-type") ?? "",
+        text: await answer.text(),
+      };
     } catch {
       return { url, status: 0, contentType: "", text: "" };
     }
   };
 
   /** 165 What an address is: the core names the capabilities to fetch, the browser fetches them if their host answers. */
-  const readOf = async (address: string): Promise<Answer<{ read: Exclude<AddressRead, { refused: string } | { kind: "fetch" }>; document: string | null }>> => {
+  const readOf = async (
+    address: string,
+  ): Promise<
+    Answer<{ read: Exclude<AddressRead, { refused: string } | { kind: "fetch" }>; document: string | null }>
+  > => {
     const core = await parts.core();
     const first = core.readAddress({ address });
     if ("refused" in first) return refused(first.said ?? first.refused, first.status ?? 400);
@@ -273,30 +336,49 @@ export function createBackend(parts: Parts): Backend {
 
   const addTiles = async (mapID: string, template: string): Promise<Answer<Portable>> =>
     through(mapID, null, (core, read, author) =>
-      core.addTiles({ rows: read, mapID, styleID: null, add: { kind: "tiles", address: template, replies: [] }, author,
-        origin: "web" }));
+      core.addTiles({
+        rows: read,
+        mapID,
+        styleID: null,
+        add: { kind: "tiles", address: template, replies: [] },
+        author,
+        origin: "web",
+      }),
+    );
 
   /** The rows put back as they were, if nothing else has touched them since. */
   const undo = async (mapID: string): Promise<Answer<Portable>> => {
     const last = undoing;
     if (!last || last.mapID !== mapID) return refused(say("nothingToUndo"), 404);
     let owner = "";
-    return commit(mapID, (_core, read) => {
-      owner = mapRow(read, mapID)?.id ?? "";
-      const current = (id: string) => read.find((row) => row.id === id);
-      const same = last.after.every((each) => Object.entries(each.fields)
-        .every(([name, value]) => JSON.stringify(current(each.id)?.fields[name] ?? null) === JSON.stringify(value ?? null)));
-      if (!same) return { said: say("changeRefused"), status: 412 };
-      return { plan: {
-        save: [...last.before.map((each) => ({ write: each, row: current(each.id) })),
-          ...last.removed.map((row) => ({ write: { entity: row.entity, id: row.id, fields: row.fields,
-            ...(row.refs ? { refs: row.refs } : {}) } }))],
-        remove: last.created.flatMap((id) => current(id) ?? [])
-      } };
-    }, (plan, tags) => {
-      written(plan, tags, owner);
-      undoing = null;
-    });
+    return commit(
+      mapID,
+      (_core, read) => {
+        owner = mapRow(read, mapID)?.id ?? "";
+        const current = (id: string) => read.find((row) => row.id === id);
+        const same = last.after.every((each) =>
+          Object.entries(each.fields).every(
+            ([name, value]) => JSON.stringify(current(each.id)?.fields[name] ?? null) === JSON.stringify(value ?? null),
+          ),
+        );
+        if (!same) return { said: say("changeRefused"), status: 412 };
+        return {
+          plan: {
+            save: [
+              ...last.before.map((each) => ({ write: each, row: current(each.id) })),
+              ...last.removed.map((row) => ({
+                write: { entity: row.entity, id: row.id, fields: row.fields, ...(row.refs ? { refs: row.refs } : {}) },
+              })),
+            ],
+            remove: last.created.flatMap((id) => current(id) ?? []),
+          },
+        };
+      },
+      (plan, tags) => {
+        written(plan, tags, owner);
+        undoing = null;
+      },
+    );
   };
 
   const session = async (): Promise<Answer<SessionAnswer>> => {
@@ -306,10 +388,16 @@ export function createBackend(parts: Parts): Backend {
     });
     if (person === "refused") return { ok: true, value: { standing: "refused" } };
     if (!person) {
-      return { ok: true, value: { standing: "signedOut", ...(parts.cloud.signInUnanswered() ? { signInUnanswered: true } : {}) } };
+      return {
+        ok: true,
+        value: { standing: "signedOut", ...(parts.cloud.signInUnanswered() ? { signInUnanswered: true } : {}) },
+      };
     }
     regionsOn = Boolean((await parts.config().catch(() => null))?.regionsCatalog);
-    return { ok: true, value: { standing: "admitted", edits: true, token: SITE_TOKEN, device: person.name, viewers: null } };
+    return {
+      ok: true,
+      value: { standing: "admitted", edits: true, token: SITE_TOKEN, device: person.name, viewers: null },
+    };
   };
 
   return {
@@ -318,7 +406,7 @@ export function createBackend(parts: Parts): Backend {
     regionPackages: regions.packages,
     stored: {
       prepare: (style, protocol) => registerArchives(style, kept, protocol),
-      load: (params) => loadStored(kept, params)
+      load: (params) => loadStored(kept, params),
     },
 
     async words() {
@@ -326,11 +414,13 @@ export function createBackend(parts: Parts): Backend {
       try {
         const listing = await parts.fetcher(`${parts.base}/words/languages.json`);
         if (listing.ok) codes = codesOf(await listing.json());
-      } catch { /* the site was packed with English only */ }
+      } catch {
+        /* the site was packed with English only */
+      }
       const language = chooseLanguage(codes, parts.languages());
       const answer = await parts.fetcher(`${parts.base}/words/${language}.json`);
       if (!answer.ok) throw new Error(`No words for ${language}`);
-      const read = await answer.json() as { language?: string; words?: Record<string, string> };
+      const read = (await answer.json()) as { language?: string; words?: Record<string, string> };
       const said = { ...ENGLISH, ...read.words } as Words;
       const made = computedWords(language, codes, said);
       spoken = { ...said, ...made };
@@ -360,10 +450,14 @@ export function createBackend(parts: Parts): Backend {
     },
     async style(ask) {
       const [core, read] = await Promise.all([parts.core(), rows()]);
-      const style = core.style(read, ask.mapID, ask.styleID,
-        { glyphsBase: `${location.origin}${parts.base}/glyphs`,
-          spriteBase: `${location.origin}${parts.base}/sprites/temaki-sprite`, stored: await regions.stored(), theme: ask.theme,
-          hidden: ask.hidden, tiles: ask.tiles });
+      const style = core.style(read, ask.mapID, ask.styleID, {
+        glyphsBase: `${location.origin}${parts.base}/glyphs`,
+        spriteBase: `${location.origin}${parts.base}/sprites/temaki-sprite`,
+        stored: await regions.stored(),
+        theme: ask.theme,
+        hidden: ask.hidden,
+        tiles: ask.tiles,
+      });
       const own = [location.origin];
       return { ok: true, value: await drawnHere(style, parts.reach, own) };
     },
@@ -375,7 +469,8 @@ export function createBackend(parts: Parts): Backend {
     async switches(mapID) {
       const [core, read] = await Promise.all([parts.core(), rows()]);
       const said = core.switches(read, mapID);
-      if ("refused" in said) return refused(said.refused === "noSuchMap" ? say("noSuchMap") : said.refused, said.status ?? 400);
+      if ("refused" in said)
+        return refused(said.refused === "noSuchMap" ? say("noSuchMap") : said.refused, said.status ?? 400);
       return { ok: true, value: said };
     },
 
@@ -399,25 +494,67 @@ export function createBackend(parts: Parts): Backend {
       return { ok: true, value: { blob: new Blob([file.text], { type: "application/json" }), name: file.name } };
     },
 
-    newMap: editing, importMap: editing, duplicateMap: editing,
-    deleteMap: editing, shelve: editing, askPeople: editing, setPicture: editing,
-    layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
-    otherLayers: adding, addCopies: adding,
+    /** 198 Edit map's Duplicate: the copy the core makes goes to the person's own iCloud, after every map. */
+    duplicateMap: (id) => create((core, read) => core.duplicate(read, id)),
+
+    newMap: editing,
+    importMap: editing,
+    deleteMap: editing,
+    shelve: editing,
+    askPeople: editing,
+    setPicture: editing,
+    layerOptions: editing,
+    testLayer: editing,
+    roadSigns: editing,
+    packages: editing,
+    servers: editing,
+    otherLayers: adding,
+    addCopies: adding,
     readAddress,
     addTiles,
     addServiceLayers,
-    addServer: adding, findServers: adding, editServer: adding, duplicateServer: adding, deleteServer: adding, addServerLayer: adding, removeServerLayer: adding, saveServerForm: adding, serverLayer: adding, serverPreview: adding, serverPreviewTile: adding, importServers: adding, exportServers: adding, addServerLayers: adding, readAPI: adding,
-    addAPI: adding, addFile: adding, readDXF: adding, esriServices: adding,
-    changeEsriService: adding, coverage: adding, coveragePlaces: adding,
-    publishOffer: adding, publishSend: adding, publishAnswer: adding, publishCancel: adding,
-    saved: adding, savedFeature: adding,
-    startPlaces: adding, downloadRegion: adding, offlinePlan: adding, offlineDownload: adding, discardStored: adding,
-    live: adding, identify: adding, details: adding, phoneLocation: adding,
+    addServer: adding,
+    findServers: adding,
+    editServer: adding,
+    duplicateServer: adding,
+    deleteServer: adding,
+    addServerLayer: adding,
+    removeServerLayer: adding,
+    saveServerForm: adding,
+    serverLayer: adding,
+    serverPreview: adding,
+    serverPreviewTile: adding,
+    importServers: adding,
+    exportServers: adding,
+    addServerLayers: adding,
+    readAPI: adding,
+    addAPI: adding,
+    addFile: adding,
+    readDXF: adding,
+    esriServices: adding,
+    changeEsriService: adding,
+    coverage: adding,
+    coveragePlaces: adding,
+    publishOffer: adding,
+    publishSend: adding,
+    publishAnswer: adding,
+    publishCancel: adding,
+    saved: adding,
+    savedFeature: adding,
+    startPlaces: adding,
+    downloadRegion: adding,
+    offlinePlan: adding,
+    offlineDownload: adding,
+    discardStored: adding,
+    live: adding,
+    identify: adding,
+    details: adding,
+    phoneLocation: adding,
     search: async () => null,
     iconURL: () => "",
     regions: async () => ({}),
     icon: async () => null,
-    symbolURL: siteSymbolURL
+    symbolURL: siteSymbolURL,
   };
 }
 
@@ -427,6 +564,14 @@ const keeping = indexedKeeping();
 const progress = new Progress();
 
 export const backend: Backend = createBackend({
-  cloud: new Cloud(), config: readConfig, core: () => loadCore(fetch, BASE, (done, total) => progress.engine(done, total)), keeping, reach: createReach(keeping), author: storedAuthor(),
-  fetcher: (...asked) => fetch(...asked), base: BASE, languages, progress
+  cloud: new Cloud(),
+  config: readConfig,
+  core: () => loadCore(fetch, BASE, (done, total) => progress.engine(done, total)),
+  keeping,
+  reach: createReach(keeping),
+  author: storedAuthor(),
+  fetcher: (...asked) => fetch(...asked),
+  base: BASE,
+  languages,
+  progress,
 });
