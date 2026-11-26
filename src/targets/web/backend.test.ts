@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
-import type { Device, MapSwitches, Portable } from "@/lib/types";
+import type { Device, MapSwitches, Packages, Portable } from "@/lib/types";
 import {
   Cloud,
   type CKBatchResult,
@@ -54,6 +54,8 @@ interface Options {
   exported?: () => MapsonFile | { refused: string; status?: number };
   /** 198 What the core makes as a map's copy. */
   duplicated?: () => Made | { refused: string; status?: number; said?: string };
+  /** 204 What the core lists as Add layer's Riki packages. */
+  listed?: () => Packages | { refused: string; status?: number; said?: string };
   /** 85 Which hosts answer a browser; every one does by default. */
   reach?: Reach;
   /** 86 What the core reads an address as, by round; the recorded answer by default. */
@@ -220,6 +222,7 @@ function stack(options: Options = {}) {
     switches: vi.fn(() => options.switches?.() ?? (account.core.riki_switches as unknown as MapSwitches)),
     exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile)),
     duplicate: vi.fn(() => options.duplicated?.() ?? (account.core.riki_duplicate as unknown as Made)),
+    packages: vi.fn(() => options.listed?.() ?? (account.core.riki_packages as unknown as Packages)),
   };
   const kept = new Map<string, unknown>();
   const keeping: Keeping = {
@@ -1042,12 +1045,46 @@ describe("WebBackend's duplicate", () => {
   });
 });
 
+describe("WebBackend's Riki packages", () => {
+  const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
+  const held = (pieces: string[]): PackageStore =>
+    ({
+      list: async () => pieces.map((piece, at) => ({ region: `r${at}`, piece, version: 1, bytes: 1, files: [] })),
+    }) as unknown as PackageStore;
+
+  // 204 Add layer's Riki packages answered "not on the site yet"; the core lists them as the phone does
+  it("offers the packages and lists them with the pieces this browser holds, each once", async () => {
+    const { backend, core } = stack({ regions: held(["roads", "base", "roads"]) });
+    expect(backend.offers("addPackages")).toBe(true);
+    const listing = await backend.packages(TATRAS);
+    expect(listing.ok && listing.value.rows.map((row) => row.overlay)).toEqual(["roads", "water"]);
+    expect(vi.mocked(core.packages).mock.calls[0]!.slice(1)).toEqual([TATRAS, ["roads", "base"]]);
+  });
+
+  it("says no such map in the site's words for a map the rows lack", async () => {
+    const { backend } = stack({ regions: held([]), listed: () => ({ refused: "noSuchMap", status: 404 }) });
+    await backend.words();
+    expect(await backend.packages("nope")).toEqual({ ok: false, status: 404, said: "Taká mapa nie je" });
+  });
+
+  // 204 a module from before rikimaps 3684 has no riki_packages, which the page tells as rules not ready
+  it("says the core's rules are not ready while the module lacks the call", async () => {
+    const lacking = stack({
+      regions: held([]),
+      listed: () => {
+        throw new CoreNotReady("no riki_packages");
+      },
+    });
+    await expect(lacking.backend.packages(TATRAS)).rejects.toBeInstanceOf(CoreNotReady);
+  });
+});
+
 describe("WebBackend's parts not built yet", () => {
   // 82 the site said "Not connected" for a write it refuses as not done yet
   it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
     const { backend } = stack();
-    // 198 Duplicate map is the site's since riki_duplicate
-    const parts: Feature[] = ["newMap", "shelf", "pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
+    // 198 Duplicate map is the site's since riki_duplicate, 204 the Riki packages since riki_packages
+    const parts: Feature[] = ["newMap", "shelf", "pictures", "addFile", "addAPI", "servers", "coverage"];
     expect(parts.filter((part) => backend.offers(part))).toEqual([]);
     // 86 only the tile address and a service's layers are added from the site so far
     expect(backend.offers("addLayer")).toBe(true);

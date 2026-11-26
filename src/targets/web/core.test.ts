@@ -56,6 +56,7 @@ describe("the core's wrapper", () => {
       riki_switches: respond,
       riki_export: respond,
       riki_duplicate: respond,
+      riki_packages: respond,
     };
   }
 
@@ -160,6 +161,14 @@ describe("the core's wrapper", () => {
     expect(coreOf(exports).exportMap([], "M")).toEqual({ rows: [], id: "M" });
     const without: CoreExports = { ...exports, riki_export: undefined };
     expect(() => coreOf(without).exportMap([], "M")).toThrow(CoreNotReady);
+  });
+
+  // 204 riki_packages takes the rows, the map and the pieces held; a module before rikimaps 3684 is not ready
+  it("asks riki_packages with the pieces the browser holds, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).packages([], "M", ["roads"])).toEqual({ rows: [], id: "M", pieces: ["roads"] });
+    const without: CoreExports = { ...exports, riki_packages: undefined };
+    expect(() => coreOf(without).packages([], "M", [])).toThrow(CoreNotReady);
   });
 
   // 198 riki_duplicate takes the rows and the map's id; a module from before rikimaps 3671 is not ready

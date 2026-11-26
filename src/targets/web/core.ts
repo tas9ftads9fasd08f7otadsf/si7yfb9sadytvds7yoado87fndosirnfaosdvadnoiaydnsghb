@@ -1,6 +1,6 @@
 import { WASI } from "@bjorn3/browser_wasi_shim";
 import { CoreNotReady } from "@/backend/types";
-import type { AddressReading, Device, MapSwitches, Portable, ShareRole } from "@/lib/types";
+import type { AddressReading, Device, MapSwitches, Packages, Portable, ShareRole } from "@/lib/types";
 import { BASE } from "./base";
 import type { CoreRow, CoreWrite } from "./records";
 import type { StoredForCore } from "./regions/packages";
@@ -123,6 +123,12 @@ export interface Core {
   exportMap(rows: CoreRow[], mapID: string): MapsonFile | { refused: string; status?: number };
   /** 198 Edit map's Duplicate as new rows; `CoreNotReady` before rikimaps 3671. */
   duplicate(rows: CoreRow[], mapID: string): Made | { refused: string; status?: number; said?: string };
+  /** 204 Add layer's Riki packages, `pieces` those the browser holds; `CoreNotReady` before rikimaps 3684. */
+  packages(
+    rows: CoreRow[],
+    mapID: string,
+    pieces: string[],
+  ): Packages | { refused: string; status?: number; said?: string };
 }
 
 /** 198 A map of the person's own the core made: its new rows, the zone they go to, and the map. */
@@ -166,6 +172,8 @@ export interface CoreExports {
   riki_export?(pointer: number, length: number): number;
   /** 198 In modules from rikimaps 3671 on. */
   riki_duplicate?(pointer: number, length: number): number;
+  /** 204 In modules from rikimaps 3684 on. */
+  riki_packages?(pointer: number, length: number): number;
 }
 
 type Call =
@@ -179,7 +187,8 @@ type Call =
   | "riki_people"
   | "riki_switches"
   | "riki_export"
-  | "riki_duplicate";
+  | "riki_duplicate"
+  | "riki_packages";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -229,6 +238,7 @@ export function coreOf(exports: CoreExports): Core {
     switches: (rows, mapID) => callJSON(exports, "riki_switches", { rows, id: mapID }),
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
+    packages: (rows, mapID, pieces) => callJSON(exports, "riki_packages", { rows, id: mapID, pieces }),
   };
 }
 

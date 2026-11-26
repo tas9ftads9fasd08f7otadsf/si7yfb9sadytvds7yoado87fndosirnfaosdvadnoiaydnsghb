@@ -16,7 +16,8 @@ async function openAdd(page) {
   await expect(page.locator("#tileAddress")).toBeVisible();
 }
 
-test("Add layer offers the tile address and none of the packages, files, API layers or servers", async ({ page }) => {
+// 204 the Riki packages are the site's since riki_packages, under their own source
+test("Add layer's tile address shows none of the packages, files, API layers or servers", async ({ page }) => {
   await mockCloud(page, { signedIn: true });
   await mockServiceHosts(page);
   await openAdd(page);

@@ -28,7 +28,13 @@ const editing = notYet(4);
 const adding = notYet(5);
 
 /** What the site answers so far; the page offers no more. Packages, files, API layers and servers wait. */
-const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people", "exportMap", "duplicateMap"]);
+const OFFERED: ReadonlySet<Feature> = new Set<Feature>([
+  "addLayer",
+  "people",
+  "exportMap",
+  "duplicateMap",
+  "addPackages",
+]);
 
 /** How often a change is tried, on freshly read rows after a conflict. */
 const TRIES = 3;
@@ -506,7 +512,15 @@ export function createBackend(parts: Parts): Backend {
     layerOptions: editing,
     testLayer: editing,
     roadSigns: editing,
-    packages: editing,
+    /** 204 Add layer's Riki packages for the map, those held in this browser told apart as the phone's on disk. */
+    async packages(mapID) {
+      const [core, read, held] = await Promise.all([parts.core(), rows(), kept.list()]);
+      const said = core.packages(read, mapID, [...new Set(held.map((each) => each.piece))]);
+      if ("refused" in said) {
+        return refused(said.status === 404 ? say("noSuchMap") : (said.said ?? said.refused), said.status ?? 400);
+      }
+      return { ok: true, value: said };
+    },
     servers: editing,
     otherLayers: adding,
     addCopies: adding,
