@@ -31,6 +31,8 @@ export interface ApplyAsk {
   styleID: string | null;
   edit?: Record<string, string>;
   layers?: unknown[];
+  /** 202 A picture the browser sized, base64; none takes the picture away. */
+  picture?: { kind: "icon" | "preview" | "styleIcon"; style?: string; data?: string };
   author: string | null;
 }
 

@@ -298,6 +298,12 @@ function stack(options: Options = {}) {
     base: "/editor",
     languages: () => options.languages ?? ["sk"],
     ...(options.regions ? { regions: options.regions } : {}),
+    painter: {
+      open: async (picture: Blob) =>
+        (await picture.text()) === "no picture" ? null : { width: 400, height: 300, source: picture },
+      paint: async (_source: unknown, cut: { width: number }, type: string) =>
+        new Blob([`${type} ${cut.width}`], { type }),
+    },
   });
   /** Another device wrote this record: a new tag and the fields it set. */
   const elsewhere = (recordName: string, fields: Record<string, { value: unknown; type: string }>) => {
@@ -1133,6 +1139,47 @@ describe("WebBackend's copies from other maps", () => {
   });
 });
 
+describe("WebBackend's pictures", () => {
+  const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
+  const bytes = (text: string) => new TextEncoder().encode(text).buffer as ArrayBuffer;
+
+  // 202 the icon, preview and style pictures answered "not on the site yet"; the core writes what the browser sized
+  it("offers pictures and hands the core the icon squared as the phone squares it, as base64", async () => {
+    const { backend, core, saves } = stack();
+    expect(backend.offers("pictures")).toBe(true);
+    expect((await backend.setPicture(TATRAS, "icon", bytes("photo"))).ok).toBe(true);
+    const ask = vi.mocked(core.apply).mock.calls[0]![0];
+    expect(ask).toMatchObject({ id: TATRAS, styleID: null, picture: { kind: "icon" } });
+    expect(atob(ask.picture!.data!)).toBe("image/png 132");
+    expect(saves).toHaveBeenCalled();
+  });
+
+  it("sends a preview as a JPEG and a style's picture with its style", async () => {
+    const { backend, core } = stack();
+    await backend.setPicture(TATRAS, "preview", bytes("shot"));
+    await backend.setPicture(TATRAS, "styleIcon", bytes("photo"), "B1");
+    const [preview, style] = vi.mocked(core.apply).mock.calls.map((call) => call[0].picture!);
+    expect(atob(preview!.data!)).toBe("image/jpeg 400");
+    expect(style).toMatchObject({ kind: "styleIcon", style: "B1" });
+  });
+
+  it("takes a picture away when none is given", async () => {
+    const { backend, core } = stack();
+    await backend.setPicture(TATRAS, "icon", new ArrayBuffer(0));
+    expect(vi.mocked(core.apply).mock.calls[0]![0].picture).toEqual({ kind: "icon" });
+  });
+
+  it("refuses a file the browser cannot draw, asking the core nothing", async () => {
+    const { backend, core } = stack();
+    expect(await backend.setPicture(TATRAS, "icon", bytes("no picture"))).toEqual({
+      ok: false,
+      status: 409,
+      said: "badPicture",
+    });
+    expect(core.apply).not.toHaveBeenCalled();
+  });
+});
+
 describe("WebBackend's shelf", () => {
   const SHARE_ZONE = account.zones.private[1]!.zoneID.zoneName;
 
@@ -1361,8 +1408,8 @@ describe("WebBackend's parts not built yet", () => {
   // 82 the site said "Not connected" for a write it refuses as not done yet
   it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
     const { backend } = stack();
-    // 198 Duplicate map is the site's since riki_duplicate, 199 New map since riki_new_map, 201 the shelf since riki_shelve, 203 From your maps since riki_copies
-    const parts: Feature[] = ["pictures", "addPackages", "addFile", "addAPI", "servers", "coverage"];
+    // 198 Duplicate map is the site's since riki_duplicate, 199 New map since riki_new_map, 201 the shelf since riki_shelve, 202 pictures since riki_apply takes them, 203 From your maps since riki_copies
+    const parts: Feature[] = ["addPackages", "addFile", "addAPI", "servers", "coverage"];
     expect(parts.filter((part) => backend.offers(part))).toEqual([]);
     // 86 only the tile address and a service's layers are added from the site so far
     expect(backend.offers("addLayer")).toBe(true);
