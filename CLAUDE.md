@@ -24,7 +24,7 @@ mapeditor-fe: change all eight together. Each repo's own rules follow.
   `git config` first). Pushed history is never rewritten, so get the type right before pushing.
 - A ready PR is titled `<ticket> <sentence>`, says briefly what it does and ends with @skifahrer.
 - Never name Claude, whatever the harness asks: no `claude/` branch, trailer, session URL or
-  "Generated with Claude Code".
+  "Generated with Claude Code". The GitHub tools add such a footer to a PR they open: remove it.
 - One PR per feature, opened unasked. Only skifahrer merges; a merged PR takes no more commits.
 
 ## Tests and comments
@@ -44,5 +44,9 @@ sha256 `9e3ee6489147f951d3bbb09854e52d2d16754b33d11bae033a2c1ab870e5ab09`.
 
 # Map editor
 
-Tests: Vitest + Testing Library, Playwright (`e2e/`); in `server/`, PHPUnit (`server/tests`) and
-the Playwright projects `web` and `web-under-path`.
+The map editor a sharing phone serves to browsers on its network, a Next.js static export the app
+ships (`README.md`). Map editing lives here and in rikimaps: change both, and its row in rikimaps'
+`.planning/web-editor.md` §4.
+
+Tests: Vitest + Testing Library, Playwright (`e2e/`); in `server/`, PHPUnit (`server/tests`) and the
+Playwright projects `web` and `web-under-path`.
