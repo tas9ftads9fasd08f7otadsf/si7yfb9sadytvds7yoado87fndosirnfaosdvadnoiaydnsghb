@@ -9,14 +9,49 @@
 //  - users/caller answers the record name only.
 (() => {
   const FLAG = "mock-cloud-signed-in";
-  const KNOWN = ["ACCESS_DENIED", "ATOMIC_ERROR", "AUTHENTICATION_FAILED", "AUTHENTICATION_REQUIRED", "BAD_REQUEST", "CONFLICT",
-    "EXISTS", "INTERNAL_ERROR", "NOT_FOUND", "QUOTA_EXCEEDED", "THROTTLED", "TRY_AGAIN_LATER", "UNIQUE_FIELD_ERROR",
-    "VALIDATING_REFERENCE_ERROR", "ZONE_NOT_FOUND", "ZONE_BUSY"];
-  const ZONE_KEYS = ["zoneID", "numbersAsStrings", "desiredKeys", "desiredRecordTypes", "resultsLimit", "syncToken", "reverse"];
+  const KNOWN = [
+    "ACCESS_DENIED",
+    "ATOMIC_ERROR",
+    "AUTHENTICATION_FAILED",
+    "AUTHENTICATION_REQUIRED",
+    "BAD_REQUEST",
+    "CONFLICT",
+    "EXISTS",
+    "INTERNAL_ERROR",
+    "NOT_FOUND",
+    "QUOTA_EXCEEDED",
+    "THROTTLED",
+    "TRY_AGAIN_LATER",
+    "UNIQUE_FIELD_ERROR",
+    "VALIDATING_REFERENCE_ERROR",
+    "ZONE_NOT_FOUND",
+    "ZONE_BUSY",
+  ];
+  const ZONE_KEYS = [
+    "zoneID",
+    "numbersAsStrings",
+    "desiredKeys",
+    "desiredRecordTypes",
+    "resultsLimit",
+    "syncToken",
+    "reverse",
+  ];
   const BATCH_KEYS = ["zoneID", "desiredKeys", "numbersAsStrings", "atomic", "onAssetUploadStart"];
   const listeners = [];
-  const signedIn = () => { try { return localStorage.getItem(FLAG) === "1"; } catch { return false; } };
-  const remember = (on) => { try { localStorage.setItem(FLAG, on ? "1" : "0"); } catch { /* signed out on reload */ } };
+  const signedIn = () => {
+    try {
+      return localStorage.getItem(FLAG) === "1";
+    } catch {
+      return false;
+    }
+  };
+  const remember = (on) => {
+    try {
+      localStorage.setItem(FLAG, on ? "1" : "0");
+    } catch {
+      /* signed out on reload */
+    }
+  };
   let settings;
   let signIn = defer();
   let silentWindow = false;
@@ -24,7 +59,10 @@
 
   function defer() {
     const made = {};
-    made.promise = new Promise((resolve, reject) => { made.resolve = resolve; made.reject = reject; });
+    made.promise = new Promise((resolve, reject) => {
+      made.resolve = resolve;
+      made.reject = reject;
+    });
     return made;
   }
 
@@ -40,15 +78,20 @@
     }
   }
 
-  const pick = (from, keys) => Object.fromEntries(keys.filter((key) => from[key] !== undefined).map((key) => [key, from[key]]));
+  const pick = (from, keys) =>
+    Object.fromEntries(keys.filter((key) => from[key] !== undefined).map((key) => [key, from[key]]));
   const isError = (item) => item.serverErrorCode !== undefined && item.serverErrorCode !== null;
 
   async function call(database, path, body) {
     const { containerIdentifier, environment, apiTokenAuth } = settings;
-    const address = `https://api.apple-cloudkit.com/database/1/${containerIdentifier}/${environment}/${database}/${path}`
-      + `?ckAPIToken=${encodeURIComponent(apiTokenAuth.apiToken)}`;
-    const answer = await fetch(address, { method: "POST", body: JSON.stringify(body ?? {}),
-      headers: { "Content-Type": "text/plain", "X-Mock-Signed-In": signedIn() ? "1" : "0" } });
+    const address =
+      `https://api.apple-cloudkit.com/database/1/${containerIdentifier}/${environment}/${database}/${path}` +
+      `?ckAPIToken=${encodeURIComponent(apiTokenAuth.apiToken)}`;
+    const answer = await fetch(address, {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+      headers: { "Content-Type": "text/plain", "X-Mock-Signed-In": signedIn() ? "1" : "0" },
+    });
     const read = await answer.json();
     if (!answer.ok) throw new CKError(read);
     return read;
@@ -71,11 +114,13 @@
     each.className = "apple-auth-button";
     each.setAttribute("alt", label);
     each.setAttribute("role", "button");
-    each.style.cssText = "height: 40px; width: 218px; cursor: pointer; border: 1px solid black; "
-      + "border-radius: 5px; background-color: black; display: block;";
-    each.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="apple-auth-button-text" width="177" '
-      + 'height="21" style="overflow: visible; fill: white; top: 50%; left: 50%; position: relative;">'
-      + '<text x="-70" y="6"></text></svg>';
+    each.style.cssText =
+      "height: 40px; width: 218px; cursor: pointer; border: 1px solid black; " +
+      "border-radius: 5px; background-color: black; display: block;";
+    each.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" class="apple-auth-button-text" width="177" ' +
+      'height="21" style="overflow: visible; fill: white; top: 50%; left: 50%; position: relative;">' +
+      '<text x="-70" y="6"></text></svg>';
     each.querySelector("text").textContent = label;
     each.addEventListener("click", click);
     slot.append(each);
@@ -109,7 +154,8 @@
     const operations = [];
     const push = (operationType, records) => {
       for (const record of [].concat(records)) {
-        const bare = operationType === "delete" || operationType === "forceDelete" ? { ...record, fields: undefined } : record;
+        const bare =
+          operationType === "delete" || operationType === "forceDelete" ? { ...record, fields: undefined } : record;
         operations.push({ operationType, record: bare });
       }
       return builder;
@@ -126,7 +172,7 @@
       async commit() {
         const read = await call(name, "records/modify", { operations, ...options });
         return split(read, "records");
-      }
+      },
     };
     return builder;
   }
@@ -151,7 +197,7 @@
     },
     async fetchDatabaseChanges(options = {}) {
       return split(await call(name, "changes/database", pick(options, ["syncToken", "resultsLimit"])), "zones");
-    }
+    },
   });
 
   const container = {
@@ -174,18 +220,25 @@
     discoverUserIdentityWithUserRecordName: async (userRecordName) =>
       split(await call("public", "users/discover", { lookupInfos: [{ userRecordName }] }), "users"),
     registerForNotifications: async () => {},
-    addNotificationListener: (listener) => { listeners.push(listener); },
+    addNotificationListener: (listener) => {
+      listeners.push(listener);
+    },
     privateCloudDatabase: database("private"),
-    sharedCloudDatabase: database("shared")
+    sharedCloudDatabase: database("shared"),
   };
 
   window.CloudKit = {
-    configure: (options) => { settings = options.containers[0]; window.__mockCloudSettings = settings; },
-    getDefaultContainer: () => container
+    configure: (options) => {
+      settings = options.containers[0];
+      window.__mockCloudSettings = settings;
+    },
+    getDefaultContainer: () => container,
   };
   // The page under test calls these: a push as Apple would send it, and a sign-in window that was closed.
   window.__mockCloudPush = () => listeners.forEach((listener) => listener({ type: "mock" }));
-  window.__mockCloudSilentWindow = () => { silentWindow = true; };
+  window.__mockCloudSilentWindow = () => {
+    silentWindow = true;
+  };
   window.__mockCloudFailSignIn = () => {
     const failed = signIn;
     signIn = defer();
