@@ -1,6 +1,6 @@
 import { WASI } from "@bjorn3/browser_wasi_shim";
 import { CoreNotReady } from "@/backend/types";
-import type { AddressReading, Device, MapSwitches, Portable, ShareRole } from "@/lib/types";
+import type { AddressReading, Device, MapSwitches, OtherLayers, Portable, ShareRole } from "@/lib/types";
 import { BASE } from "./base";
 import type { CoreRow, CoreWrite } from "./records";
 import type { StoredForCore } from "./regions/packages";
@@ -125,6 +125,14 @@ export interface Core {
   exportMap(rows: CoreRow[], mapID: string): MapsonFile | { refused: string; status?: number };
   /** 198 Edit map's Duplicate as new rows; `CoreNotReady` before rikimaps 3671. */
   duplicate(rows: CoreRow[], mapID: string): Made | { refused: string; status?: number; said?: string };
+  /** 203 Add layer's From your maps: the other maps' layers to tick; `CoreNotReady` before rikimaps 3685. */
+  otherLayers(rows: CoreRow[], mapID: string): OtherLayers | { refused: string; status?: number; said?: string };
+  /** 203 The ticked layers copied for the map, which `apply` then adds. */
+  copyLayers(
+    rows: CoreRow[],
+    mapID: string,
+    layers: string[],
+  ): { layers: unknown[] } | { refused: string; status?: number; said?: string };
   /** 201 The Maps list arranged, `shelf` as the phone's `/shelf` query; `CoreNotReady` before rikimaps 3675. */
   shelve(rows: CoreRow[], shelf: Record<string, string>): Shelved | { refused: string; status?: number; said?: string };
   /** 200 The Maps sheet's Delete, the name as typed; `CoreNotReady` before rikimaps 3678. */
@@ -205,6 +213,8 @@ export interface CoreExports {
   riki_export?(pointer: number, length: number): number;
   /** 198 In modules from rikimaps 3671 on. */
   riki_duplicate?(pointer: number, length: number): number;
+  /** 203 In modules from rikimaps 3685 on. */
+  riki_copies?(pointer: number, length: number): number;
   /** 201 In modules from rikimaps 3675 on. */
   riki_shelve?(pointer: number, length: number): number;
   /** 200 In modules from rikimaps 3678 on. */
@@ -227,6 +237,7 @@ type Call =
   | "riki_switches"
   | "riki_export"
   | "riki_duplicate"
+  | "riki_copies"
   | "riki_shelve"
   | "riki_delete"
   | "riki_new_map"
@@ -280,6 +291,8 @@ export function coreOf(exports: CoreExports): Core {
     switches: (rows, mapID) => callJSON(exports, "riki_switches", { rows, id: mapID }),
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
+    otherLayers: (rows, mapID) => callJSON(exports, "riki_copies", { rows, id: mapID }),
+    copyLayers: (rows, mapID, layers) => callJSON(exports, "riki_copies", { rows, id: mapID, layers }),
     shelve: (rows, shelf) => callJSON(exports, "riki_shelve", { rows, shelf }),
     deleteMap: (rows, mapID, name) => callJSON(exports, "riki_delete", { rows, id: mapID, name }),
     newMap: (rows, name) => callJSON(exports, "riki_new_map", { rows, name }),
