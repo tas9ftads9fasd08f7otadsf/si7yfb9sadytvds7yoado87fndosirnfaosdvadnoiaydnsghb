@@ -125,12 +125,26 @@ export interface Core {
   duplicate(rows: CoreRow[], mapID: string): Made | { refused: string; status?: number; said?: string };
   /** 201 The Maps list arranged, `shelf` as the phone's `/shelf` query; `CoreNotReady` before rikimaps 3675. */
   shelve(rows: CoreRow[], shelf: Record<string, string>): Shelved | { refused: string; status?: number; said?: string };
+  /** 199 New map's blank map as new rows; `CoreNotReady` before rikimaps 3679. */
+  newMap(rows: CoreRow[], name: string): Made | { refused: string; status?: number; said?: string };
+  /** 199 A .mapson file's maps as new rows; `CoreNotReady` before rikimaps 3680. */
+  importMap(
+    rows: CoreRow[],
+    text: string,
+    allowUnsigned: boolean,
+  ): Imported | { refused: string; status?: number; said?: string };
 }
 
 /** 201 The rows an arrangement changes, and the list as it stands after. */
 export interface Shelved {
   write: CoreWrite[];
   catalog: Device;
+}
+
+/** 199 A file's maps the core made, in the file's order, and hosts whose keys the file held. */
+export interface Imported extends Omit<Made, "map"> {
+  maps: { id: string; name: string }[];
+  leftHosts: string[];
 }
 
 /** 198 A map of the person's own the core made: its new rows, the zone they go to, and the map. */
@@ -176,6 +190,10 @@ export interface CoreExports {
   riki_duplicate?(pointer: number, length: number): number;
   /** 201 In modules from rikimaps 3675 on. */
   riki_shelve?(pointer: number, length: number): number;
+  /** 199 In modules from rikimaps 3679 on. */
+  riki_new_map?(pointer: number, length: number): number;
+  /** 199 In modules from rikimaps 3680 on. */
+  riki_import?(pointer: number, length: number): number;
 }
 
 type Call =
@@ -190,7 +208,9 @@ type Call =
   | "riki_switches"
   | "riki_export"
   | "riki_duplicate"
-  | "riki_shelve";
+  | "riki_shelve"
+  | "riki_new_map"
+  | "riki_import";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -241,6 +261,8 @@ export function coreOf(exports: CoreExports): Core {
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
     shelve: (rows, shelf) => callJSON(exports, "riki_shelve", { rows, shelf }),
+    newMap: (rows, name) => callJSON(exports, "riki_new_map", { rows, name }),
+    importMap: (rows, text, allowUnsigned) => callJSON(exports, "riki_import", { rows, text, allowUnsigned }),
   };
 }
 

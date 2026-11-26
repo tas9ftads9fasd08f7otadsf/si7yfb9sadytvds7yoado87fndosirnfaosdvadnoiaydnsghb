@@ -11,7 +11,7 @@ import { BASE } from "./base";
 import { Cloud, refusesToken } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
-import { loadCore, type AddressRead, type Applied, type Core, type Made, type Reply } from "./core";
+import { loadCore, type AddressRead, type Applied, type Core, type Imported, type Made, type Reply } from "./core";
 import { peopleOf, type Say } from "./people";
 import { createReach, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
@@ -28,7 +28,14 @@ const editing = notYet(4);
 const adding = notYet(5);
 
 /** What the site answers so far; the page offers no more. Packages, files, API layers and servers wait. */
-const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people", "exportMap", "duplicateMap", "shelf"]);
+const OFFERED: ReadonlySet<Feature> = new Set<Feature>([
+  "addLayer",
+  "people",
+  "exportMap",
+  "duplicateMap",
+  "newMap",
+  "shelf",
+]);
 
 /** How often a change is tried, on freshly read rows after a conflict. */
 const TRIES = 3;
@@ -239,9 +246,9 @@ export function createBackend(parts: Parts): Backend {
     );
   };
 
-  /** 198 A map the core made from the rows, its new rows created in the zone the core names. */
+  /** 198 Maps the core made from the rows, their new rows created in the zone it names; the first opens. */
   const create = async (
-    made: (core: Core, read: CoreRow[]) => Made | { refused: string; status?: number; said?: string },
+    made: (core: Core, read: CoreRow[]) => Made | Imported | { refused: string; status?: number; said?: string },
   ): Promise<Answer<{ id: string }>> => {
     const [core, read] = await Promise.all([parts.core(), rows()]);
     const answer = made(core, read);
@@ -253,13 +260,17 @@ export function createBackend(parts: Parts): Backend {
     const plan: Plan = { save: answer.write.map((each) => ({ write: each })), remove: [] };
     try {
       const tags = await write(db, { zoneName: answer.zone }, plan);
-      written(plan, tags, answer.write.find((each) => each.entity === "SharedMap")?.id ?? "");
+      for (const { write: each } of plan.save) {
+        const tag = tags.get(each.id);
+        if (tag && known) known.rows.set(each.id, { tag, owner: ownerOf(each) });
+      }
     } catch (error) {
       if (!(error instanceof Conflict)) throw error;
       return refused(say("changeRefused"), 412);
     }
     reading = null;
-    return { ok: true, value: { id: answer.map.id } };
+    const first = "map" in answer ? answer.map : answer.maps[0];
+    return first ? { ok: true, value: { id: first.id } } : refused(say("noSuchMap"), 404);
   };
 
   /** 201 The Maps list arranged by the core; each row is saved in its own map's zone, one batch per zone. */
@@ -538,8 +549,13 @@ export function createBackend(parts: Parts): Backend {
     /** 198 Edit map's Duplicate: the copy the core makes goes to the person's own iCloud, after every map. */
     duplicateMap: (id) => create((core, read) => core.duplicate(read, id)),
 
-    newMap: editing,
-    importMap: editing,
+    /** 199 New map's blank map, in the person's own iCloud after every map. */
+    newMap: (name) => create((core, read) => core.newMap(read, name)),
+    /** 199 The phone takes a file the app did not sign, and so does the site; the map keeps that mark. */
+    importMap: async (file) => {
+      const text = await file.text();
+      return create((core, read) => core.importMap(read, text, true));
+    },
     deleteMap: editing,
     shelve,
     askPeople: editing,
