@@ -1,6 +1,6 @@
 import { WASI } from "@bjorn3/browser_wasi_shim";
 import { CoreNotReady } from "@/backend/types";
-import type { AddressReading, Device, EsriListing, MapSwitches, Portable, ShareRole } from "@/lib/types";
+import type { AddressReading, Device, EsriListing, MapSwitches, OtherLayers, Portable, ShareRole } from "@/lib/types";
 import { BASE } from "./base";
 import type { CoreRow, CoreWrite } from "./records";
 import type { StoredForCore } from "./regions/packages";
@@ -31,6 +31,8 @@ export interface ApplyAsk {
   styleID: string | null;
   edit?: Record<string, string>;
   layers?: unknown[];
+  /** 202 A picture the browser sized, base64; none takes the picture away. */
+  picture?: { kind: "icon" | "preview" | "styleIcon"; style?: string; data?: string };
   author: string | null;
 }
 
@@ -129,6 +131,16 @@ export interface Core {
     mapID: string,
     timeZone: string,
   ): EsriListing | { refused: string; status?: number; said?: string };
+  /** 203 Add layer's From your maps: the other maps' layers to tick; `CoreNotReady` before rikimaps 3685. */
+  otherLayers(rows: CoreRow[], mapID: string): OtherLayers | { refused: string; status?: number; said?: string };
+  /** 203 The ticked layers copied for the map, which `apply` then adds. */
+  copyLayers(
+    rows: CoreRow[],
+    mapID: string,
+    layers: string[],
+  ): { layers: unknown[] } | { refused: string; status?: number; said?: string };
+  /** 201 The Maps list arranged, `shelf` as the phone's `/shelf` query; `CoreNotReady` before rikimaps 3675. */
+  shelve(rows: CoreRow[], shelf: Record<string, string>): Shelved | { refused: string; status?: number; said?: string };
   /** 200 The Maps sheet's Delete, the name as typed; `CoreNotReady` before rikimaps 3678. */
   deleteMap(
     rows: CoreRow[],
@@ -143,6 +155,12 @@ export interface Core {
     text: string,
     allowUnsigned: boolean,
   ): Imported | { refused: string; status?: number; said?: string };
+}
+
+/** 201 The rows an arrangement changes, and the list as it stands after. */
+export interface Shelved {
+  write: CoreWrite[];
+  catalog: Device;
 }
 
 /** 200 What a deleted map takes with it: records in one zone, or private zones whole. */
@@ -203,6 +221,10 @@ export interface CoreExports {
   riki_duplicate?(pointer: number, length: number): number;
   /** 205 In modules from rikimaps 3689 on. */
   riki_esri_services?(pointer: number, length: number): number;
+  /** 203 In modules from rikimaps 3685 on. */
+  riki_copies?(pointer: number, length: number): number;
+  /** 201 In modules from rikimaps 3675 on. */
+  riki_shelve?(pointer: number, length: number): number;
   /** 200 In modules from rikimaps 3678 on. */
   riki_delete?(pointer: number, length: number): number;
   /** 199 In modules from rikimaps 3679 on. */
@@ -224,6 +246,8 @@ type Call =
   | "riki_export"
   | "riki_duplicate"
   | "riki_esri_services"
+  | "riki_copies"
+  | "riki_shelve"
   | "riki_delete"
   | "riki_new_map"
   | "riki_import";
@@ -277,6 +301,9 @@ export function coreOf(exports: CoreExports): Core {
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
     esriServices: (rows, mapID, timeZone) => callJSON(exports, "riki_esri_services", { rows, id: mapID, timeZone }),
+    otherLayers: (rows, mapID) => callJSON(exports, "riki_copies", { rows, id: mapID }),
+    copyLayers: (rows, mapID, layers) => callJSON(exports, "riki_copies", { rows, id: mapID, layers }),
+    shelve: (rows, shelf) => callJSON(exports, "riki_shelve", { rows, shelf }),
     deleteMap: (rows, mapID, name) => callJSON(exports, "riki_delete", { rows, id: mapID, name }),
     newMap: (rows, name) => callJSON(exports, "riki_new_map", { rows, name }),
     importMap: (rows, text, allowUnsigned) => callJSON(exports, "riki_import", { rows, text, allowUnsigned }),

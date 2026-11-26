@@ -57,6 +57,8 @@ describe("the core's wrapper", () => {
       riki_export: respond,
       riki_duplicate: respond,
       riki_esri_services: respond,
+      riki_copies: respond,
+      riki_shelve: respond,
       riki_delete: respond,
       riki_new_map: respond,
       riki_import: respond,
@@ -176,6 +178,26 @@ describe("the core's wrapper", () => {
     });
     const without: CoreExports = { ...exports, riki_esri_services: undefined };
     expect(() => coreOf(without).esriServices([], "M", "UTC")).toThrow(CoreNotReady);
+  });
+
+  // 203 riki_copies lists with the map alone and copies with the ticked layers; before rikimaps 3685, not ready
+  it("asks riki_copies for the listing or for the copies, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).otherLayers([], "M")).toEqual({ rows: [], id: "M" });
+    expect(coreOf(exports).copyLayers([], "M", ["L"])).toEqual({ rows: [], id: "M", layers: ["L"] });
+    const without: CoreExports = { ...exports, riki_copies: undefined };
+    expect(() => coreOf(without).otherLayers([], "M")).toThrow(CoreNotReady);
+  });
+
+  // 201 riki_shelve takes the rows and the shelf query; a module before rikimaps 3675 is not ready
+  it("asks riki_shelve with the rows and the shelf, and says not ready where the module has none", () => {
+    const exports = echo();
+    expect(coreOf(exports).shelve([], { sort: "nameAscending" })).toEqual({
+      rows: [],
+      shelf: { sort: "nameAscending" },
+    });
+    const without: CoreExports = { ...exports, riki_shelve: undefined };
+    expect(() => coreOf(without).shelve([], {})).toThrow(CoreNotReady);
   });
 
   // 200 riki_delete takes the rows, the map and the name as typed; a module before rikimaps 3678 is not ready
