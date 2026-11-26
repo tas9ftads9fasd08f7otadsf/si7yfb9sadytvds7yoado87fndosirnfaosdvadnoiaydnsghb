@@ -7,29 +7,61 @@ import { savedName } from "./phone";
 const EDITS: [Edit, Record<string, string>][] = [
   [{ kind: "name", name: "Tatras" }, { name: "Tatras" }],
   [{ kind: "note", note: "Hikes" }, { note: "Hikes" }],
-  [{ kind: "nameIn", language: "sk", name: "Tatry" }, { language: "sk", name: "Tatry" }],
-  [{ kind: "noteIn", language: "sk", note: "" }, { language: "sk", note: "" }],
-  [{ kind: "layerShown", layer: "L", shown: false }, { layer: "L", shown: "0" }],
+  [
+    { kind: "nameIn", language: "sk", name: "Tatry" },
+    { language: "sk", name: "Tatry" },
+  ],
+  [
+    { kind: "noteIn", language: "sk", note: "" },
+    { language: "sk", note: "" },
+  ],
+  [
+    { kind: "layerShown", layer: "L", shown: false },
+    { layer: "L", shown: "0" },
+  ],
   [{ kind: "layersShown", shown: true }, { shownAll: "1" }],
-  [{ kind: "layerName", layer: "L", name: "Huts" }, { layer: "L", name: "Huts" }],
-  [{ kind: "layerOpacity", layer: "L", opacity: "0.5" }, { layer: "L", opacity: "0.5" }],
+  [
+    { kind: "layerName", layer: "L", name: "Huts" },
+    { layer: "L", name: "Huts" },
+  ],
+  [
+    { kind: "layerOpacity", layer: "L", opacity: "0.5" },
+    { layer: "L", opacity: "0.5" },
+  ],
   [{ kind: "order", layers: ["A", "B"] }, { order: "A,B" }],
-  [{ kind: "styleName", style: "S", name: "Winter" }, { style: "S", name: "Winter" }],
+  [
+    { kind: "styleName", style: "S", name: "Winter" },
+    { style: "S", name: "Winter" },
+  ],
   [{ kind: "addStyle", name: "New style 2" }, { addStyle: "New style 2" }],
   [{ kind: "removeStyle", style: "S" }, { removeStyle: "S" }],
-  [{ kind: "minimumVersion", app: "0.18", browser: "" }, { minimumApp: "0.18", minimumBrowser: "" }],
-  [{ kind: "start", start: { kind: "country", country: "SK" } }, { start: "country", country: "SK" }],
+  [
+    { kind: "minimumVersion", app: "0.18", browser: "" },
+    { minimumApp: "0.18", minimumBrowser: "" },
+  ],
+  [
+    { kind: "start", start: { kind: "country", country: "SK" } },
+    { start: "country", country: "SK" },
+  ],
   [{ kind: "start", start: { kind: "location" } }, { start: "location" }],
-  [{ kind: "startAt", lat: "49.10000", lon: "20.00000", zoom: "" },
-    { start: "coordinates", lat: "49.10000", lon: "20.00000", zoom: "" }],
-  [{ kind: "coverage", coverage: { continents: ["europe"] } }, { coverage: "{\"continents\":[\"europe\"]}" }],
+  [
+    { kind: "startAt", lat: "49.10000", lon: "20.00000", zoom: "" },
+    { start: "coordinates", lat: "49.10000", lon: "20.00000", zoom: "" },
+  ],
+  [{ kind: "coverage", coverage: { continents: ["europe"] } }, { coverage: '{"continents":["europe"]}' }],
   [{ kind: "appearance", appearance: "dark" }, { appearance: "dark" }],
   [{ kind: "symbol", symbol: "tram" }, { symbol: "tram" }],
   [{ kind: "iconTint", tint: "" }, { iconTint: "" }],
   [{ kind: "addPackages", overlays: ["roads", "rails"] }, { addPackages: "roads,rails" }],
   [{ kind: "removeLayer", layer: "L" }, { removeLayer: "L" }],
-  [{ kind: "layerOptions", fields: { layer: "L", lineWidth: "2" } }, { layer: "L", lineWidth: "2" }],
-  [{ kind: "layerDetails", fields: { layer: "L", details: "move" } }, { layer: "L", details: "move" }],
+  [
+    { kind: "layerOptions", fields: { layer: "L", lineWidth: "2" } },
+    { layer: "L", lineWidth: "2" },
+  ],
+  [
+    { kind: "layerDetails", fields: { layer: "L", details: "move" } },
+    { layer: "L", details: "move" },
+  ],
   // 50 the styles' order, the arranging rows and Availability's switches
   [{ kind: "styleOrder", styles: ["W", "S"] }, { styleOrder: "W,S" }],
   [{ kind: "arrange", action: "unite" }, { arrange: "unite" }],
@@ -41,25 +73,75 @@ const EDITS: [Edit, Record<string, string>][] = [
   [{ kind: "lock", locked: true }, { lock: "1" }],
   [{ kind: "lock", locked: false }, { lock: "0" }],
   // 81 a title's translation is the layout change `details=translation`, text always sent
-  [{ kind: "layerDetails", fields: { layer: "L", details: "translation", target: "text", section: "0", block: "1",
-    was: "t1", language: "sk", text: "O mieste" } },
-  { layer: "L", details: "translation", target: "text", section: "0", block: "1", was: "t1", language: "sk",
-    text: "O mieste" }],
-  [{ kind: "layerDetails", fields: { layer: "L", details: "translation", target: "button", button: "b1",
-    language: "de", text: "" } },
-  { layer: "L", details: "translation", target: "button", button: "b1", language: "de", text: "" }],
+  [
+    {
+      kind: "layerDetails",
+      fields: {
+        layer: "L",
+        details: "translation",
+        target: "text",
+        section: "0",
+        block: "1",
+        was: "t1",
+        language: "sk",
+        text: "O mieste",
+      },
+    },
+    {
+      layer: "L",
+      details: "translation",
+      target: "text",
+      section: "0",
+      block: "1",
+      was: "t1",
+      language: "sk",
+      text: "O mieste",
+    },
+  ],
+  [
+    {
+      kind: "layerDetails",
+      fields: { layer: "L", details: "translation", target: "button", button: "b1", language: "de", text: "" },
+    },
+    { layer: "L", details: "translation", target: "button", button: "b1", language: "de", text: "" },
+  ],
   // 80 a row's icon goes in the layout change as `symbol=`, kept when none is sent
-  [{ kind: "layerDetails", fields: { layer: "L", details: "editRow", section: "0", block: "1", was: "r1", row: "0",
-    title: "Speed", value: "{speed}", symbol: "bus.fill" } },
-  { layer: "L", details: "editRow", section: "0", block: "1", was: "r1", row: "0", title: "Speed", value: "{speed}",
-    symbol: "bus.fill" }],
-  [{ kind: "layerDetails", fields: { layer: "L", details: "addRow", was: "r1", title: "Line", value: "{line}" } },
-  { layer: "L", details: "addRow", was: "r1", title: "Line", value: "{line}" }],
+  [
+    {
+      kind: "layerDetails",
+      fields: {
+        layer: "L",
+        details: "editRow",
+        section: "0",
+        block: "1",
+        was: "r1",
+        row: "0",
+        title: "Speed",
+        value: "{speed}",
+        symbol: "bus.fill",
+      },
+    },
+    {
+      layer: "L",
+      details: "editRow",
+      section: "0",
+      block: "1",
+      was: "r1",
+      row: "0",
+      title: "Speed",
+      value: "{speed}",
+      symbol: "bus.fill",
+    },
+  ],
+  [
+    { kind: "layerDetails", fields: { layer: "L", details: "addRow", was: "r1", title: "Line", value: "{line}" } },
+    { layer: "L", details: "addRow", was: "r1", title: "Line", value: "{line}" },
+  ],
   // 142 the map's own label, blank to take it away
   [{ kind: "category", category: "Hiking" }, { category: "Hiking" }],
   [{ kind: "category", category: "" }, { category: "" }],
   // 53
-  [{ kind: "resetStyle", style: "S" }, { resetStyle: "S" }]
+  [{ kind: "resetStyle", style: "S" }, { resetStyle: "S" }],
 ];
 
 describe("queryOf", () => {
@@ -73,13 +155,28 @@ describe("shelfQueryOf", () => {
   it.each<[Shelving, Record<string, string>]>([
     [{ kind: "order", maps: ["a", "b"] }, { order: "a,b" }],
     [{ kind: "sort", sort: "nameDescending" }, { sort: "nameDescending" }],
-    [{ kind: "makeFolder", name: "Hills", maps: ["a", "b"] }, { folder: "Hills", maps: "a,b" }],
-    [{ kind: "join", folder: "F", map: "a" }, { stack: "F", map: "a" }],
+    [
+      { kind: "makeFolder", name: "Hills", maps: ["a", "b"] },
+      { folder: "Hills", maps: "a,b" },
+    ],
+    [
+      { kind: "join", folder: "F", map: "a" },
+      { stack: "F", map: "a" },
+    ],
     [{ kind: "leave", map: "a" }, { leave: "a" }],
-    [{ kind: "renameFolder", folder: "F", name: "Tatras" }, { stack: "F", name: "Tatras" }],
+    [
+      { kind: "renameFolder", folder: "F", name: "Tatras" },
+      { stack: "F", name: "Tatras" },
+    ],
     // 56 a folder's mark and ground
-    [{ kind: "folderSymbol", folder: "F", symbol: "tray.full" }, { stack: "F", symbol: "tray.full" }],
-    [{ kind: "folderTint", folder: "F", tint: "#B5D8F2" }, { stack: "F", iconTint: "#B5D8F2" }],
+    [
+      { kind: "folderSymbol", folder: "F", symbol: "tray.full" },
+      { stack: "F", symbol: "tray.full" },
+    ],
+    [
+      { kind: "folderTint", folder: "F", tint: "#B5D8F2" },
+      { stack: "F", iconTint: "#B5D8F2" },
+    ],
   ])("%o", (shelving, query) => {
     expect(shelfQueryOf(shelving)).toEqual(query);
   });
@@ -123,9 +220,15 @@ describe("the phone backend", () => {
     await backend.publishCancel("M", "a b");
     const calls = fetcher.mock.calls as unknown as [string, RequestInit][];
     expect(calls.map(([url, init]) => `${init.method} ${url}`)).toEqual([
-      "GET /riki/v1/maps/M/publish", "POST /riki/v1/maps/M/publish", "GET /riki/v1/maps/M/publish?ask=a%20b",
-      "POST /riki/v1/maps/M/publish?cancel=a%20b"]);
-    expect(JSON.parse(calls[1]![1].body as string)).toEqual({ texts: { en: { title: "Tatras", body: "Hikes" } }, replaces: true });
+      "GET /riki/v1/maps/M/publish",
+      "POST /riki/v1/maps/M/publish",
+      "GET /riki/v1/maps/M/publish?ask=a%20b",
+      "POST /riki/v1/maps/M/publish?cancel=a%20b",
+    ]);
+    expect(JSON.parse(calls[1]![1].body as string)).toEqual({
+      texts: { en: { title: "Tatras", body: "Hikes" } },
+      replaces: true,
+    });
     expect((calls[1]![1].headers as Record<string, string>)["Content-Type"]).toBe("application/json");
     expect((calls[0]![1].headers as Record<string, string>).Authorization).toBe("Bearer t");
     backend.useToken(() => null);
@@ -163,20 +266,32 @@ describe("the phone backend", () => {
 
   // 81 a language the app does not speak is refused with its status and words
   it("keeps the words of a refused translation", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("The app has no such language", { status: 404 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("The app has no such language", { status: 404 })),
+    );
     backend.useToken(() => "t");
     const fields = { layer: "L", details: "translation", target: "header", language: "xx", text: "Linie" };
-    expect(await backend.change("M", null, { kind: "layerDetails", fields }))
-      .toEqual({ ok: false, status: 404, said: "The app has no such language" });
+    expect(await backend.change("M", null, { kind: "layerDetails", fields })).toEqual({
+      ok: false,
+      status: 404,
+      said: "The app has no such language",
+    });
   });
 
   // 80 an icon the phone does not offer is refused with its status and words
   it("keeps the words of a refused row icon", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("Edit map offers no such icon", { status: 404 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("Edit map offers no such icon", { status: 404 })),
+    );
     backend.useToken(() => "t");
     const fields = { layer: "L", details: "editRow", row: "0", title: "Speed", value: "{speed}", symbol: "nope" };
-    expect(await backend.change("M", null, { kind: "layerDetails", fields }))
-      .toEqual({ ok: false, status: 404, said: "Edit map offers no such icon" });
+    expect(await backend.change("M", null, { kind: "layerDetails", fields })).toEqual({
+      ok: false,
+      status: 404,
+      said: "Edit map offers no such icon",
+    });
   });
 
   // 62 a delete posts the typed name with the token and reads no body back
@@ -194,7 +309,8 @@ describe("the phone backend", () => {
   it("asks for a style with direct=1 only when loading from the source", async () => {
     const fetcher = vi.fn(async () => new Response("{}"));
     vi.stubGlobal("fetch", fetcher);
-    const asked = (call: number) => new URL((fetcher.mock.calls[call] as unknown as [string])[0], "http://phone").searchParams;
+    const asked = (call: number) =>
+      new URL((fetcher.mock.calls[call] as unknown as [string])[0], "http://phone").searchParams;
     const ask = { mapID: "M", styleID: null, hidden: [], theme: "light" as const, tiles: "4.00" };
     await backend.style({ ...ask, direct: true });
     await backend.style(ask);
@@ -204,7 +320,10 @@ describe("the phone backend", () => {
 
   // 36 a phone from before guests answers no session, and lets every browser in
   it("reads an older phone's missing session as let in", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("", { status: 404 })),
+    );
     expect(await backend.session()).toEqual({ ok: true, value: { standing: "admitted", viewers: null } });
   });
 
@@ -227,7 +346,12 @@ describe("the phone backend", () => {
 
   // 36 an unreachable phone rejects, so the store says it is away
   it("rejects when the phone cannot be reached", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("offline");
+      }),
+    );
     await expect(backend.servers()).rejects.toThrow("offline");
   });
 
@@ -245,7 +369,9 @@ describe("the phone backend", () => {
     await backend.readDXF("M", file);
     await backend.addFile("M", file, "sjtsk");
     await backend.addFile("M", new File(["{}"], "huts.geojson"));
-    const [read, added, plain] = fetcher.mock.calls.map((call) => new URL((call as unknown as [string])[0], "http://phone"));
+    const [read, added, plain] = fetcher.mock.calls.map(
+      (call) => new URL((call as unknown as [string])[0], "http://phone"),
+    );
     expect(read?.pathname).toBe("/riki/v1/maps/M/read-dxf");
     expect(read?.searchParams.get("file")).toBe("plan.dxf");
     expect(added?.searchParams.get("system")).toBe("sjtsk");
@@ -257,8 +383,18 @@ describe("the phone backend", () => {
     const fetcher = vi.fn(async () => new Response("{}"));
     vi.stubGlobal("fetch", fetcher);
     const cookies = { isOn: true, page: "https://buses.example/", seconds: 300 };
-    const reading = { itemsPath: "vehicles", spelling: "decimal", latitudeKey: "lat", longitudeKey: "lon", positionKey: "" };
-    await backend.addAPI("M", "https://buses.example/now", reading, "Buses", { cookies, cookie: " s=1 ", tint: "#FF8800" });
+    const reading = {
+      itemsPath: "vehicles",
+      spelling: "decimal",
+      latitudeKey: "lat",
+      longitudeKey: "lon",
+      positionKey: "",
+    };
+    await backend.addAPI("M", "https://buses.example/now", reading, "Buses", {
+      cookies,
+      cookie: " s=1 ",
+      tint: "#FF8800",
+    });
     const [path, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
     const query = new URL(path, "http://phone").searchParams;
     expect(JSON.parse(query.get("cookies") ?? "")).toEqual(cookies);
@@ -273,8 +409,12 @@ describe("the phone backend", () => {
 describe("offlineQueryOf", () => {
   it("writes the view, and what was chosen only when it was", () => {
     expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: false })).toEqual({ box: "1,2,3,4" });
-    expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: true, zoom: 12, layers: ["A", "B"] }))
-      .toEqual({ box: "1,2,3,4", chosen: "1", zoom: "12", layers: "A,B" });
+    expect(offlineQueryOf({ box: [1, 2, 3, 4], chosen: true, zoom: 12, layers: ["A", "B"] })).toEqual({
+      box: "1,2,3,4",
+      chosen: "1",
+      zoom: "12",
+      layers: "A,B",
+    });
   });
 });
 
@@ -291,7 +431,10 @@ describe("esriQueryOf", () => {
 // 129 the places search is a plain read with the words and the centre of the map; an older phone's 404 is null
 describe("search", () => {
   it("asks the phone without a token, with the centre, and reads the places", async () => {
-    const fetcher = vi.fn(async () => new Response(JSON.stringify({ places: [{ title: "Poprad", lat: 49.06, lon: 20.3, properties: {} }] })));
+    const fetcher = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ places: [{ title: "Poprad", lat: 49.06, lon: 20.3, properties: {} }] })),
+    );
     vi.stubGlobal("fetch", fetcher);
     const places = await backend.search("M", "Pop rad", { lat: 49.123456789, lng: 20.1 });
     const [path, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit | undefined];
@@ -311,9 +454,15 @@ describe("search", () => {
   });
 
   it("answers null from a phone that has no such answer, and rejects any other refusal", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("", { status: 404 })),
+    );
     expect(await backend.search("M", "pop", null)).toBeNull();
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("Busy", { status: 503 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("Busy", { status: 503 })),
+    );
     await expect(backend.search("M", "pop", null)).rejects.toThrow("Busy");
   });
 });
