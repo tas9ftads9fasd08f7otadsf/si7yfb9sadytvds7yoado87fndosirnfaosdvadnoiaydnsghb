@@ -4,6 +4,7 @@ import { mockCloud, recordCoreCalls } from "./mock-cloud.mjs";
 
 const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
 const COPY_ROW = "C0FFEE00-0000-4000-8000-0000000000A1";
+const COPY = "6F1E2A10-0000-4000-8000-0000000000C1";
 
 // 198 Duplicate map said "The site cannot do this yet"; the core makes the copy, the site writes it to iCloud
 test("Edit map duplicates the iCloud map into the person's own zone and opens the copy", async ({ page }) => {
@@ -21,5 +22,6 @@ test("Edit map duplicates the iCloud map into the person's own zone and opens th
   const modify = cloud.asked.find((each) => each.endpoint === "records/modify");
   expect(modify.database).toBe("private");
   expect(modify.body.zoneID.zoneName).toBe("com.apple.coredata.cloudkit.zone");
-  await expect(page.locator("#current .hero")).toBeVisible();
+  // 206 bug: the recorded core lists no copy, so whether its hero showed was a race; the address is the page's
+  await expect(page).toHaveURL(new RegExp(`/maps/${COPY}`));
 });
