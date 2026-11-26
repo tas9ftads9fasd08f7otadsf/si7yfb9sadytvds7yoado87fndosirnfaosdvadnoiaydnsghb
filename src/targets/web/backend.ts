@@ -45,6 +45,7 @@ const OFFERED: ReadonlySet<Feature> = new Set<Feature>([
   "duplicateMap",
   "newMap",
   "addPackages",
+  "fromMaps",
   "pictures",
   "shelf",
 ]);
@@ -458,6 +459,14 @@ export function createBackend(parts: Parts): Backend {
     });
   };
 
+  /** 203 Other maps' layers copied by the core, then added as a service's layers are. */
+  const addCopies = async (mapID: string, layers: string[]): Promise<Answer<Portable>> =>
+    through(mapID, null, (core, read, author) => {
+      const copied = core.copyLayers(read, mapID, layers);
+      if ("refused" in copied) return copied;
+      return core.apply({ rows: read, id: mapID, styleID: null, layers: copied.layers, author });
+    });
+
   const addTiles = async (mapID: string, template: string): Promise<Answer<Portable>> =>
     through(mapID, null, (core, read, author) =>
       core.addTiles({
@@ -646,8 +655,16 @@ export function createBackend(parts: Parts): Backend {
       return { ok: true, value: said };
     },
     servers: editing,
-    otherLayers: adding,
-    addCopies: adding,
+    /** 203 The layers of the person's other maps, by map, as Add layer's From your maps lists them. */
+    async otherLayers(mapID) {
+      const [core, read] = await Promise.all([parts.core(), rows()]);
+      const said = core.otherLayers(read, mapID);
+      if ("refused" in said) {
+        return refused(said.status === 404 ? say("noSuchMap") : (said.said ?? said.refused), said.status ?? 400);
+      }
+      return { ok: true, value: said };
+    },
+    addCopies,
     readAddress,
     addTiles,
     addServiceLayers,
