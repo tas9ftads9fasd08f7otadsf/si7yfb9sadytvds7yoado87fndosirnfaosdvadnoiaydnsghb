@@ -28,6 +28,7 @@ import { Progress } from "./progress";
 import { indexedKeeping, MIRROR_ZONE, Zones, type Keeping } from "./zones";
 import type { CoreRow, CoreWrite } from "./records";
 import { keysOf } from "./sealed-keys";
+import { base64Of, canvasPainter, sizedPicture, type Painter } from "./pictures";
 import { setRequestHeaders } from "@/lib/request-headers";
 import { changedFields, Conflict, stamped, write, type Plan } from "./writes";
 
@@ -43,6 +44,7 @@ const OFFERED: ReadonlySet<Feature> = new Set<Feature>([
   "exportMap",
   "duplicateMap",
   "newMap",
+  "pictures",
   "shelf",
 ]);
 
@@ -86,6 +88,8 @@ export interface Parts {
   regions?: PackageStore;
   /** 137 What the first read has done, for the loading screen. */
   progress?: Progress;
+  /** 202 What sizes a picture; the browser's canvas unless a test hands in another. */
+  painter?: Painter<unknown>;
 }
 
 const ownerOf = (row: Pick<CoreRow, "entity" | "id" | "fields">) =>
@@ -361,6 +365,25 @@ export function createBackend(parts: Parts): Backend {
     return { ok: true, value: null };
   };
 
+  /** 202 A picture sized as the phone sizes it, written through the core's picture edit; none removes it. */
+  const setPicture = async (
+    mapID: string,
+    kind: "icon" | "preview" | "styleIcon",
+    picture: ArrayBuffer,
+    style?: string,
+  ): Promise<Answer<Portable>> => {
+    let data: string | undefined;
+    if (picture.byteLength > 0) {
+      const sized = await sizedPicture(kind, new Blob([picture]), parts.painter ?? (canvasPainter as Painter<unknown>));
+      if (!sized) return refused("badPicture", 409);
+      data = await base64Of(sized);
+    }
+    const asked = { kind, ...(style ? { style } : {}), ...(data ? { data } : {}) };
+    return through(mapID, null, (core, read, author) =>
+      core.apply({ rows: read, id: mapID, styleID: null, picture: asked, author }),
+    );
+  };
+
   const change = (mapID: string, styleID: string | null, edit: Edit) =>
     through(mapID, styleID, (core, read, author) =>
       core.apply({ rows: read, id: mapID, styleID, edit: queryOf(edit), author }),
@@ -608,7 +631,7 @@ export function createBackend(parts: Parts): Backend {
     deleteMap: (id, name) => remove((core, read) => core.deleteMap(read, id, name)),
     shelve,
     askPeople: editing,
-    setPicture: editing,
+    setPicture,
     layerOptions: editing,
     testLayer: editing,
     roadSigns: editing,

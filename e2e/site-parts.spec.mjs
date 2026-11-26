@@ -45,8 +45,8 @@ test("Edit map offers what the site does and leaves out the rest, staying connec
   await expect(page.locator("#editTab-offline")).toHaveCount(0);
   for (const tab of ["General", "Layers"]) {
     await editTab(page, tab);
-    // 176 Export map is the site's since riki_export, 198 Duplicate map since riki_duplicate
-    for (const id of ["#coverageBox", "#iconPictureFile", "#takePreview"]) {
+    // 176 Export map is the site's since riki_export, 198 Duplicate map since riki_duplicate, 202 pictures
+    for (const id of ["#coverageBox"]) {
       await expect(page.locator(id)).toHaveCount(0);
     }
   }
