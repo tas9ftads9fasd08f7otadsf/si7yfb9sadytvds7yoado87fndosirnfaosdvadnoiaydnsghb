@@ -11,7 +11,7 @@ import { BASE } from "./base";
 import { Cloud, refusesToken } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
-import { loadCore, type AddressRead, type Applied, type Core, type Reply } from "./core";
+import { loadCore, type AddressRead, type Applied, type Core, type Made, type Reply } from "./core";
 import { peopleOf, type Say } from "./people";
 import { createReach, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
@@ -28,7 +28,7 @@ const editing = notYet(4);
 const adding = notYet(5);
 
 /** What the site answers so far; the page offers no more. Packages, files, API layers and servers wait. */
-const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people", "exportMap"]);
+const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people", "exportMap", "duplicateMap"]);
 
 /** How often a change is tried, on freshly read rows after a conflict. */
 const TRIES = 3;
@@ -207,6 +207,28 @@ export function createBackend(parts: Parts): Backend {
       written(plan, tags, tried.owner);
       undoing = tried.undo;
     });
+  };
+
+  /** 198 A map the core made from the rows, its new rows created in the zone the core names. */
+  const create = async (made: (core: Core, read: CoreRow[]) => Made | { refused: string; status?: number; said?: string })
+    : Promise<Answer<{ id: string }>> => {
+    const [core, read] = await Promise.all([parts.core(), rows()]);
+    const answer = made(core, read);
+    if ("refused" in answer) {
+      return refused(answer.status === 404 ? say("noSuchMap") : answer.said ?? answer.refused, answer.status ?? 400);
+    }
+    const { container } = await parts.cloud.databases();
+    const db = answer.database === "shared" ? container.sharedCloudDatabase : container.privateCloudDatabase;
+    const plan: Plan = { save: answer.write.map((each) => ({ write: each })), remove: [] };
+    try {
+      const tags = await write(db, { zoneName: answer.zone }, plan);
+      written(plan, tags, answer.write.find((each) => each.entity === "SharedMap")?.id ?? "");
+    } catch (error) {
+      if (!(error instanceof Conflict)) throw error;
+      return refused(say("changeRefused"), 412);
+    }
+    reading = null;
+    return { ok: true, value: { id: answer.map.id } };
   };
 
   const change = (mapID: string, styleID: string | null, edit: Edit) =>
@@ -399,7 +421,10 @@ export function createBackend(parts: Parts): Backend {
       return { ok: true, value: { blob: new Blob([file.text], { type: "application/json" }), name: file.name } };
     },
 
-    newMap: editing, importMap: editing, duplicateMap: editing,
+    /** 198 Edit map's Duplicate: the copy the core makes goes to the person's own iCloud, after every map. */
+    duplicateMap: (id) => create((core, read) => core.duplicate(read, id)),
+
+    newMap: editing, importMap: editing,
     deleteMap: editing, shelve: editing, askPeople: editing, setPicture: editing,
     layerOptions: editing, testLayer: editing, roadSigns: editing, packages: editing, servers: editing,
     otherLayers: adding, addCopies: adding,

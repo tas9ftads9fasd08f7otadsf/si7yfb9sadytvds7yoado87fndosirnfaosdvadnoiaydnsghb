@@ -121,6 +121,16 @@ export interface Core {
   switches(rows: CoreRow[], mapID: string): MapSwitches | { refused: string; status?: number };
   /** 176 The map's .mapson as the phone hands it out; `CoreNotReady` before rikimaps 3651. */
   exportMap(rows: CoreRow[], mapID: string): MapsonFile | { refused: string; status?: number };
+  /** 198 Edit map's Duplicate as new rows; `CoreNotReady` before rikimaps 3671. */
+  duplicate(rows: CoreRow[], mapID: string): Made | { refused: string; status?: number; said?: string };
+}
+
+/** 198 A map of the person's own the core made: its new rows, the zone they go to, and the map. */
+export interface Made {
+  database: "private" | "shared";
+  zone: string;
+  write: CoreWrite[];
+  map: Portable;
 }
 
 /** 176 A .mapson file's name and text, as `riki_export` answers them. */
@@ -154,10 +164,12 @@ export interface CoreExports {
   riki_switches?(pointer: number, length: number): number;
   /** 176 In modules from rikimaps 3651 on (ABI 0.7.0). */
   riki_export?(pointer: number, length: number): number;
+  /** 198 In modules from rikimaps 3671 on. */
+  riki_duplicate?(pointer: number, length: number): number;
 }
 
 type Call = "riki_maps" | "riki_map" | "riki_apply" | "riki_style" | "riki_changes" | "riki_read_address" | "riki_add_layer"
-  | "riki_people" | "riki_switches" | "riki_export";
+  | "riki_people" | "riki_switches" | "riki_export" | "riki_duplicate";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -204,7 +216,8 @@ export function coreOf(exports: CoreExports): Core {
     changes: (rows) => callJSON(exports, "riki_changes", { rows }),
     people: (rows, mapID) => callJSON(exports, "riki_people", { rows, id: mapID }),
     switches: (rows, mapID) => callJSON(exports, "riki_switches", { rows, id: mapID }),
-    exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID })
+    exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
+    duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID })
   };
 }
 
