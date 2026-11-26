@@ -19,6 +19,7 @@ import { Progress } from "./progress";
 import { indexedKeeping, Zones, type Keeping } from "./zones";
 import type { CoreRow, CoreWrite } from "./records";
 import { keysOf } from "./sealed-keys";
+import { base64Of, canvasPainter, sizedPicture, type Painter } from "./pictures";
 import { setRequestHeaders } from "@/lib/request-headers";
 import { changedFields, Conflict, stamped, write, type Plan } from "./writes";
 
@@ -28,7 +29,7 @@ const editing = notYet(4);
 const adding = notYet(5);
 
 /** What the site answers so far; the page offers no more. Packages, files, API layers and servers wait. */
-const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people", "exportMap", "duplicateMap"]);
+const OFFERED: ReadonlySet<Feature> = new Set<Feature>(["addLayer", "people", "exportMap", "duplicateMap", "pictures"]);
 
 /** How often a change is tried, on freshly read rows after a conflict. */
 const TRIES = 3;
@@ -70,6 +71,8 @@ export interface Parts {
   regions?: PackageStore;
   /** 137 What the first read has done, for the loading screen. */
   progress?: Progress;
+  /** 202 What sizes a picture; the browser's canvas unless a test hands in another. */
+  painter?: Painter<unknown>;
 }
 
 const ownerOf = (row: CoreRow) => (row.entity === "SharedMap" ? row.id : String(row.fields.map ?? ""));
@@ -259,6 +262,25 @@ export function createBackend(parts: Parts): Backend {
     }
     reading = null;
     return { ok: true, value: { id: answer.map.id } };
+  };
+
+  /** 202 A picture sized as the phone sizes it, written through the core's picture edit; none removes it. */
+  const setPicture = async (
+    mapID: string,
+    kind: "icon" | "preview" | "styleIcon",
+    picture: ArrayBuffer,
+    style?: string,
+  ): Promise<Answer<Portable>> => {
+    let data: string | undefined;
+    if (picture.byteLength > 0) {
+      const sized = await sizedPicture(kind, new Blob([picture]), parts.painter ?? (canvasPainter as Painter<unknown>));
+      if (!sized) return refused("badPicture", 409);
+      data = await base64Of(sized);
+    }
+    const asked = { kind, ...(style ? { style } : {}), ...(data ? { data } : {}) };
+    return through(mapID, null, (core, read, author) =>
+      core.apply({ rows: read, id: mapID, styleID: null, picture: asked, author }),
+    );
   };
 
   const change = (mapID: string, styleID: string | null, edit: Edit) =>
@@ -502,7 +524,7 @@ export function createBackend(parts: Parts): Backend {
     deleteMap: editing,
     shelve: editing,
     askPeople: editing,
-    setPicture: editing,
+    setPicture,
     layerOptions: editing,
     testLayer: editing,
     roadSigns: editing,
