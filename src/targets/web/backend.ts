@@ -11,7 +11,16 @@ import { BASE } from "./base";
 import { Cloud, refusesToken } from "./cloud";
 import { readConfig, type SiteConfig } from "./config";
 import { chooseLanguage, codesOf, computedWords } from "./language";
-import { loadCore, type AddressRead, type Applied, type Core, type Made, type Reply } from "./core";
+import {
+  loadCore,
+  type AddressRead,
+  type Applied,
+  type Core,
+  type Deleted,
+  type Imported,
+  type Made,
+  type Reply,
+} from "./core";
 import { peopleOf, type Say } from "./people";
 import { createReach, type Reach } from "./reach";
 import { drawnHere } from "./undrawn";
@@ -33,6 +42,7 @@ const OFFERED: ReadonlySet<Feature> = new Set<Feature>([
   "people",
   "exportMap",
   "duplicateMap",
+  "newMap",
   "addPackages",
 ]);
 
@@ -78,7 +88,8 @@ export interface Parts {
   progress?: Progress;
 }
 
-const ownerOf = (row: CoreRow) => (row.entity === "SharedMap" ? row.id : String(row.fields.map ?? ""));
+const ownerOf = (row: Pick<CoreRow, "entity" | "id" | "fields">) =>
+  row.entity === "SharedMap" ? row.id : String(row.fields.map ?? "");
 
 const knownOf = (read: CoreRow[]): Known => ({
   rows: new Map(
@@ -244,9 +255,9 @@ export function createBackend(parts: Parts): Backend {
     );
   };
 
-  /** 198 A map the core made from the rows, its new rows created in the zone the core names. */
+  /** 198 Maps the core made from the rows, their new rows created in the zone it names; the first opens. */
   const create = async (
-    made: (core: Core, read: CoreRow[]) => Made | { refused: string; status?: number; said?: string },
+    made: (core: Core, read: CoreRow[]) => Made | Imported | { refused: string; status?: number; said?: string },
   ): Promise<Answer<{ id: string }>> => {
     const [core, read] = await Promise.all([parts.core(), rows()]);
     const answer = made(core, read);
@@ -258,13 +269,56 @@ export function createBackend(parts: Parts): Backend {
     const plan: Plan = { save: answer.write.map((each) => ({ write: each })), remove: [] };
     try {
       const tags = await write(db, { zoneName: answer.zone }, plan);
-      written(plan, tags, answer.write.find((each) => each.entity === "SharedMap")?.id ?? "");
+      for (const { write: each } of plan.save) {
+        const tag = tags.get(each.id);
+        if (tag && known) known.rows.set(each.id, { tag, owner: ownerOf(each) });
+      }
     } catch (error) {
       if (!(error instanceof Conflict)) throw error;
       return refused(say("changeRefused"), 412);
     }
     reading = null;
-    return { ok: true, value: { id: answer.map.id } };
+    const first = "map" in answer ? answer.map : answer.maps[0];
+    return first ? { ok: true, value: { id: first.id } } : refused(say("noSuchMap"), 404);
+  };
+
+  /** 200 The records or zones the core says a deleted map takes; the next read leaves them out. */
+  const remove = async (
+    asked: (core: Core, read: CoreRow[]) => Deleted | { refused: string; status?: number; said?: string },
+  ): Promise<Answer<null>> => {
+    const [core, read] = await Promise.all([parts.core(), rows(true)]);
+    const answer = asked(core, read);
+    if ("refused" in answer) {
+      return refused(answer.status === 404 ? say("noSuchMap") : (answer.said ?? answer.refused), answer.status ?? 400);
+    }
+    const { container } = await parts.cloud.databases();
+    const db = answer.database === "shared" ? container.sharedCloudDatabase : container.privateCloudDatabase;
+    const zones = new Set(answer.removeZones);
+    const gone = read.filter(
+      (row) =>
+        row.database === answer.database &&
+        (zones.has(row.zone) || (row.zone === answer.zone && answer.remove.includes(row.id))),
+    );
+    try {
+      if (zones.size > 0) {
+        const done = await container.privateCloudDatabase.deleteRecordZones(
+          [...zones].map((zoneName) => ({ zoneName })),
+        );
+        const failed = (done.errors ?? []).find((each) => each.ckErrorCode !== "ZONE_NOT_FOUND");
+        if (failed) throw new Error(failed.reason ?? failed.ckErrorCode ?? "CloudKit refused to delete the zone");
+      } else {
+        const home = gone.find((row) => row.entity === "SharedMap");
+        const zone = { zoneName: answer.zone, ...(home?.owner ? { ownerRecordName: home.owner } : {}) };
+        await write(db, zone, { save: [], remove: gone.filter((row) => answer.remove.includes(row.id)) });
+      }
+    } catch (error) {
+      if (!(error instanceof Conflict)) throw error;
+      return refused(say("changeRefused"), 412);
+    }
+    for (const row of gone) known?.rows.delete(row.id);
+    if (undoing && gone.some((row) => row.entity === "SharedMap" && row.fields.id === undoing?.mapID)) undoing = null;
+    reading = null;
+    return { ok: true, value: null };
   };
 
   const change = (mapID: string, styleID: string | null, edit: Edit) =>
@@ -503,9 +557,15 @@ export function createBackend(parts: Parts): Backend {
     /** 198 Edit map's Duplicate: the copy the core makes goes to the person's own iCloud, after every map. */
     duplicateMap: (id) => create((core, read) => core.duplicate(read, id)),
 
-    newMap: editing,
-    importMap: editing,
-    deleteMap: editing,
+    /** 199 New map's blank map, in the person's own iCloud after every map. */
+    newMap: (name) => create((core, read) => core.newMap(read, name)),
+    /** 199 The phone takes a file the app did not sign, and so does the site; the map keeps that mark. */
+    importMap: async (file) => {
+      const text = await file.text();
+      return create((core, read) => core.importMap(read, text, true));
+    },
+    /** 200 The Maps sheet's Delete once the name is typed; another's map is left under People instead. */
+    deleteMap: (id, name) => remove((core, read) => core.deleteMap(read, id, name)),
     shelve: editing,
     askPeople: editing,
     setPicture: editing,
