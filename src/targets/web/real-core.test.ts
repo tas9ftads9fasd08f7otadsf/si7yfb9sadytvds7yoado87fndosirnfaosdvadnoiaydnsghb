@@ -18,20 +18,32 @@ const DOPRAVA = "6F1E2A10-0000-4000-8000-000000000002";
 
 async function realCore() {
   const wasi = new WASI(CORE_ARGS, [], []);
-  const { instance } = await WebAssembly.instantiate(readFileSync(MODULE),
-    { wasi_snapshot_preview1: wasi.wasiImport as unknown as WebAssembly.ModuleImports });
+  const { instance } = await WebAssembly.instantiate(readFileSync(MODULE), {
+    wasi_snapshot_preview1: wasi.wasiImport as unknown as WebAssembly.ModuleImports,
+  });
   wasi.initialize(instance as unknown as Parameters<WASI["initialize"]>[0]);
   const exports = instance.exports as unknown as CoreExports;
-  return { core: coreOf(exports), hasPeople: typeof exports.riki_people === "function",
-    hasSwitches: typeof exports.riki_switches === "function", hasExport: typeof exports.riki_export === "function" };
+  return {
+    core: coreOf(exports),
+    hasPeople: typeof exports.riki_people === "function",
+    hasSwitches: typeof exports.riki_switches === "function",
+    hasExport: typeof exports.riki_export === "function",
+  };
 }
 
 /** The rows as the site reads them from CloudKit: `rowOf` for the mirror's records, `shareRowOf` for a share. */
 async function rows(): Promise<CoreRow[]> {
   const read = recorded.zones.map(async ({ database, zone, records, ...rest }) => {
-    const where = { database: database as CoreRow["database"], zone, ...("owner" in rest ? { owner: rest.owner } : {}) };
-    return Promise.all((records as unknown as CKRecord[]).map((record) =>
-      record.recordType === SHARE_TYPE ? shareRowOf(record, where) : rowOf(record, where)));
+    const where = {
+      database: database as CoreRow["database"],
+      zone,
+      ...("owner" in rest ? { owner: rest.owner } : {}),
+    };
+    return Promise.all(
+      (records as unknown as CKRecord[]).map((record) =>
+        record.recordType === SHARE_TYPE ? shareRowOf(record, where) : rowOf(record, where),
+      ),
+    );
   });
   return (await Promise.all(read)).flat();
 }
@@ -42,7 +54,10 @@ describe.skipIf(!ASKED && !existsSync(MODULE))("the real riki-core.wasm on recor
     const { core } = await realCore();
     const device = core.maps(await rows());
     expect(device.maps.map((each) => [each.id, each.name, each.role])).toEqual([
-      [BESKYDY, "Beskydy", "own"], [TATRAS, "High Tatras", "own"], [DOPRAVA, "Doprava", "view"]]);
+      [BESKYDY, "Beskydy", "own"],
+      [TATRAS, "High Tatras", "own"],
+      [DOPRAVA, "Doprava", "view"],
+    ]);
     const tatras = device.maps.find((each) => each.id === TATRAS);
     expect(tatras?.layers.map((each) => each.name)).toEqual(["Trails", "Roads"]);
     expect(tatras?.styles).toEqual(["Summer"]);
@@ -61,7 +76,8 @@ describe.skipIf(!ASKED && !existsSync(MODULE))("the real riki-core.wasm on recor
   it("reads the history's lines with their author and where they were made", async () => {
     const { core } = await realCore();
     expect(core.changes(await rows())).toEqual([
-      { id: "change-1", map: "own-tatras", author: "Eva", origin: "web", lines: ["Trails added"] }]);
+      { id: "change-1", map: "own-tatras", author: "Eva", origin: "web", lines: ["Trails added"] },
+    ]);
   });
 
   it("reads who holds a map by the app's roles, or says not ready in a module from before rikimaps 3560", async () => {
@@ -72,13 +88,31 @@ describe.skipIf(!ASKED && !existsSync(MODULE))("the real riki-core.wasm on recor
       return;
     }
     expect(core.people(read, BESKYDY)).toEqual({
-      shared: true, role: "owner", linkRole: "reader", people: [
+      shared: true,
+      role: "owner",
+      linkRole: "reader",
+      people: [
         { id: "_me", name: "Riki Tester", role: "owner", hasAccepted: true, isYou: true },
         { id: "_jana", name: "Jana", role: "admin", hasAccepted: true, isYou: false },
-        { id: "invite:email:marek@example.com", name: "marek@example.com", role: "editor", hasAccepted: false, isYou: false },
-        { id: "_petr", name: "petr@example.com", role: "reader", hasAccepted: false, isYou: false }] });
-    expect(core.people(read, DOPRAVA)).toMatchObject({ shared: true, role: "reader", linkRole: null,
-      people: [{ id: "_friki", role: "owner" }, { id: "_me", role: "reader", isYou: true }] });
+        {
+          id: "invite:email:marek@example.com",
+          name: "marek@example.com",
+          role: "editor",
+          hasAccepted: false,
+          isYou: false,
+        },
+        { id: "_petr", name: "petr@example.com", role: "reader", hasAccepted: false, isYou: false },
+      ],
+    });
+    expect(core.people(read, DOPRAVA)).toMatchObject({
+      shared: true,
+      role: "reader",
+      linkRole: null,
+      people: [
+        { id: "_friki", role: "owner" },
+        { id: "_me", role: "reader", isYou: true },
+      ],
+    });
   });
 
   // 175 riki_switches: an own map's switches are its own; a view role's map's are the owner's
@@ -89,8 +123,13 @@ describe.skipIf(!ASKED && !existsSync(MODULE))("the real riki-core.wasm on recor
       expect(() => core.switches(read, TATRAS)).toThrow(CoreNotReady);
       return;
     }
-    expect(core.switches(read, TATRAS)).toMatchObject({ ownsSettings: true, picker: true, removedStyles: 0,
-      legendEverywhere: true, worldEverywhere: true });
+    expect(core.switches(read, TATRAS)).toMatchObject({
+      ownsSettings: true,
+      picker: true,
+      removedStyles: 0,
+      legendEverywhere: true,
+      worldEverywhere: true,
+    });
     expect(core.switches(read, DOPRAVA)).toMatchObject({ ownsSettings: false });
     expect(core.switches(read, "nothing")).toMatchObject({ refused: "noSuchMap" });
   });
@@ -112,5 +151,13 @@ describe.skipIf(!ASKED && !existsSync(MODULE))("the real riki-core.wasm on recor
     expect(String(mapson.$schema)).toMatch(/mapson\.schema\.json$/);
     expect(String(mapson._signature)).toMatch(/^[A-Za-z0-9+/]{43}=$/);
     expect(core.exportMap(read, "nothing")).toMatchObject({ refused: "noSuchMap", status: 404 });
+  });
+
+  // 195 the module anyone can download spelled out the app's field names (rikimaps 3731)
+  it("names none of the app's fields that only Swift's reflection would carry", () => {
+    const text = readFileSync(MODULE).toString("latin1");
+    expect(["blockedReason", "buttonToActions", "aerialWinterMaxzoom"].filter((field) => text.includes(field))).toEqual(
+      [],
+    );
   });
 });
