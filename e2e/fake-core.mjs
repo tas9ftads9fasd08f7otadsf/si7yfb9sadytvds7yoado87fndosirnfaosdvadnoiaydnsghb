@@ -57,6 +57,7 @@ export function fakeCoreWasm(answers) {
     "riki_esri_services",
     "riki_road_signs",
     "riki_read_tiles",
+    "riki_layer_options",
     "riki_version",
   ];
   const bodies = names.map((name) => {
