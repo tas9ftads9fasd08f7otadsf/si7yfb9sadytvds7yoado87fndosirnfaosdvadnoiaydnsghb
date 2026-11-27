@@ -670,9 +670,23 @@ export function createBackend(parts: Parts): Backend {
     shelve,
     askPeople: editing,
     setPicture,
-    layerOptions: editing,
+    /** 207 Edit layer's panels as the phone lists them, a header told set where the browser opened its value. */
+    async layerOptions(mapID) {
+      const [core, read, person] = await Promise.all([parts.core(), rows(), parts.cloud.start()]);
+      const said = core.layerOptions(read, mapID, await keysOf(read, person?.recordName ?? null));
+      if ("refused" in said) {
+        return refused(said.status === 404 ? say("noSuchMap") : (said.said ?? said.refused), said.status ?? 400);
+      }
+      return { ok: true, value: said };
+    },
     testLayer: editing,
-    roadSigns: editing,
+    /** 207 The traffic signs' key, from the road packages this browser holds, in the page's language. */
+    async roadSigns(_mapID, ask) {
+      const [core, stored] = await Promise.all([parts.core(), regions.stored()]);
+      const said = core.roadSigns({ stored, ...ask, languages: [speaking, ...parts.languages()] });
+      if ("refused" in said) return refused(said.said ?? said.refused, said.status ?? 400);
+      return { ok: true, value: said };
+    },
     /** 204 Add layer's Riki packages for the map, those held in this browser told apart as the phone's on disk. */
     async packages(mapID) {
       const [core, read, held] = await Promise.all([parts.core(), rows(), kept.list()]);

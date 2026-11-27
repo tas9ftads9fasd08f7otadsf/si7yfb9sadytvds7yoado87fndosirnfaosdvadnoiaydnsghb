@@ -1,7 +1,16 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import account from "../../../e2e/fixtures/cloud-account.json";
-import type { Device, EsriListing, MapSwitches, OtherLayers, Packages, Portable } from "@/lib/types";
+import type {
+  Device,
+  EsriListing,
+  LayerOptions,
+  MapSwitches,
+  OtherLayers,
+  Packages,
+  Portable,
+  RoadSigns,
+} from "@/lib/types";
 import {
   Cloud,
   type CKBatchResult,
@@ -61,6 +70,8 @@ interface Options {
   duplicated?: () => Made | { refused: string; status?: number; said?: string };
   /** 205 What the core lists as the map's Esri services. */
   esri?: () => EsriListing | { refused: string; status?: number; said?: string };
+  /** 207 What the core lists as Edit layer's options. */
+  options?: () => LayerOptions | { refused: string; status?: number; said?: string };
   /** 204 What the core lists as Add layer's Riki packages. */
   listed?: () => Packages | { refused: string; status?: number; said?: string };
   /** 203 What the core lists of the other maps' layers, and copies of the ticked ones. */
@@ -258,6 +269,8 @@ function stack(options: Options = {}) {
     exportMap: vi.fn(() => options.exported?.() ?? (account.core.riki_export as unknown as MapsonFile)),
     duplicate: vi.fn(() => options.duplicated?.() ?? (account.core.riki_duplicate as unknown as Made)),
     esriServices: vi.fn(() => options.esri?.() ?? (account.core.riki_esri_services as unknown as EsriListing)),
+    layerOptions: vi.fn(() => options.options?.() ?? (account.core.riki_layer_options as unknown as LayerOptions)),
+    roadSigns: vi.fn(() => account.core.riki_road_signs as unknown as RoadSigns),
     packages: vi.fn(() => options.listed?.() ?? (account.core.riki_packages as unknown as Packages)),
     otherLayers: vi.fn(() => options.others?.() ?? (account.core.riki_copies as unknown as OtherLayers)),
     copyLayers: vi.fn(() => options.copied?.() ?? { layers: account.core.riki_copies.layers }),
@@ -1501,6 +1514,46 @@ describe("WebBackend's new maps", () => {
   });
 });
 
+describe("WebBackend's layer options", () => {
+  const TATRAS = "6F1E2A10-0000-4000-8000-000000000001";
+
+  // 207 Edit layer's options answered "not on the site yet"; the core lists them as the phone's route does
+  it("lists Edit layer's options the core reads, told the header values this browser opened", async () => {
+    const { backend, core } = stack();
+    const answer = await backend.layerOptions(TATRAS);
+    expect(answer.ok && answer.value.layers[0]!.sections.map((each) => each.kind)).toEqual(["switch", "signKey"]);
+    const [rows, id, keys] = vi.mocked(core.layerOptions).mock.calls[0]!;
+    expect([id, rows.length > 0, keys]).toEqual([TATRAS, true, {}]);
+  });
+
+  it("says no such map in the site's words for a map the rows lack", async () => {
+    const { backend } = stack({ options: () => ({ refused: "noSuchMap", status: 404 }) });
+    await backend.words();
+    expect(await backend.layerOptions("nope")).toEqual({ ok: false, status: 404, said: "Taká mapa nie je" });
+  });
+
+  // 207 a module from before rikimaps 3774 has no riki_layer_options, which the page tells as rules not ready
+  it("says the core's rules are not ready while the module lacks the call", async () => {
+    const lacking = stack({
+      options: () => {
+        throw new CoreNotReady("no riki_layer_options");
+      },
+    });
+    await expect(lacking.backend.layerOptions(TATRAS)).rejects.toBeInstanceOf(CoreNotReady);
+  });
+
+  // 207 the signs' key reads the road packages this browser holds, in the page's language first
+  it("reads the traffic signs' key from the packages held, in the page's language", async () => {
+    const { backend, core } = stack();
+    await backend.words();
+    const answer = await backend.roadSigns(TATRAS, { country: "at", q: "aus", near: "17.1,48.1" });
+    expect(answer.ok && answer.value.signs[0]!.title).toBe("Stop");
+    const [ask] = vi.mocked(core.roadSigns).mock.calls[0]!;
+    expect(ask).toMatchObject({ country: "at", q: "aus", near: "17.1,48.1", stored: [] });
+    expect(ask.languages[0]).toBe("sk");
+  });
+});
+
 describe("WebBackend's parts not built yet", () => {
   // 82 the site said "Not connected" for a write it refuses as not done yet
   it("offers none of the parts it does not answer, and refuses their calls as not on the site", async () => {
@@ -1510,8 +1563,7 @@ describe("WebBackend's parts not built yet", () => {
     expect(parts.filter((part) => backend.offers(part))).toEqual([]);
     // 86 only the tile address and a service's layers are added from the site so far
     expect(backend.offers("addLayer")).toBe(true);
-    // 201 the shelf is the site's since riki_shelve; layer options still wait
-    await expect(backend.layerOptions("M")).rejects.toBeInstanceOf(NotOnSite);
+    // 201 the shelf is the site's since riki_shelve, 207 layer options since riki_layer_options
     await expect(backend.servers()).rejects.toBeInstanceOf(NotOnSite);
     await expect(backend.addAPI("M", "https://t/x", { kind: "x" } as never, "n")).rejects.toBeInstanceOf(NotOnSite);
   });

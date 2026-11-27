@@ -57,6 +57,8 @@ describe("the core's wrapper", () => {
       riki_export: respond,
       riki_duplicate: respond,
       riki_esri_services: respond,
+      riki_road_signs: respond,
+      riki_layer_options: respond,
       riki_packages: respond,
       riki_copies: respond,
       riki_shelve: respond,
@@ -167,6 +169,20 @@ describe("the core's wrapper", () => {
     expect(coreOf(exports).exportMap([], "M")).toEqual({ rows: [], id: "M" });
     const without: CoreExports = { ...exports, riki_export: undefined };
     expect(() => coreOf(without).exportMap([], "M")).toThrow(CoreNotReady);
+  });
+
+  // 207 riki_layer_options takes the rows, the map and the opened keys; riki_road_signs the packages held
+  it("asks riki_layer_options with the keys and riki_road_signs with the packages, and says not ready without", () => {
+    const exports = echo();
+    const keys = { "t.example.org": { "X-API-Key": "k" } };
+    expect(coreOf(exports).layerOptions([], "M", keys)).toEqual({ rows: [], id: "M", keys });
+    expect(coreOf(exports).roadSigns({ stored: [], country: "sk", languages: ["sk"] })).toEqual({
+      stored: [],
+      country: "sk",
+      languages: ["sk"],
+    });
+    const without: CoreExports = { ...exports, riki_layer_options: undefined };
+    expect(() => coreOf(without).layerOptions([], "M", {})).toThrow(CoreNotReady);
   });
 
   // 205 riki_esri_services takes the rows, the map and a time zone; a module before rikimaps 3689 is not ready

@@ -4,10 +4,12 @@ import type {
   AddressReading,
   Device,
   EsriListing,
+  LayerOptions,
   MapSwitches,
   OtherLayers,
   Packages,
   Portable,
+  RoadSigns,
   ShareRole,
 } from "@/lib/types";
 import { BASE } from "./base";
@@ -140,6 +142,14 @@ export interface Core {
     mapID: string,
     timeZone: string,
   ): EsriListing | { refused: string; status?: number; said?: string };
+  /** 207 Edit layer's options, told the header values the browser opened; `CoreNotReady` before rikimaps 3774. */
+  layerOptions(
+    rows: CoreRow[],
+    mapID: string,
+    keys: Record<string, Record<string, string>>,
+  ): LayerOptions | { refused: string; status?: number; said?: string };
+  /** 207 The traffic signs' key, read from the road packages the browser holds (rikimaps 3700). */
+  roadSigns(ask: RoadSignsCoreAsk): RoadSigns | { refused: string; status?: number; said?: string };
   /** 204 Add layer's Riki packages, `pieces` those the browser holds; `CoreNotReady` before rikimaps 3684. */
   packages(
     rows: CoreRow[],
@@ -193,6 +203,15 @@ export interface Imported extends Omit<Made, "map"> {
   leftHosts: string[];
 }
 
+/** 207 What the signs' key is read for: the packages held, the country picked or under the view, a search. */
+export interface RoadSignsCoreAsk {
+  stored: StoredPackage[];
+  country?: string;
+  near?: string;
+  q?: string;
+  languages: string[];
+}
+
 /** 198 A map of the person's own the core made: its new rows, the zone they go to, and the map. */
 export interface Made {
   database: "private" | "shared";
@@ -236,6 +255,10 @@ export interface CoreExports {
   riki_duplicate?(pointer: number, length: number): number;
   /** 205 In modules from rikimaps 3689 on. */
   riki_esri_services?(pointer: number, length: number): number;
+  /** 207 In modules from rikimaps 3700 on. */
+  riki_road_signs?(pointer: number, length: number): number;
+  /** 207 In modules from rikimaps 3774 on. */
+  riki_layer_options?(pointer: number, length: number): number;
   /** 204 In modules from rikimaps 3684 on. */
   riki_packages?(pointer: number, length: number): number;
   /** 203 In modules from rikimaps 3685 on. */
@@ -263,6 +286,8 @@ type Call =
   | "riki_export"
   | "riki_duplicate"
   | "riki_esri_services"
+  | "riki_road_signs"
+  | "riki_layer_options"
   | "riki_packages"
   | "riki_copies"
   | "riki_shelve"
@@ -319,6 +344,8 @@ export function coreOf(exports: CoreExports): Core {
     exportMap: (rows, mapID) => callJSON(exports, "riki_export", { rows, id: mapID }),
     duplicate: (rows, mapID) => callJSON(exports, "riki_duplicate", { rows, id: mapID }),
     esriServices: (rows, mapID, timeZone) => callJSON(exports, "riki_esri_services", { rows, id: mapID, timeZone }),
+    layerOptions: (rows, mapID, keys) => callJSON(exports, "riki_layer_options", { rows, id: mapID, keys }),
+    roadSigns: (ask) => callJSON(exports, "riki_road_signs", ask),
     packages: (rows, mapID, pieces) => callJSON(exports, "riki_packages", { rows, id: mapID, pieces }),
     otherLayers: (rows, mapID) => callJSON(exports, "riki_copies", { rows, id: mapID }),
     copyLayers: (rows, mapID, layers) => callJSON(exports, "riki_copies", { rows, id: mapID, layers }),
