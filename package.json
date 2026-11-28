@@ -2,7 +2,7 @@
   "name": "mapeditor-fe",
   "version": "0.1.0",
   "private": true,
-  "rikiCore": { "ref": "89f7174ef2e3312b7a78a465cb9aa6d301dcd1c4", "sha256": "de129c095506a1704f3840d41a729881fe60856a9dabe07e6de3d42007ca8226" },
+  "rikiCore": { "ref": "392c1ab75788c18ca1203ddf7e67550b6cf9e79f", "sha256": "9db843ae0a59562f2f404fd204a3127c0872cd1e273dc6522bf421de0edfbf5b" },
   "description": "The map editor a sharing phone serves to browsers, built by Next.js and shipped inside the app",
   "type": "module",
   "engines": {
