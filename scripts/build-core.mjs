@@ -52,6 +52,7 @@ export const CONTRACT = {
     "riki_esri_services",
     "riki_road_signs",
     "riki_read_tiles",
+    "riki_layer_options",
   ],
   exports: ["memory", "riki_alloc", "riki_free", "riki_version"],
 };
