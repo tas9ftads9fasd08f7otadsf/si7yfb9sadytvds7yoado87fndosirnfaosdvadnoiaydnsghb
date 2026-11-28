@@ -208,8 +208,8 @@
     "riki_road_signs": {"country": "sk", "countryName": "Slovakia", "countries": [{"id": "sk", "title": "Slovakia"}, {"id": "at", "title": "Austria"}], "signs": [{"id": "sk.ts.202", "title": "Stop"}]},
     "riki_version": {
       "version": "0.1.0",
-      "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_switches", "riki_export", "riki_duplicate", "riki_shelve", "riki_delete", "riki_new_map", "riki_import", "riki_packages", "riki_copies", "riki_esri_services", "riki_road_signs", "riki_read_tiles"],
-      "ready": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_switches", "riki_export", "riki_duplicate", "riki_shelve", "riki_delete", "riki_new_map", "riki_import", "riki_packages", "riki_copies", "riki_esri_services", "riki_road_signs", "riki_read_tiles"]
+      "calls": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_switches", "riki_export", "riki_duplicate", "riki_shelve", "riki_delete", "riki_new_map", "riki_import", "riki_packages", "riki_copies", "riki_esri_services", "riki_road_signs", "riki_read_tiles", "riki_layer_options"],
+      "ready": ["riki_maps", "riki_map", "riki_apply", "riki_style", "riki_changes", "riki_read_address", "riki_add_layer", "riki_people", "riki_switches", "riki_export", "riki_duplicate", "riki_shelve", "riki_delete", "riki_new_map", "riki_import", "riki_packages", "riki_copies", "riki_esri_services", "riki_road_signs", "riki_read_tiles", "riki_layer_options"]
     },
     "riki_read_address": {
       "kind": "direct", "probe": "https://cors.example/0/0/0.png"
